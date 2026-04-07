@@ -93,7 +93,7 @@ export function ProfilePage() {
     : 0
 
   return (
-    <div style={{ maxWidth: 720 }}>
+    <div style={{ maxWidth: 1100 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
           {isAdmin && viewUserId ? `Профиль: ${displayUser?.fullName ?? '...'}` : 'Мой профиль'}
@@ -202,7 +202,7 @@ function StatCard({ label, value, color, hint }: { label: string; value: number 
         {label}
         {hint && <span title={hint} style={{ marginLeft: 4, cursor: 'help' }}>ⓘ</span>}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontSize: 32, fontWeight: 700, color, marginTop: 4 }}>{value}</div>
     </div>
   )
 }

@@ -16,6 +16,7 @@ import { notificationsRoutes } from './routes/notifications'
 import { tasksRoutes } from './routes/tasks'
 import { syncRoutes } from './routes/sync'
 import { changeLogsRoutes } from './routes/changeLogs'
+import { analyticsRoutes } from './routes/analytics'
 import { runFullSync } from './services/syncService'
 
 const app = Fastify({ logger: true })
@@ -54,6 +55,7 @@ async function main() {
   await app.register(tasksRoutes, { prefix: '/tasks' })
   await app.register(syncRoutes, { prefix: '/sync' })
   await app.register(changeLogsRoutes, { prefix: '/change-logs' })
+  await app.register(analyticsRoutes, { prefix: '/analytics' })
 
   const port = Number(process.env.PORT ?? 4000)
   await app.listen({ port, host: '0.0.0.0' })

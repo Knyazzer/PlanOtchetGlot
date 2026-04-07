@@ -141,7 +141,7 @@ export function CalendarPage() {
       {/* Calendar */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Производственный календарь</h2>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>Производственный календарь</h2>
           {(isAdmin || isProducer) && (
             <button
               onClick={() => setShowCreateForm(true)}
@@ -150,10 +150,10 @@ export function CalendarPage() {
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,
-                padding: '8px 16px',
+                padding: '10px 20px',
                 cursor: 'pointer',
                 fontWeight: 500,
-                fontSize: 14,
+                fontSize: 16,
               }}
             >
               + Проект
@@ -161,7 +161,7 @@ export function CalendarPage() {
           )}
         </div>
 
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 16 }}>
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 20 }}>
           {isLoading ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Загрузка...</div>
           ) : (
@@ -192,30 +192,30 @@ export function CalendarPage() {
         <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
           {Object.entries(STATUS_LABELS).map(([key, label]) => (
             <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 3, background: STATUS_COLORS[key] }} />
-              <span style={{ fontSize: 12, color: '#64748b' }}>{label}</span>
+              <div style={{ width: 14, height: 14, borderRadius: 3, background: STATUS_COLORS[key] }} />
+              <span style={{ fontSize: 14, color: '#64748b' }}>{label}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Правая панель */}
-      <div style={{ width: 280, flexShrink: 0 }}>
+      <div style={{ width: 340, flexShrink: 0 }}>
 
         {/* Конфликты */}
         {conflicts.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 600, color: '#dc2626' }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 600, color: '#dc2626' }}>
               ⚠ Конфликты ({conflicts.length})
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {conflicts.map((c, i) => (
                 <div key={i} style={{ background: '#fff5f5', borderRadius: 8, border: '1px solid #fecaca', padding: '8px 10px', borderLeft: '3px solid #ef4444' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#dc2626', marginBottom: 3 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#dc2626', marginBottom: 3 }}>
                     {format(new Date(c.date), 'd MMM', { locale: ru })} · {c.user.fullName}
                   </div>
                   {c.shifts.map((s) => (
-                    <div key={s.shiftId} style={{ fontSize: 11, color: '#64748b' }}>
+                    <div key={s.shiftId} style={{ fontSize: 13, color: '#64748b' }}>
                       {s.project.client ? `${s.project.client} — ` : ''}{s.project.name}
                     </div>
                   ))}
@@ -224,12 +224,12 @@ export function CalendarPage() {
             </div>
           </div>
         )}
-        <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#374151' }}>
+        <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, color: '#374151' }}>
           Без даты ({unconfirmedProjects.length})
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {unconfirmedProjects.length === 0 && (
-            <div style={{ fontSize: 13, color: '#94a3b8', padding: '12px 0' }}>Все проекты имеют дату</div>
+            <div style={{ fontSize: 14, color: '#94a3b8', padding: '12px 0' }}>Все проекты имеют дату</div>
           )}
           {unconfirmedProjects.map((p) => (
             <div
@@ -239,19 +239,19 @@ export function CalendarPage() {
                 background: '#fff',
                 borderRadius: 8,
                 border: '1px solid #e2e8f0',
-                padding: '10px 12px',
+                padding: '12px 14px',
                 cursor: 'pointer',
                 borderLeft: `3px solid ${STATUS_COLORS[p.status]}`,
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 500, color: '#1e293b', marginBottom: 2 }}>
+              <div style={{ fontSize: 15, fontWeight: 500, color: '#1e293b', marginBottom: 3 }}>
                 {p.name}
               </div>
               {p.client && (
-                <div style={{ fontSize: 12, color: '#64748b' }}>{p.client}</div>
+                <div style={{ fontSize: 13, color: '#64748b' }}>{p.client}</div>
               )}
               {p.dateApproximate && (
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>≈ {p.dateApproximate}</div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>≈ {p.dateApproximate}</div>
               )}
               <div style={{ marginTop: 4 }}>
                 <StatusBadge status={p.status} />
@@ -334,10 +334,10 @@ function ProjectModal({
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: 520, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 32, width: 600, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
-            <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 600 }}>{project.name}</h3>
+            <h3 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 600 }}>{project.name}</h3>
             <StatusBadge status={project.status} />
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', padding: 4 }}>×</button>
@@ -348,7 +348,7 @@ function ProjectModal({
           {(['info', 'log'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} style={{
               background: 'none', border: 'none', padding: '6px 14px', cursor: 'pointer',
-              fontSize: 13, fontWeight: tab === t ? 600 : 400,
+              fontSize: 15, fontWeight: tab === t ? 600 : 400,
               color: tab === t ? '#2563eb' : '#64748b',
               borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent',
               marginBottom: -1,
@@ -365,8 +365,8 @@ function ProjectModal({
                 {rows.map(([label, value]) =>
                   value ? (
                     <tr key={label} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '6px 0', fontSize: 13, color: '#64748b', width: 140 }}>{label}</td>
-                      <td style={{ padding: '6px 0', fontSize: 13, color: '#1e293b' }}>{value}</td>
+                      <td style={{ padding: '8px 0', fontSize: 15, color: '#64748b', width: 160 }}>{label}</td>
+                      <td style={{ padding: '8px 0', fontSize: 15, color: '#1e293b' }}>{value}</td>
                     </tr>
                   ) : null
                 )}
@@ -376,10 +376,10 @@ function ProjectModal({
             {/* Состав */}
             {project.assignments.length > 0 && (
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Состав команды</div>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 10, color: '#374151' }}>Состав команды</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {project.assignments.map((a) => (
-                    <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderBottom: '1px solid #f8fafc' }}>
+                    <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, padding: '6px 0', borderBottom: '1px solid #f8fafc' }}>
                       <span style={{ color: '#1e293b' }}>
                         {a.user?.fullName ?? <span style={{ color: '#ef4444' }}>{a.unmatchedName} (не найден)</span>}
                       </span>
@@ -401,7 +401,7 @@ function ProjectModal({
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {changeLogs.map((entry) => (
-                  <div key={entry.id} style={{ fontSize: 12, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <div key={entry.id} style={{ fontSize: 14, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                       <span style={{ fontWeight: 500, color: '#374151' }}>{entry.field}</span>
                       <span style={{ color: '#94a3b8' }}>
@@ -472,21 +472,21 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   const field = (label: string, key: keyof typeof form, type = 'text', placeholder?: string) => (
     <div style={{ marginBottom: 12 }}>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 3, color: '#374151' }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>{label}</label>
       <input
         type={type}
         value={form[key]}
         placeholder={placeholder}
         onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-        style={{ width: '100%', padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 15, boxSizing: 'border-box' }}
       />
     </div>
   )
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: 440, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
-        <h3 style={{ margin: '0 0 18px', fontSize: 17, fontWeight: 600 }}>Новый проект</h3>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 32, width: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
+        <h3 style={{ margin: '0 0 20px', fontSize: 20, fontWeight: 600 }}>Новый проект</h3>
 
         {field('Название *', 'name')}
         {field('Клиент', 'client')}
@@ -500,13 +500,13 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
         {error && <div style={{ marginBottom: 12, color: '#dc2626', fontSize: 13 }}>{error}</div>}
 
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
+          <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 15 }}>
             Отмена
           </button>
           <button
             onClick={() => create.mutate()}
             disabled={create.isPending || !form.name}
-            style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: 13, opacity: !form.name ? 0.5 : 1 }}
+            style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: 15, opacity: !form.name ? 0.5 : 1 }}
           >
             {create.isPending ? 'Создание...' : 'Создать'}
           </button>
@@ -522,8 +522,8 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span style={{
       display: 'inline-block',
-      fontSize: 11,
-      padding: '2px 7px',
+      fontSize: 13,
+      padding: '3px 9px',
       borderRadius: 10,
       background: STATUS_COLORS[status] + '22',
       color: STATUS_COLORS[status],

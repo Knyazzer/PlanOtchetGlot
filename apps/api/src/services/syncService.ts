@@ -4,6 +4,12 @@ import { prisma } from '@tv-shifts/db'
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getSheets(): sheets_v4.Sheets {
+  // Если задан простой API ключ — используем его (таблицы должны быть открыты по ссылке)
+  if (process.env.GOOGLE_API_KEY) {
+    return google.sheets({ version: 'v4', auth: process.env.GOOGLE_API_KEY })
+  }
+
+  // Иначе — Service Account (для приватных таблиц)
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
@@ -418,7 +424,8 @@ export async function runFullSync(): Promise<SyncResult> {
   let shiftsUpserted = 0
 
   const hasCredentials =
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY
+    process.env.GOOGLE_API_KEY ||
+    (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY)
 
   if (!hasCredentials) {
     console.warn('[sync] Google credentials not set — skipping sync')
