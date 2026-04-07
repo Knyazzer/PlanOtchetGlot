@@ -154,9 +154,23 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     const hasAnyData = [0,1,2,3,4,5,6,7,8,9,10].some((col) => cellStr(cells[col]) !== '')
     if (!hasAnyData) { skippedEmpty++; continue }
 
-    // Пропускаем разделители месяцев: только колонка A заполнена, B–K пусты
+    const googleRowIndex = i + 1
+
+    // Разделители месяцев: только колонка A заполнена, B–K пусты — сохраняем отдельно
     const hasDataBeyondA = [1,2,3,4,5,6,7,8,9,10].some((col) => cellStr(cells[col]) !== '')
-    if (!hasDataBeyondA) { skippedEmpty++; continue }
+    if (!hasDataBeyondA) {
+      const separatorText = cellStr(cells[0])
+      if (separatorText) {
+        const existing = await prisma.project.findFirst({ where: { googleRowIndex } })
+        if (existing) {
+          await prisma.project.update({ where: { id: existing.id }, data: { name: separatorText, source: 'separator' } })
+        } else {
+          await prisma.project.create({ data: { name: separatorText, source: 'separator', googleRowIndex, status: 'request' } })
+        }
+      }
+      skippedEmpty++
+      continue
+    }
 
     const formatRaw = cellStr(cells[8]).trim()
 
@@ -186,8 +200,6 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 
     // ID матрицы — колонка K (индекс 10)
     const sheetMatrixId = cellStr(cells[10]) || null
-
-    const googleRowIndex = i + 1
 
     const data = {
       name,

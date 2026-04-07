@@ -30,6 +30,7 @@ enum ProjectStatus {
 enum ProjectSource {
   projects_table
   manual
+  separator
 }
 
 enum EmploymentType {

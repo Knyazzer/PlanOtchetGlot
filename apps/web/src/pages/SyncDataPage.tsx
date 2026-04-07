@@ -9,6 +9,7 @@ import { api } from '../lib/api'
 interface Project {
   id: string
   googleRowIndex: number | null
+  source: string
   status: string
   client: string | null
   name: string
@@ -145,7 +146,10 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
   }), [projects])
 
   const rows = useMemo(() => {
+    // Если есть активные фильтры — разделители не показываем (они мешают)
+    const hasFilters = Object.values(filters).some(Boolean)
     return projects.filter((p) => {
+      if (p.source === 'separator') return !hasFilters
       if (filters.status) {
         const label = STATUS_LABELS[p.status] ?? p.status
         if (label !== filters.status) return false
@@ -192,24 +196,45 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
             <tbody>
               {rows.length === 0 ? (
                 <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Нет строк по выбранным фильтрам</td></tr>
-              ) : rows.map((p, i) => (
-                <tr key={p.id} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                  <td style={tdStyle}>
-                    <span style={{
-                      display: 'inline-block', padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                      background: `${STATUS_COLORS[p.status] ?? '#94a3b8'}22`,
-                      color: STATUS_COLORS[p.status] ?? '#94a3b8',
-                    }}>
-                      {STATUS_LABELS[p.status] ?? p.status}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>{p.client ?? '—'}</td>
-                  <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>{p.name}</td>
-                  <td style={tdStyle}>{fmtDate(p.date)}</td>
-                  <td style={tdStyle}>{p.format ?? '—'}</td>
-                  <td style={tdStyle}>{p.location ?? '—'}</td>
-                </tr>
-              ))}
+              ) : rows.map((p, i) => {
+                if (p.source === 'separator') {
+                  return (
+                    <tr key={p.id}>
+                      <td colSpan={6} style={{
+                        padding: '5px 10px',
+                        background: '#f1f5f9',
+                        borderTop: '2px solid #e2e8f0',
+                        borderBottom: '1px solid #e2e8f0',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#64748b',
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                      }}>
+                        {p.name}
+                      </td>
+                    </tr>
+                  )
+                }
+                return (
+                  <tr key={p.id} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                    <td style={tdStyle}>
+                      <span style={{
+                        display: 'inline-block', padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+                        background: `${STATUS_COLORS[p.status] ?? '#94a3b8'}22`,
+                        color: STATUS_COLORS[p.status] ?? '#94a3b8',
+                      }}>
+                        {STATUS_LABELS[p.status] ?? p.status}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>{p.client ?? '—'}</td>
+                    <td style={{ ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>{p.name}</td>
+                    <td style={tdStyle}>{fmtDate(p.date)}</td>
+                    <td style={tdStyle}>{p.format ?? '—'}</td>
+                    <td style={tdStyle}>{p.location ?? '—'}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}

@@ -28,7 +28,7 @@ export async function syncRoutes(app: FastifyInstance) {
     // Удаляем в нужном порядке из-за foreign keys
     const shifts   = await prisma.shiftEntry.deleteMany({ where: { source: 'matrix' } })
     const registry = await prisma.matrixRegistry.deleteMany({})
-    const projects = await prisma.project.deleteMany({ where: { source: 'projects_table' } })
+    const projects = await prisma.project.deleteMany({ where: { source: { in: ['projects_table', 'separator'] } } })
     return reply.send({
       deleted: {
         shiftEntries: shifts.count,
