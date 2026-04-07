@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { authenticate, requireRole } from '../plugins/auth'
+import { logChanges } from '../services/changeLog'
 
 const createProjectSchema = z.object({
   client: z.string().optional(),
@@ -94,15 +95,22 @@ export async function projectsRoutes(app: FastifyInstance) {
   // PATCH /projects/:id
   app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { id } = request.params as { id: string }
+    const me = request.user as { id: string }
     const body = updateProjectSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
+    const before = await prisma.project.findUnique({ where: { id } })
+    if (!before) return reply.code(404).send({ error: 'Project not found' })
+
     const data: any = { ...body.data }
     if (data.date) data.date = new Date(data.date)
 
     const project = await prisma.project.update({ where: { id }, data })
+
+    await logChanges('project', id, before as any, body.data as any, me.id)
+
     return project
   })
 

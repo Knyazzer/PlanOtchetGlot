@@ -36,6 +36,22 @@ interface Project {
   }[]
 }
 
+interface ConflictEntry {
+  date: string
+  user: { id: string; fullName: string }
+  shifts: { shiftId: string; shiftType: string; project: { id: string; name: string; client: string | null } }[]
+}
+
+interface ChangeLogEntry {
+  id: string
+  field: string | null
+  oldValue: string | null
+  newValue: string | null
+  changedAt: string
+  source: string
+  user: { id: string; fullName: string } | null
+}
+
 const STATUS_COLORS: Record<string, string> = {
   preliminary: '#f59e0b',
   ready: '#10b981',
@@ -79,16 +95,38 @@ export function CalendarPage() {
       ),
   })
 
-  const events = projects
-    .filter((p) => p.date)
-    .map((p) => ({
-      id: p.id,
-      title: p.client ? `${p.client} — ${p.name}` : p.name,
-      date: p.date!.split('T')[0],
-      backgroundColor: STATUS_COLORS[p.status] ?? '#3b82f6',
-      borderColor: STATUS_COLORS[p.status] ?? '#3b82f6',
-      extendedProps: { project: p },
-    }))
+  // Конфликты (только для admin/producer)
+  const { data: conflicts = [] } = useQuery<ConflictEntry[]>({
+    queryKey: ['conflicts', dateFrom, dateTo],
+    queryFn: () =>
+      api.get('/projects/conflicts', { params: { dateFrom, dateTo } }).then((r) => r.data),
+    enabled: isAdmin || isProducer,
+  })
+
+  // Даты с конфликтами для подсветки на календаре
+  const conflictDates = new Set(conflicts.map((c) => c.date.split('T')[0]))
+
+  const events = [
+    ...projects
+      .filter((p) => p.date)
+      .map((p) => ({
+        id: p.id,
+        title: p.client ? `${p.client} — ${p.name}` : p.name,
+        date: p.date!.split('T')[0],
+        backgroundColor: STATUS_COLORS[p.status] ?? '#3b82f6',
+        borderColor: STATUS_COLORS[p.status] ?? '#3b82f6',
+        extendedProps: { project: p },
+      })),
+    // Фоновые маркеры конфликтных дат
+    ...[...conflictDates].map((date) => ({
+      id: `conflict-${date}`,
+      start: date,
+      display: 'background' as const,
+      backgroundColor: 'rgba(239,68,68,0.15)',
+      borderColor: 'transparent',
+      extendedProps: { isConflict: true },
+    })),
+  ]
 
   function handleEventClick(info: any) {
     setSelectedProject(info.event.extendedProps.project)
@@ -161,8 +199,31 @@ export function CalendarPage() {
         </div>
       </div>
 
-      {/* Правая панель — без даты */}
+      {/* Правая панель */}
       <div style={{ width: 280, flexShrink: 0 }}>
+
+        {/* Конфликты */}
+        {conflicts.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 600, color: '#dc2626' }}>
+              ⚠ Конфликты ({conflicts.length})
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {conflicts.map((c, i) => (
+                <div key={i} style={{ background: '#fff5f5', borderRadius: 8, border: '1px solid #fecaca', padding: '8px 10px', borderLeft: '3px solid #ef4444' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#dc2626', marginBottom: 3 }}>
+                    {format(new Date(c.date), 'd MMM', { locale: ru })} · {c.user.fullName}
+                  </div>
+                  {c.shifts.map((s) => (
+                    <div key={s.shiftId} style={{ fontSize: 11, color: '#64748b' }}>
+                      {s.project.client ? `${s.project.client} — ` : ''}{s.project.name}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <h3 style={{ margin: '0 0 12px', fontSize: 14, fontWeight: 600, color: '#374151' }}>
           Без даты ({unconfirmedProjects.length})
         </h3>
@@ -242,9 +303,18 @@ function ProjectModal({
   onDeleted: () => void
   canEdit: boolean
 }) {
+  const [tab, setTab] = useState<'info' | 'log'>('info')
+
   const deleteMutation = useMutation({
     mutationFn: () => api.delete(`/projects/${project.id}`),
     onSuccess: onDeleted,
+  })
+
+  const { data: changeLogs = [] } = useQuery<ChangeLogEntry[]>({
+    queryKey: ['change-logs', 'project', project.id],
+    queryFn: () =>
+      api.get('/change-logs', { params: { entityType: 'project', entityId: project.id } }).then((r) => r.data),
+    enabled: tab === 'log',
   })
 
   const rows: [string, string | null | undefined][] = [
@@ -273,33 +343,81 @@ function ProjectModal({
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', padding: 4 }}>×</button>
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
-          <tbody>
-            {rows.map(([label, value]) =>
-              value ? (
-                <tr key={label} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '6px 0', fontSize: 13, color: '#64748b', width: 140 }}>{label}</td>
-                  <td style={{ padding: '6px 0', fontSize: 13, color: '#1e293b' }}>{value}</td>
-                </tr>
-              ) : null
-            )}
-          </tbody>
-        </table>
+        {/* Вкладки */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #e2e8f0' }}>
+          {(['info', 'log'] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              background: 'none', border: 'none', padding: '6px 14px', cursor: 'pointer',
+              fontSize: 13, fontWeight: tab === t ? 600 : 400,
+              color: tab === t ? '#2563eb' : '#64748b',
+              borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent',
+              marginBottom: -1,
+            }}>
+              {t === 'info' ? 'Информация' : 'История изменений'}
+            </button>
+          ))}
+        </div>
 
-        {/* Состав */}
-        {project.assignments.length > 0 && (
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Состав команды</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {project.assignments.map((a) => (
-                <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderBottom: '1px solid #f8fafc' }}>
-                  <span style={{ color: '#1e293b' }}>
-                    {a.user?.fullName ?? <span style={{ color: '#ef4444' }}>{a.unmatchedName} (не найден)</span>}
-                  </span>
-                  {a.roleOnSite && <span style={{ color: '#64748b' }}>{a.roleOnSite}</span>}
+        {tab === 'info' && (
+          <>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
+              <tbody>
+                {rows.map(([label, value]) =>
+                  value ? (
+                    <tr key={label} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '6px 0', fontSize: 13, color: '#64748b', width: 140 }}>{label}</td>
+                      <td style={{ padding: '6px 0', fontSize: 13, color: '#1e293b' }}>{value}</td>
+                    </tr>
+                  ) : null
+                )}
+              </tbody>
+            </table>
+
+            {/* Состав */}
+            {project.assignments.length > 0 && (
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Состав команды</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {project.assignments.map((a) => (
+                    <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '4px 0', borderBottom: '1px solid #f8fafc' }}>
+                      <span style={{ color: '#1e293b' }}>
+                        {a.user?.fullName ?? <span style={{ color: '#ef4444' }}>{a.unmatchedName} (не найден)</span>}
+                      </span>
+                      {a.roleOnSite && <span style={{ color: '#64748b' }}>{a.roleOnSite}</span>}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'log' && (
+          <div>
+            {changeLogs.length === 0 ? (
+              <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+                Изменений не зафиксировано
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {changeLogs.map((entry) => (
+                  <div key={entry.id} style={{ fontSize: 12, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <span style={{ fontWeight: 500, color: '#374151' }}>{entry.field}</span>
+                      <span style={{ color: '#94a3b8' }}>
+                        {format(new Date(entry.changedAt), 'd MMM yyyy HH:mm', { locale: ru })}
+                        {entry.user && ` · ${entry.user.fullName}`}
+                      </span>
+                    </div>
+                    <div style={{ color: '#64748b' }}>
+                      <span style={{ color: '#dc2626', textDecoration: 'line-through' }}>{entry.oldValue ?? '—'}</span>
+                      {' → '}
+                      <span style={{ color: '#16a34a' }}>{entry.newValue ?? '—'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

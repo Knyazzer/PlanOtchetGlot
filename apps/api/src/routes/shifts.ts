@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { authenticate, requireRole } from '../plugins/auth'
+import { logChanges } from '../services/changeLog'
 
 const createShiftSchema = z.object({
   userId: z.string().uuid(),
@@ -65,14 +66,14 @@ export async function shiftsRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string }
     const me = request.user as { id: string }
 
-    return prisma.shiftEntry.update({
+    const shift = await prisma.shiftEntry.update({
       where: { id },
-      data: {
-        confirmed: true,
-        confirmedBy: me.id,
-        confirmedAt: new Date(),
-      },
+      data: { confirmed: true, confirmedBy: me.id, confirmedAt: new Date() },
     })
+
+    await logChanges('shift', id, { confirmed: false }, { confirmed: true }, me.id)
+
+    return shift
   })
 
   // PATCH /shifts/:id — редактирование (admin only)

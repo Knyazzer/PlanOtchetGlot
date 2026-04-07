@@ -70,6 +70,26 @@
 
 ---
 
+## Этап 3 — Google Sheets синхронизация
+
+> `apps/api/src/services/syncService.ts` + `apps/api/src/routes/sync.ts`
+
+- [x] Google Sheets клиент через `googleapis` (Service Account auth)
+- [x] `extractSpreadsheetId(url)` — извлечение ID из URL
+- [x] `isColored(cell)` — детекция подсвеченных ячеек через `userEnteredFormat.backgroundColor`
+- [x] `syncProjects()` — читает таблицу проектов с форматированием (includeGridData), определяет `uncertainFields` и статус по цветам ячеек, upsert по `googleRowIndex`
+- [x] `syncRegistry()` — читает реестр матриц (A–L), upsert по `matrixId`, автосвязка с проектами по spreadsheet ID
+- [x] `syncMatrix()` — читает лист `₽ СМЕНЫ`: строка 2 → даты J–P, строки 4+ → состав команды; upsert `ProjectAssignment` + `ShiftEntry` (только для штатных сотрудников)
+- [x] Маппинг типа смены по позиции колонки: J–L → zastroyka, M → efir, N–P → demontazh
+- [x] Маппинг `EmploymentType`: ШТАТ/ИП 7%/8%/10%/СЗТ
+- [x] Уведомления: `unmatched_name` при ненайденном ФИО, `no_matrix` для проектов без матрицы
+- [x] `runFullSync()` — оркестрация: projects → registry → matrices; логирует в `SyncLog` с кол-вом изменений и ошибками
+- [x] `POST /sync/trigger` — ручной запуск (async, 202); доступен admin/producer
+- [x] `GET /sync/logs` — история синхронизаций с фильтром по типу
+- [x] node-cron в `server.ts` — запускает `runFullSync()` каждые 30 минут
+
+---
+
 ## Этап 4 — Учёт смен (API)
 
 > Web-часть — в TODO.
@@ -91,6 +111,26 @@
 - [x] `PATCH /notifications/:id/read` — отметить прочитанным
 - [x] `PATCH /notifications/read-all` — отметить всё прочитанным
 - [x] `GET /notifications/count` — количество непрочитанных (для колокольчика)
+
+---
+
+## Этап 4 — Учёт смен (Web)
+
+- [x] `ProfilePage` — месячные смены со счётчиками (итого / порог / переработка / отпуск), навигация по месяцам
+- [x] Для admin — выбор сотрудника через селект
+- [x] Смены сгруппированы по дате, тип смены цветом, статус подтверждения
+- [x] Конфликты на `CalendarPage` — красный фон дат + блок в правой панели с деталями
+
+---
+
+## Этап 5 — Уведомления (Web) + Change Log
+
+- [x] `NotificationBell` в шапке — бейдж с кол-вом непрочитанных, обновление каждые 60 сек
+- [x] Дроп-даун: непрочитанные сверху, прочитанные снизу; кнопка «Прочитать все»; клик по уведомлению помечает прочитанным
+- [x] `logChanges()` хелпер — сравнивает поля и пишет в `change_logs`
+- [x] Логирование в `PATCH /projects/:id` и `PATCH /shifts/:id/confirm`
+- [x] `GET /change-logs?entityType=&entityId=` — эндпоинт с фильтрами
+- [x] Вкладка «История изменений» в модалке проекта — diff старое/новое со временем и автором
 
 ---
 

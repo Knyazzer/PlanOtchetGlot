@@ -1,0 +1,560 @@
+import { google, sheets_v4 } from 'googleapis'
+import { prisma } from '@tv-shifts/db'
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getSheets(): sheets_v4.Sheets {
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    },
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  })
+  return google.sheets({ version: 'v4', auth })
+}
+
+function extractSpreadsheetId(url: string): string | null {
+  const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/)
+  return match?.[1] ?? null
+}
+
+// Considers a cell "highlighted" if its background is non-white
+function isColored(cell: sheets_v4.Schema$CellData | null | undefined): boolean {
+  const bg = cell?.userEnteredFormat?.backgroundColor
+  if (!bg) return false
+  const { red = 1, green = 1, blue = 1 } = bg
+  return !(red >= 0.99 && green >= 0.99 && blue >= 0.99)
+}
+
+function cellStr(cell: sheets_v4.Schema$CellData | null | undefined): string {
+  const v = cell?.userEnteredValue
+  if (!v) return ''
+  return String(v.stringValue ?? v.numberValue ?? v.boolValue ?? '').trim()
+}
+
+// Google Sheets serial date → JS Date (epoch: Dec 30, 1899)
+function serialToDate(serial: number): Date {
+  const msPerDay = 86400000
+  const epoch = new Date(1899, 11, 30).getTime()
+  return new Date(epoch + serial * msPerDay)
+}
+
+function parseSheetDate(raw: string): Date | null {
+  if (!raw) return null
+  // Try Russian format DD.MM.YYYY
+  const ruMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+  if (ruMatch) {
+    const d = new Date(Number(ruMatch[3]), Number(ruMatch[2]) - 1, Number(ruMatch[1]))
+    return isNaN(d.getTime()) ? null : d
+  }
+  // Try ISO or other
+  const parsed = new Date(raw)
+  return isNaN(parsed.getTime()) ? null : parsed
+}
+
+function parseEmploymentType(raw: string): 'staff' | 'ip_7' | 'ip_8' | 'ip_10' | 'szt' {
+  const s = raw.trim().toUpperCase()
+  if (s === 'ШТАТ' || s === 'SHTAT') return 'staff'
+  if (s.includes('7')) return 'ip_7'
+  if (s.includes('8')) return 'ip_8'
+  if (s.includes('10')) return 'ip_10'
+  if (s.includes('СЗТ') || s.includes('SZT')) return 'szt'
+  return 'staff'
+}
+
+function isStaffType(raw: string): boolean {
+  return raw.trim().toUpperCase() === 'ШТАТ'
+}
+
+async function delay(ms: number) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+// ─── Sync: Projects Table ────────────────────────────────────────────────────
+
+async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: number; errors: string[] }> {
+  const spreadsheetId = process.env.GOOGLE_PROJECTS_SHEET_ID
+  if (!spreadsheetId) throw new Error('GOOGLE_PROJECTS_SHEET_ID not set')
+
+  // Read with formatting to detect cell colors (columns A–AK = indices 0–36)
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId,
+    includeGridData: true,
+    ranges: ['A1:AK'],
+  })
+
+  const rows = res.data.sheets?.[0]?.data?.[0]?.rowData ?? []
+  let upserted = 0
+  const errors: string[] = []
+
+  // Row 0 is the header — start from row 1 (1-indexed row 2)
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i].values ?? []
+    const name = cellStr(cells[1])
+    if (!name) continue
+
+    const fieldNames = ['client', 'name', 'execProducer', 'lineProducer', 'accountManager', 'date', 'time', 'format', 'location']
+    const uncertainFields: string[] = []
+    for (let col = 0; col < 9; col++) {
+      if (isColored(cells[col])) uncertainFields.push(fieldNames[col])
+    }
+
+    const status = uncertainFields.length > 0 ? 'preliminary' : ('ready' as const)
+    const dateRaw = cellStr(cells[5])
+    let date: Date | null = null
+    let dateApproximate: string | null = null
+
+    if (dateRaw) {
+      const parsed = parseSheetDate(dateRaw)
+      if (parsed) {
+        date = parsed
+      } else {
+        dateApproximate = dateRaw
+      }
+    }
+
+    // Column AK = index 36 — matrix link
+    const matrixUrl = cellStr(cells[36]) || null
+    const googleRowIndex = i + 1 // 1-indexed
+
+    const data = {
+      client: cellStr(cells[0]) || null,
+      name,
+      execProducer: cellStr(cells[2]) || null,
+      lineProducer: cellStr(cells[3]) || null,
+      accountManager: cellStr(cells[4]) || null,
+      date,
+      dateApproximate,
+      time: cellStr(cells[6]) || null,
+      format: cellStr(cells[7]) || null,
+      location: cellStr(cells[8]) || null,
+      status,
+      uncertainFields,
+      matrixUrl,
+    }
+
+    try {
+      const existing = await prisma.project.findFirst({ where: { googleRowIndex } })
+      if (existing) {
+        await prisma.project.update({ where: { id: existing.id }, data })
+      } else {
+        await prisma.project.create({ data: { ...data, source: 'projects_table', googleRowIndex } })
+      }
+      upserted++
+    } catch (e: any) {
+      errors.push(`Projects row ${googleRowIndex}: ${e.message}`)
+    }
+  }
+
+  return { upserted, errors }
+}
+
+// ─── Sync: Matrix Registry ────────────────────────────────────────────────────
+
+async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: number; errors: string[] }> {
+  const spreadsheetId = process.env.GOOGLE_REGISTRY_SHEET_ID
+  if (!spreadsheetId) throw new Error('GOOGLE_REGISTRY_SHEET_ID not set')
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: 'A1:L',
+    valueRenderOption: 'FORMATTED_VALUE',
+  })
+
+  const rows = res.data.values ?? []
+  let upserted = 0
+  const errors: string[] = []
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]
+    const matrixId = (row[2] ?? '').trim() // Column C
+    if (!matrixId) continue
+
+    const sheetUrlRaw = (row[1] ?? '').trim() // Column B
+    const sheetUrl = sheetUrlRaw.startsWith('http') ? sheetUrlRaw : null
+
+    if (!sheetUrl) {
+      // Not a valid URL — just log and skip linking
+    }
+
+    const dateRaw = (row[8] ?? '').trim() // Column I
+    const date = dateRaw ? parseSheetDate(dateRaw) : null
+
+    // Try to link to an existing project by matrixUrl
+    let projectId: string | null = null
+    if (sheetUrl) {
+      const sheetSpreadsheetId = extractSpreadsheetId(sheetUrl)
+      if (sheetSpreadsheetId) {
+        const linked = await prisma.project.findFirst({
+          where: { matrixUrl: { contains: sheetSpreadsheetId } },
+        })
+        if (linked) projectId = linked.id
+      }
+    }
+
+    const entry = {
+      sheetUrl,
+      status: (row[0] ?? '').trim() || null,
+      unit: (row[4] ?? '').trim() || null,
+      client: (row[5] ?? '').trim() || null,
+      name: (row[6] ?? '').trim() || null,
+      format: (row[7] ?? '').trim() || null,
+      date,
+      producer: (row[9] ?? '').trim() || null,
+      manager: (row[10] ?? '').trim() || null,
+      curator: (row[11] ?? '').trim() || null,
+      projectId,
+      lastSyncedAt: new Date(),
+    }
+
+    try {
+      await prisma.matrixRegistry.upsert({
+        where: { matrixId },
+        create: { matrixId, ...entry },
+        update: entry,
+      })
+      upserted++
+    } catch (e: any) {
+      errors.push(`Registry matrixId ${matrixId}: ${e.message}`)
+    }
+  }
+
+  return { upserted, errors }
+}
+
+// ─── Sync: Individual Matrix ─────────────────────────────────────────────────
+
+async function syncMatrix(
+  sheets: sheets_v4.Sheets,
+  registryEntry: { id: string; matrixId: string; sheetUrl: string | null; projectId: string | null }
+): Promise<{ upserted: number; errors: string[] }> {
+  if (!registryEntry.sheetUrl) return { upserted: 0, errors: [] }
+
+  const spreadsheetId = extractSpreadsheetId(registryEntry.sheetUrl)
+  if (!spreadsheetId) {
+    return { upserted: 0, errors: [`Invalid matrix URL: ${registryEntry.sheetUrl}`] }
+  }
+
+  let upserted = 0
+  const errors: string[] = []
+
+  // ── Find the linked project ──────────────────────────────────────────────
+  let projectId = registryEntry.projectId
+
+  // If not linked yet, try matching by spreadsheet ID in project.matrixUrl
+  if (!projectId) {
+    const linked = await prisma.project.findFirst({
+      where: { matrixUrl: { contains: spreadsheetId } },
+    })
+    projectId = linked?.id ?? null
+  }
+
+  if (!projectId) {
+    // No linked project — cannot create shifts without one
+    errors.push(`Matrix ${registryEntry.matrixId}: no linked project found`)
+    return { upserted, errors }
+  }
+
+  // ── Read ₽ СМЕНЫ sheet ───────────────────────────────────────────────────
+  let shiftsRows: string[][]
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: '₽ СМЕНЫ!A1:P',
+      valueRenderOption: 'FORMATTED_VALUE',
+    })
+    shiftsRows = (res.data.values ?? []) as string[][]
+  } catch (e: any) {
+    errors.push(`Matrix ${registryEntry.matrixId}: cannot read ₽ СМЕНЫ — ${e.message}`)
+    return { upserted, errors }
+  }
+
+  // Row index 1 (row 2) contains dates in columns J–P (indices 9–15)
+  const dateRow = shiftsRows[1] ?? []
+  const shiftDates: (Date | null)[] = []
+  for (let col = 9; col <= 15; col++) {
+    const raw = (dateRow[col] ?? '').trim()
+    shiftDates.push(raw ? parseSheetDate(raw) : null)
+  }
+
+  // Shift type by column position within J–P (0-indexed offset from J=0)
+  const shiftTypeByOffset = (offset: number): 'zastroyka' | 'efir' | 'demontazh' => {
+    if (offset < 3) return 'zastroyka' // J, K, L
+    if (offset === 3) return 'efir'    // M
+    return 'demontazh'                  // N, O, P
+  }
+
+  // Rows 4+ (index 3+) — staff
+  for (let i = 3; i < shiftsRows.length; i++) {
+    const row = shiftsRows[i]
+    const fullName = (row[2] ?? '').trim() // Column C
+    if (!fullName) continue
+
+    const roleOnSite = (row[6] ?? '').trim() || null   // Column G
+    const shiftFormat = (row[7] ?? '').trim() || null  // Column H
+    const employmentRaw = (row[8] ?? '').trim()        // Column I
+    const employmentType = parseEmploymentType(employmentRaw)
+    const isStaff = isStaffType(employmentRaw)
+
+    // Find user by exact full name match
+    const user = await prisma.user.findFirst({
+      where: { fullName: { equals: fullName, mode: 'insensitive' } },
+    })
+
+    if (!user) {
+      // Notify about unmatched name (deduplicate by entityId + message content)
+      const exists = await prisma.notification.findFirst({
+        where: {
+          type: 'unmatched_name',
+          entityId: registryEntry.id,
+          message: { contains: fullName },
+        },
+      })
+      if (!exists) {
+        await prisma.notification.create({
+          data: {
+            type: 'unmatched_name',
+            entityType: 'matrix',
+            entityId: registryEntry.id,
+            message: `Сотрудник не найден в системе: «${fullName}» (матрица ${registryEntry.matrixId})`,
+            userId: null,
+          },
+        })
+      }
+    }
+
+    // Upsert ProjectAssignment
+    const assignmentData = {
+      roleOnSite,
+      shiftFormat,
+      employmentType,
+    }
+
+    let assignment = await prisma.projectAssignment.findFirst({
+      where: {
+        projectId,
+        ...(user ? { userId: user.id } : { unmatchedName: fullName }),
+      },
+    })
+
+    if (assignment) {
+      assignment = await prisma.projectAssignment.update({
+        where: { id: assignment.id },
+        data: assignmentData,
+      })
+    } else {
+      assignment = await prisma.projectAssignment.create({
+        data: {
+          projectId,
+          userId: user?.id ?? null,
+          unmatchedName: user ? null : fullName,
+          ...assignmentData,
+        },
+      })
+    }
+
+    // Create ShiftEntries only for staff employees with a matched user
+    if (!isStaff || !user) continue
+
+    for (let col = 9; col <= 15; col++) {
+      const marker = (row[col] ?? '').trim()
+      if (marker !== '1') continue
+
+      const offset = col - 9
+      const shiftDate = shiftDates[offset]
+      if (!shiftDate) continue
+
+      const shiftType = shiftTypeByOffset(offset)
+
+      const existingShift = await prisma.shiftEntry.findFirst({
+        where: {
+          assignmentId: assignment.id,
+          date: shiftDate,
+          shiftType,
+        },
+      })
+
+      if (!existingShift) {
+        await prisma.shiftEntry.create({
+          data: {
+            assignmentId: assignment.id,
+            userId: user.id,
+            projectId,
+            date: shiftDate,
+            shiftType,
+            source: 'matrix',
+          },
+        })
+        upserted++
+      }
+    }
+  }
+
+  // Update lastSyncedAt on registry
+  await prisma.matrixRegistry.update({
+    where: { id: registryEntry.id },
+    data: { lastSyncedAt: new Date() },
+  })
+
+  return { upserted, errors }
+}
+
+// ─── Full Sync Orchestration ─────────────────────────────────────────────────
+
+export interface SyncResult {
+  projectsUpserted: number
+  registryUpserted: number
+  shiftsUpserted: number
+  errors: string[]
+  durationMs: number
+}
+
+export async function runFullSync(): Promise<SyncResult> {
+  const startedAt = Date.now()
+  const allErrors: string[] = []
+  let projectsUpserted = 0
+  let registryUpserted = 0
+  let shiftsUpserted = 0
+
+  const hasCredentials =
+    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY
+
+  if (!hasCredentials) {
+    console.warn('[sync] Google credentials not set — skipping sync')
+    return { projectsUpserted: 0, registryUpserted: 0, shiftsUpserted: 0, errors: ['Google credentials not configured'], durationMs: 0 }
+  }
+
+  const sheets = getSheets()
+
+  // ── 1. Sync projects table ─────────────────────────────────────────────
+  const projectsLog = await prisma.syncLog.create({
+    data: { type: 'projects', status: 'running' },
+  })
+
+  try {
+    const result = await syncProjects(sheets)
+    projectsUpserted = result.upserted
+    allErrors.push(...result.errors)
+    await prisma.syncLog.update({
+      where: { id: projectsLog.id },
+      data: {
+        status: result.errors.length > 0 ? 'error' : 'success',
+        changesCount: result.upserted,
+        errors: result.errors,
+        finishedAt: new Date(),
+      },
+    })
+  } catch (e: any) {
+    allErrors.push(`Projects sync failed: ${e.message}`)
+    await prisma.syncLog.update({
+      where: { id: projectsLog.id },
+      data: { status: 'error', errors: [e.message], finishedAt: new Date() },
+    })
+  }
+
+  await delay(1000) // rate limiting pause
+
+  // ── 2. Sync registry ───────────────────────────────────────────────────
+  const registryLog = await prisma.syncLog.create({
+    data: { type: 'registry', status: 'running' },
+  })
+
+  try {
+    const result = await syncRegistry(sheets)
+    registryUpserted = result.upserted
+    allErrors.push(...result.errors)
+    await prisma.syncLog.update({
+      where: { id: registryLog.id },
+      data: {
+        status: result.errors.length > 0 ? 'error' : 'success',
+        changesCount: result.upserted,
+        errors: result.errors,
+        finishedAt: new Date(),
+      },
+    })
+  } catch (e: any) {
+    allErrors.push(`Registry sync failed: ${e.message}`)
+    await prisma.syncLog.update({
+      where: { id: registryLog.id },
+      data: { status: 'error', errors: [e.message], finishedAt: new Date() },
+    })
+  }
+
+  await delay(1000)
+
+  // ── 3. Sync individual matrices ────────────────────────────────────────
+  const registryEntries = await prisma.matrixRegistry.findMany({
+    where: { sheetUrl: { not: null } },
+  })
+
+  for (const entry of registryEntries) {
+    if (!entry.sheetUrl?.startsWith('http')) continue
+
+    const matrixLog = await prisma.syncLog.create({
+      data: { type: 'matrix', targetId: entry.matrixId, status: 'running' },
+    })
+
+    try {
+      const result = await syncMatrix(sheets, {
+        id: entry.id,
+        matrixId: entry.matrixId,
+        sheetUrl: entry.sheetUrl,
+        projectId: entry.projectId,
+      })
+      shiftsUpserted += result.upserted
+      allErrors.push(...result.errors)
+      await prisma.syncLog.update({
+        where: { id: matrixLog.id },
+        data: {
+          status: result.errors.length > 0 ? 'error' : 'success',
+          changesCount: result.upserted,
+          errors: result.errors,
+          finishedAt: new Date(),
+        },
+      })
+    } catch (e: any) {
+      allErrors.push(`Matrix ${entry.matrixId} sync failed: ${e.message}`)
+      await prisma.syncLog.update({
+        where: { id: matrixLog.id },
+        data: { status: 'error', errors: [e.message], finishedAt: new Date() },
+      })
+    }
+
+    await delay(500) // between matrices
+  }
+
+  // ── Notification: no_matrix for projects without a linked matrix ───────
+  const projectsWithoutMatrix = await prisma.project.findMany({
+    where: {
+      source: 'projects_table',
+      matrixUrl: null,
+      matrixRegistry: null,
+    },
+  })
+
+  for (const project of projectsWithoutMatrix) {
+    const exists = await prisma.notification.findFirst({
+      where: { type: 'no_matrix', entityId: project.id },
+    })
+    if (!exists) {
+      await prisma.notification.create({
+        data: {
+          type: 'no_matrix',
+          entityType: 'project',
+          entityId: project.id,
+          message: `У проекта «${project.name}» не найдена матрица`,
+          userId: null,
+        },
+      })
+    }
+  }
+
+  return {
+    projectsUpserted,
+    registryUpserted,
+    shiftsUpserted,
+    errors: allErrors,
+    durationMs: Date.now() - startedAt,
+  }
+}

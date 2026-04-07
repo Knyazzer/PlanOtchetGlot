@@ -7,6 +7,7 @@ import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
 
+import cron from 'node-cron'
 import { authRoutes } from './routes/auth'
 import { usersRoutes } from './routes/users'
 import { projectsRoutes } from './routes/projects'
@@ -14,6 +15,8 @@ import { shiftsRoutes } from './routes/shifts'
 import { notificationsRoutes } from './routes/notifications'
 import { tasksRoutes } from './routes/tasks'
 import { syncRoutes } from './routes/sync'
+import { changeLogsRoutes } from './routes/changeLogs'
+import { runFullSync } from './services/syncService'
 
 const app = Fastify({ logger: true })
 
@@ -50,10 +53,19 @@ async function main() {
   await app.register(notificationsRoutes, { prefix: '/notifications' })
   await app.register(tasksRoutes, { prefix: '/tasks' })
   await app.register(syncRoutes, { prefix: '/sync' })
+  await app.register(changeLogsRoutes, { prefix: '/change-logs' })
 
   const port = Number(process.env.PORT ?? 4000)
   await app.listen({ port, host: '0.0.0.0' })
   console.log(`API running on http://0.0.0.0:${port}`)
+
+  // Синхронизация с Google Sheets каждые 30 минут
+  cron.schedule('*/30 * * * *', () => {
+    app.log.info('[sync] Starting scheduled sync')
+    runFullSync()
+      .then((result) => app.log.info({ result }, '[sync] Scheduled sync completed'))
+      .catch((err) => app.log.error({ err }, '[sync] Scheduled sync failed'))
+  })
 }
 
 main().catch((err) => {
