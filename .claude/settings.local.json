@@ -8,7 +8,16 @@
       "Bash(python3 -c ':*)",
       "Bash(npm install:*)",
       "Bash(pnpm --version)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5432/tvshifts\" npx prisma migrate dev --name init)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5432/tvshifts\" npx ts-node prisma/seed.ts)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5432/tvshifts\" npx ts-node --compiler-options '{\"lib\":[\"ES2020\",\"DOM\"],\"module\":\"commonjs\",\"esModuleInterop\":true,\"skipLibCheck\":true}' prisma/seed.ts)",
+      "Bash(pnpm --filter @tv-shifts/db add bcryptjs @types/bcryptjs)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5432/tvshifts\" JWT_SECRET=\"dev-secret-local\" pnpm --filter @tv-shifts/api dev)",
+      "Bash(curl -s http://localhost:4000/health)",
+      "Bash(curl -s -X POST http://localhost:4000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@tvshifts.ru\",\"password\":\"admin123\"}')",
+      "Bash(pnpm --filter @tv-shifts/web dev)",
+      "Bash(curl -s http://localhost:5173)"
     ]
   }
 }
