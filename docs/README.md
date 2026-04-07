@@ -10,6 +10,7 @@
 | [04-database-schema.md](04-database-schema.md) | Схема базы данных — все таблицы, поля, связи, индексы |
 | [05-architecture.md](05-architecture.md) | Архитектура и стек — технологии, структура проекта, парсер матриц |
 | [06-implementation-plan.md](06-implementation-plan.md) | План реализации — 8 этапов с конкретными задачами |
+| [07-dev-setup.md](07-dev-setup.md) | Развёртывание на новой машине — Git, Docker, миграции |
 
 ## Быстрый старт (разработка)
 
