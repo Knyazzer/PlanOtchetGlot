@@ -1,7 +1,7 @@
-# TV Shifts — скрипт запуска для разработки
+# TV Shifts -- skript zapuska dlya razrabotki
 $projectRoot = $PSScriptRoot
 
-# Убиваем старые процессы на портах 4000 и 5173
+# Ubivaem starye processy na portakh 4000 i 5173
 foreach ($port in @(4000, 5173)) {
   $pids = netstat -ano | Select-String ":$port\s.*LISTENING" | ForEach-Object {
     ($_ -split '\s+')[-1]
@@ -31,7 +31,7 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "
 " -WindowStyle Normal
 
 Write-Host ""
-Write-Host "TV Shifts запущен!" -ForegroundColor Yellow
+Write-Host "TV Shifts started!" -ForegroundColor Yellow
 Write-Host "  API:  http://localhost:4000" -ForegroundColor Cyan
 Write-Host "  Web:  http://localhost:5173" -ForegroundColor Green
 Write-Host ""

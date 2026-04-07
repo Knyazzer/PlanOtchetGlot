@@ -1,5 +1,5 @@
-# TV Shifts — обновление после git pull
-# Запускай этот скрипт после каждого git pull
+# TV Shifts -- obnovlenie posle git pull
+# Zapuskay etot skript posle kazhdogo git pull
 
 $projectRoot = $PSScriptRoot
 $dbDir = Join-Path $projectRoot "packages\db"
@@ -9,43 +9,43 @@ Write-Host ""
 Write-Host "=== TV Shifts Update ===" -ForegroundColor Yellow
 Write-Host ""
 
-# ── 1. Проверить что Docker запущен ───────────────────────────────────────────
-Write-Host "[1/4] Проверка Docker..." -ForegroundColor Cyan
+# -- 1. Proverit chto Docker zapushchen --
+Write-Host "[1/4] Proverka Docker..." -ForegroundColor Cyan
 $dockerRunning = docker compose -f "$projectRoot\docker-compose.dev.yml" ps --quiet 2>$null
 if (-not $dockerRunning) {
-    Write-Host "      Запускаю базу данных..." -ForegroundColor DarkGray
+    Write-Host "      Zapuskayu bazu dannykh..." -ForegroundColor DarkGray
     docker compose -f "$projectRoot\docker-compose.dev.yml" up -d
-    Write-Host "      Ожидание готовности БД..." -ForegroundColor DarkGray
+    Write-Host "      Ozhidanie gotovnosti BD - 5 sekund..." -ForegroundColor DarkGray
     Start-Sleep -Seconds 5
 } else {
-    Write-Host "      БД уже запущена" -ForegroundColor DarkGray
+    Write-Host "      BD uzhe zapushchena" -ForegroundColor DarkGray
 }
 
-# ── 2. Установить новые пакеты если изменился lockfile ───────────────────────
-Write-Host "[2/4] Проверка зависимостей..." -ForegroundColor Cyan
-$lockChanged = git -C $projectRoot diff HEAD@{1} --name-only 2>$null | Select-String "pnpm-lock.yaml"
+# -- 2. Ustanovit novye pakety esli izmenilsya lockfile --
+Write-Host "[2/4] Proverka zavisimostey..." -ForegroundColor Cyan
+$lockChanged = git -C $projectRoot diff "HEAD@{1}" --name-only 2>$null | Select-String "pnpm-lock.yaml"
 if ($lockChanged) {
-    Write-Host "      Обнаружены новые пакеты, устанавливаю..." -ForegroundColor DarkGray
+    Write-Host "      Obnaruzheny novye pakety, ustanavlivayu..." -ForegroundColor DarkGray
     pnpm install --dir $projectRoot
 } else {
-    Write-Host "      Зависимости актуальны" -ForegroundColor DarkGray
+    Write-Host "      Zavisimosti aktualni" -ForegroundColor DarkGray
 }
 
-# ── 3. Применить новые миграции если появились ────────────────────────────────
-Write-Host "[3/4] Проверка миграций..." -ForegroundColor Cyan
-$migrationsChanged = git -C $projectRoot diff HEAD@{1} --name-only 2>$null | Select-String "prisma/migrations"
+# -- 3. Primenit novye migracii esli poyavilis --
+Write-Host "[3/4] Proverka migraciy..." -ForegroundColor Cyan
+$migrationsChanged = git -C $projectRoot diff "HEAD@{1}" --name-only 2>$null | Select-String "prisma/migrations"
 if ($migrationsChanged) {
-    Write-Host "      Обнаружены новые миграции, применяю..." -ForegroundColor DarkGray
+    Write-Host "      Obnaruzheny novye migracii, primenyayu..." -ForegroundColor DarkGray
     $env:DATABASE_URL = $dbUrl
     Set-Location $dbDir
     npx prisma migrate deploy
     Set-Location $projectRoot
-    Write-Host "      Миграции применены" -ForegroundColor Green
+    Write-Host "      Migracii primeneny" -ForegroundColor Green
 } else {
-    Write-Host "      Миграции актуальны" -ForegroundColor DarkGray
+    Write-Host "      Migracii aktualni" -ForegroundColor DarkGray
 }
 
-# ── 4. Запустить приложение ───────────────────────────────────────────────────
-Write-Host "[4/4] Запуск приложения..." -ForegroundColor Cyan
+# -- 4. Zapustit prilozhenie --
+Write-Host "[4/4] Zapusk prilozheniya..." -ForegroundColor Cyan
 Write-Host ""
 & "$projectRoot\start.ps1"
