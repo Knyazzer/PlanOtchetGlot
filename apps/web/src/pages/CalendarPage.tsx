@@ -130,17 +130,77 @@ export function CalendarPage() {
   // Даты с конфликтами для подсветки на календаре
   const conflictDates = new Set(conflicts.map((c) => c.date.split('T')[0]))
 
-  const events = [
-    ...projects
-      .filter((p) => p.date)
-      .map((p) => ({
+  // Форматирование даты без потери дня из-за UTC offset
+  function dateStrAddDay(dateStr: string): string {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    const dt = new Date(y, m - 1, d + 1)
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+  }
+
+  function isoToDateStr(iso: string): string {
+    // Берём дату по UTC, не по локальному времени
+    return iso.slice(0, 10)
+  }
+
+  // Генерация событий из дней проекта
+  // Смежные дни (застройка + эфир идут подряд) → один кубик с end=следующий день
+  const projectEvents: any[] = []
+  for (const p of projects) {
+    const color = STATUS_COLORS[p.status] ?? '#3b82f6'
+    const title = p.client ? `${p.client} — ${p.name}` : p.name
+
+    if (p.days && p.days.length > 0) {
+      const sorted = [...p.days]
+        .map((d) => ({ ...d, dateStr: isoToDateStr(d.date) }))
+        .sort((a, b) => a.dateStr.localeCompare(b.dateStr))
+
+      // Группируем в непрерывные диапазоны
+      const ranges: { start: string; end: string }[] = []
+      let rangeStart = sorted[0].dateStr
+      let rangeEnd = rangeStart
+
+      for (let i = 1; i < sorted.length; i++) {
+        const [py, pm, pd] = rangeEnd.split('-').map(Number)
+        const [cy, cm, cd] = sorted[i].dateStr.split('-').map(Number)
+        const prevMs = new Date(py, pm - 1, pd).getTime()
+        const currMs = new Date(cy, cm - 1, cd).getTime()
+        const diffDays = Math.round((currMs - prevMs) / 86400000)
+        if (diffDays <= 1) {
+          rangeEnd = sorted[i].dateStr
+        } else {
+          ranges.push({ start: rangeStart, end: rangeEnd })
+          rangeStart = sorted[i].dateStr
+          rangeEnd = rangeStart
+        }
+      }
+      ranges.push({ start: rangeStart, end: rangeEnd })
+
+      ranges.forEach((r, idx) => {
+        // end в FullCalendar exclusive — добавляем 1 день через локальный конструктор
+        projectEvents.push({
+          id: `${p.id}-${idx}`,
+          title,
+          start: r.start,
+          end: dateStrAddDay(r.end),
+          backgroundColor: color,
+          borderColor: color,
+          extendedProps: { project: p },
+        })
+      })
+    } else if (p.date) {
+      projectEvents.push({
         id: p.id,
-        title: p.client ? `${p.client} — ${p.name}` : p.name,
-        date: p.date!.split('T')[0],
-        backgroundColor: STATUS_COLORS[p.status] ?? '#3b82f6',
-        borderColor: STATUS_COLORS[p.status] ?? '#3b82f6',
+        title,
+        date: p.date.split('T')[0],
+        backgroundColor: color,
+        borderColor: color,
         extendedProps: { project: p },
-      })),
+      })
+    }
+  }
+
+  const events = [
+    ...projectEvents,
     // Фоновые маркеры конфликтных дат
     ...[...conflictDates].map((date) => ({
       id: `conflict-${date}`,
@@ -560,40 +620,35 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
     name: '',
     client: '',
     execProducer: '',
-    date: '',
-    dateApproximate: '',
-    time: '',
-    format: '',
+    efirDate: '',
+    zastroykDate: '',
     location: '',
+    notes: '',
   })
   const [error, setError] = useState<string | null>(null)
 
   const create = useMutation({
     mutationFn: () =>
       api.post('/projects', {
-        ...form,
-        date: form.date ? new Date(form.date).toISOString() : undefined,
-        client: form.client || undefined,
-        execProducer: form.execProducer || undefined,
-        dateApproximate: form.dateApproximate || undefined,
-        time: form.time || undefined,
-        format: form.format || undefined,
-        location: form.location || undefined,
+        name: form.name,
+        client: form.client || null,
+        execProducer: form.execProducer || null,
+        efirDate: form.efirDate || null,
+        zastroykDate: form.zastroykDate || null,
+        location: form.location || null,
+        notes: form.notes || null,
       }),
     onSuccess: onCreated,
     onError: (e: any) => setError(e.response?.data?.error ?? 'Ошибка'),
   })
 
+  const inp = { width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 15, boxSizing: 'border-box' as const }
   const field = (label: string, key: keyof typeof form, type = 'text', placeholder?: string) => (
     <div style={{ marginBottom: 12 }}>
       <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>{label}</label>
-      <input
-        type={type}
-        value={form[key]}
-        placeholder={placeholder}
+      <input type={type} value={form[key]} placeholder={placeholder}
         onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-        style={{ width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 15, boxSizing: 'border-box' }}
-      />
+        style={inp} />
     </div>
   )
 
@@ -605,11 +660,35 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
         {field('Название *', 'name')}
         {field('Клиент', 'client')}
         {field('Исп. продюсер', 'execProducer')}
-        {field('Дата', 'date', 'date')}
-        {field('Приблизительная дата', 'dateApproximate', 'text', 'например: апрель 2026')}
-        {field('Время', 'time', 'text', '10:00')}
-        {field('Формат', 'format')}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>
+              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: DAY_TYPE_COLORS.zastroyka, marginRight: 6 }} />
+              Дата застройки
+            </label>
+            <input type="date" value={form.zastroykDate}
+              onChange={(e) => setForm((f) => ({ ...f, zastroykDate: e.target.value }))}
+              style={inp} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>
+              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: DAY_TYPE_COLORS.efir, marginRight: 6 }} />
+              Дата эфира
+            </label>
+            <input type="date" value={form.efirDate}
+              onChange={(e) => setForm((f) => ({ ...f, efirDate: e.target.value }))}
+              style={inp} />
+          </div>
+        </div>
+
         {field('Локация', 'location')}
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>Заметки</label>
+          <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+            rows={3} style={{ ...inp, resize: 'vertical' }} />
+        </div>
 
         {error && <div style={{ marginBottom: 12, color: '#dc2626', fontSize: 13 }}>{error}</div>}
 
@@ -617,11 +696,8 @@ function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCre
           <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 15 }}>
             Отмена
           </button>
-          <button
-            onClick={() => create.mutate()}
-            disabled={create.isPending || !form.name}
-            style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: 15, opacity: !form.name ? 0.5 : 1 }}
-          >
+          <button onClick={() => create.mutate()} disabled={create.isPending || !form.name}
+            style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: 15, opacity: !form.name ? 0.5 : 1 }}>
             {create.isPending ? 'Создание...' : 'Создать'}
           </button>
         </div>

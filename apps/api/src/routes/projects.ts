@@ -12,16 +12,19 @@ const daySchema = z.object({
 })
 
 const createProjectSchema = z.object({
-  client: z.string().nullable().optional(),
   name: z.string().min(1),
+  client: z.string().nullable().optional(),
   execProducer: z.string().nullable().optional(),
   lineProducer: z.string().nullable().optional(),
   accountManager: z.string().nullable().optional(),
+  efirDate: z.string().nullable().optional(),
+  zastroykDate: z.string().nullable().optional(),
   date: z.string().datetime().nullable().optional(),
   dateApproximate: z.string().nullable().optional(),
   time: z.string().nullable().optional(),
   format: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
   days: z.array(daySchema).optional(),
 })
 
@@ -90,22 +93,27 @@ export async function projectsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const { days, ...projectData } = body.data
+    const { days, efirDate, zastroykDate, ...projectData } = body.data
+
+    // Собираем дни: из efirDate/zastroykDate или из явного массива days
+    const autoDays: { date: Date; type: 'efir' | 'zastroyka' }[] = []
+    if (zastroykDate) autoDays.push({ date: new Date(zastroykDate), type: 'zastroyka' })
+    if (efirDate)     autoDays.push({ date: new Date(efirDate), type: 'efir' })
+    const allDays = autoDays.length > 0 ? autoDays : (days ?? []).map((d) => ({ date: new Date(d.date), type: d.type as 'efir' | 'zastroyka' }))
+
+    // project.date = наименьшая из дат (для сортировки и календаря)
+    const earliestDate = allDays.length > 0
+      ? allDays.reduce((min, d) => d.date < min ? d.date : min, allDays[0].date)
+      : projectData.date ? new Date(projectData.date) : undefined
 
     const project = await prisma.project.create({
       data: {
         ...projectData,
-        date: projectData.date ? new Date(projectData.date) : undefined,
+        date: earliestDate ?? undefined,
         status: 'manual',
         source: 'manual',
-        days: days?.length
-          ? {
-              create: days.map((d) => ({
-                date: new Date(d.date),
-                type: d.type,
-                startTime: d.startTime ?? null,
-              })),
-            }
+        days: allDays.length > 0
+          ? { create: allDays.map((d) => ({ date: d.date, type: d.type, startTime: null })) }
           : undefined,
       },
       include: { days: { orderBy: { date: 'asc' } } },
