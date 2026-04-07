@@ -26,7 +26,7 @@ const createProjectSchema = z.object({
 })
 
 const updateProjectSchema = createProjectSchema.partial().extend({
-  status: z.enum(['preliminary', 'ready', 'completed', 'manual']).optional(),
+  status: z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   dateConfirmed: z.boolean().optional(),
 })
 

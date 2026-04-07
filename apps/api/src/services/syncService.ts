@@ -71,6 +71,21 @@ function parseSheetDate(raw: string): Date | null {
   return isNaN(parsed.getTime()) ? null : parsed
 }
 
+// Маппинг статусов из Google Sheets → enum
+function parseProjectStatus(raw: string): string {
+  switch (raw.trim()) {
+    case 'Запрос':          return 'request'
+    case 'На согласовании': return 'negotiation'
+    case 'Препродакшн':     return 'preproduction'
+    case 'Продакшн':        return 'production'
+    case 'Постпродакшн':    return 'postproduction'
+    case 'Сдан':            return 'delivered'
+    case 'Не согласован':   return 'rejected'
+    case 'Отменён':         return 'cancelled'
+    default:                return 'request'
+  }
+}
+
 function parseEmploymentType(raw: string): 'staff' | 'ip_7' | 'ip_8' | 'ip_10' | 'szt' {
   const s = raw.trim().toUpperCase()
   if (s === 'ШТАТ' || s === 'SHTAT') return 'staff'
@@ -106,50 +121,67 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
   let upserted = 0
   const errors: string[] = []
 
+  // Колонки (0-indexed):
+  // A(0)=Статус B(1)=Клиент C(2)=Название D(3)=Исп.продюсер E(4)=Лайн-продюсер
+  // F(5)=Аккаунт G(6)=Дата H(7)=Время I(8)=Формат J(9)=Локация K(10)=№ по матрице L(11)=Постпродакшн
+
+  // Логируем первые несколько значений колонки I для диагностики
+  const sampleFormats = rows.slice(1, 6).map((r) => JSON.stringify(cellStr(r.values?.[8])))
+  console.log('[sync] Колонка I (Формат), первые 5 строк:', sampleFormats.join(' | '))
+
   // Row 0 is the header — start from row 1 (1-indexed row 2)
   for (let i = 1; i < rows.length; i++) {
     const cells = rows[i].values ?? []
-    const name = cellStr(cells[1])
+
+    // Фильтр: только строки где колонка I (индекс 8) = "ТВ"
+    const formatRaw = cellStr(cells[8]).trim()
+    const formatUpper = formatRaw.toUpperCase()
+    if (formatUpper !== 'ТВ' && formatUpper !== 'TV') continue
+
+    // Название — колонка C (индекс 2)
+    const name = cellStr(cells[2])
     if (!name) continue
 
-    const fieldNames = ['client', 'name', 'execProducer', 'lineProducer', 'accountManager', 'date', 'time', 'format', 'location']
+    // Статус из колонки A (индекс 0)
+    const statusRaw = cellStr(cells[0])
+    const status = parseProjectStatus(statusRaw) as any
+
+    // Подсвеченные ячейки → uncertainFields
+    const fieldNames = ['status', 'client', 'name', 'execProducer', 'lineProducer', 'accountManager', 'date', 'time', 'format']
     const uncertainFields: string[] = []
     for (let col = 0; col < 9; col++) {
       if (isColored(cells[col])) uncertainFields.push(fieldNames[col])
     }
 
-    const status = (uncertainFields.length > 0 ? 'preliminary' : 'ready') as 'preliminary' | 'ready'
-    const dateRaw = cellStr(cells[5])
+    // Дата — колонка G (индекс 6)
+    const dateRaw = cellStr(cells[6])
     let date: Date | null = null
     let dateApproximate: string | null = null
-
     if (dateRaw) {
       const parsed = parseSheetDate(dateRaw)
-      if (parsed) {
-        date = parsed
-      } else {
-        dateApproximate = dateRaw
-      }
+      if (parsed) date = parsed
+      else dateApproximate = dateRaw
     }
 
-    // Column AK = index 36 — matrix link
-    const matrixUrl = cellStr(cells[36]) || null
-    const googleRowIndex = i + 1 // 1-indexed
+    // ID матрицы — колонка K (индекс 10)
+    const sheetMatrixId = cellStr(cells[10]) || null
+
+    const googleRowIndex = i + 1
 
     const data = {
-      client: cellStr(cells[0]) || null,
       name,
-      execProducer: cellStr(cells[2]) || null,
-      lineProducer: cellStr(cells[3]) || null,
-      accountManager: cellStr(cells[4]) || null,
+      client:         cellStr(cells[1]) || null,  // B
+      execProducer:   cellStr(cells[3]) || null,  // D
+      lineProducer:   cellStr(cells[4]) || null,  // E
+      accountManager: cellStr(cells[5]) || null,  // F
       date,
       dateApproximate,
-      time: cellStr(cells[6]) || null,
-      format: cellStr(cells[7]) || null,
-      location: cellStr(cells[8]) || null,
+      time:           cellStr(cells[7]) || null,  // H
+      format:         formatRaw || null,           // I
+      location:       cellStr(cells[9]) || null,  // J
       status,
       uncertainFields,
-      matrixUrl,
+      sheetMatrixId,
     }
 
     try {
@@ -176,7 +208,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: 'A1:L',
+    range: 'A1:L', // L покрывает A(0)..L(11), K(10)=формат
     valueRenderOption: 'FORMATTED_VALUE',
   })
 
@@ -185,23 +217,32 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
   const errors: string[] = []
 
   for (let i = 1; i < rows.length; i++) {
+    // Реестр матриц: A(0)=Статус B(1)=Матрица(URL) C(2)=ID D(3)=Инфо E(4)=Юнит
+    // F(5)=Заказчик G(6)=Название H(7)=Формат I(8)=Дата J(9)=Продюсер K(10)=Менеджер L(11)=Куратор
+
     const row = rows[i]
-    const matrixId = (row[2] ?? '').trim() // Column C
+    const matrixId = (row[2] ?? '').trim() // C — ID матрицы
     if (!matrixId) continue
 
-    const sheetUrlRaw = (row[1] ?? '').trim() // Column B
+    // Фильтр: Юнит (E, индекс 4) должен содержать "ТВ"
+    // Юнит может содержать несколько значений: "ТВ;МАРКЕТИНГ" или "ТВ,РАДИО"
+    const unitVal = (row[4] ?? '').trim().toUpperCase()
+    if (!unitVal.includes('ТВ') && !unitVal.includes('TV')) continue
+
+    const sheetUrlRaw = (row[1] ?? '').trim() // B — ссылка на матрицу
     const sheetUrl = sheetUrlRaw.startsWith('http') ? sheetUrlRaw : null
 
-    if (!sheetUrl) {
-      // Not a valid URL — just log and skip linking
-    }
-
-    const dateRaw = (row[8] ?? '').trim() // Column I
+    const dateRaw = (row[8] ?? '').trim() // I — Дата
     const date = dateRaw ? parseSheetDate(dateRaw) : null
 
-    // Try to link to an existing project by matrixUrl
+    // Привязка к проекту по ID матрицы (sheetMatrixId в таблице проектов = matrixId здесь)
     let projectId: string | null = null
-    if (sheetUrl) {
+    const byMatrixId = await prisma.project.findFirst({
+      where: { sheetMatrixId: matrixId } as any,
+    })
+    if (byMatrixId) {
+      projectId = byMatrixId.id
+    } else if (sheetUrl) {
       const sheetSpreadsheetId = extractSpreadsheetId(sheetUrl)
       if (sheetSpreadsheetId) {
         const linked = await prisma.project.findFirst({
@@ -213,15 +254,15 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 
     const entry = {
       sheetUrl,
-      status: (row[0] ?? '').trim() || null,
-      unit: (row[4] ?? '').trim() || null,
-      client: (row[5] ?? '').trim() || null,
-      name: (row[6] ?? '').trim() || null,
-      format: (row[7] ?? '').trim() || null,
-      date,
-      producer: (row[9] ?? '').trim() || null,
-      manager: (row[10] ?? '').trim() || null,
-      curator: (row[11] ?? '').trim() || null,
+      status:   (row[0] ?? '').trim() || null,  // A
+      unit:     (row[4] ?? '').trim() || null,  // E — Юнит (ТВ;МАРКЕТИНГ и т.д.)
+      client:   (row[5] ?? '').trim() || null,  // F — Заказчик
+      name:     (row[6] ?? '').trim() || null,  // G — Название
+      format:   (row[7] ?? '').trim() || null,  // H — Формат
+      date,                                      // I — Дата
+      producer: (row[9] ?? '').trim() || null,  // J — Продюсер
+      manager:  (row[10] ?? '').trim() || null, // K — Менеджер
+      curator:  (row[11] ?? '').trim() || null, // L — Куратор
       projectId,
       lastSyncedAt: new Date(),
     }

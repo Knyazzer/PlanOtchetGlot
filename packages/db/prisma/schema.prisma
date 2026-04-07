@@ -16,9 +16,14 @@ enum Role {
 }
 
 enum ProjectStatus {
-  preliminary
-  ready
-  completed
+  request
+  negotiation
+  preproduction
+  production
+  postproduction
+  delivered
+  rejected
+  cancelled
   manual
 }
 
@@ -120,9 +125,10 @@ model Project {
   time            String?
   format          String?
   location        String?
-  status          ProjectStatus @default(preliminary)
+  status          ProjectStatus @default(request)
   source          ProjectSource @default(projects_table)
   matrixUrl       String?       @map("matrix_url")
+  sheetMatrixId   String?       @map("sheet_matrix_id")
   uncertainFields String[]      @default([]) @map("uncertain_fields")
   googleRowIndex  Int?          @map("google_row_index")
   createdAt       DateTime      @default(now()) @map("created_at")

@@ -31,11 +31,14 @@ interface Project {
   time: string | null
   format: string | null
   location: string | null
-  status: 'preliminary' | 'ready' | 'completed' | 'manual'
+  status: string
   source: 'projects_table' | 'manual'
   matrixUrl: string | null
+  sheetMatrixId: string | null
+  googleRowIndex: number | null
   uncertainFields: string[]
   days: ProjectDay[]
+  matrixRegistry: { sheetUrl: string | null; matrixId: string } | null
   assignments: {
     id: string
     roleOnSite: string | null
@@ -64,17 +67,27 @@ const DAY_TYPE_LABELS: Record<string, string> = { zastroyka: 'Застройка
 const DAY_TYPE_COLORS: Record<string, string> = { zastroyka: '#f59e0b', efir: '#10b981' }
 
 const STATUS_COLORS: Record<string, string> = {
-  preliminary: '#f59e0b',
-  ready: '#10b981',
-  completed: '#6b7280',
-  manual: '#3b82f6',
+  request:       '#94a3b8',
+  negotiation:   '#f59e0b',
+  preproduction: '#3b82f6',
+  production:    '#8b5cf6',
+  postproduction:'#06b6d4',
+  delivered:     '#10b981',
+  rejected:      '#ef4444',
+  cancelled:     '#6b7280',
+  manual:        '#0ea5e9',
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  preliminary: 'Предварительно',
-  ready: 'Готов',
-  completed: 'Завершён',
-  manual: 'Ручной',
+  request:        'Запрос',
+  negotiation:    'На согласовании',
+  preproduction:  'Препродакшн',
+  production:     'Продакшн',
+  postproduction: 'Постпродакшн',
+  delivered:      'Сдан',
+  rejected:       'Не согласован',
+  cancelled:      'Отменён',
+  manual:         'Ручной',
 }
 
 // ─── CalendarPage ─────────────────────────────────────────────────────────────
@@ -369,8 +382,9 @@ function ProjectModal({
     ['Время', project.time],
     ['Формат', project.format],
     ['Локация', project.location],
-    ['Источник', project.source === 'manual' ? 'Ручной ввод' : 'Google Sheets'],
   ]
+
+  const matrixSheetUrl = project.matrixRegistry?.sheetUrl ?? project.matrixUrl
 
   return (
     <div
@@ -415,6 +429,35 @@ function ProjectModal({
                 )}
               </tbody>
             </table>
+
+            {/* Источники данных */}
+            <div style={{ marginBottom: 20, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Источник данных</div>
+              {project.source === 'manual' ? (
+                <div style={{ fontSize: 14, color: '#64748b' }}>Ручной ввод</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 90 }}>Таблица проектов</span>
+                    <span style={{ fontSize: 13, color: '#374151' }}>Google Sheets · строка {project.googleRowIndex ?? '—'}</span>
+                  </div>
+                  {project.sheetMatrixId && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 90 }}>ID матрицы</span>
+                      <span style={{ fontSize: 13, color: '#374151', fontFamily: 'monospace' }}>{project.sheetMatrixId}</span>
+                    </div>
+                  )}
+                  {matrixSheetUrl && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 90 }}>Матрица смен</span>
+                      <a href={matrixSheetUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none' }}>
+                        Открыть в Google Sheets ↗
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Дни проекта */}
             {project.days?.length > 0 && (
@@ -709,9 +752,14 @@ function EditProjectModal({
               onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}
               style={inp()}
             >
-              <option value="preliminary">Предварительно</option>
-              <option value="ready">Готов</option>
-              <option value="completed">Завершён</option>
+              <option value="request">Запрос</option>
+              <option value="negotiation">На согласовании</option>
+              <option value="preproduction">Препродакшн</option>
+              <option value="production">Продакшн</option>
+              <option value="postproduction">Постпродакшн</option>
+              <option value="delivered">Сдан</option>
+              <option value="rejected">Не согласован</option>
+              <option value="cancelled">Отменён</option>
               <option value="manual">Ручной</option>
             </select>
           </div>
