@@ -93,25 +93,14 @@ cd ../..
 
 ```powershell
 git pull
+.\update.ps1
 ```
 
-**Если появились новые пакеты** (изменился `pnpm-lock.yaml`):
-```powershell
-pnpm install
-```
-
-**Если появились новые миграции** (новые файлы в `packages/db/prisma/migrations/`):
-```powershell
-cd packages/db
-$env:DATABASE_URL="postgresql://tvshifts:tvshifts_pass@localhost:5432/tvshifts"
-npx prisma migrate deploy
-cd ../..
-```
-
-Потом как обычно:
-```powershell
-.\start.ps1
-```
+Скрипт автоматически:
+1. Проверит и запустит Docker (БД) если не запущен
+2. Установит новые пакеты если изменился `pnpm-lock.yaml`
+3. Применит новые миграции если появились новые файлы в `prisma/migrations/`
+4. Запустит API и Web
 
 ---
 
