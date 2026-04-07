@@ -29,25 +29,59 @@ body {
 }
 
 /* FullCalendar overrides */
+
+/* Растягиваем таблицы на 100% контейнера */
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid table,
+.fc .fc-daygrid-body,
+.fc .fc-scrollgrid-sync-table {
+  width: 100% !important;
+}
+
+/* Убираем минимальную ширину колонок */
+.fc .fc-col-header-cell,
+.fc .fc-daygrid-day {
+  min-width: 0 !important;
+}
+
 .fc .fc-toolbar-title {
-  font-size: 1.3rem !important;
+  font-size: 1.1rem !important;
   font-weight: 700 !important;
 }
-.fc .fc-col-header-cell-cushion,
+.fc .fc-col-header-cell-cushion {
+  font-size: 0.8rem !important;
+  padding: 4px 2px !important;
+}
 .fc .fc-daygrid-day-number {
-  font-size: 0.95rem !important;
+  font-size: 0.8rem !important;
+  padding: 2px 4px !important;
 }
 .fc .fc-button {
-  font-size: 0.9rem !important;
-  padding: 6px 14px !important;
-}
-.fc .fc-event-title {
-  font-size: 0.85rem !important;
-  font-weight: 500 !important;
+  font-size: 0.8rem !important;
+  padding: 4px 10px !important;
 }
 .fc .fc-daygrid-day-frame {
-  min-height: 80px !important;
+  min-height: 70px !important;
 }
 .fc td, .fc th {
-  font-size: 0.9rem !important;
+  font-size: 0.8rem !important;
+}
+.fc .fc-toolbar {
+  gap: 4px !important;
+  margin-bottom: 8px !important;
+}
+.fc .fc-daygrid-event {
+  margin: 1px 2px !important;
+  overflow: hidden !important;
+}
+
+/* Обрезаем текст событий если не вмещается */
+.fc .fc-event-title,
+.fc .fc-daygrid-event-harness {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+.fc .fc-toolbar.fc-header-toolbar {
+  flex-wrap: wrap;
 }

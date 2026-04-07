@@ -26,7 +26,10 @@
       "Bash(grep -l \"export\" /c/scripts/PlanOtchetGlot/apps/api/src/routes/*)",
       "Bash(node -e \"require\\('./apps/web/node_modules/date-fns/locale/ru/index.js'\\); console.log\\('ok'\\)\")",
       "Bash(git rm:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(pnpm db:generate)",
+      "Bash(npx prisma:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

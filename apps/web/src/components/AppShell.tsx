@@ -105,7 +105,7 @@ export function AppShell() {
       </header>
 
       {/* Main */}
-      <main style={{ flex: 1, padding: 28 }}>
+      <main style={{ flex: 1, padding: '20px 16px' }}>
         {page === 'calendar' && <CalendarPage />}
         {page === 'tasks' && <TasksPage />}
         {page === 'analytics' && (isAdmin || isProducer) && <AnalyticsPage />}
@@ -359,7 +359,6 @@ function SyncButton() {
     <div ref={ref} style={{ position: 'relative' }}>
       <button
         onClick={() => {
-          if (!isRunning) trigger.mutate()
           setShowLogs((v) => !v)
         }}
         title={isRunning ? 'Синхронизация...' : 'Синхронизировать с Google Sheets'}

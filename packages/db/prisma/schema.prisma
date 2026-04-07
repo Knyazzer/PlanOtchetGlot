@@ -76,6 +76,11 @@ enum ChangeSource {
   manual
 }
 
+enum DayType {
+  zastroyka
+  efir
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
@@ -126,9 +131,23 @@ model Project {
   matrixRegistry  MatrixRegistry?
   assignments     ProjectAssignment[]
   shiftEntries    ShiftEntry[]
+  days            ProjectDay[]
 
   @@index([date])
   @@map("projects")
+}
+
+model ProjectDay {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  date      DateTime
+  type      DayType
+  startTime String?  @map("start_time")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_days")
 }
 
 model MatrixRegistry {

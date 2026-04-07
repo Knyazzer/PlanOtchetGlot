@@ -4,17 +4,25 @@ import { prisma } from '@tv-shifts/db'
 import { authenticate, requireRole } from '../plugins/auth'
 import { logChanges } from '../services/changeLog'
 
+const daySchema = z.object({
+  id: z.string().optional(),
+  date: z.string(),
+  type: z.enum(['zastroyka', 'efir']),
+  startTime: z.string().nullable().optional(),
+})
+
 const createProjectSchema = z.object({
-  client: z.string().optional(),
+  client: z.string().nullable().optional(),
   name: z.string().min(1),
-  execProducer: z.string().optional(),
-  lineProducer: z.string().optional(),
-  accountManager: z.string().optional(),
-  date: z.string().datetime().optional(),
-  dateApproximate: z.string().optional(),
-  time: z.string().optional(),
-  format: z.string().optional(),
-  location: z.string().optional(),
+  execProducer: z.string().nullable().optional(),
+  lineProducer: z.string().nullable().optional(),
+  accountManager: z.string().nullable().optional(),
+  date: z.string().datetime().nullable().optional(),
+  dateApproximate: z.string().nullable().optional(),
+  time: z.string().nullable().optional(),
+  format: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  days: z.array(daySchema).optional(),
 })
 
 const updateProjectSchema = createProjectSchema.partial().extend({
@@ -49,6 +57,7 @@ export async function projectsRoutes(app: FastifyInstance) {
         assignments: {
           include: { user: { select: { id: true, fullName: true, role: true } } },
         },
+        days: { orderBy: { date: 'asc' } },
       },
       orderBy: { date: 'asc' },
     })
@@ -67,6 +76,7 @@ export async function projectsRoutes(app: FastifyInstance) {
             shiftEntries: true,
           },
         },
+        days: { orderBy: { date: 'asc' } },
       },
     })
     if (!project) return reply.code(404).send({ error: 'Project not found' })
@@ -80,13 +90,25 @@ export async function projectsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
+    const { days, ...projectData } = body.data
+
     const project = await prisma.project.create({
       data: {
-        ...body.data,
-        date: body.data.date ? new Date(body.data.date) : undefined,
+        ...projectData,
+        date: projectData.date ? new Date(projectData.date) : undefined,
         status: 'manual',
         source: 'manual',
+        days: days?.length
+          ? {
+              create: days.map((d) => ({
+                date: new Date(d.date),
+                type: d.type,
+                startTime: d.startTime ?? null,
+              })),
+            }
+          : undefined,
       },
+      include: { days: { orderBy: { date: 'asc' } } },
     })
 
     return reply.code(201).send(project)
@@ -104,12 +126,32 @@ export async function projectsRoutes(app: FastifyInstance) {
     const before = await prisma.project.findUnique({ where: { id } })
     if (!before) return reply.code(404).send({ error: 'Project not found' })
 
-    const data: any = { ...body.data }
+    const { days, ...projectFields } = body.data
+    const data: any = { ...projectFields }
     if (data.date) data.date = new Date(data.date)
 
-    const project = await prisma.project.update({ where: { id }, data })
+    // Если переданы дни — полностью заменяем (delete all + create new)
+    if (days !== undefined) {
+      await prisma.projectDay.deleteMany({ where: { projectId: id } })
+      if (days.length > 0) {
+        await prisma.projectDay.createMany({
+          data: days.map((d) => ({
+            projectId: id,
+            date: new Date(d.date),
+            type: d.type,
+            startTime: d.startTime ?? null,
+          })),
+        })
+      }
+    }
 
-    await logChanges('project', id, before as any, body.data as any, me.id)
+    const project = await prisma.project.update({
+      where: { id },
+      data,
+      include: { days: { orderBy: { date: 'asc' } } },
+    })
+
+    await logChanges('project', id, before as any, projectFields as any, me.id)
 
     return project
   })

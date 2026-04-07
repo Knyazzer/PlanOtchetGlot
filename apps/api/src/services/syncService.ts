@@ -29,7 +29,9 @@ function extractSpreadsheetId(url: string): string | null {
 function isColored(cell: sheets_v4.Schema$CellData | null | undefined): boolean {
   const bg = cell?.userEnteredFormat?.backgroundColor
   if (!bg) return false
-  const { red = 1, green = 1, blue = 1 } = bg
+  const red = bg.red ?? 1
+  const green = bg.green ?? 1
+  const blue = bg.blue ?? 1
   return !(red >= 0.99 && green >= 0.99 && blue >= 0.99)
 }
 
@@ -48,13 +50,23 @@ function serialToDate(serial: number): Date {
 
 function parseSheetDate(raw: string): Date | null {
   if (!raw) return null
-  // Try Russian format DD.MM.YYYY
+
+  // Pure integer → Google Sheets serial date (days since 1899-12-30)
+  // Serial numbers for modern dates are roughly 40000–60000
+  if (/^\d+$/.test(raw.trim())) {
+    const serial = Number(raw)
+    if (serial > 1000) return serialToDate(serial)
+    return null
+  }
+
+  // Russian format DD.MM.YYYY
   const ruMatch = raw.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
   if (ruMatch) {
     const d = new Date(Number(ruMatch[3]), Number(ruMatch[2]) - 1, Number(ruMatch[1]))
     return isNaN(d.getTime()) ? null : d
   }
-  // Try ISO or other
+
+  // ISO or other string formats
   const parsed = new Date(raw)
   return isNaN(parsed.getTime()) ? null : parsed
 }
@@ -106,7 +118,7 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
       if (isColored(cells[col])) uncertainFields.push(fieldNames[col])
     }
 
-    const status = uncertainFields.length > 0 ? 'preliminary' : ('ready' as const)
+    const status = (uncertainFields.length > 0 ? 'preliminary' : 'ready') as 'preliminary' | 'ready'
     const dateRaw = cellStr(cells[5])
     let date: Date | null = null
     let dateApproximate: string | null = null
