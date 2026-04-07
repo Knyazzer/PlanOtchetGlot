@@ -250,7 +250,18 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
   let upserted = 0
   const errors: string[] = []
 
-  console.log(`[sync] Registry: всего строк: ${rowData.length}, данные начинаются с строки 3 (индекс 2)`)
+  console.log(`[sync] Registry: всего строк: ${rowData.length}`)
+  // Полный дамп первых 3 строк данных (индексы 2-4)
+  for (let di = 2; di <= Math.min(4, rowData.length - 1); di++) {
+    const dc = rowData[di].values ?? []
+    const rowSummary = dc.map((c, idx) => {
+      const uv = c?.userEnteredValue
+      const ev = c?.effectiveValue
+      const hl = c?.hyperlink
+      return `col${idx}:{uv=${JSON.stringify(uv)},ev=${JSON.stringify(ev)},hl=${hl}}`
+    }).join(' | ')
+    console.log(`[sync] Registry RAW row ${di + 1}: ${rowSummary || '(no cells)'}`)
+  }
 
   // Строки 1-2 (индексы 0-1) — заголовки, пропускаем
   // Колонка D (индекс 3) — игнорируем
@@ -274,10 +285,19 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     }
     if (matrixIdRaw) seenMatrixIds.add(matrixIdRaw)
 
-    // B — ссылка на матрицу: берём hyperlink из ячейки, иначе текст
+    // B — ссылка на матрицу
     const cellB = cells[1]
-    const sheetUrlRaw = cellB?.hyperlink ?? cellStr(cellB)
-    const sheetUrl = sheetUrlRaw.startsWith('http') ? sheetUrlRaw : null
+    // 1. Поле hyperlink (Insert > Link или API)
+    let sheetUrlRaw = cellB?.hyperlink ?? ''
+    // 2. Формула =HYPERLINK("url","текст")
+    if (!sheetUrlRaw) {
+      const formula = cellB?.userEnteredValue?.formulaValue ?? ''
+      const m = formula.match(/=HYPERLINK\s*\(\s*"([^"]+)"/i)
+      if (m) sheetUrlRaw = m[1]
+    }
+    // 3. Просто текст URL в ячейке
+    if (!sheetUrlRaw) sheetUrlRaw = cellStr(cellB)
+    const sheetUrl = sheetUrlRaw || null
 
     const dateRaw = cellStr(cells[8]) // I — Дата
     const date = dateRaw ? parseSheetDate(dateRaw) : null
