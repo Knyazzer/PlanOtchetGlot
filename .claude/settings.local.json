@@ -5,7 +5,10 @@
       "WebFetch(domain:doc-0o-5c-sheets.googleusercontent.com)",
       "WebFetch(domain:doc-10-5c-sheets.googleusercontent.com)",
       "WebFetch(domain:doc-0s-5c-sheets.googleusercontent.com)",
-      "Bash(python3 -c ':*)"
+      "Bash(python3 -c ':*)",
+      "Bash(npm install:*)",
+      "Bash(pnpm --version)",
+      "Bash(pnpm install:*)"
     ]
   }
 }

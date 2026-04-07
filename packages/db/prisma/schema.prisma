@@ -1,0 +1,293 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  employee
+  admin
+  producer
+}
+
+enum ProjectStatus {
+  preliminary
+  ready
+  completed
+  manual
+}
+
+enum ProjectSource {
+  projects_table
+  manual
+}
+
+enum EmploymentType {
+  staff
+  ip_7
+  ip_8
+  ip_10
+  szt
+}
+
+enum ShiftType {
+  zastroyka
+  efir
+  demontazh
+}
+
+enum ShiftSource {
+  matrix
+  manual
+}
+
+enum SyncType {
+  projects
+  registry
+  matrix
+}
+
+enum SyncStatus {
+  running
+  success
+  error
+}
+
+enum NotificationType {
+  no_matrix
+  unmatched_name
+  data_conflict
+  schedule_change
+}
+
+enum TaskStatus {
+  open
+  in_progress
+  done
+}
+
+enum ChangeSource {
+  sync
+  manual
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  fullName     String   @map("full_name")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(employee)
+  tabNumber    String?  @map("tab_number")
+  isStaff      Boolean  @default(true) @map("is_staff")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  shiftEntries       ShiftEntry[]        @relation("UserShifts")
+  confirmedShifts    ShiftEntry[]        @relation("ConfirmedByUser")
+  assignments        ProjectAssignment[]
+  monthlySummaries   MonthlySummary[]
+  tasks              Task[]
+  taskAssignments    TaskAssignment[]
+  notifications      Notification[]
+  changeLogs         ChangeLog[]
+
+  @@map("users")
+}
+
+model Project {
+  id              String        @id @default(uuid())
+  client          String?
+  name            String
+  execProducer    String?       @map("exec_producer")
+  lineProducer    String?       @map("line_producer")
+  accountManager  String?       @map("account_manager")
+  date            DateTime?
+  dateConfirmed   Boolean       @default(false) @map("date_confirmed")
+  dateApproximate String?       @map("date_approximate")
+  time            String?
+  format          String?
+  location        String?
+  status          ProjectStatus @default(preliminary)
+  source          ProjectSource @default(projects_table)
+  matrixUrl       String?       @map("matrix_url")
+  uncertainFields String[]      @default([]) @map("uncertain_fields")
+  googleRowIndex  Int?          @map("google_row_index")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  matrixRegistry  MatrixRegistry?
+  assignments     ProjectAssignment[]
+  shiftEntries    ShiftEntry[]
+
+  @@index([date])
+  @@map("projects")
+}
+
+model MatrixRegistry {
+  id           String    @id @default(uuid())
+  matrixId     String    @unique @map("matrix_id")
+  sheetUrl     String?   @map("sheet_url")
+  status       String?
+  unit         String?
+  client       String?
+  name         String?
+  format       String?
+  date         DateTime?
+  producer     String?
+  manager      String?
+  curator      String?
+  projectId    String?   @unique @map("project_id")
+  lastSyncedAt DateTime? @map("last_synced_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  project Project? @relation(fields: [projectId], references: [id])
+
+  @@map("matrix_registry")
+}
+
+model ProjectAssignment {
+  id              String         @id @default(uuid())
+  projectId       String         @map("project_id")
+  userId          String?        @map("user_id")
+  unmatchedName   String?        @map("unmatched_name")
+  roleOnSite      String?        @map("role_on_site")
+  shiftFormat     String?        @map("shift_format")
+  employmentType  EmploymentType @default(staff) @map("employment_type")
+  plannedShifts   Int            @default(0) @map("planned_shifts")
+  actualShifts    Int            @default(0) @map("actual_shifts")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id])
+  shiftEntries ShiftEntry[]
+
+  @@map("project_assignments")
+}
+
+model ShiftEntry {
+  id           String      @id @default(uuid())
+  assignmentId String      @map("assignment_id")
+  userId       String      @map("user_id")
+  projectId    String      @map("project_id")
+  date         DateTime
+  shiftType    ShiftType   @map("shift_type")
+  confirmed    Boolean     @default(false)
+  confirmedBy  String?     @map("confirmed_by")
+  confirmedAt  DateTime?   @map("confirmed_at")
+  source       ShiftSource @default(matrix)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  assignment   ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user         User              @relation("UserShifts", fields: [userId], references: [id])
+  project      Project           @relation(fields: [projectId], references: [id])
+  confirmedByUser User?          @relation("ConfirmedByUser", fields: [confirmedBy], references: [id])
+
+  @@index([userId, date])
+  @@index([date])
+  @@map("shift_entries")
+}
+
+model MonthlySummary {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  year          Int
+  month         Int
+  workingDays   Int      @map("working_days")
+  threshold     Int
+  totalShifts   Int      @default(0) @map("total_shifts")
+  overtimeShifts Int     @default(0) @map("overtime_shifts")
+  vacationDays  Int      @default(0) @map("vacation_days")
+  updatedBy     String?  @map("updated_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, year, month])
+  @@map("monthly_summaries")
+}
+
+model Task {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus @default(open)
+  createdBy   String     @map("created_by")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  creator         User             @relation(fields: [createdBy], references: [id])
+  taskAssignments TaskAssignment[]
+
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id          String    @id @default(uuid())
+  taskId      String    @map("task_id")
+  userId      String    @map("user_id")
+  assignedAt  DateTime  @default(now()) @map("assigned_at")
+  completedAt DateTime? @map("completed_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("task_assignments")
+}
+
+model Notification {
+  id         String           @id @default(uuid())
+  type       NotificationType
+  entityType String?          @map("entity_type")
+  entityId   String?          @map("entity_id")
+  message    String
+  userId     String?          @map("user_id")
+  isRead     Boolean          @default(false) @map("is_read")
+  createdAt  DateTime         @default(now()) @map("created_at")
+  updatedAt  DateTime         @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model ChangeLog {
+  id         String       @id @default(uuid())
+  entityType String       @map("entity_type")
+  entityId   String       @map("entity_id")
+  field      String?
+  oldValue   String?      @map("old_value")
+  newValue   String?      @map("new_value")
+  changedBy  String?      @map("changed_by")
+  source     ChangeSource @default(manual)
+  changedAt  DateTime     @default(now()) @map("changed_at")
+
+  user User? @relation(fields: [changedBy], references: [id])
+
+  @@map("change_logs")
+}
+
+model SyncLog {
+  id           String     @id @default(uuid())
+  type         SyncType
+  targetId     String?    @map("target_id")
+  status       SyncStatus @default(running)
+  changesCount Int        @default(0) @map("changes_count")
+  errors       Json       @default("[]")
+  startedAt    DateTime   @default(now()) @map("started_at")
+  finishedAt   DateTime?  @map("finished_at")
+
+  @@map("sync_logs")
+}

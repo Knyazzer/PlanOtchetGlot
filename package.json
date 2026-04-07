@@ -1,0 +1,15 @@
+{
+  "name": "tv-shifts",
+  "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "esbuild", "prisma"]
+  },
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter @tv-shifts/db generate",
+    "db:migrate": "pnpm --filter @tv-shifts/db migrate",
+    "db:seed": "pnpm --filter @tv-shifts/db seed",
+    "db:studio": "pnpm --filter @tv-shifts/db studio"
+  }
+}
