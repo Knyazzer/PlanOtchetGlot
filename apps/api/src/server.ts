@@ -1,3 +1,7 @@
+import { config } from 'dotenv'
+import { resolve } from 'path'
+// Загружаем .env из корня монорепо
+config({ path: resolve(__dirname, '../../../.env') })
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
@@ -15,8 +19,14 @@ const app = Fastify({ logger: true })
 
 async function main() {
   await app.register(cors, {
-    origin: process.env.WEB_URL ?? 'http://localhost:5173',
+    origin: [
+      process.env.WEB_URL ?? 'http://localhost:5173',
+      'http://localhost:5173',
+      'http://localhost:4173',
+    ],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 
   await app.register(cookie)
