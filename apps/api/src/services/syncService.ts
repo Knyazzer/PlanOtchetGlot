@@ -251,16 +251,22 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
   const errors: string[] = []
 
   console.log(`[sync] Registry: всего строк: ${rowData.length}`)
-  // Полный дамп первых 3 строк данных (индексы 2-4)
-  for (let di = 2; di <= Math.min(4, rowData.length - 1); di++) {
+  // Полный дамп первых 5 строк данных (индексы 2-6)
+  for (let di = 2; di <= Math.min(6, rowData.length - 1); di++) {
     const dc = rowData[di].values ?? []
     const rowSummary = dc.map((c, idx) => {
       const uv = c?.userEnteredValue
       const ev = c?.effectiveValue
       const hl = c?.hyperlink
-      return `col${idx}:{uv=${JSON.stringify(uv)},ev=${JSON.stringify(ev)},hl=${hl}}`
+      const tfr = c?.textFormatRuns
+      const fv = (c as any)?.formattedValue
+      return `col${idx}:{uv=${JSON.stringify(uv)},ev=${JSON.stringify(ev)},fv=${JSON.stringify(fv)},hl=${hl},tfr=${JSON.stringify(tfr)}}`
     }).join(' | ')
     console.log(`[sync] Registry RAW row ${di + 1}: ${rowSummary || '(no cells)'}`)
+    // Отдельный детальный дамп колонки B (index 1)
+    if (dc[1]) {
+      console.log(`[sync] Registry RAW row ${di + 1} col B FULL:`, JSON.stringify(dc[1], null, 2))
+    }
   }
 
   // Строки 1-2 (индексы 0-1) — заголовки, пропускаем
@@ -285,17 +291,32 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     }
     if (matrixIdRaw) seenMatrixIds.add(matrixIdRaw)
 
-    // B — ссылка на матрицу
+    // B — ссылка на матрицу (Smart Chip / hyperlink / HYPERLINK formula / plain text)
     const cellB = cells[1]
-    // 1. Поле hyperlink (Insert > Link или API)
-    let sheetUrlRaw = cellB?.hyperlink ?? ''
-    // 2. Формула =HYPERLINK("url","текст")
+    // 1. Smart Chip (chipRuns[].chip.richLinkProperties.uri) — новый формат Google Sheets
+    let sheetUrlRaw = ''
+    const chipRuns = (cellB as any)?.chipRuns ?? []
+    for (const cr of chipRuns) {
+      const uri = cr?.chip?.richLinkProperties?.uri
+      if (uri) { sheetUrlRaw = uri; break }
+    }
+    // 2. Поле hyperlink (Insert > Link или API)
+    if (!sheetUrlRaw) sheetUrlRaw = cellB?.hyperlink ?? ''
+    // 3. Формула =HYPERLINK("url","текст")
     if (!sheetUrlRaw) {
       const formula = cellB?.userEnteredValue?.formulaValue ?? ''
       const m = formula.match(/=HYPERLINK\s*\(\s*"([^"]+)"/i)
       if (m) sheetUrlRaw = m[1]
     }
-    // 3. Просто текст URL в ячейке
+    // 4. Rich text link (textFormatRuns[*].format.link.uri)
+    if (!sheetUrlRaw) {
+      const runs = cellB?.textFormatRuns ?? []
+      for (const run of runs) {
+        const uri = (run as any).format?.link?.uri
+        if (uri) { sheetUrlRaw = uri; break }
+      }
+    }
+    // 5. Просто текст URL/название в ячейке
     if (!sheetUrlRaw) sheetUrlRaw = cellStr(cellB)
     const sheetUrl = sheetUrlRaw || null
 

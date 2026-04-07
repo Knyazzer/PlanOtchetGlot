@@ -319,7 +319,11 @@ function RegistryTable({ registry, loading }: { registry: RegistryEntry[]; loadi
                       : <span style={{ color: '#94a3b8' }}>—</span>}
                   </td>
                   <td style={{ ...tdStyle, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.sheetUrl ?? ''}>
-                    {r.sheetUrl ?? <span style={{ color: '#94a3b8' }}>—</span>}
+                    {r.sheetUrl
+                      ? r.sheetUrl.startsWith('https://')
+                        ? <a href={r.sheetUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Матрица</a>
+                        : r.sheetUrl
+                      : <span style={{ color: '#94a3b8' }}>—</span>}
                   </td>
                   <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{r.matrixId}</td>
                   <td style={tdStyle}>{r.unit ?? '—'}</td>
