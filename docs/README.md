@@ -11,12 +11,22 @@
 | [05-architecture.md](05-architecture.md) | Архитектура и стек — технологии, структура проекта, парсер матриц |
 | [06-implementation-plan.md](06-implementation-plan.md) | План реализации — 8 этапов с конкретными задачами |
 
-## Быстрый старт (после реализации)
+## Быстрый старт (разработка)
 
-```bash
-cp .env.example .env
-# Заполнить .env: DATABASE_URL, JWT_SECRET, GOOGLE_SERVICE_ACCOUNT_KEY
-
-docker-compose up -d
-# Приложение доступно на http://localhost
+```powershell
+# Запустить API + Web (PowerShell из корня проекта)
+.\start.ps1
 ```
+
+- Web: http://localhost:5173
+- API: http://localhost:4000
+
+## Тестовые аккаунты
+
+| Email | Пароль | Роль |
+|-------|--------|------|
+| admin@tvshifts.ru | admin123 | Администратор |
+| ivanov@tvshifts.ru | user123 | Сотрудник |
+| petrov@tvshifts.ru | user123 | Сотрудник |
+| sidorova@tvshifts.ru | user123 | Сотрудник |
+| producer@tvshifts.ru | user123 | Продюсер |
