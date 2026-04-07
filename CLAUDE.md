@@ -55,7 +55,7 @@ pnpm --filter @tv-shifts/web lint
 3. A `node-cron` job in the API syncs data from Google Sheets every 30 minutes (also triggerable via `POST /api/sync`)
 
 ### Auth
-JWT-based. Tokens stored in httpOnly cookies. `fastify-jwt` on backend; Zustand auth store on frontend (`apps/web/src/store/authStore.ts`).
+JWT-based. Tokens stored in httpOnly cookies (`access_token`). `@fastify/jwt` on backend; Zustand auth store on frontend (`apps/web/src/stores/auth.ts`). The axios client in `apps/web/src/lib/api.ts` auto-retries on 401 via `/auth/refresh`.
 
 ### Frontend State
 - **TanStack Query** — all server state (fetching, caching, invalidation)
@@ -63,7 +63,7 @@ JWT-based. Tokens stored in httpOnly cookies. `fastify-jwt` on backend; Zustand 
 - **Zustand** — auth state only
 - **shadcn/ui** + **FullCalendar** — UI components
 
-### API Routes (all under `/api`)
+### API Routes (registered at root, no `/api` prefix)
 | Prefix | File |
 |--------|------|
 | `/auth` | `apps/api/src/routes/auth.ts` |
@@ -73,6 +73,8 @@ JWT-based. Tokens stored in httpOnly cookies. `fastify-jwt` on backend; Zustand 
 | `/tasks` | `apps/api/src/routes/tasks.ts` |
 | `/notifications` | `apps/api/src/routes/notifications.ts` |
 | `/sync` | `apps/api/src/routes/sync.ts` |
+| `/change-logs` | `apps/api/src/routes/changeLogs.ts` |
+| `/analytics` | `apps/api/src/routes/analytics.ts` |
 
 ### Database Models (key ones)
 `User`, `Project`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`
@@ -84,9 +86,10 @@ Schema: `packages/db/prisma/schema.prisma`
 Copy `.env.example` to `.env` and fill in:
 - `DATABASE_URL` — PostgreSQL connection string (default points to Docker on port 5433)
 - `JWT_SECRET` — random string
+- `WEB_URL` — frontend origin for CORS (default `http://localhost:5173`)
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY` — for Google Sheets sync
 - `GOOGLE_PROJECTS_SHEET_ID` + `GOOGLE_REGISTRY_SHEET_ID` — source spreadsheet IDs
-- `VITE_API_URL` — used by Vite at build time for frontend API calls
+- `VITE_API_URL` — used by Vite at build time for frontend API calls (default `http://localhost:4000`)
 
 ## Google Sheets Integration
 

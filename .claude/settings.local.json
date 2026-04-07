@@ -29,7 +29,13 @@
       "Bash(git mv:*)",
       "Bash(pnpm db:generate)",
       "Bash(npx prisma:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma migrate deploy)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx -y pg-cli --command \"SELECT email, is_active FROM users;\")",
+      "Bash(docker exec:*)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" pnpm db:seed)",
+      "Bash(pnpm --filter @tv-shifts/api build)",
+      "Bash(pnpm --filter @tv-shifts/web build)"
     ]
   }
 }

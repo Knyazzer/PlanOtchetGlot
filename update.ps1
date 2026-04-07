@@ -11,7 +11,7 @@ Write-Host ""
 
 # -- 1. Proverit chto Docker zapushchen --
 Write-Host "[1/4] Proverka Docker..." -ForegroundColor Cyan
-$dockerRunning = docker compose -f "$projectRoot\docker-compose.dev.yml" ps --quiet 2>$null
+$dockerRunning = docker compose -f "$projectRoot\docker-compose.dev.yml" ps --status running --quiet 2>$null
 if (-not $dockerRunning) {
     Write-Host "      Zapuskayu bazu dannykh..." -ForegroundColor DarkGray
     docker compose -f "$projectRoot\docker-compose.dev.yml" up -d
@@ -39,6 +39,11 @@ if ($migrationsChanged) {
     $env:DATABASE_URL = $dbUrl
     Set-Location $dbDir
     npx prisma migrate deploy
+    if ($LASTEXITCODE -ne 0) {
+        Set-Location $projectRoot
+        Write-Host "      OSHIBKA: migracii ne primeneny (BD nedostupna?)" -ForegroundColor Red
+        exit 1
+    }
     Set-Location $projectRoot
     Write-Host "      Migracii primeneny" -ForegroundColor Green
 } else {

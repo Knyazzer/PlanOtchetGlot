@@ -36,9 +36,22 @@ function isColored(cell: sheets_v4.Schema$CellData | null | undefined): boolean 
 }
 
 function cellStr(cell: sheets_v4.Schema$CellData | null | undefined): string {
-  const v = cell?.userEnteredValue
-  if (!v) return ''
-  return String(v.stringValue ?? v.numberValue ?? v.boolValue ?? '').trim()
+  if (!cell) return ''
+  // Для обычных ячеек — userEnteredValue
+  const uv = cell.userEnteredValue
+  if (uv) {
+    if (uv.stringValue != null && uv.stringValue !== '') return uv.stringValue.trim()
+    if (uv.numberValue != null) return String(uv.numberValue).trim()
+    if (uv.boolValue != null) return String(uv.boolValue).trim()
+  }
+  // Для формульных ячеек (VLOOKUP, HYPERLINK и т.п.) — effectiveValue
+  const ev = cell.effectiveValue
+  if (ev) {
+    if (ev.stringValue != null && ev.stringValue !== '') return ev.stringValue.trim()
+    if (ev.numberValue != null) return String(ev.numberValue).trim()
+    if (ev.boolValue != null) return String(ev.boolValue).trim()
+  }
+  return ''
 }
 
 // Google Sheets serial date → JS Date (epoch: Dec 30, 1899)
@@ -125,22 +138,30 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
   // A(0)=Статус B(1)=Клиент C(2)=Название D(3)=Исп.продюсер E(4)=Лайн-продюсер
   // F(5)=Аккаунт G(6)=Дата H(7)=Время I(8)=Формат J(9)=Локация K(10)=№ по матрице L(11)=Постпродакшн
 
-  // Логируем первые несколько значений колонки I для диагностики
-  const sampleFormats = rows.slice(1, 6).map((r) => JSON.stringify(cellStr(r.values?.[8])))
-  console.log('[sync] Колонка I (Формат), первые 5 строк:', sampleFormats.join(' | '))
+  console.log(`[sync] Projects: всего строк (включая заголовок): ${rows.length}`)
+  // Диагностика первых 15 строк — показываем A, B, C чтобы понять структуру
+  for (let di = 1; di <= Math.min(15, rows.length - 1); di++) {
+    const dc = rows[di].values ?? []
+    console.log(`[sync] Projects row ${di + 1}: A="${cellStr(dc[0])}" B="${cellStr(dc[1])}" C="${cellStr(dc[2])}" I="${cellStr(dc[8])}"`)
+  }
 
   // Row 0 is the header — start from row 1 (1-indexed row 2)
+  let skippedEmpty = 0
   for (let i = 1; i < rows.length; i++) {
     const cells = rows[i].values ?? []
 
-    // Фильтр: только строки где колонка I (индекс 8) = "ТВ"
-    const formatRaw = cellStr(cells[8]).trim()
-    const formatUpper = formatRaw.toUpperCase()
-    if (formatUpper !== 'ТВ' && formatUpper !== 'TV') continue
+    // Пропускаем полностью пустые строки
+    const hasAnyData = [0,1,2,3,4,5,6,7,8,9,10].some((col) => cellStr(cells[col]) !== '')
+    if (!hasAnyData) { skippedEmpty++; continue }
 
-    // Название — колонка C (индекс 2)
-    const name = cellStr(cells[2])
-    if (!name) continue
+    // Пропускаем разделители месяцев: только колонка A заполнена, B–K пусты
+    const hasDataBeyondA = [1,2,3,4,5,6,7,8,9,10].some((col) => cellStr(cells[col]) !== '')
+    if (!hasDataBeyondA) { skippedEmpty++; continue }
+
+    const formatRaw = cellStr(cells[8]).trim()
+
+    // Название — колонка C, fallback на клиента (B) если пусто
+    const name = cellStr(cells[2]) || cellStr(cells[1]) || '—'
 
     // Статус из колонки A (индекс 0)
     const statusRaw = cellStr(cells[0])
@@ -197,6 +218,7 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     }
   }
 
+  console.log(`[sync] Projects: импортировано ${upserted}, пропущено пустых строк/разделителей: ${skippedEmpty}`)
   return { upserted, errors }
 }
 
@@ -206,33 +228,46 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
   const spreadsheetId = process.env.GOOGLE_REGISTRY_SHEET_ID
   if (!spreadsheetId) throw new Error('GOOGLE_REGISTRY_SHEET_ID not set')
 
-  const res = await sheets.spreadsheets.values.get({
+  const res = await sheets.spreadsheets.get({
     spreadsheetId,
-    range: 'A1:L', // L покрывает A(0)..L(11), K(10)=формат
-    valueRenderOption: 'FORMATTED_VALUE',
+    includeGridData: true,
+    ranges: ['A1:L'],
   })
 
-  const rows = res.data.values ?? []
+  const rowData = res.data.sheets?.[0]?.data?.[0]?.rowData ?? []
   let upserted = 0
   const errors: string[] = []
 
-  for (let i = 1; i < rows.length; i++) {
-    // Реестр матриц: A(0)=Статус B(1)=Матрица(URL) C(2)=ID D(3)=Инфо E(4)=Юнит
-    // F(5)=Заказчик G(6)=Название H(7)=Формат I(8)=Дата J(9)=Продюсер K(10)=Менеджер L(11)=Куратор
+  console.log(`[sync] Registry: всего строк: ${rowData.length}, данные начинаются с строки 3 (индекс 2)`)
 
-    const row = rows[i]
-    const matrixId = (row[2] ?? '').trim() // C — ID матрицы
-    if (!matrixId) continue
+  // Строки 1-2 (индексы 0-1) — заголовки, пропускаем
+  // Колонка D (индекс 3) — игнорируем
+  // Реестр матриц: A(0)=Статус B(1)=Матрица(URL) C(2)=ID E(4)=Юнит
+  // F(5)=Заказчик G(6)=Название H(7)=Формат I(8)=Дата J(9)=Продюсер K(10)=Менеджер L(11)=Куратор
+  const seenMatrixIds = new Set<string>()
+  for (let i = 2; i < rowData.length; i++) {
+    const cells = rowData[i].values ?? []
 
-    // Фильтр: Юнит (E, индекс 4) должен содержать "ТВ"
-    // Юнит может содержать несколько значений: "ТВ;МАРКЕТИНГ" или "ТВ,РАДИО"
-    const unitVal = (row[4] ?? '').trim().toUpperCase()
-    if (!unitVal.includes('ТВ') && !unitVal.includes('TV')) continue
+    // Пропускаем строки где нет данных ни в одном значимом столбце (кроме D)
+    const MEANINGFUL_COLS = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11]
+    const hasAnyData = MEANINGFUL_COLS.some((col) => cellStr(cells[col]) !== '')
+    if (!hasAnyData) continue
 
-    const sheetUrlRaw = (row[1] ?? '').trim() // B — ссылка на матрицу
+    const matrixIdRaw = cellStr(cells[2]) // C — ID матрицы
+
+    // Если ID дублируется в таблице — добавляем номер строки, чтобы сохранить обе записи
+    let matrixId = matrixIdRaw || `row_${i + 1}`
+    if (matrixIdRaw && seenMatrixIds.has(matrixIdRaw)) {
+      matrixId = `${matrixIdRaw}_row_${i + 1}`
+    }
+    if (matrixIdRaw) seenMatrixIds.add(matrixIdRaw)
+
+    // B — ссылка на матрицу: берём hyperlink из ячейки, иначе текст
+    const cellB = cells[1]
+    const sheetUrlRaw = cellB?.hyperlink ?? cellStr(cellB)
     const sheetUrl = sheetUrlRaw.startsWith('http') ? sheetUrlRaw : null
 
-    const dateRaw = (row[8] ?? '').trim() // I — Дата
+    const dateRaw = cellStr(cells[8]) // I — Дата
     const date = dateRaw ? parseSheetDate(dateRaw) : null
 
     // Привязка к проекту по ID матрицы (sheetMatrixId в таблице проектов = matrixId здесь)
@@ -254,15 +289,15 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 
     const entry = {
       sheetUrl,
-      status:   (row[0] ?? '').trim() || null,  // A
-      unit:     (row[4] ?? '').trim() || null,  // E — Юнит (ТВ;МАРКЕТИНГ и т.д.)
-      client:   (row[5] ?? '').trim() || null,  // F — Заказчик
-      name:     (row[6] ?? '').trim() || null,  // G — Название
-      format:   (row[7] ?? '').trim() || null,  // H — Формат
-      date,                                      // I — Дата
-      producer: (row[9] ?? '').trim() || null,  // J — Продюсер
-      manager:  (row[10] ?? '').trim() || null, // K — Менеджер
-      curator:  (row[11] ?? '').trim() || null, // L — Куратор
+      status:   cellStr(cells[0])  || null,  // A
+      unit:     cellStr(cells[4])  || null,  // E
+      client:   cellStr(cells[5])  || null,  // F
+      name:     cellStr(cells[6])  || null,  // G
+      format:   cellStr(cells[7])  || null,  // H
+      date,                                   // I
+      producer: cellStr(cells[9])  || null,  // J
+      manager:  cellStr(cells[10]) || null,  // K
+      curator:  cellStr(cells[11]) || null,  // L
       projectId,
       lastSyncedAt: new Date(),
     }
@@ -279,6 +314,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     }
   }
 
+  console.log(`[sync] Registry: импортировано ${upserted}`)
   return { upserted, errors }
 }
 

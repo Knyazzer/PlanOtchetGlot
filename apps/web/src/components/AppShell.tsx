@@ -10,8 +10,9 @@ import { UsersPage } from '../pages/UsersPage'
 import { TasksPage } from '../pages/TasksPage'
 import { ProfilePage } from '../pages/ProfilePage'
 import { AnalyticsPage } from '../pages/AnalyticsPage'
+import { SyncDataPage } from '../pages/SyncDataPage'
 
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -30,6 +31,7 @@ export function AppShell() {
     { id: 'tasks', label: 'Задачи' },
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
     { id: 'users', label: 'Сотрудники', adminOnly: true },
+    { id: 'syncdata', label: 'Таблицы', adminOnly: true },
     { id: 'profile', label: 'Профиль' },
   ]
 
@@ -110,6 +112,7 @@ export function AppShell() {
         {page === 'tasks' && <TasksPage />}
         {page === 'analytics' && (isAdmin || isProducer) && <AnalyticsPage />}
         {page === 'users' && isAdmin && <UsersPage />}
+        {page === 'syncdata' && isAdmin && <SyncDataPage />}
         {page === 'profile' && <ProfilePage />}
       </main>
     </div>

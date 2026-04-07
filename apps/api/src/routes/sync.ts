@@ -18,6 +18,26 @@ export async function syncRoutes(app: FastifyInstance) {
     return reply.code(202).send({ message: 'Sync started' })
   })
 
+  // GET /sync/registry — все записи реестра матриц (в порядке как в таблице)
+  app.get('/registry', { preHandler: requireRole('admin') }, async () => {
+    return prisma.matrixRegistry.findMany({ orderBy: { createdAt: 'asc' } })
+  })
+
+  // POST /sync/reset — удалить все импортированные данные
+  app.post('/reset', { preHandler: requireRole('admin') }, async (_request, reply) => {
+    // Удаляем в нужном порядке из-за foreign keys
+    const shifts   = await prisma.shiftEntry.deleteMany({ where: { source: 'matrix' } })
+    const registry = await prisma.matrixRegistry.deleteMany({})
+    const projects = await prisma.project.deleteMany({ where: { source: 'projects_table' } })
+    return reply.send({
+      deleted: {
+        shiftEntries: shifts.count,
+        registryEntries: registry.count,
+        projects: projects.count,
+      },
+    })
+  })
+
   // GET /sync/logs — история синхронизаций
   app.get('/logs', { preHandler: requireRole('admin') }, async (request) => {
     const query = request.query as { limit?: string; type?: string }

@@ -85,7 +85,7 @@ async function main() {
       dateConfirmed: true,
       format: 'Видеотрансляция',
       location: 'Офис РУСАЛ',
-      status: 'ready',
+      status: 'negotiation',
       source: 'manual',
     },
   })
@@ -102,7 +102,7 @@ async function main() {
       dateConfirmed: false,
       format: 'Оффлайн',
       location: 'Знаменка камин',
-      status: 'preliminary',
+      status: 'request',
       source: 'projects_table',
       uncertainFields: ['date'],
     },
