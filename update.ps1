@@ -3,7 +3,7 @@
 
 $projectRoot = $PSScriptRoot
 $dbDir = Join-Path $projectRoot "packages\db"
-$dbUrl = "postgresql://tvshifts:tvshifts_pass@localhost:5432/tvshifts"
+$dbUrl = "postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts"
 
 Write-Host ""
 Write-Host "=== TV Shifts Update ===" -ForegroundColor Yellow

@@ -4,7 +4,7 @@
 
 $projectRoot = $PSScriptRoot
 $dbDir = Join-Path $projectRoot "packages\db"
-$dbUrl = "postgresql://tvshifts:tvshifts_pass@localhost:5432/tvshifts"
+$dbUrl = "postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts"
 
 Write-Host ""
 Write-Host "=== TV Shifts Setup ===" -ForegroundColor Yellow
@@ -34,6 +34,12 @@ Write-Host "      pnpm $pnpmVersion" -ForegroundColor DarkGray
 Write-Host "[3/6] Ustanovka zavisimostey..." -ForegroundColor Cyan
 pnpm install --dir $projectRoot
 Write-Host "      Gotovo" -ForegroundColor DarkGray
+
+# -- 3b. Prisma generate --
+Write-Host "      Generiryu Prisma client..." -ForegroundColor DarkGray
+Set-Location $dbDir
+npx prisma generate
+Set-Location $projectRoot
 
 # -- 4. Sozdat .env --
 Write-Host "[4/6] Nastroyka peremennykh okruzheniya..." -ForegroundColor Cyan
