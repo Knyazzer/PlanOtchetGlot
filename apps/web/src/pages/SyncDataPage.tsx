@@ -40,6 +40,26 @@ interface RegistryEntry {
   projectId: string | null
 }
 
+// ─── Persistent filter hook ───────────────────────────────────────────────────
+
+function usePersistedFilters(storageKey: string) {
+  const [filters, setFiltersRaw] = useState<Record<string, string[]>>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey)
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
+
+  function setFilters(next: Record<string, string[]>) {
+    setFiltersRaw(next)
+    try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch {}
+  }
+
+  return [filters, setFilters] as const
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<string, string> = {
@@ -156,8 +176,8 @@ function FilterPopup({
 
 // ─── Projects Table ───────────────────────────────────────────────────────────
 
-function ProjectsTable({ projects, loading }: { projects: Project[]; loading: boolean }) {
-  const [filters, setFilters] = useState<Record<string, string[]>>({})
+function ProjectsTable({ projects, loading, sheetUrl }: { projects: Project[]; loading: boolean; sheetUrl: string | null }) {
+  const [filters, setFilters] = usePersistedFilters('sync-filters-projects')
   const [popupOpen, setPopupOpen] = useState(false)
 
   const opts = useMemo(() => ({
@@ -197,7 +217,14 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
     <div style={panelStyle}>
       <div style={panelHeader}>
         <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
-          Проекты из таблицы
+          <a
+            href={sheetUrl ?? '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}
+          >
+            Проекты из таблицы
+          </a>
           <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
             {visibleNonSep} / {totalNonSep}
           </span>
@@ -240,16 +267,17 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
                 <th style={thBase}><span style={thLabel}>G Дата</span></th>
                 <th style={thBase}><span style={thLabel}>I Формат</span></th>
                 <th style={thBase}><span style={thLabel}>J Локация</span></th>
+                <th style={thBase}><span style={thLabel}>K Матрица</span></th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
-                <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Нет строк по выбранным фильтрам</td></tr>
+                <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Нет строк по выбранным фильтрам</td></tr>
               ) : rows.map((p, i) => {
                 if (p.source === 'separator') {
                   return (
                     <tr key={p.id}>
-                      <td colSpan={6} style={{
+                      <td colSpan={7} style={{
                         padding: '5px 10px',
                         background: '#f1f5f9',
                         borderTop: '2px solid #e2e8f0',
@@ -281,6 +309,7 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
                     <td style={tdStyle}>{fmtDate(p.date)}</td>
                     <td style={tdStyle}>{p.format ?? '—'}</td>
                     <td style={tdStyle}>{p.location ?? '—'}</td>
+                    <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{p.sheetMatrixId ?? '—'}</td>
                   </tr>
                 )
               })}
@@ -294,8 +323,8 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
 
 // ─── Registry Table ───────────────────────────────────────────────────────────
 
-function RegistryTable({ registry, loading }: { registry: RegistryEntry[]; loading: boolean }) {
-  const [filters, setFilters] = useState<Record<string, string[]>>({})
+function RegistryTable({ registry, loading, sheetUrl }: { registry: RegistryEntry[]; loading: boolean; sheetUrl: string | null }) {
+  const [filters, setFilters] = usePersistedFilters('sync-filters-registry')
   const [popupOpen, setPopupOpen] = useState(false)
 
   const opts = useMemo(() => ({
@@ -330,7 +359,14 @@ function RegistryTable({ registry, loading }: { registry: RegistryEntry[]; loadi
     <div style={panelStyle}>
       <div style={panelHeader}>
         <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
-          Реестр матриц
+          <a
+            href={sheetUrl ?? '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}
+          >
+            Реестр матриц
+          </a>
           <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
             {rows.length} / {registry.length}
           </span>
@@ -421,6 +457,12 @@ export function SyncDataPage() {
     queryFn: () => api.get('/projects').then((r) => r.data),
   })
 
+  const { data: sheetUrls } = useQuery<{ projectsSheetUrl: string | null; registrySheetUrl: string | null }>({
+    queryKey: ['sync-sheet-urls'],
+    queryFn: () => api.get('/sync/sheet-urls').then((r) => r.data),
+    staleTime: Infinity,
+  })
+
   const { data: registry = [], isLoading: regLoading } = useQuery<RegistryEntry[]>({
     queryKey: ['sync-registry'],
     queryFn: () => api.get('/sync/registry').then((r) => r.data),
@@ -469,8 +511,8 @@ export function SyncDataPage() {
         )}
       </div>
       <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
-        <ProjectsTable projects={projects} loading={projLoading} />
-        <RegistryTable registry={registry} loading={regLoading} />
+        <ProjectsTable projects={projects} loading={projLoading} sheetUrl={sheetUrls?.projectsSheetUrl ?? null} />
+        <RegistryTable registry={registry} loading={regLoading} sheetUrl={sheetUrls?.registrySheetUrl ?? null} />
       </div>
     </div>
   )

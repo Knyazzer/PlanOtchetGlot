@@ -18,6 +18,19 @@ export async function syncRoutes(app: FastifyInstance) {
     return reply.code(202).send({ message: 'Sync started' })
   })
 
+  // GET /sync/sheet-urls — публичные URL исходных Google Sheets
+  app.get('/sheet-urls', { preHandler: requireRole('admin') }, async () => {
+    const base = 'https://docs.google.com/spreadsheets/d'
+    return {
+      projectsSheetUrl: process.env.GOOGLE_PROJECTS_SHEET_ID
+        ? `${base}/${process.env.GOOGLE_PROJECTS_SHEET_ID}`
+        : null,
+      registrySheetUrl: process.env.GOOGLE_REGISTRY_SHEET_ID
+        ? `${base}/${process.env.GOOGLE_REGISTRY_SHEET_ID}`
+        : null,
+    }
+  })
+
   // GET /sync/registry — все записи реестра матриц (в порядке как в таблице)
   app.get('/registry', { preHandler: requireRole('admin') }, async () => {
     return prisma.matrixRegistry.findMany({ orderBy: { createdAt: 'asc' } })
