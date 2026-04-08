@@ -1,4 +1,5 @@
 import { google, sheets_v4 } from 'googleapis'
+import { randomUUID } from 'crypto'
 import { prisma } from '@tv-shifts/db'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -156,16 +157,27 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 
     const googleRowIndex = i + 1
 
-    // Разделители месяцев: только колонка A заполнена, B–K пусты — сохраняем отдельно
+    // Разделители месяцев: только колонка A заполнена, B–K пусты
+    // Сохраняем через raw SQL, чтобы обойти устаревший Prisma-клиент (не знает 'separator')
     const hasDataBeyondA = [1,2,3,4,5,6,7,8,9,10].some((col) => cellStr(cells[col]) !== '')
     if (!hasDataBeyondA) {
       const separatorText = cellStr(cells[0])
       if (separatorText) {
-        const existing = await prisma.project.findFirst({ where: { googleRowIndex } })
-        if (existing) {
-          await prisma.project.update({ where: { id: existing.id }, data: { name: separatorText, source: 'separator' } })
+        const existing = await prisma.$queryRawUnsafe<{ id: string }[]>(
+          `SELECT id FROM projects WHERE google_row_index = $1 LIMIT 1`,
+          googleRowIndex,
+        )
+        if (existing.length > 0) {
+          await prisma.$executeRawUnsafe(
+            `UPDATE projects SET name = $1, updated_at = NOW() WHERE id = $2`,
+            separatorText, existing[0].id,
+          )
         } else {
-          await prisma.project.create({ data: { name: separatorText, source: 'separator', googleRowIndex, status: 'request' } })
+          await prisma.$executeRawUnsafe(
+            `INSERT INTO projects (id, name, source, google_row_index, status, date_confirmed, created_at, updated_at, uncertain_fields)
+             VALUES ($1, $2, 'separator'::"ProjectSource", $3, 'request'::"ProjectStatus", false, NOW(), NOW(), ARRAY[]::text[])`,
+            randomUUID(), separatorText, googleRowIndex,
+          )
         }
       }
       skippedEmpty++

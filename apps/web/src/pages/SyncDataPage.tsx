@@ -203,9 +203,8 @@ function ProjectsTable({ projects, loading, sheetUrl }: { projects: Project[]; l
     const matrixIdSel = filters.matrixId ?? []
     const hasOrFilters = statusSel.length > 0 || formatSel.length > 0 || locationSel.length > 0
 
-    return projects.filter((p) => {
-      if (p.source === 'separator') return !hasFilters
-      // 1. OR по статусу / формату / локации
+    function projectVisible(p: Project): boolean {
+      if (p.source === 'separator') return false
       if (hasOrFilters) {
         const orMatch =
           (statusSel.length   && statusSel.includes(STATUS_LABELS[p.status] ?? p.status)) ||
@@ -213,7 +212,6 @@ function ProjectsTable({ projects, loading, sheetUrl }: { projects: Project[]; l
           (locationSel.length && locationSel.includes(p.location ?? ''))
         if (!orMatch) return false
       }
-      // 2. AND по наличию ID матрицы
       if (matrixIdSel.length) {
         const hasId = !!p.sheetMatrixId
         const matrixMatch =
@@ -222,7 +220,24 @@ function ProjectsTable({ projects, loading, sheetUrl }: { projects: Project[]; l
         if (!matrixMatch) return false
       }
       return true
-    })
+    }
+
+    // Сначала определяем какие обычные проекты проходят фильтр
+    const visibleIds = new Set(projects.filter(projectVisible).map((p) => p.id))
+
+    // Разделитель показываем только если после него есть хотя бы один видимый проект
+    const result: Project[] = []
+    for (let i = 0; i < projects.length; i++) {
+      const p = projects[i]
+      if (p.source === 'separator') {
+        const nextSepIdx = projects.findIndex((q, j) => j > i && q.source === 'separator')
+        const slice = projects.slice(i + 1, nextSepIdx === -1 ? undefined : nextSepIdx)
+        if (slice.some((q) => visibleIds.has(q.id))) result.push(p)
+      } else if (visibleIds.has(p.id)) {
+        result.push(p)
+      }
+    }
+    return result
   }, [projects, filters, hasFilters])
 
   const visibleNonSep = rows.filter((p) => p.source !== 'separator').length
@@ -293,14 +308,15 @@ function ProjectsTable({ projects, loading, sheetUrl }: { projects: Project[]; l
                   return (
                     <tr key={p.id}>
                       <td colSpan={7} style={{
-                        padding: '5px 10px',
+                        padding: '6px 12px',
                         background: '#f1f5f9',
-                        borderTop: '2px solid #e2e8f0',
+                        borderTop: '2px solid #cbd5e1',
                         borderBottom: '1px solid #e2e8f0',
-                        fontSize: 12,
+                        borderLeft: '3px solid #3b82f6',
+                        fontSize: 11,
                         fontWeight: 700,
-                        color: '#64748b',
-                        letterSpacing: '0.05em',
+                        color: '#475569',
+                        letterSpacing: '0.08em',
                         textTransform: 'uppercase',
                       }}>
                         {p.name}

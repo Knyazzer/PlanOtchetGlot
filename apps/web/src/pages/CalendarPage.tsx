@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
-import { useIsAdmin, useIsProducer } from '../hooks/useAuth'
+import { useIsAdmin } from '../hooks/useAuth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -47,12 +47,6 @@ interface Project {
   }[]
 }
 
-interface ConflictEntry {
-  date: string
-  user: { id: string; fullName: string }
-  shifts: { shiftId: string; shiftType: string; project: { id: string; name: string; client: string | null } }[]
-}
-
 interface ChangeLogEntry {
   id: string
   field: string | null
@@ -66,29 +60,7 @@ interface ChangeLogEntry {
 const DAY_TYPE_LABELS: Record<string, string> = { zastroyka: 'Застройка', efir: 'Эфир' }
 const DAY_TYPE_COLORS: Record<string, string> = { zastroyka: '#f59e0b', efir: '#10b981' }
 
-const STATUS_COLORS: Record<string, string> = {
-  request:       '#94a3b8',
-  negotiation:   '#f59e0b',
-  preproduction: '#3b82f6',
-  production:    '#8b5cf6',
-  postproduction:'#06b6d4',
-  delivered:     '#10b981',
-  rejected:      '#ef4444',
-  cancelled:     '#6b7280',
-  manual:        '#0ea5e9',
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  request:        'Запрос',
-  negotiation:    'На согласовании',
-  preproduction:  'Препродакшн',
-  production:     'Продакшн',
-  postproduction: 'Постпродакшн',
-  delivered:      'Сдан',
-  rejected:       'Не согласован',
-  cancelled:      'Отменён',
-  manual:         'Ручной',
-}
+const EVENT_COLOR = '#3b82f6'
 
 // ─── CalendarPage ─────────────────────────────────────────────────────────────
 
@@ -96,10 +68,8 @@ export function CalendarPage() {
   const qc = useQueryClient()
   const calendarRef = useRef<FullCalendar>(null)
   const isAdmin = useIsAdmin()
-  const isProducer = useIsProducer()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [showCreateForm, setShowCreateForm] = useState(false)
 
   const dateFrom = format(startOfMonth(addMonths(currentDate, -1)), 'yyyy-MM-dd')
   const dateTo = format(endOfMonth(addMonths(currentDate, 1)), 'yyyy-MM-dd')
@@ -119,17 +89,6 @@ export function CalendarPage() {
       ),
   })
 
-  // Конфликты (только для admin/producer)
-  const { data: conflicts = [] } = useQuery<ConflictEntry[]>({
-    queryKey: ['conflicts', dateFrom, dateTo],
-    queryFn: () =>
-      api.get('/projects/conflicts', { params: { dateFrom, dateTo } }).then((r) => r.data),
-    enabled: isAdmin || isProducer,
-  })
-
-  // Даты с конфликтами для подсветки на календаре
-  const conflictDates = new Set(conflicts.map((c) => c.date.split('T')[0]))
-
   // Форматирование даты без потери дня из-за UTC offset
   function dateStrAddDay(dateStr: string): string {
     const [y, m, d] = dateStr.split('-').map(Number)
@@ -138,15 +97,12 @@ export function CalendarPage() {
   }
 
   function isoToDateStr(iso: string): string {
-    // Берём дату по UTC, не по локальному времени
     return iso.slice(0, 10)
   }
 
   // Генерация событий из дней проекта
-  // Смежные дни (застройка + эфир идут подряд) → один кубик с end=следующий день
   const projectEvents: any[] = []
   for (const p of projects) {
-    const color = STATUS_COLORS[p.status] ?? '#3b82f6'
     const title = p.client ? `${p.client} — ${p.name}` : p.name
 
     if (p.days && p.days.length > 0) {
@@ -154,7 +110,6 @@ export function CalendarPage() {
         .map((d) => ({ ...d, dateStr: isoToDateStr(d.date) }))
         .sort((a, b) => a.dateStr.localeCompare(b.dateStr))
 
-      // Группируем в непрерывные диапазоны
       const ranges: { start: string; end: string }[] = []
       let rangeStart = sorted[0].dateStr
       let rangeEnd = rangeStart
@@ -176,14 +131,13 @@ export function CalendarPage() {
       ranges.push({ start: rangeStart, end: rangeEnd })
 
       ranges.forEach((r, idx) => {
-        // end в FullCalendar exclusive — добавляем 1 день через локальный конструктор
         projectEvents.push({
           id: `${p.id}-${idx}`,
           title,
           start: r.start,
           end: dateStrAddDay(r.end),
-          backgroundColor: color,
-          borderColor: color,
+          backgroundColor: EVENT_COLOR,
+          borderColor: EVENT_COLOR,
           extendedProps: { project: p },
         })
       })
@@ -192,25 +146,12 @@ export function CalendarPage() {
         id: p.id,
         title,
         date: p.date.split('T')[0],
-        backgroundColor: color,
-        borderColor: color,
+        backgroundColor: EVENT_COLOR,
+        borderColor: EVENT_COLOR,
         extendedProps: { project: p },
       })
     }
   }
-
-  const events = [
-    ...projectEvents,
-    // Фоновые маркеры конфликтных дат
-    ...[...conflictDates].map((date) => ({
-      id: `conflict-${date}`,
-      start: date,
-      display: 'background' as const,
-      backgroundColor: 'rgba(239,68,68,0.15)',
-      borderColor: 'transparent',
-      extendedProps: { isConflict: true },
-    })),
-  ]
 
   function handleEventClick(info: any) {
     setSelectedProject(info.event.extendedProps.project)
@@ -226,23 +167,6 @@ export function CalendarPage() {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>Производственный календарь</h2>
-          {(isAdmin || isProducer) && (
-            <button
-              onClick={() => setShowCreateForm(true)}
-              style={{
-                background: '#2563eb',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                padding: '10px 20px',
-                cursor: 'pointer',
-                fontWeight: 500,
-                fontSize: 16,
-              }}
-            >
-              + Проект
-            </button>
-          )}
         </div>
 
         <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '12px 8px' }}>
@@ -263,7 +187,7 @@ export function CalendarPage() {
                   right: 'dayGridMonth,dayGridWeek',
                 }}
                 buttonText={{ today: 'Сегодня', month: 'Месяц', week: 'Неделя' }}
-                events={events}
+                events={projectEvents}
                 eventClick={handleEventClick}
                 datesSet={handleDatesSet}
                 eventDisplay="block"
@@ -292,43 +216,10 @@ export function CalendarPage() {
             </div>
           )}
         </div>
-
-        {/* Легенда */}
-        <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
-          {Object.entries(STATUS_LABELS).map(([key, label]) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 14, height: 14, borderRadius: 3, background: STATUS_COLORS[key] }} />
-              <span style={{ fontSize: 14, color: '#64748b' }}>{label}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Правая панель */}
       <div style={{ width: 260, flexShrink: 0 }}>
-
-        {/* Конфликты */}
-        {conflicts.length > 0 && (
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 600, color: '#dc2626' }}>
-              ⚠ Конфликты ({conflicts.length})
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {conflicts.map((c, i) => (
-                <div key={i} style={{ background: '#fff5f5', borderRadius: 8, border: '1px solid #fecaca', padding: '8px 10px', borderLeft: '3px solid #ef4444' }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#dc2626', marginBottom: 3 }}>
-                    {format(new Date(c.date), 'd MMM', { locale: ru })} · {c.user.fullName}
-                  </div>
-                  {c.shifts.map((s) => (
-                    <div key={s.shiftId} style={{ fontSize: 13, color: '#64748b' }}>
-                      {s.project.client ? `${s.project.client} — ` : ''}{s.project.name}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
         <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, color: '#374151' }}>
           Без даты ({unconfirmedProjects.length})
         </h3>
@@ -346,7 +237,7 @@ export function CalendarPage() {
                 border: '1px solid #e2e8f0',
                 padding: '12px 14px',
                 cursor: 'pointer',
-                borderLeft: `3px solid ${STATUS_COLORS[p.status]}`,
+                borderLeft: `3px solid ${EVENT_COLOR}`,
               }}
             >
               <div style={{ fontSize: 15, fontWeight: 500, color: '#1e293b', marginBottom: 3 }}>
@@ -358,9 +249,6 @@ export function CalendarPage() {
               {p.dateApproximate && (
                 <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>≈ {p.dateApproximate}</div>
               )}
-              <div style={{ marginTop: 4 }}>
-                <StatusBadge status={p.status} />
-              </div>
             </div>
           ))}
         </div>
@@ -377,18 +265,6 @@ export function CalendarPage() {
             qc.invalidateQueries({ queryKey: ['projects-unconfirmed'] })
           }}
           canEdit={isAdmin}
-        />
-      )}
-
-      {/* Форма создания */}
-      {showCreateForm && (
-        <CreateProjectModal
-          onClose={() => setShowCreateForm(false)}
-          onCreated={() => {
-            setShowCreateForm(false)
-            qc.invalidateQueries({ queryKey: ['projects'] })
-            qc.invalidateQueries({ queryKey: ['projects-unconfirmed'] })
-          }}
         />
       )}
     </div>
@@ -453,10 +329,7 @@ function ProjectModal({
     >
       <div style={{ background: '#fff', borderRadius: 12, padding: 32, width: 600, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-          <div>
-            <h3 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 600 }}>{project.name}</h3>
-            <StatusBadge status={project.status} />
-          </div>
+          <h3 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>{project.name}</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', padding: 4 }}>×</button>
         </div>
 
@@ -613,99 +486,6 @@ function ProjectModal({
   )
 }
 
-// ─── CreateProjectModal ───────────────────────────────────────────────────────
-
-function CreateProjectModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [form, setForm] = useState({
-    name: '',
-    client: '',
-    execProducer: '',
-    efirDate: '',
-    zastroykDate: '',
-    location: '',
-    notes: '',
-  })
-  const [error, setError] = useState<string | null>(null)
-
-  const create = useMutation({
-    mutationFn: () =>
-      api.post('/projects', {
-        name: form.name,
-        client: form.client || null,
-        execProducer: form.execProducer || null,
-        efirDate: form.efirDate || null,
-        zastroykDate: form.zastroykDate || null,
-        location: form.location || null,
-        notes: form.notes || null,
-      }),
-    onSuccess: onCreated,
-    onError: (e: any) => setError(e.response?.data?.error ?? 'Ошибка'),
-  })
-
-  const inp = { width: '100%', padding: '9px 12px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 15, boxSizing: 'border-box' as const }
-  const field = (label: string, key: keyof typeof form, type = 'text', placeholder?: string) => (
-    <div style={{ marginBottom: 12 }}>
-      <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>{label}</label>
-      <input type={type} value={form[key]} placeholder={placeholder}
-        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-        style={inp} />
-    </div>
-  )
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 32, width: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
-        <h3 style={{ margin: '0 0 20px', fontSize: 20, fontWeight: 600 }}>Новый проект</h3>
-
-        {field('Название *', 'name')}
-        {field('Клиент', 'client')}
-        {field('Исп. продюсер', 'execProducer')}
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>
-              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: DAY_TYPE_COLORS.zastroyka, marginRight: 6 }} />
-              Дата застройки
-            </label>
-            <input type="date" value={form.zastroykDate}
-              onChange={(e) => setForm((f) => ({ ...f, zastroykDate: e.target.value }))}
-              style={inp} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>
-              <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: DAY_TYPE_COLORS.efir, marginRight: 6 }} />
-              Дата эфира
-            </label>
-            <input type="date" value={form.efirDate}
-              onChange={(e) => setForm((f) => ({ ...f, efirDate: e.target.value }))}
-              style={inp} />
-          </div>
-        </div>
-
-        {field('Локация', 'location')}
-
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, marginBottom: 4, color: '#374151' }}>Заметки</label>
-          <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-            rows={3} style={{ ...inp, resize: 'vertical' }} />
-        </div>
-
-        {error && <div style={{ marginBottom: 12, color: '#dc2626', fontSize: 13 }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
-          <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 15 }}>
-            Отмена
-          </button>
-          <button onClick={() => create.mutate()} disabled={create.isPending || !form.name}
-            style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: 15, opacity: !form.name ? 0.5 : 1 }}>
-            {create.isPending ? 'Создание...' : 'Создать'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── EditProjectModal ─────────────────────────────────────────────────────────
 
 function EditProjectModal({
@@ -729,7 +509,6 @@ function EditProjectModal({
     time: project.time ?? '',
     format: project.format ?? '',
     location: project.location ?? '',
-    status: project.status,
   })
   const [days, setDays] = useState<ProjectDay[]>(
     project.days?.map((d) => ({ ...d, date: d.date.split('T')[0] })) ?? []
@@ -749,7 +528,6 @@ function EditProjectModal({
         time: form.time || null,
         format: form.format || null,
         location: form.location || null,
-        status: form.status,
         days: days
           .filter((d) => d.date)
           .map((d) => ({
@@ -812,7 +590,6 @@ function EditProjectModal({
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8' }}>×</button>
         </div>
 
-        {/* Основные поля */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
           <div style={{ gridColumn: '1 / -1' }}>{fieldRow('Название *', 'name')}</div>
           {fieldRow('Клиент', 'client')}
@@ -821,24 +598,6 @@ function EditProjectModal({
           {fieldRow('Аккаунт', 'accountManager')}
           {fieldRow('Формат', 'format')}
           {fieldRow('Локация', 'location')}
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 3, color: '#374151' }}>Статус</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}
-              style={inp()}
-            >
-              <option value="request">Запрос</option>
-              <option value="negotiation">На согласовании</option>
-              <option value="preproduction">Препродакшн</option>
-              <option value="production">Продакшн</option>
-              <option value="postproduction">Постпродакшн</option>
-              <option value="delivered">Сдан</option>
-              <option value="rejected">Не согласован</option>
-              <option value="cancelled">Отменён</option>
-              <option value="manual">Ручной</option>
-            </select>
-          </div>
         </div>
 
         {/* Дни проекта */}
@@ -916,23 +675,5 @@ function EditProjectModal({
         </div>
       </div>
     </div>
-  )
-}
-
-// ─── StatusBadge ─────────────────────────────────────────────────────────────
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span style={{
-      display: 'inline-block',
-      fontSize: 13,
-      padding: '3px 9px',
-      borderRadius: 10,
-      background: STATUS_COLORS[status] + '22',
-      color: STATUS_COLORS[status],
-      fontWeight: 500,
-    }}>
-      {STATUS_LABELS[status] ?? status}
-    </span>
   )
 }
