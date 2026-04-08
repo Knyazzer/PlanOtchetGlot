@@ -41,11 +41,12 @@ export async function projectsRoutes(app: FastifyInstance) {
       dateTo?: string
       status?: string
       search?: string
+      withSeparators?: string
     }
 
     return prisma.project.findMany({
       where: {
-        NOT: { source: 'separator' as any },
+        ...(query.withSeparators !== 'true' && { NOT: { source: 'separator' as any } }),
         ...(query.dateFrom && { date: { gte: new Date(query.dateFrom) } }),
         ...(query.dateTo && { date: { lte: new Date(query.dateTo) } }),
         ...(query.status && { status: query.status as any }),
