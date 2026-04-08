@@ -37,7 +37,8 @@
       "Bash(pnpm --filter @tv-shifts/api build)",
       "Bash(pnpm --filter @tv-shifts/web build)",
       "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" pnpm db:migrate)",
-      "Bash(npx kill-port:*)"
+      "Bash(npx kill-port:*)",
+      "Bash(pnpm --filter @tv-shifts/web lint)"
     ]
   }
 }

@@ -21,7 +21,6 @@ interface Project {
   format: string | null
   location: string | null
   sheetMatrixId: string | null
-  source: string
   uncertainFields: string[]
 }
 
@@ -78,87 +77,121 @@ function uniq(values: (string | null | undefined)[]): string[] {
   return Array.from(set).sort()
 }
 
-// ─── FilterTh ─────────────────────────────────────────────────────────────────
+// ─── FilterPopup ──────────────────────────────────────────────────────────────
 
-function FilterTh({
-  col, label, options, value, onChange,
-}: {
-  col: string
+interface FilterColumn {
+  key: string
   label: string
-  options: string[]
-  value: string
-  onChange: (col: string, val: string) => void
-}) {
-  const active = !!value
-  return (
-    <th style={{ ...thBase, background: active ? '#eff6ff' : '#f1f5f9' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 90 }}>
-        <span style={{ fontSize: 11, color: active ? '#2563eb' : '#64748b', fontWeight: 600 }}>{label}</span>
-        <select
-          value={value}
-          onChange={(e) => onChange(col, e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            fontSize: 11,
-            border: `1px solid ${active ? '#93c5fd' : '#e2e8f0'}`,
-            borderRadius: 4,
-            padding: '2px 4px',
-            background: active ? '#dbeafe' : '#fff',
-            color: active ? '#1d4ed8' : '#374151',
-            cursor: 'pointer',
-            outline: 'none',
-          }}
-        >
-          <option value="">Все</option>
-          {options.map((o) => (
-            <option key={o} value={o}>{o}</option>
-          ))}
-        </select>
-      </div>
-    </th>
-  )
+  values: string[]
 }
 
-function PlainTh({ label }: { label: string }) {
-  return <th style={thBase}><span style={{ fontSize: 12, color: '#334155', fontWeight: 600 }}>{label}</span></th>
+// filters: { [colKey]: string[] } — список выбранных значений по колонке
+// Логика: OR — строка видна если хоть одна пара (колонка, значение) совпадает
+// Если ничего не выбрано — показываем все строки
+
+function FilterPopup({
+  title,
+  columns,
+  filters,
+  onFiltersChange,
+  onClose,
+}: {
+  title: string
+  columns: FilterColumn[]
+  filters: Record<string, string[]>
+  onFiltersChange: (f: Record<string, string[]>) => void
+  onClose: () => void
+}) {
+  function toggle(col: string, val: string) {
+    const cur = filters[col] ?? []
+    const next = cur.includes(val) ? cur.filter((v) => v !== val) : [...cur, val]
+    onFiltersChange({ ...filters, [col]: next })
+  }
+
+  const totalSelected = Object.values(filters).reduce((s, arr) => s + arr.length, 0)
+
+  return (
+    <div style={popupOverlay} onClick={onClose}>
+      <div style={popupBox} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: '#1e293b' }}>Фильтры — {title}</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#94a3b8', lineHeight: 1 }}>✕</button>
+        </div>
+        <div style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
+          {columns.map((col) => (
+            <div key={col.key} style={{ minWidth: 150 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {col.label}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 320, overflowY: 'auto' }}>
+                {col.values.map((v) => {
+                  const checked = (filters[col.key] ?? []).includes(v)
+                  return (
+                    <label key={v} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 13, color: checked ? '#1d4ed8' : '#374151' }}>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggle(col.key, v)}
+                        style={{ cursor: 'pointer', accentColor: '#3b82f6' }}
+                      />
+                      {v}
+                    </label>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        {totalSelected > 0 && (
+          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+            <button onClick={() => onFiltersChange({})} style={resetBtn}>
+              Сбросить все ({totalSelected})
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Projects Table ───────────────────────────────────────────────────────────
 
 function ProjectsTable({ projects, loading }: { projects: Project[]; loading: boolean }) {
-  const [filters, setFilters] = useState<Record<string, string>>({})
+  const [filters, setFilters] = useState<Record<string, string[]>>({})
+  const [popupOpen, setPopupOpen] = useState(false)
 
-  function setFilter(col: string, val: string) {
-    setFilters((prev) => ({ ...prev, [col]: val }))
-  }
-
-  function resetFilters() {
-    setFilters({})
-  }
-
-  const activeCount = Object.values(filters).filter(Boolean).length
-
-  // Unique option sets — computed from ALL rows (unfiltered)
   const opts = useMemo(() => ({
-    status:   uniq(projects.map((p) => STATUS_LABELS[p.status] ?? p.status)),
+    status:   uniq(projects.filter((p) => p.source !== 'separator').map((p) => STATUS_LABELS[p.status] ?? p.status)),
     format:   uniq(projects.map((p) => p.format)),
     location: uniq(projects.map((p) => p.location)),
   }), [projects])
 
+  const filterColumns: FilterColumn[] = [
+    { key: 'status',   label: 'A Статус',  values: opts.status   },
+    { key: 'format',   label: 'I Формат',  values: opts.format   },
+    { key: 'location', label: 'J Локация', values: opts.location },
+  ]
+
+  const totalSelected = Object.values(filters).reduce((s, arr) => s + arr.length, 0)
+  const hasFilters = totalSelected > 0
+
   const rows = useMemo(() => {
-    // Если есть активные фильтры — разделители не показываем (они мешают)
-    const hasFilters = Object.values(filters).some(Boolean)
     return projects.filter((p) => {
       if (p.source === 'separator') return !hasFilters
-      if (filters.status) {
-        const label = STATUS_LABELS[p.status] ?? p.status
-        if (label !== filters.status) return false
-      }
-      if (filters.format && p.format !== filters.format) return false
-      if (filters.location && p.location !== filters.location) return false
-      return true
+      if (!hasFilters) return true
+      // OR: строка видна если хоть одно выбранное значение совпадает
+      const statusSel = filters.status ?? []
+      const formatSel = filters.format ?? []
+      const locationSel = filters.location ?? []
+      if (statusSel.length && statusSel.includes(STATUS_LABELS[p.status] ?? p.status)) return true
+      if (formatSel.length && formatSel.includes(p.format ?? '')) return true
+      if (locationSel.length && locationSel.includes(p.location ?? '')) return true
+      return false
     })
-  }, [projects, filters])
+  }, [projects, filters, hasFilters])
+
+  const visibleNonSep = rows.filter((p) => p.source !== 'separator').length
+  const totalNonSep = projects.filter((p) => p.source !== 'separator').length
 
   return (
     <div style={panelStyle}>
@@ -166,15 +199,31 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
         <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
           Проекты из таблицы
           <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
-            {rows.length} / {projects.length}
+            {visibleNonSep} / {totalNonSep}
           </span>
         </span>
-        {activeCount > 0 && (
-          <button onClick={resetFilters} style={resetBtn}>
-            Сбросить фильтры ({activeCount})
-          </button>
-        )}
+        <button
+          onClick={() => setPopupOpen(true)}
+          style={{
+            ...filterBtn,
+            background: hasFilters ? '#eff6ff' : '#f8fafc',
+            borderColor: hasFilters ? '#93c5fd' : '#e2e8f0',
+            color: hasFilters ? '#2563eb' : '#64748b',
+          }}
+        >
+          Фильтр{hasFilters ? ` (${totalSelected})` : ''}
+        </button>
       </div>
+
+      {popupOpen && (
+        <FilterPopup
+          title="Проекты"
+          columns={filterColumns}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClose={() => setPopupOpen(false)}
+        />
+      )}
 
       <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
         {loading ? (
@@ -185,12 +234,12 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
           <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr>
-                <FilterTh col="status"   label="A Статус"  options={opts.status}   value={filters.status ?? ''}   onChange={setFilter} />
-                <PlainTh label="B Клиент" />
-                <PlainTh label="C Название" />
-                <PlainTh label="G Дата" />
-                <FilterTh col="format"   label="I Формат"  options={opts.format}   value={filters.format ?? ''}   onChange={setFilter} />
-                <FilterTh col="location" label="J Локация" options={opts.location} value={filters.location ?? ''} onChange={setFilter} />
+                <th style={thBase}><span style={thLabel}>A Статус</span></th>
+                <th style={thBase}><span style={thLabel}>B Клиент</span></th>
+                <th style={thBase}><span style={thLabel}>C Название</span></th>
+                <th style={thBase}><span style={thLabel}>G Дата</span></th>
+                <th style={thBase}><span style={thLabel}>I Формат</span></th>
+                <th style={thBase}><span style={thLabel}>J Локация</span></th>
               </tr>
             </thead>
             <tbody>
@@ -246,17 +295,8 @@ function ProjectsTable({ projects, loading }: { projects: Project[]; loading: bo
 // ─── Registry Table ───────────────────────────────────────────────────────────
 
 function RegistryTable({ registry, loading }: { registry: RegistryEntry[]; loading: boolean }) {
-  const [filters, setFilters] = useState<Record<string, string>>({})
-
-  function setFilter(col: string, val: string) {
-    setFilters((prev) => ({ ...prev, [col]: val }))
-  }
-
-  function resetFilters() {
-    setFilters({})
-  }
-
-  const activeCount = Object.values(filters).filter(Boolean).length
+  const [filters, setFilters] = useState<Record<string, string[]>>({})
+  const [popupOpen, setPopupOpen] = useState(false)
 
   const opts = useMemo(() => ({
     status: uniq(registry.map((r) => r.status)),
@@ -264,14 +304,27 @@ function RegistryTable({ registry, loading }: { registry: RegistryEntry[]; loadi
     format: uniq(registry.map((r) => r.format)),
   }), [registry])
 
+  const filterColumns: FilterColumn[] = [
+    { key: 'status', label: 'A Статус', values: opts.status },
+    { key: 'unit',   label: 'E Юнит',   values: opts.unit   },
+    { key: 'format', label: 'H Формат', values: opts.format },
+  ]
+
+  const totalSelected = Object.values(filters).reduce((s, arr) => s + arr.length, 0)
+  const hasFilters = totalSelected > 0
+
   const rows = useMemo(() => {
     return registry.filter((r) => {
-      if (filters.status && r.status !== filters.status) return false
-      if (filters.unit   && r.unit   !== filters.unit)   return false
-      if (filters.format && r.format !== filters.format) return false
-      return true
+      if (!hasFilters) return true
+      const statusSel = filters.status ?? []
+      const unitSel   = filters.unit   ?? []
+      const formatSel = filters.format ?? []
+      if (statusSel.length && statusSel.includes(r.status ?? '')) return true
+      if (unitSel.length   && unitSel.includes(r.unit ?? ''))     return true
+      if (formatSel.length && formatSel.includes(r.format ?? '')) return true
+      return false
     })
-  }, [registry, filters])
+  }, [registry, filters, hasFilters])
 
   return (
     <div style={panelStyle}>
@@ -282,12 +335,28 @@ function RegistryTable({ registry, loading }: { registry: RegistryEntry[]; loadi
             {rows.length} / {registry.length}
           </span>
         </span>
-        {activeCount > 0 && (
-          <button onClick={resetFilters} style={resetBtn}>
-            Сбросить фильтры ({activeCount})
-          </button>
-        )}
+        <button
+          onClick={() => setPopupOpen(true)}
+          style={{
+            ...filterBtn,
+            background: hasFilters ? '#eff6ff' : '#f8fafc',
+            borderColor: hasFilters ? '#93c5fd' : '#e2e8f0',
+            color: hasFilters ? '#2563eb' : '#64748b',
+          }}
+        >
+          Фильтр{hasFilters ? ` (${totalSelected})` : ''}
+        </button>
       </div>
+
+      {popupOpen && (
+        <FilterPopup
+          title="Реестр матриц"
+          columns={filterColumns}
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClose={() => setPopupOpen(false)}
+        />
+      )}
 
       <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
         {loading ? (
@@ -298,14 +367,14 @@ function RegistryTable({ registry, loading }: { registry: RegistryEntry[]; loadi
           <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr>
-                <FilterTh col="status" label="A Статус" options={opts.status} value={filters.status ?? ''} onChange={setFilter} />
-                <PlainTh label="B Матрица" />
-                <PlainTh label="C ID" />
-                <FilterTh col="unit"   label="E Юнит"   options={opts.unit}   value={filters.unit ?? ''}   onChange={setFilter} />
-                <PlainTh label="F Заказчик" />
-                <PlainTh label="G Название" />
-                <FilterTh col="format" label="H Формат" options={opts.format} value={filters.format ?? ''} onChange={setFilter} />
-                <PlainTh label="I Дата" />
+                <th style={thBase}><span style={thLabel}>A Статус</span></th>
+                <th style={thBase}><span style={thLabel}>B Матрица</span></th>
+                <th style={thBase}><span style={thLabel}>C ID</span></th>
+                <th style={thBase}><span style={thLabel}>E Юнит</span></th>
+                <th style={thBase}><span style={thLabel}>F Заказчик</span></th>
+                <th style={thBase}><span style={thLabel}>G Название</span></th>
+                <th style={thBase}><span style={thLabel}>H Формат</span></th>
+                <th style={thBase}><span style={thLabel}>I Дата</span></th>
               </tr>
             </thead>
             <tbody>
@@ -367,7 +436,6 @@ export function SyncDataPage() {
     },
   })
 
-  // Сортируем проекты в порядке строк Google Sheets
   const projects = useMemo(
     () => [...allProjects].sort((a, b) => (a.googleRowIndex ?? 0) - (b.googleRowIndex ?? 0)),
     [allProjects],
@@ -434,12 +502,18 @@ const thBase: React.CSSProperties = {
   position: 'sticky',
   top: 0,
   background: '#f1f5f9',
-  padding: '6px 10px',
+  padding: '8px 10px',
   borderBottom: '2px solid #e2e8f0',
   textAlign: 'left',
   verticalAlign: 'bottom',
   zIndex: 1,
   whiteSpace: 'nowrap',
+}
+
+const thLabel: React.CSSProperties = {
+  fontSize: 12,
+  color: '#334155',
+  fontWeight: 600,
 }
 
 const tdStyle: React.CSSProperties = {
@@ -460,8 +534,37 @@ const resetBtn: React.CSSProperties = {
   background: 'none',
   border: '1px solid #e2e8f0',
   borderRadius: 6,
-  padding: '4px 10px',
+  padding: '5px 12px',
   fontSize: 12,
   color: '#64748b',
   cursor: 'pointer',
+}
+
+const filterBtn: React.CSSProperties = {
+  padding: '5px 12px',
+  borderRadius: 6,
+  border: '1px solid #e2e8f0',
+  fontSize: 13,
+  cursor: 'pointer',
+  fontWeight: 500,
+}
+
+const popupOverlay: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(15, 23, 42, 0.35)',
+  zIndex: 1000,
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'center',
+  paddingTop: 80,
+}
+
+const popupBox: React.CSSProperties = {
+  background: '#fff',
+  borderRadius: 12,
+  padding: 24,
+  boxShadow: '0 8px 32px rgba(15,23,42,0.18)',
+  minWidth: 360,
+  maxWidth: '90vw',
 }
