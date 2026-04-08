@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
-import interactionPlugin from '@fullcalendar/interaction'
 import ruLocale from '@fullcalendar/core/locales/ru'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns'
@@ -85,7 +84,7 @@ export function CalendarPage() {
     queryKey: ['projects-unconfirmed'],
     queryFn: () =>
       api.get('/projects').then((r) =>
-        (r.data as Project[]).filter((p) => !p.date)
+        (r.data as Project[]).filter((p) => !p.date && p.source !== 'separator')
       ),
   })
 
@@ -176,7 +175,7 @@ export function CalendarPage() {
             <div>
               <FullCalendar
                 ref={calendarRef}
-                plugins={[dayGridPlugin, interactionPlugin]}
+                plugins={[dayGridPlugin]}
                 initialView="dayGridMonth"
                 locale={ruLocale}
                 firstDay={1}

@@ -39,14 +39,18 @@ export async function syncRoutes(app: FastifyInstance) {
   // POST /sync/reset — удалить все импортированные данные
   app.post('/reset', { preHandler: requireRole('admin') }, async (_request, reply) => {
     // Удаляем в нужном порядке из-за foreign keys
+    // source: 'separator' не знает устаревший Prisma-клиент — используем raw SQL
     const shifts   = await prisma.shiftEntry.deleteMany({ where: { source: 'matrix' } })
     const registry = await prisma.matrixRegistry.deleteMany({})
-    const projects = await prisma.project.deleteMany({ where: { source: { in: ['projects_table', 'separator'] } } })
+    const result   = await prisma.$queryRawUnsafe<{ count: bigint }[]>(
+      `DELETE FROM projects WHERE source IN ('projects_table'::"ProjectSource", 'separator'::"ProjectSource") RETURNING count(*) OVER () as count`
+    )
+    const projectsCount = Number(result[0]?.count ?? 0)
     return reply.send({
       deleted: {
         shiftEntries: shifts.count,
         registryEntries: registry.count,
-        projects: projects.count,
+        projects: projectsCount,
       },
     })
   })

@@ -6,16 +6,16 @@
 
 ## 🔴 Баги (исправить в первую очередь)
 
-- [ ] **Сепараторы попадают в панель "Без даты"** — `CalendarPage.tsx:78` — запрос `GET /projects` без фильтра на `source`, нужно добавить `.filter(p => p.source !== 'separator')` на фронте
-- [ ] **`GET /projects` возвращает сепараторы** — `routes/projects.ts:46` — добавить `source: { not: 'separator' }` в WHERE, сепараторы нужны только на вкладке Таблицы
-- [ ] **`POST /sync/reset` падает** — `routes/sync.ts:44` — `source: { in: ['projects_table', 'separator'] }` не работает в устаревшем Prisma-клиенте (нет `'separator'`), заменить на `$executeRawUnsafe`
+- [x] **Сепараторы попадают в панель "Без даты"** — `CalendarPage.tsx:78` — добавлен фильтр `p.source !== 'separator'`
+- [x] **`GET /projects` возвращает сепараторы** — `routes/projects.ts:46` — добавлен `NOT: { source: 'separator' }` в WHERE
+- [x] **`POST /sync/reset` падает** — `routes/sync.ts:44` — заменено на `$queryRawUnsafe` с прямым SQL
 
 ---
 
 ## 🟡 Технический долг
 
-- [ ] **Мёртвый импорт `interactionPlugin`** — `CalendarPage.tsx:4` — импортируется и передаётся в `plugins[]`, но никакой интерактивности не используется (`selectable`, `editable` нет), убрать
-- [ ] **Нет `onDelete: SetNull` на `ShiftEntry.confirmedBy`** — `schema.prisma:221` — при удалении пользователя, который подтверждал смены, будет FK constraint error; добавить `onDelete: SetNull` и сделать миграцию
+- [x] **Мёртвый импорт `interactionPlugin`** — `CalendarPage.tsx` — удалён импорт и из `plugins[]`
+- [x] **Нет `onDelete: SetNull` на `ShiftEntry.confirmedBy`** — `schema.prisma` — добавлено в схему, применено через `ALTER TABLE` напрямую в БД
 
 ---
 
