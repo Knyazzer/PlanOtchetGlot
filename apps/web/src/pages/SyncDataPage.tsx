@@ -190,23 +190,38 @@ function ProjectsTable({ projects, loading, sheetUrl }: { projects: Project[]; l
     { key: 'status',   label: 'A Статус',  values: opts.status   },
     { key: 'format',   label: 'I Формат',  values: opts.format   },
     { key: 'location', label: 'J Локация', values: opts.location },
+    { key: 'matrixId', label: 'K Матрица', values: ['Есть ID', 'Нет ID'] },
   ]
 
   const totalSelected = Object.values(filters).reduce((s, arr) => s + arr.length, 0)
   const hasFilters = totalSelected > 0
 
   const rows = useMemo(() => {
+    const statusSel   = filters.status   ?? []
+    const formatSel   = filters.format   ?? []
+    const locationSel = filters.location ?? []
+    const matrixIdSel = filters.matrixId ?? []
+    const hasOrFilters = statusSel.length > 0 || formatSel.length > 0 || locationSel.length > 0
+
     return projects.filter((p) => {
       if (p.source === 'separator') return !hasFilters
-      if (!hasFilters) return true
-      // OR: строка видна если хоть одно выбранное значение совпадает
-      const statusSel = filters.status ?? []
-      const formatSel = filters.format ?? []
-      const locationSel = filters.location ?? []
-      if (statusSel.length && statusSel.includes(STATUS_LABELS[p.status] ?? p.status)) return true
-      if (formatSel.length && formatSel.includes(p.format ?? '')) return true
-      if (locationSel.length && locationSel.includes(p.location ?? '')) return true
-      return false
+      // 1. OR по статусу / формату / локации
+      if (hasOrFilters) {
+        const orMatch =
+          (statusSel.length   && statusSel.includes(STATUS_LABELS[p.status] ?? p.status)) ||
+          (formatSel.length   && formatSel.includes(p.format ?? '')) ||
+          (locationSel.length && locationSel.includes(p.location ?? ''))
+        if (!orMatch) return false
+      }
+      // 2. AND по наличию ID матрицы
+      if (matrixIdSel.length) {
+        const hasId = !!p.sheetMatrixId
+        const matrixMatch =
+          (matrixIdSel.includes('Есть ID') && hasId) ||
+          (matrixIdSel.includes('Нет ID')  && !hasId)
+        if (!matrixMatch) return false
+      }
+      return true
     })
   }, [projects, filters, hasFilters])
 
