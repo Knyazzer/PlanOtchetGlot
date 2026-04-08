@@ -38,7 +38,9 @@
       "Bash(pnpm --filter @tv-shifts/web build)",
       "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" pnpm db:migrate)",
       "Bash(npx kill-port:*)",
-      "Bash(pnpm --filter @tv-shifts/web lint)"
+      "Bash(pnpm --filter @tv-shifts/web lint)",
+      "Bash(grep -n \"requireRole\\\\|authenticate\" /c/scripts/PlanOtchetGlot/apps/api/src/routes/*.ts)",
+      "Bash(grep -n \"query.role\\\\|query.status\\\\|query.userId\" /c/scripts/PlanOtchetGlot/apps/api/src/routes/*.ts)"
     ]
   }
 }
