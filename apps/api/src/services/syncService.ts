@@ -138,7 +138,7 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
   // A(0)=Статус B(1)=Клиент C(2)=Название D(3)=Исп.продюсер E(4)=Лайн-продюсер
   // F(5)=Аккаунт G(6)=Дата H(7)=Время I(8)=Формат J(9)=Локация K(10)=№ по матрице L(11)=Постпродакшн
 
-  console.log(`[sync] Projects: всего строк (включая заголовок): ${rows.length}`)
+
   // Диагностика первых 15 строк — показываем A, B, C чтобы понять структуру
   for (let di = 1; di <= Math.min(15, rows.length - 1); di++) {
     const dc = rows[di].values ?? []
@@ -250,24 +250,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
   let upserted = 0
   const errors: string[] = []
 
-  console.log(`[sync] Registry: всего строк: ${rowData.length}`)
-  // Полный дамп первых 5 строк данных (индексы 2-6)
-  for (let di = 2; di <= Math.min(6, rowData.length - 1); di++) {
-    const dc = rowData[di].values ?? []
-    const rowSummary = dc.map((c, idx) => {
-      const uv = c?.userEnteredValue
-      const ev = c?.effectiveValue
-      const hl = c?.hyperlink
-      const tfr = c?.textFormatRuns
-      const fv = (c as any)?.formattedValue
-      return `col${idx}:{uv=${JSON.stringify(uv)},ev=${JSON.stringify(ev)},fv=${JSON.stringify(fv)},hl=${hl},tfr=${JSON.stringify(tfr)}}`
-    }).join(' | ')
-    console.log(`[sync] Registry RAW row ${di + 1}: ${rowSummary || '(no cells)'}`)
-    // Отдельный детальный дамп колонки B (index 1)
-    if (dc[1]) {
-      console.log(`[sync] Registry RAW row ${di + 1} col B FULL:`, JSON.stringify(dc[1], null, 2))
-    }
-  }
+
 
   // Строки 1-2 (индексы 0-1) — заголовки, пропускаем
   // Колонка D (индекс 3) — игнорируем
