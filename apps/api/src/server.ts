@@ -18,6 +18,7 @@ import { syncRoutes } from './routes/sync'
 import { changeLogsRoutes } from './routes/changeLogs'
 import { analyticsRoutes } from './routes/analytics'
 import { runFullSync } from './services/syncService'
+import { prisma } from '@tv-shifts/db'
 
 const app = Fastify({ logger: true })
 
@@ -56,6 +57,9 @@ async function main() {
   await app.register(syncRoutes, { prefix: '/sync' })
   await app.register(changeLogsRoutes, { prefix: '/change-logs' })
   await app.register(analyticsRoutes, { prefix: '/analytics' })
+
+  // Удалить все логи синхронизации при старте (старые данные неактуальны)
+  await prisma.syncLog.deleteMany({})
 
   const port = Number(process.env.PORT ?? 4000)
   await app.listen({ port, host: '0.0.0.0' })

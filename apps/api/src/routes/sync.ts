@@ -42,10 +42,10 @@ export async function syncRoutes(app: FastifyInstance) {
     // source: 'separator' не знает устаревший Prisma-клиент — используем raw SQL
     const shifts   = await prisma.shiftEntry.deleteMany({ where: { source: 'matrix' } })
     const registry = await prisma.matrixRegistry.deleteMany({})
-    const result   = await prisma.$queryRawUnsafe<{ count: bigint }[]>(
-      `DELETE FROM projects WHERE source IN ('projects_table'::"ProjectSource", 'separator'::"ProjectSource") RETURNING count(*) OVER () as count`
+    const result   = await prisma.$queryRawUnsafe<{ id: string }[]>(
+      `DELETE FROM projects WHERE source IN ('projects_table'::"ProjectSource", 'separator'::"ProjectSource") RETURNING id`
     )
-    const projectsCount = Number(result[0]?.count ?? 0)
+    const projectsCount = result.length
     return reply.send({
       deleted: {
         shiftEntries: shifts.count,

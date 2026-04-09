@@ -326,8 +326,12 @@ function SyncButton() {
   const { data: logs = [] } = useQuery<SyncLog[]>({
     queryKey: ['sync-logs'],
     queryFn: () => api.get('/sync/logs', { params: { limit: 20 } }).then((r) => r.data),
-    enabled: showLogs,
-    refetchInterval: justTriggered ? 3000 : false,
+    enabled: showLogs || justTriggered,
+    refetchInterval: (query) => {
+      const data = query.state.data as SyncLog[] | undefined
+      const hasRunning = (data ?? []).some((l) => l.status === 'running')
+      return hasRunning || justTriggered ? 2000 : false
+    },
   })
 
   const trigger = useMutation({
@@ -335,18 +339,27 @@ function SyncButton() {
     onSuccess: () => {
       setJustTriggered(true)
       setShowLogs(true)
-      setTimeout(() => {
-        setJustTriggered(false)
-        qc.invalidateQueries({ queryKey: ['sync-logs'] })
-        qc.invalidateQueries({ queryKey: ['projects'] })
-        qc.invalidateQueries({ queryKey: ['projects-unconfirmed'] })
-      }, 15000)
+      qc.invalidateQueries({ queryKey: ['sync-logs'] })
     },
   })
 
+  // Когда все логи завершились — сбрасываем флаг и обновляем данные страниц
+  useEffect(() => {
+    const hasRunning = logs.some((l) => l.status === 'running')
+    if (justTriggered && !hasRunning && logs.length > 0) {
+      setJustTriggered(false)
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      qc.invalidateQueries({ queryKey: ['projects-sync'] })
+      qc.invalidateQueries({ queryKey: ['sync-registry'] })
+    }
+  }, [logs, justTriggered, qc])
+
+  // Только проекты и реестр (без отдельных матриц)
+  const displayLogs = logs.filter((l) => l.type === 'projects' || l.type === 'registry')
+
   // Последний завершённый лог
-  const lastDone = logs.find((l) => l.status !== 'running' && l.type === 'projects')
-  const isRunning = logs.some((l) => l.status === 'running') || trigger.isPending
+  const lastDone = displayLogs.find((l) => l.status !== 'running' && l.type === 'projects')
+  const isRunning = logs.some((l) => l.status === 'running') || trigger.isPending || justTriggered
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -430,12 +443,12 @@ function SyncButton() {
                 <span>⟳</span> Синхронизация выполняется...
               </div>
             )}
-            {logs.length === 0 && !isRunning && (
+            {displayLogs.length === 0 && !isRunning && (
               <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 15 }}>
                 История пуста
               </div>
             )}
-            {logs.map((log) => (
+            {displayLogs.map((log) => (
               <div key={log.id} style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -450,7 +463,7 @@ function SyncButton() {
                       {log.status === 'success' ? '✓ OK' : log.status === 'error' ? '✗ Ошибка' : '⟳ ...'}
                     </span>
                     <span style={{ fontSize: 14, color: '#374151' }}>
-                      {log.type === 'projects' ? 'Проекты' : log.type === 'registry' ? 'Реестр' : `Матрица ${log.targetId ?? ''}`}
+                      {log.type === 'projects' ? 'Таблица проектов' : 'Реестр матриц'}
                     </span>
                     {log.changesCount > 0 && (
                       <span style={{ fontSize: 11, color: '#64748b' }}>+{log.changesCount}</span>
