@@ -38,7 +38,7 @@ Write-Host "      Gotovo" -ForegroundColor DarkGray
 # -- 3b. Prisma generate --
 Write-Host "      Generiryu Prisma client..." -ForegroundColor DarkGray
 Set-Location $dbDir
-npx prisma generate
+& "$projectRoot\node_modules\.pnpm\node_modules\.bin\prisma" generate
 Set-Location $projectRoot
 
 # -- 4. Sozdat .env --
@@ -72,7 +72,7 @@ Start-Sleep -Seconds 10
 Write-Host "      Primenyayu migracii..." -ForegroundColor DarkGray
 $env:DATABASE_URL = $dbUrl
 Set-Location $dbDir
-npx prisma migrate deploy
+& "$projectRoot\node_modules\.pnpm\node_modules\.bin\prisma" migrate deploy
 
 Write-Host "      Zapolnyayu testovymi dannymi..." -ForegroundColor DarkGray
 npx ts-node --compiler-options '{\"lib\":[\"ES2020\",\"DOM\"],\"module\":\"commonjs\",\"esModuleInterop\":true,\"skipLibCheck\":true}' prisma/seed.ts

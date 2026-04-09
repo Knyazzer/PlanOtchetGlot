@@ -101,9 +101,12 @@ function usePersistedFilters(storageKey: string) {
   const [state, setRaw] = useState<Record<string, string[]>>(() => {
     try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s) : {} } catch { return {} }
   })
-  function setState(next: Record<string, string[]>) {
-    setRaw(next)
-    try { localStorage.setItem(storageKey, JSON.stringify(next)) } catch {}
+  function setState(next: Record<string, string[]> | ((prev: Record<string, string[]>) => Record<string, string[]>)) {
+    setRaw((prev) => {
+      const resolved = typeof next === 'function' ? next(prev) : next
+      try { localStorage.setItem(storageKey, JSON.stringify(resolved)) } catch {}
+      return resolved
+    })
   }
   return [state, setState] as const
 }
@@ -379,7 +382,7 @@ function ProjectsTable({
   primaryFilters: Record<string, string[]>
   hiddenCols: Set<string>
 }) {
-  const [colFilters, setColFilters] = useState<Record<string, string[]>>({})
+  const [colFilters, setColFilters] = usePersistedFilters('sync-col-proj')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -577,7 +580,7 @@ function RegistryTable({
   primaryFilters: Record<string, string[]>
   hiddenCols: Set<string>
 }) {
-  const [colFilters, setColFilters] = useState<Record<string, string[]>>({})
+  const [colFilters, setColFilters] = usePersistedFilters('sync-col-reg')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -756,8 +759,8 @@ export function SyncDataPage() {
   const [regHidden, toggleRegCol] = usePersistedHidden('sync-hidden-reg')
 
   const { data: allProjects = [], isLoading: projLoading } = useQuery<Project[]>({
-    queryKey: ['projects-sync'],
-    queryFn: () => api.get('/projects?withSeparators=true').then((r) => r.data),
+    queryKey: ['status-rows-sync'],
+    queryFn: () => api.get('/status-rows?withSeparators=true').then((r) => r.data),
   })
 
   const { data: sheetUrls } = useQuery<{ projectsSheetUrl: string | null; registrySheetUrl: string | null }>({
@@ -776,7 +779,7 @@ export function SyncDataPage() {
     onSuccess: (res) => {
       const d = res.data.deleted
       setResetResult(`Удалено: ${d.projects} проектов, ${d.registryEntries} записей реестра, ${d.shiftEntries} смен`)
-      qc.invalidateQueries({ queryKey: ['projects-sync'] })
+      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
       qc.invalidateQueries({ queryKey: ['sync-registry'] })
     },
   })

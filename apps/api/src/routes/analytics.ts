@@ -17,7 +17,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
       },
       include: {
         user: { select: { id: true, fullName: true, tabNumber: true } },
-        project: { select: { id: true, name: true, client: true } },
+        statusRow: { select: { id: true, name: true, client: true } },
       },
       orderBy: [{ userId: 'asc' }, { date: 'asc' }],
     })
@@ -46,7 +46,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
       entry.total++
       if (shift.confirmed) entry.confirmed++
       entry.byType[shift.shiftType] = (entry.byType[shift.shiftType] ?? 0) + 1
-      entry.projects.add(shift.project.id)
+      entry.projects.add(shift.statusRow.id)
     }
 
     return [...byUser.values()].map((e) => ({
@@ -62,7 +62,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
     const dateFrom = query.dateFrom ? new Date(query.dateFrom) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
     const dateTo = query.dateTo ? new Date(query.dateTo) : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59)
 
-    return prisma.project.findMany({
+    return prisma.statusRow.findMany({
       where: {
         date: { gte: dateFrom, lte: dateTo },
       },

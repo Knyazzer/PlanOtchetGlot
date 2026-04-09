@@ -37,7 +37,7 @@ export async function shiftsRoutes(app: FastifyInstance) {
       },
       include: {
         user: { select: { id: true, fullName: true } },
-        project: { select: { id: true, name: true, client: true } },
+        statusRow: { select: { id: true, name: true, client: true } },
       },
       orderBy: { date: 'asc' },
     })

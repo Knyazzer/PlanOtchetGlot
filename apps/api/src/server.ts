@@ -10,7 +10,8 @@ import jwt from '@fastify/jwt'
 import cron from 'node-cron'
 import { authRoutes } from './routes/auth'
 import { usersRoutes } from './routes/users'
-import { projectsRoutes } from './routes/projects'
+import { statusRowsRoutes } from './routes/statusRows'
+import { dealsRoutes } from './routes/deals'
 import { shiftsRoutes } from './routes/shifts'
 import { notificationsRoutes } from './routes/notifications'
 import { tasksRoutes } from './routes/tasks'
@@ -50,7 +51,8 @@ async function main() {
   // Routes
   await app.register(authRoutes, { prefix: '/auth' })
   await app.register(usersRoutes, { prefix: '/users' })
-  await app.register(projectsRoutes, { prefix: '/projects' })
+  await app.register(statusRowsRoutes, { prefix: '/status-rows' })
+  await app.register(dealsRoutes, { prefix: '/deals' })
   await app.register(shiftsRoutes, { prefix: '/shifts' })
   await app.register(notificationsRoutes, { prefix: '/notifications' })
   await app.register(tasksRoutes, { prefix: '/tasks' })

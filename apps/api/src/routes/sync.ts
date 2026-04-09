@@ -43,7 +43,7 @@ export async function syncRoutes(app: FastifyInstance) {
     const shifts   = await prisma.shiftEntry.deleteMany({ where: { source: 'matrix' } })
     const registry = await prisma.matrixRegistry.deleteMany({})
     const result   = await prisma.$queryRawUnsafe<{ id: string }[]>(
-      `DELETE FROM projects WHERE source IN ('projects_table'::"ProjectSource", 'separator'::"ProjectSource") RETURNING id`
+      `DELETE FROM status_rows WHERE source IN ('projects_table'::"StatusRowSource", 'separator'::"StatusRowSource") RETURNING id`
     )
     const projectsCount = result.length
     return reply.send({

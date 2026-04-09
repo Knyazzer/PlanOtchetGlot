@@ -74,16 +74,16 @@ export function CalendarPage() {
   const dateTo = format(endOfMonth(addMonths(currentDate, 1)), 'yyyy-MM-dd')
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
-    queryKey: ['projects', dateFrom, dateTo],
+    queryKey: ['status-rows', dateFrom, dateTo],
     queryFn: () =>
-      api.get('/projects', { params: { dateFrom, dateTo } }).then((r) => r.data),
+      api.get('/status-rows', { params: { dateFrom, dateTo } }).then((r) => r.data),
   })
 
   // Проекты без даты — в правую панель
   const { data: unconfirmedProjects = [] } = useQuery<Project[]>({
-    queryKey: ['projects-unconfirmed'],
+    queryKey: ['status-rows-unconfirmed'],
     queryFn: () =>
-      api.get('/projects').then((r) =>
+      api.get('/status-rows').then((r) =>
         (r.data as Project[]).filter((p) => !p.date && p.source !== 'separator')
       ),
   })
@@ -260,8 +260,8 @@ export function CalendarPage() {
           onClose={() => setSelectedProject(null)}
           onDeleted={() => {
             setSelectedProject(null)
-            qc.invalidateQueries({ queryKey: ['projects'] })
-            qc.invalidateQueries({ queryKey: ['projects-unconfirmed'] })
+            qc.invalidateQueries({ queryKey: ['status-rows'] })
+            qc.invalidateQueries({ queryKey: ['status-rows-unconfirmed'] })
           }}
           canEdit={isAdmin}
         />
@@ -287,7 +287,7 @@ function ProjectModal({
   const [editing, setEditing] = useState(false)
 
   const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/projects/${project.id}`),
+    mutationFn: () => api.delete(`/status-rows/${project.id}`),
     onSuccess: onDeleted,
   })
 
@@ -516,7 +516,7 @@ function EditProjectModal({
 
   const save = useMutation({
     mutationFn: () =>
-      api.patch(`/projects/${project.id}`, {
+      api.patch(`/status-rows/${project.id}`, {
         name: form.name,
         client: form.client || null,
         execProducer: form.execProducer || null,
@@ -536,8 +536,8 @@ function EditProjectModal({
           })),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['projects'] })
-      qc.invalidateQueries({ queryKey: ['projects-unconfirmed'] })
+      qc.invalidateQueries({ queryKey: ['status-rows'] })
+      qc.invalidateQueries({ queryKey: ['status-rows-unconfirmed'] })
       onSaved()
     },
     onError: (e: any) => setError(e.response?.data?.error ?? 'Ошибка сохранения'),

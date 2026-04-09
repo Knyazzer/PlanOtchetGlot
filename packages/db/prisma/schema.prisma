@@ -15,7 +15,7 @@ enum Role {
   producer
 }
 
-enum ProjectStatus {
+enum StatusRowStatus {
   request
   negotiation
   preproduction
@@ -27,7 +27,7 @@ enum ProjectStatus {
   manual
 }
 
-enum ProjectSource {
+enum StatusRowSource {
   projects_table
   manual
   separator
@@ -113,36 +113,37 @@ model User {
   @@map("users")
 }
 
-model Project {
-  id              String        @id @default(uuid())
+model StatusRow {
+  id              String          @id @default(uuid())
   client          String?
   name            String
-  execProducer    String?       @map("exec_producer")
-  lineProducer    String?       @map("line_producer")
-  accountManager  String?       @map("account_manager")
+  execProducer    String?         @map("exec_producer")
+  lineProducer    String?         @map("line_producer")
+  accountManager  String?         @map("account_manager")
   date            DateTime?
-  dateConfirmed   Boolean       @default(false) @map("date_confirmed")
-  dateApproximate String?       @map("date_approximate")
+  dateConfirmed   Boolean         @default(false) @map("date_confirmed")
+  dateApproximate String?         @map("date_approximate")
   time            String?
   format          String?
   location        String?
-  status          ProjectStatus @default(request)
-  source          ProjectSource @default(projects_table)
-  matrixUrl       String?       @map("matrix_url")
-  sheetMatrixId   String?       @map("sheet_matrix_id")
+  status          StatusRowStatus @default(request)
+  source          StatusRowSource @default(projects_table)
+  matrixUrl       String?         @map("matrix_url")
+  sheetMatrixId   String?         @map("sheet_matrix_id")
   notes           String?
-  uncertainFields String[]      @default([]) @map("uncertain_fields")
-  googleRowIndex  Int?          @map("google_row_index")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  uncertainFields String[]        @default([]) @map("uncertain_fields")
+  googleRowIndex  Int?            @map("google_row_index")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
 
   matrixRegistry  MatrixRegistry?
   assignments     ProjectAssignment[]
   shiftEntries    ShiftEntry[]
   days            ProjectDay[]
+  dealStatusRows  DealStatusRow[]
 
   @@index([date])
-  @@map("projects")
+  @@map("status_rows")
 }
 
 model ProjectDay {
@@ -153,7 +154,7 @@ model ProjectDay {
   startTime String?  @map("start_time")
   createdAt DateTime @default(now()) @map("created_at")
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  statusRow StatusRow @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_days")
 }
@@ -176,7 +177,8 @@ model MatrixRegistry {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  project Project? @relation(fields: [projectId], references: [id])
+  statusRow    StatusRow?     @relation(fields: [projectId], references: [id])
+  dealMatrices DealMatrix[]
 
   @@map("matrix_registry")
 }
@@ -194,7 +196,7 @@ model ProjectAssignment {
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
 
-  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  statusRow    StatusRow    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user         User?        @relation(fields: [userId], references: [id])
   shiftEntries ShiftEntry[]
 
@@ -217,7 +219,7 @@ model ShiftEntry {
 
   assignment   ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   user         User              @relation("UserShifts", fields: [userId], references: [id])
-  project      Project           @relation(fields: [projectId], references: [id])
+  statusRow    StatusRow         @relation(fields: [projectId], references: [id])
   confirmedByUser User?          @relation("ConfirmedByUser", fields: [confirmedBy], references: [id], onDelete: SetNull)
 
   @@index([userId, date])
@@ -304,6 +306,48 @@ model ChangeLog {
   user User? @relation(fields: [changedBy], references: [id])
 
   @@map("change_logs")
+}
+
+enum DealStatus {
+  preliminary
+  in_progress
+  completed
+}
+
+model Deal {
+  id        String     @id @default(uuid())
+  name      String?
+  client    String?
+  status    DealStatus @default(preliminary)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  statusRows   DealStatusRow[]
+  matrices     DealMatrix[]
+
+  @@map("deals")
+}
+
+model DealStatusRow {
+  dealId      String @map("deal_id")
+  statusRowId String @map("status_row_id")
+
+  deal      Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  statusRow StatusRow @relation(fields: [statusRowId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, statusRowId])
+  @@map("deal_status_rows")
+}
+
+model DealMatrix {
+  dealId   String @map("deal_id")
+  matrixId String @map("matrix_id")
+
+  deal   Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, matrixId])
+  @@map("deal_matrices")
 }
 
 model SyncLog {

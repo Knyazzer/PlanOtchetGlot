@@ -164,18 +164,18 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
       const separatorText = cellStr(cells[0])
       if (separatorText) {
         const existing = await prisma.$queryRawUnsafe<{ id: string }[]>(
-          `SELECT id FROM projects WHERE google_row_index = $1 LIMIT 1`,
+          `SELECT id FROM status_rows WHERE google_row_index = $1 LIMIT 1`,
           googleRowIndex,
         )
         if (existing.length > 0) {
           await prisma.$executeRawUnsafe(
-            `UPDATE projects SET name = $1, updated_at = NOW() WHERE id = $2`,
+            `UPDATE status_rows SET name = $1, updated_at = NOW() WHERE id = $2`,
             separatorText, existing[0].id,
           )
         } else {
           await prisma.$executeRawUnsafe(
-            `INSERT INTO projects (id, name, source, google_row_index, status, date_confirmed, created_at, updated_at, uncertain_fields)
-             VALUES ($1, $2, 'separator'::"ProjectSource", $3, 'request'::"ProjectStatus", false, NOW(), NOW(), ARRAY[]::text[])`,
+            `INSERT INTO status_rows (id, name, source, google_row_index, status, date_confirmed, created_at, updated_at, uncertain_fields)
+             VALUES ($1, $2, 'separator'::"StatusRowSource", $3, 'request'::"StatusRowStatus", false, NOW(), NOW(), ARRAY[]::text[])`,
             randomUUID(), separatorText, googleRowIndex,
           )
         }
@@ -230,11 +230,11 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     }
 
     try {
-      const existing = await prisma.project.findFirst({ where: { googleRowIndex } })
+      const existing = await prisma.statusRow.findFirst({ where: { googleRowIndex } })
       if (existing) {
-        await prisma.project.update({ where: { id: existing.id }, data })
+        await prisma.statusRow.update({ where: { id: existing.id }, data })
       } else {
-        await prisma.project.create({ data: { ...data, source: 'projects_table', googleRowIndex } })
+        await prisma.statusRow.create({ data: { ...data, source: 'projects_table', googleRowIndex } })
       }
       upserted++
     } catch (e: any) {
@@ -320,7 +320,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 
     // Привязка к проекту по ID матрицы (sheetMatrixId в таблице проектов = matrixId здесь)
     let projectId: string | null = null
-    const byMatrixId = await prisma.project.findFirst({
+    const byMatrixId = await prisma.statusRow.findFirst({
       where: { sheetMatrixId: matrixId } as any,
     })
     if (byMatrixId) {
@@ -328,7 +328,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     } else if (sheetUrl) {
       const sheetSpreadsheetId = extractSpreadsheetId(sheetUrl)
       if (sheetSpreadsheetId) {
-        const linked = await prisma.project.findFirst({
+        const linked = await prisma.statusRow.findFirst({
           where: { matrixUrl: { contains: sheetSpreadsheetId } },
         })
         if (linked) projectId = linked.id
@@ -387,7 +387,7 @@ async function syncMatrix(
 
   // If not linked yet, try matching by spreadsheet ID in project.matrixUrl
   if (!projectId) {
-    const linked = await prisma.project.findFirst({
+    const linked = await prisma.statusRow.findFirst({
       where: { matrixUrl: { contains: spreadsheetId } },
     })
     projectId = linked?.id ?? null
@@ -668,8 +668,8 @@ export async function runFullSync(): Promise<SyncResult> {
     await delay(500) // between matrices
   }
 
-  // ── Notification: no_matrix for projects without a linked matrix ───────
-  const projectsWithoutMatrix = await prisma.project.findMany({
+  // ── Notification: no_matrix for status rows without a linked matrix ───
+  const rowsWithoutMatrix = await prisma.statusRow.findMany({
     where: {
       source: 'projects_table',
       matrixUrl: null,
@@ -677,17 +677,17 @@ export async function runFullSync(): Promise<SyncResult> {
     },
   })
 
-  for (const project of projectsWithoutMatrix) {
+  for (const row of rowsWithoutMatrix) {
     const exists = await prisma.notification.findFirst({
-      where: { type: 'no_matrix', entityId: project.id },
+      where: { type: 'no_matrix', entityId: row.id },
     })
     if (!exists) {
       await prisma.notification.create({
         data: {
           type: 'no_matrix',
-          entityType: 'project',
-          entityId: project.id,
-          message: `У проекта «${project.name}» не найдена матрица`,
+          entityType: 'status_row',
+          entityId: row.id,
+          message: `У строки «${row.name}» не найдена матрица`,
           userId: null,
         },
       })

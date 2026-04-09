@@ -11,15 +11,20 @@ import { TasksPage } from '../pages/TasksPage'
 import { ProfilePage } from '../pages/ProfilePage'
 import { AnalyticsPage } from '../pages/AnalyticsPage'
 import { SyncDataPage } from '../pages/SyncDataPage'
+import { DealsPage } from '../pages/DealsPage'
 
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals'
 
 export function AppShell() {
   const user = useCurrentUser()
   const isAdmin = useIsAdmin()
   const isProducer = useIsProducer()
   const setUser = useAuthStore((s) => s.setUser)
-  const [page, setPage] = useState<Page>('calendar')
+  const [page, setPage] = useState<Page>(() => {
+    const saved = localStorage.getItem('app-page') as Page | null
+    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals']
+    return saved && valid.includes(saved) ? saved : 'calendar'
+  })
 
   async function handleLogout() {
     await api.post('/auth/logout')
@@ -32,6 +37,7 @@ export function AppShell() {
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
     { id: 'users', label: 'Сотрудники', adminOnly: true },
     { id: 'syncdata', label: 'Таблицы', adminOnly: true },
+    { id: 'deals', label: 'Проекты' },
     { id: 'profile', label: 'Профиль' },
   ]
 
@@ -56,7 +62,7 @@ export function AppShell() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setPage(item.id)}
+                  onClick={() => { setPage(item.id); localStorage.setItem('app-page', item.id) }}
                   style={{
                     background: page === item.id ? 'rgba(255,255,255,0.15)' : 'transparent',
                     border: 'none',
@@ -113,6 +119,7 @@ export function AppShell() {
         {page === 'analytics' && (isAdmin || isProducer) && <AnalyticsPage />}
         {page === 'users' && isAdmin && <UsersPage />}
         {page === 'syncdata' && isAdmin && <SyncDataPage />}
+        {page === 'deals' && <DealsPage />}
         {page === 'profile' && <ProfilePage />}
       </main>
     </div>
@@ -348,8 +355,8 @@ function SyncButton() {
     const hasRunning = logs.some((l) => l.status === 'running')
     if (justTriggered && !hasRunning && logs.length > 0) {
       setJustTriggered(false)
-      qc.invalidateQueries({ queryKey: ['projects'] })
-      qc.invalidateQueries({ queryKey: ['projects-sync'] })
+      qc.invalidateQueries({ queryKey: ['status-rows'] })
+      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
       qc.invalidateQueries({ queryKey: ['sync-registry'] })
     }
   }, [logs, justTriggered, qc])

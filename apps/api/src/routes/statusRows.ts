@@ -11,7 +11,7 @@ const daySchema = z.object({
   startTime: z.string().nullable().optional(),
 })
 
-const createProjectSchema = z.object({
+const createStatusRowSchema = z.object({
   name: z.string().min(1),
   client: z.string().nullable().optional(),
   execProducer: z.string().nullable().optional(),
@@ -28,13 +28,13 @@ const createProjectSchema = z.object({
   days: z.array(daySchema).optional(),
 })
 
-const updateProjectSchema = createProjectSchema.partial().extend({
+const updateStatusRowSchema = createStatusRowSchema.partial().extend({
   status: z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   dateConfirmed: z.boolean().optional(),
 })
 
-export async function projectsRoutes(app: FastifyInstance) {
-  // GET /projects
+export async function statusRowsRoutes(app: FastifyInstance) {
+  // GET /status-rows
   app.get('/', { preHandler: authenticate }, async (request) => {
     const query = request.query as {
       dateFrom?: string
@@ -44,7 +44,7 @@ export async function projectsRoutes(app: FastifyInstance) {
       withSeparators?: string
     }
 
-    return prisma.project.findMany({
+    return prisma.statusRow.findMany({
       where: {
         ...(query.withSeparators !== 'true' && { NOT: { source: 'separator' as any } }),
         ...(query.dateFrom && { date: { gte: new Date(query.dateFrom) } }),
@@ -68,10 +68,10 @@ export async function projectsRoutes(app: FastifyInstance) {
     })
   })
 
-  // GET /projects/:id
+  // GET /status-rows/:id
   app.get('/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const project = await prisma.project.findUnique({
+    const row = await prisma.statusRow.findUnique({
       where: { id },
       include: {
         matrixRegistry: true,
@@ -84,33 +84,31 @@ export async function projectsRoutes(app: FastifyInstance) {
         days: { orderBy: { date: 'asc' } },
       },
     })
-    if (!project) return reply.code(404).send({ error: 'Project not found' })
-    return project
+    if (!row) return reply.code(404).send({ error: 'StatusRow not found' })
+    return row
   })
 
-  // POST /projects — ручное создание (admin only)
+  // POST /status-rows — ручное создание (admin only)
   app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
-    const body = createProjectSchema.safeParse(request.body)
+    const body = createStatusRowSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const { days, efirDate, zastroykDate, ...projectData } = body.data
+    const { days, efirDate, zastroykDate, ...rowData } = body.data
 
-    // Собираем дни: из efirDate/zastroykDate или из явного массива days
     const autoDays: { date: Date; type: 'efir' | 'zastroyka' }[] = []
     if (zastroykDate) autoDays.push({ date: new Date(zastroykDate), type: 'zastroyka' })
     if (efirDate)     autoDays.push({ date: new Date(efirDate), type: 'efir' })
     const allDays = autoDays.length > 0 ? autoDays : (days ?? []).map((d) => ({ date: new Date(d.date), type: d.type as 'efir' | 'zastroyka' }))
 
-    // project.date = наименьшая из дат (для сортировки и календаря)
     const earliestDate = allDays.length > 0
       ? allDays.reduce((min, d) => d.date < min ? d.date : min, allDays[0].date)
-      : projectData.date ? new Date(projectData.date) : undefined
+      : rowData.date ? new Date(rowData.date) : undefined
 
-    const project = await prisma.project.create({
+    const row = await prisma.statusRow.create({
       data: {
-        ...projectData,
+        ...rowData,
         date: earliestDate ?? undefined,
         status: 'manual',
         source: 'manual',
@@ -121,26 +119,25 @@ export async function projectsRoutes(app: FastifyInstance) {
       include: { days: { orderBy: { date: 'asc' } } },
     })
 
-    return reply.code(201).send(project)
+    return reply.code(201).send(row)
   })
 
-  // PATCH /projects/:id
+  // PATCH /status-rows/:id
   app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const me = request.user as { id: string }
-    const body = updateProjectSchema.safeParse(request.body)
+    const body = updateStatusRowSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const before = await prisma.project.findUnique({ where: { id } })
-    if (!before) return reply.code(404).send({ error: 'Project not found' })
+    const before = await prisma.statusRow.findUnique({ where: { id } })
+    if (!before) return reply.code(404).send({ error: 'StatusRow not found' })
 
-    const { days, ...projectFields } = body.data
-    const data: any = { ...projectFields }
+    const { days, ...rowFields } = body.data
+    const data: any = { ...rowFields }
     if (data.date) data.date = new Date(data.date)
 
-    // Если переданы дни — полностью заменяем (delete all + create new)
     if (days !== undefined) {
       await prisma.projectDay.deleteMany({ where: { projectId: id } })
       if (days.length > 0) {
@@ -155,25 +152,25 @@ export async function projectsRoutes(app: FastifyInstance) {
       }
     }
 
-    const project = await prisma.project.update({
+    const row = await prisma.statusRow.update({
       where: { id },
       data,
       include: { days: { orderBy: { date: 'asc' } } },
     })
 
-    await logChanges('project', id, before as any, projectFields as any, me.id)
+    await logChanges('status_row', id, before as any, rowFields as any, me.id)
 
-    return project
+    return row
   })
 
-  // DELETE /projects/:id
+  // DELETE /status-rows/:id
   app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    await prisma.project.delete({ where: { id } })
+    await prisma.statusRow.delete({ where: { id } })
     return { ok: true }
   })
 
-  // GET /projects/conflicts — найти конфликты (один сотрудник, два проекта в один день)
+  // GET /status-rows/conflicts
   app.get('/conflicts', { preHandler: authenticate }, async (request) => {
     const query = request.query as { dateFrom?: string; dateTo?: string }
 
@@ -184,12 +181,11 @@ export async function projectsRoutes(app: FastifyInstance) {
       },
       include: {
         user: { select: { id: true, fullName: true } },
-        project: { select: { id: true, name: true, client: true } },
+        statusRow: { select: { id: true, name: true, client: true } },
       },
       orderBy: [{ userId: 'asc' }, { date: 'asc' }],
     })
 
-    // Группируем по userId + date, ищем дубли
     const map = new Map<string, typeof shifts>()
     for (const shift of shifts) {
       const key = `${shift.userId}_${shift.date.toISOString().split('T')[0]}`
@@ -203,7 +199,7 @@ export async function projectsRoutes(app: FastifyInstance) {
         conflicts.push({
           user: entries[0].user,
           date: entries[0].date,
-          shifts: entries.map((e) => ({ shiftId: e.id, project: e.project, shiftType: e.shiftType })),
+          shifts: entries.map((e) => ({ shiftId: e.id, statusRow: e.statusRow, shiftType: e.shiftType })),
         })
       }
     }
