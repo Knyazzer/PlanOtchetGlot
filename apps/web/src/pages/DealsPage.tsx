@@ -124,6 +124,64 @@ function renderRegCell(col: ColDef, r: RegistryEntry) {
   }
 }
 
+// ─── Spacer computation (mirrors debug.html computePlacements) ────────────────
+//
+// Uses actual DOM-measured project row CYs and actual registry row height.
+// No assumptions about uniform row heights or equal thead sizes.
+//
+// targetCY for connected row     = avg CY of its connected project rows (DOM)
+// targetCY for first unconn row  = CY of first unconnected project row (DOM)
+// spacerPx = max(0, targetCY − regT0 − cursor − regRowH / 2)
+// cursor  += spacerPx + regRowH
+
+function computeRegPlacements(
+  orderedRegistry: RegistryEntry[],
+  orderedProjects: Project[],
+  matchPairs: Array<{ projId: string; regId: string }>,
+  projCYs: Map<string, number>,
+  regT0: number,
+  regRowH: number,
+): Array<{ id: string; spacerPx: number }> {
+  const allConnIndices = matchPairs
+    .map(mp => orderedProjects.findIndex(p => p.id === mp.projId))
+    .filter(i => i >= 0)
+  const maxConnProjIdx = allConnIndices.length > 0 ? Math.max(...allConnIndices) : -1
+  const firstUnconnProjId =
+    maxConnProjIdx >= 0 && maxConnProjIdx + 1 < orderedProjects.length
+      ? orderedProjects[maxConnProjIdx + 1].id
+      : null
+
+  let cursor = 0
+  let unconnStartUsed = false
+
+  return orderedRegistry.map(r => {
+    const connProjIds = matchPairs.filter(mp => mp.regId === r.id).map(mp => mp.projId)
+
+    if (connProjIds.length > 0) {
+      const cys = connProjIds.map(id => projCYs.get(id)).filter((y): y is number => y !== undefined)
+      if (cys.length > 0) {
+        const targetCY = cys.reduce((a, b) => a + b, 0) / cys.length
+        const spacerPx = Math.max(0, targetCY - regT0 - cursor - regRowH / 2)
+        cursor += spacerPx + regRowH
+        return { id: r.id, spacerPx }
+      }
+    }
+
+    if (!unconnStartUsed && firstUnconnProjId !== null) {
+      unconnStartUsed = true
+      const targetCY = projCYs.get(firstUnconnProjId)
+      const spacerPx = targetCY !== undefined
+        ? Math.max(0, targetCY - regT0 - cursor - regRowH / 2)
+        : 0
+      cursor += spacerPx + regRowH
+      return { id: r.id, spacerPx }
+    }
+
+    cursor += regRowH
+    return { id: r.id, spacerPx: 0 }
+  })
+}
+
 // ─── Client Block ─────────────────────────────────────────────────────────────
 
 function ClientBlock({ client, projects, registry }: {
@@ -132,15 +190,13 @@ function ClientBlock({ client, projects, registry }: {
   registry: RegistryEntry[]
 }) {
   const [expanded, setExpanded] = useState(false)
-  const tablesRef    = useRef<HTMLDivElement>(null)
-  const projTbodyRef = useRef<HTMLTableSectionElement | null>(null)
-  const regTbodyRef  = useRef<HTMLTableSectionElement | null>(null)
-  const projRowRefs  = useRef<Record<string, HTMLTableRowElement | null>>({})
-  const regRowRefs   = useRef<Record<string, HTMLTableRowElement | null>>({})
+  const tablesRef   = useRef<HTMLDivElement>(null)
+  const regTbodyRef = useRef<HTMLTableSectionElement | null>(null)
+  const projRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({})
+  const regRowRefs  = useRef<Record<string, HTMLTableRowElement | null>>({})
 
-  const [rowH, setRowH]               = useState(0)
-  const [regRowH, setRegRowH]         = useState(0)   // actual registry row height (may differ from rowH)
-  const [tbodyOffset, setTbodyOffset] = useState(0)
+  const [rowH, setRowH]                 = useState(0)
+  const [regPlacements, setRegPlacements] = useState<Array<{ id: string; spacerPx: number }>>([])
   const [groupLineData, setGroupLineData] = useState<GroupLine[]>([])
 
   // ── Connection map ────────────────────────────────────────────────────────
@@ -227,103 +283,43 @@ function ClientBlock({ client, projects, registry }: {
     return result
   }, [orderedProjects, registry])
 
-  // ── Registry row spacers ──────────────────────────────────────────────────
-  //
-  // Connected rows: centered at avgProjIndex * rowH from registry tbody top.
-  //
-  // Unconnected rows: pushed below the last connected project row, with a gap
-  // of half the total connected project span.
-  //   unconnectedStart = (maxConnIdx + 1) * rowH + connSpan / 2
-  //   connSpan = (maxConnIdx - minConnIdx + 1) * rowH
-
-  const regPlacements = useMemo(() => {
-    if (rowH === 0 || regRowH === 0) return orderedRegistry.map(r => ({ id: r.id, spacerPx: 0 }))
-    // tbodyOffset   = projT0 - regT0_initial: thead height difference between the two tables.
-    // rowH          = project row height (used to compute target CY positions).
-    // regRowH       = registry row height (used for cursor steps; may differ from rowH).
-    // heightDelta   = (rowH - regRowH) / 2: corrects spacer when rows have different heights.
-
-    // Pre-classify each registry row and compute the spacer it needs.
-    // Pass 1: collect per-row info (no mutation, no flags).
-    type RowInfo =
-      | { kind: 'connected'; avgIdx: number }
-      | { kind: 'unconnected' }
-
-    const info: RowInfo[] = orderedRegistry.map(r => {
-      const connIds = matchPairs.filter(mp => mp.regId === r.id).map(mp => mp.projId)
-      if (connIds.length === 0) return { kind: 'unconnected' }
-      const indices = connIds
-        .map(id => orderedProjects.findIndex(p => p.id === id))
-        .filter(i => i >= 0)
-      if (indices.length === 0) return { kind: 'unconnected' }
-      const avgIdx = indices.reduce((a, b) => a + b, 0) / indices.length
-      return { kind: 'connected', avgIdx }
-    })
-
-    // Actual max project row index among ALL connected rows (across all groups).
-    // Used to align unconnected registry rows with unconnected project rows.
-    const allConnProjIndices = matchPairs
-      .map(mp => orderedProjects.findIndex(p => p.id === mp.projId))
-      .filter(i => i >= 0)
-    const maxConnProjIdx = allConnProjIndices.length > 0 ? Math.max(...allConnProjIndices) : -1
-    // Top of first unconnected project row = (maxConnProjIdx + 1) * rowH from tbody
-    const unconnectedStart = maxConnProjIdx >= 0 ? (maxConnProjIdx + 1) * rowH : 0
-
-    // heightDelta: extra offset so that spacerPx + regRowH/2 lands at the same Y
-    // as avgIdx*rowH + rowH/2 (the project row center).
-    // When rowH == regRowH this is 0; otherwise corrects for the size difference.
-    const heightDelta = (rowH - regRowH) / 2
-
-    // Walk and assign spacers (cursor steps by regRowH, not rowH).
-    let cursor = 0
-    let unconnStartUsed = false
-
-    return orderedRegistry.map((r, i) => {
-      const row = info[i]
-
-      if (row.kind === 'connected') {
-        const spacerPx = Math.max(0, tbodyOffset + row.avgIdx * rowH + heightDelta - cursor)
-        cursor += spacerPx + regRowH
-        return { id: r.id, spacerPx }
-      }
-
-      // First unconnected row: jump cursor to unconnectedStart
-      if (!unconnStartUsed && maxConnProjIdx >= 0) {
-        unconnStartUsed = true
-        const spacerPx = Math.max(0, tbodyOffset + unconnectedStart + heightDelta - cursor)
-        cursor += spacerPx + regRowH
-        return { id: r.id, spacerPx }
-      }
-
-      cursor += regRowH
-      return { id: r.id, spacerPx: 0 }
-    })
-  }, [orderedRegistry, matchPairs, orderedProjects, rowH, regRowH, tbodyOffset])
-
   // ── Measurement effects ───────────────────────────────────────────────────
 
-  // Pass 1: measure rowH + tbodyOffset from first rendered project row.
-  // Runs when spacers are all 0 (rowH===0 → regPlacements returns all spacerPx:0),
-  // so regTbodyRef gives the "natural" tbody top before any spacers are applied.
-  // useLayoutEffect blocks paint → re-render with correct spacers before first paint.
+  // Pass 1: measure actual project row CYs and registry row height from DOM,
+  // then compute spacers via computeRegPlacements (mirrors debug.html logic).
+  // Runs with spacers = 0 (initial render after expand), so regTbodyRef gives
+  // the natural tbody top. useLayoutEffect blocks paint → correct spacers on first paint.
   useLayoutEffect(() => {
-    if (!expanded) { setRowH(0); setRegRowH(0); setTbodyOffset(0); setGroupLineData([]); return }
-    const projEl = orderedProjects[0] ? projRowRefs.current[orderedProjects[0].id] : null
-    const h = projEl?.getBoundingClientRect().height ?? 0
-    if (h > 0) {
-      if (tablesRef.current && projTbodyRef.current && regTbodyRef.current) {
-        const cRect  = tablesRef.current.getBoundingClientRect()
-        const projT0 = projTbodyRef.current.getBoundingClientRect().top - cRect.top
-        const regT0  = regTbodyRef.current.getBoundingClientRect().top  - cRect.top
-        setTbodyOffset(projT0 - regT0)
+    if (!expanded) { setRowH(0); setRegPlacements([]); setGroupLineData([]); return }
+    if (!tablesRef.current || !regTbodyRef.current) return
+
+    const cRect = tablesRef.current.getBoundingClientRect()
+
+    // Project row centers from DOM
+    const projCYs = new Map<string, number>()
+    for (const p of orderedProjects) {
+      const el = projRowRefs.current[p.id]
+      if (el) {
+        const r = el.getBoundingClientRect()
+        projCYs.set(p.id, r.top - cRect.top + r.height / 2)
       }
-      // Measure actual registry row height (may differ from project row height).
-      // Spacer computation uses this to keep registry row centers aligned with project row centers.
-      const firstRegId = orderedRegistry[0]?.id
-      const regEl = firstRegId ? regRowRefs.current[firstRegId] : null
-      setRegRowH(regEl?.getBoundingClientRect().height ?? h)
-      setRowH(h)
     }
+
+    const h = orderedProjects[0]
+      ? (projRowRefs.current[orderedProjects[0].id]?.getBoundingClientRect().height ?? 0)
+      : 0
+    if (h === 0) return
+
+    // Registry tbody top and actual row height (measured while spacers = 0)
+    const regT0 = regTbodyRef.current.getBoundingClientRect().top - cRect.top
+    const firstRegId = orderedRegistry[0]?.id
+    const firstRegEl = firstRegId ? regRowRefs.current[firstRegId] : null
+    const regRowH = firstRegEl?.getBoundingClientRect().height ?? h
+
+    setRowH(h)
+    setRegPlacements(computeRegPlacements(
+      orderedRegistry, orderedProjects, matchPairs, projCYs, regT0, regRowH,
+    ))
   }, [expanded, orderedProjects.length, orderedRegistry.length])
 
   // Pass 2: compute SVG line coordinates.
@@ -422,7 +418,7 @@ function ClientBlock({ client, projects, registry }: {
                   <thead>
                     <tr>{PROJ_COLS.map(c => <th key={c.key} style={thBase}><span style={thLabel}>{c.label}</span></th>)}</tr>
                   </thead>
-                  <tbody ref={projTbodyRef}>
+                  <tbody>
                     {orderedProjects.map(p => {
                       const ci = projColorMap.get(p.id)
                       const bg = ci !== undefined ? GROUP_PALETTE[ci].bg : '#fff'
