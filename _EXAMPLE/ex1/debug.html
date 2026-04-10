@@ -190,134 +190,118 @@ const GAP  = 48;
 const MIDX = GAP / 2;
 
 const GROUP_PALETTE = [
-  { bg: '#dbeafe', line: '#3b82f6' }, // blue
-  { bg: '#dcfce7', line: '#16a34a' }, // green
-  { bg: '#fef3c7', line: '#d97706' }, // amber
-  { bg: '#f3e8ff', line: '#9333ea' }, // purple
-  { bg: '#fce7f3', line: '#db2777' }, // pink
+  { bg: '#dbeafe', line: '#3b82f6' },
+  { bg: '#dcfce7', line: '#16a34a' },
+  { bg: '#fef3c7', line: '#d97706' },
+  { bg: '#f3e8ff', line: '#9333ea' },
+  { bg: '#fce7f3', line: '#db2777' },
 ];
 
-// Registry rows in render order
-const REG_ORDER = ['r1','r2','r3','r4','r5'];
-
-// Which project rows each registry row is connected to (empty = unconnected)
-const CONNECTIONS = {
-  r1: ['p1','p2','p3'],   // group 1
-  r2: ['p4','p5'],         // group 2
-  r3: ['p6'],              // group 3
-  r4: [],                  // unconnected
-  r5: [],                  // unconnected
-};
-
-// Project rows in render order
+const REG_ORDER  = ['r1','r2','r3','r4','r5'];
 const PROJ_ORDER = ['p1','p2','p3','p4','p5','p6','p7','p8'];
-
-// Color index per registry row (connected groups only)
+const CONNECTIONS = {
+  r1: ['p1','p2','p3'],
+  r2: ['p4','p5'],
+  r3: ['p6'],
+  r4: [], r5: [],
+};
 const GROUP_COLOR = { r1: 0, r2: 1, r3: 2 };
 
-function computePlacements(rowH, tbodyOffset) {
-  // tbodyOffset = projT0 - regT0_initial
-  // Corrects for thead height difference between the two tables.
-  // Without this, avgIdx*rowH targets regTbody-relative Y, not projTbody-relative Y.
-  const info = REG_ORDER.map(regId => {
-    const connProjIds = CONNECTIONS[regId] || [];
-    if (connProjIds.length === 0) return { kind: 'unconnected' };
-    const indices = connProjIds.map(id => PROJ_ORDER.indexOf(id)).filter(i => i >= 0);
-    if (indices.length === 0) return { kind: 'unconnected' };
-    const avgIdx = indices.reduce((a, b) => a + b, 0) / indices.length;
-    return { kind: 'connected', avgIdx };
-  });
-
-  const allConnIndices = Object.values(CONNECTIONS)
-    .flat()
-    .map(id => PROJ_ORDER.indexOf(id))
-    .filter(i => i >= 0);
+// Compute spacers using ACTUAL project row CYs (from DOM) and ACTUAL registry row height.
+// This eliminates the rowH mismatch between the two tables.
+//
+// targetCY for connected row  = avg(connected project CYs)
+// targetCY for 1st unconn row = CY of first unconnected project row
+// Spacer formula: spacerPx = max(0, targetCY - regT0 - cursor - regRowH/2)
+function computePlacements(projCYs, regT0, regRowH) {
+  const allConnProjIds = Object.values(CONNECTIONS).flat();
+  const allConnIndices = allConnProjIds.map(id => PROJ_ORDER.indexOf(id)).filter(i => i >= 0);
   const maxConnProjIdx = allConnIndices.length > 0 ? Math.max(...allConnIndices) : -1;
-  // unconnectedStart is also in projTbody-relative coords
-  const unconnectedStart = maxConnProjIdx >= 0 ? (maxConnProjIdx + 1) * rowH : 0;
+  const firstUnconnProjId = (maxConnProjIdx >= 0 && maxConnProjIdx + 1 < PROJ_ORDER.length)
+    ? PROJ_ORDER[maxConnProjIdx + 1] : null;
 
   let cursor = 0;
   let unconnStartUsed = false;
 
-  return REG_ORDER.map((regId, i) => {
-    const row = info[i];
+  return REG_ORDER.map(regId => {
+    const connIds = CONNECTIONS[regId] || [];
 
-    if (row.kind === 'connected') {
-      // Target regTbody-relative center = tbodyOffset + avgIdx*rowH + rowH/2
-      // → spacerPx so that: cursor + spacerPx + rowH/2 = tbodyOffset + avgIdx*rowH + rowH/2
-      const spacerPx = Math.max(0, tbodyOffset + row.avgIdx * rowH - cursor);
-      cursor += spacerPx + rowH;
-      return { id: regId, spacerPx, kind: 'connected', avgIdx: row.avgIdx };
+    if (connIds.length > 0) {
+      const cys = connIds.map(id => projCYs[id]).filter(y => y !== undefined);
+      if (cys.length > 0) {
+        const targetCY = cys.reduce((a, b) => a + b, 0) / cys.length;
+        const spacerPx = Math.max(0, targetCY - regT0 - cursor - regRowH / 2);
+        cursor += spacerPx + regRowH;
+        return { id: regId, spacerPx, kind: 'connected', targetCY };
+      }
     }
 
-    if (!unconnStartUsed && maxConnProjIdx >= 0) {
+    if (!unconnStartUsed && firstUnconnProjId) {
       unconnStartUsed = true;
-      const spacerPx = Math.max(0, tbodyOffset + unconnectedStart - cursor);
-      cursor += spacerPx + rowH;
-      return { id: regId, spacerPx, kind: 'unconnected-first' };
+      const targetCY = projCYs[firstUnconnProjId];
+      const spacerPx = (targetCY !== undefined)
+        ? Math.max(0, targetCY - regT0 - cursor - regRowH / 2)
+        : 0;
+      cursor += spacerPx + regRowH;
+      return { id: regId, spacerPx, kind: 'unconnected-first', targetCY };
     }
 
-    cursor += rowH;
-    return { id: regId, spacerPx: 0, kind: 'unconnected' };
+    cursor += regRowH;
+    return { id: regId, spacerPx: 0, kind: 'unconnected', targetCY: undefined };
   });
 }
 
 function draw() {
   const tablesEl  = document.getElementById('tables');
   const svgEl     = document.getElementById('svg');
-  const projTbody = document.getElementById('proj-tbody');
   const regTbody  = document.getElementById('reg-tbody');
 
-  // Reset all spacers to 0 so we can measure the "natural" regT0
+  // ── Step 1: reset spacers, measure everything with natural layout ──────────
   for (const id of REG_ORDER) {
     const cell = document.getElementById('spacer-cell-' + id);
     if (cell) cell.style.height = '0px';
   }
 
   const cRect = tablesEl.getBoundingClientRect();
-  const rowH  = document.getElementById('p1').getBoundingClientRect().height;
 
-  // Measure both tbody tops with spacers at 0
-  const projT0      = projTbody.getBoundingClientRect().top - cRect.top;
+  // Project row centers from DOM (stable — no spacers on project side)
+  const projCYs = {};
+  for (const pid of PROJ_ORDER) {
+    const el = document.getElementById(pid);
+    if (el) {
+      const r = el.getBoundingClientRect();
+      projCYs[pid] = r.top - cRect.top + r.height / 2;
+    }
+  }
+
+  // Registry tbody top and row height (measured with spacers = 0)
   const regT0Initial = regTbody.getBoundingClientRect().top - cRect.top;
-  const tbodyOffset  = projT0 - regT0Initial;
+  const firstRegEl   = document.getElementById(REG_ORDER[0]);
+  const regRowH      = firstRegEl ? firstRegEl.getBoundingClientRect().height : 32;
 
-  // Step 1: compute spacers with offset correction
-  const placements = computePlacements(rowH, tbodyOffset);
+  // ── Step 2: compute & apply spacers ───────────────────────────────────────
+  const placements = computePlacements(projCYs, regT0Initial, regRowH);
 
-  // Step 2: apply spacer heights to DOM
   for (const { id, spacerPx } of placements) {
     const cell = document.getElementById('spacer-cell-' + id);
     if (cell) cell.style.height = spacerPx + 'px';
   }
 
-  // Step 3: wait for DOM reflow, then measure and draw
+  // ── Step 3: after reflow — measure final positions and draw ───────────────
   requestAnimationFrame(() => {
-    const regT0 = regTbody.getBoundingClientRect().top - cRect.top;
-
-    // Compute registry row centers mathematically
-    let regCursor = 0;
+    // Registry row centers from DOM (after spacers applied)
     const regCYs = {};
-    for (const { id, spacerPx } of placements) {
-      regCursor += spacerPx;
-      regCYs[id] = regT0 + regCursor + rowH / 2;
-      regCursor += rowH;
-    }
-
-    // Compute project row centers from DOM
-    const projCYs = {};
-    for (const pid of PROJ_ORDER) {
-      const el = document.getElementById(pid);
+    for (const { id } of placements) {
+      const el = document.getElementById(id);
       if (el) {
         const r = el.getBoundingClientRect();
-        projCYs[pid] = r.top - cRect.top + r.height / 2;
+        regCYs[id] = r.top - cRect.top + r.height / 2;
       }
     }
 
-    // Draw SVG
+    // ── Draw SVG ─────────────────────────────────────────────────────────────
     svgEl.innerHTML = '';
-    const svgH = tablesEl.getBoundingClientRect().height;
-    svgEl.setAttribute('viewBox', `0 0 ${GAP} ${svgH}`);
+    svgEl.setAttribute('viewBox', `0 0 ${GAP} ${tablesEl.getBoundingClientRect().height}`);
 
     function line(x1, y1, x2, y2, color) {
       const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -335,61 +319,73 @@ function draw() {
       svgEl.appendChild(el);
     }
 
-    // Draw bracket connectors for each connected registry row
     for (const regId of REG_ORDER) {
-      const connProjIds = CONNECTIONS[regId] || [];
-      if (connProjIds.length === 0) continue;
+      const connIds = CONNECTIONS[regId] || [];
+      if (connIds.length === 0) continue;
 
-      const ci = GROUP_COLOR[regId] ?? 0;
-      const color = GROUP_PALETTE[ci].line;
+      const color = GROUP_PALETTE[GROUP_COLOR[regId] ?? 0].line;
       const regCY = regCYs[regId];
-      const pCYs = connProjIds.map(pid => projCYs[pid]).filter(y => y !== undefined);
-      if (pCYs.length === 0) continue;
+      const pCYs  = connIds.map(id => projCYs[id]).filter(y => y !== undefined);
+      if (!pCYs.length || regCY === undefined) continue;
 
       const minCY = Math.min(...pCYs);
       const maxCY = Math.max(...pCYs);
 
-      // Horizontal stubs from each project row to MIDX
       pCYs.forEach(cy => line(0, cy, MIDX, cy, color));
-      // Vertical spine
       if (pCYs.length > 1) {
         line(MIDX, minCY, MIDX, maxCY, color);
       } else if (Math.abs(pCYs[0] - regCY) > 0.5) {
         line(MIDX, pCYs[0], MIDX, regCY, color);
       }
-      // Horizontal to registry row
       line(MIDX, regCY, GAP, regCY, color);
-      // Dots
       pCYs.forEach(cy => dot(0, cy, color));
       dot(GAP, regCY, color);
     }
 
-    // Debug panel
+    // ── Debug panel ───────────────────────────────────────────────────────────
     const fmt = v => Math.round(v * 100) / 100;
-    const allConnIdx = Object.values(CONNECTIONS).flat().map(id => PROJ_ORDER.indexOf(id)).filter(i=>i>=0);
-    const maxIdx = allConnIdx.length > 0 ? Math.max(...allConnIdx) : -1;
+    const rowH = document.getElementById(PROJ_ORDER[0])?.getBoundingClientRect().height ?? 0;
+    const projT0 = document.getElementById('proj-tbody')?.getBoundingClientRect().top - cRect.top;
 
     let html = `
-      <dt>rowH</dt><dd>${fmt(rowH)} px</dd>
+      <dt>projRowH</dt><dd>${fmt(rowH)} px</dd>
+      <dt>regRowH</dt><dd>${fmt(regRowH)} px</dd>
       <dt>projT0</dt><dd>${fmt(projT0)} px</dd>
-      <dt>regT0 (initial)</dt><dd>${fmt(regT0Initial)} px</dd>
-      <dt>tbodyOffset</dt><dd style="color:${Math.abs(tbodyOffset)>0.5?'orange':'green'}">${fmt(tbodyOffset)} px (projT0 − regT0)</dd>
-      <dt>maxConnProjIdx</dt><dd>${maxIdx} (${PROJ_ORDER[maxIdx]})</dd>
-      <dt>unconnectedStart</dt><dd>${fmt((maxIdx+1)*rowH)} px = ${maxIdx+1} × rowH</dd>
-      <dt>─</dt><dd>─────────────────────────────</dd>
+      <dt>regT0 (natural)</dt><dd>${fmt(regT0Initial)} px</dd>
+      <dt>─</dt><dd>─────── строки реестра ───────────────────────────────────────────</dd>
     `;
+
     for (const p of placements) {
-      const domEl = document.getElementById(p.id);
-      const domCY = domEl ? domEl.getBoundingClientRect().top - cRect.top + rowH / 2 : null;
-      const calcCY = regCYs[p.id];
-      const delta = domCY !== null ? calcCY - domCY : null;
-      const ok = delta !== null && Math.abs(delta) <= 2;
-      const connStr = (CONNECTIONS[p.id]||[]).join(', ') || '—';
+      const connStr  = (CONNECTIONS[p.id] || []).join(', ') || '—';
+      const actualCY = regCYs[p.id];
+      const target   = p.targetCY;
+      const delta    = (actualCY !== undefined && target !== undefined) ? actualCY - target : null;
+      const ok       = delta !== null && Math.abs(delta) < 0.6;
+
+      // Dot position = actualCY (right-side dot in SVG)
+      const dotY = CONNECTIONS[p.id]?.length > 0 ? actualCY : undefined;
+
       html += `
         <dt>${p.id} (${p.kind})</dt>
-        <dd>spacer=${fmt(p.spacerPx)}px · connTo=[${connStr}] · calcCY=${fmt(calcCY)} · domCY=${domCY!==null?fmt(domCY):'—'} · Δ=<span style="color:${ok?'green':'red'}">${delta!==null?fmt(delta):'—'}</span></dd>
+        <dd>
+          spacer=<b>${fmt(p.spacerPx)}px</b> ·
+          связи=[${connStr}] ·
+          цель=${target !== undefined ? fmt(target) : '—'} ·
+          фактCY=${actualCY !== undefined ? fmt(actualCY) : '—'} ·
+          точкаSVG=${dotY !== undefined ? fmt(dotY) : '—'} ·
+          Δ=<span style="color:${ok ? 'green' : 'red'};font-weight:600">${delta !== null ? fmt(delta) : '—'}</span>
+        </dd>
       `;
     }
+
+    html += `<dt>─</dt><dd>─────── строки проектов ──────────────────────────────────────────</dd>`;
+    for (const pid of PROJ_ORDER) {
+      const cy = projCYs[pid];
+      // Find which registry group this project row belongs to
+      const group = REG_ORDER.find(rid => (CONNECTIONS[rid] || []).includes(pid));
+      html += `<dt>${pid}</dt><dd>CY=${fmt(cy)}${group ? ` → группа ${group}` : ' (не залинкована)'}</dd>`;
+    }
+
     document.getElementById('debug-dl').innerHTML = html;
   });
 }

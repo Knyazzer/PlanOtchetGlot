@@ -55,7 +55,8 @@
       "Bash(powershell -Command \"Set-Location 'D:\\\\Pet projects\\\\scripts\\\\PlanOtchetGlot'; pnpm --filter '@tv-shifts/web' exec tsc --noEmit 2>&1 | Select-Object -First 60\")",
       "Bash(docker compose:*)",
       "Bash(node_modules/.bin/prisma db:*)",
-      "Bash(node -e \"const {PrismaClient} = require\\('./node_modules/@prisma/client'\\); const p = new PrismaClient\\(\\); console.log\\(Object.keys\\(p\\).filter\\(k => !k.startsWith\\('_'\\) && !k.startsWith\\('$'\\)\\)\\)\")"
+      "Bash(node -e \"const {PrismaClient} = require\\('./node_modules/@prisma/client'\\); const p = new PrismaClient\\(\\); console.log\\(Object.keys\\(p\\).filter\\(k => !k.startsWith\\('_'\\) && !k.startsWith\\('$'\\)\\)\\)\")",
+      "Bash(./node_modules/.bin/tsc --noEmit -p apps/web/tsconfig.json)"
     ]
   }
 }

@@ -132,11 +132,15 @@ function ClientBlock({ client, projects, registry }: {
   registry: RegistryEntry[]
 }) {
   const [expanded, setExpanded] = useState(false)
-  const tablesRef   = useRef<HTMLDivElement>(null)
-  const regTbodyRef = useRef<HTMLTableSectionElement | null>(null)
-  const projRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({})
+  const tablesRef    = useRef<HTMLDivElement>(null)
+  const projTbodyRef = useRef<HTMLTableSectionElement | null>(null)
+  const regTbodyRef  = useRef<HTMLTableSectionElement | null>(null)
+  const projRowRefs  = useRef<Record<string, HTMLTableRowElement | null>>({})
+  const regRowRefs   = useRef<Record<string, HTMLTableRowElement | null>>({})
 
   const [rowH, setRowH]               = useState(0)
+  const [regRowH, setRegRowH]         = useState(0)   // actual registry row height (may differ from rowH)
+  const [tbodyOffset, setTbodyOffset] = useState(0)
   const [groupLineData, setGroupLineData] = useState<GroupLine[]>([])
 
   // ── Connection map ────────────────────────────────────────────────────────
@@ -233,7 +237,11 @@ function ClientBlock({ client, projects, registry }: {
   //   connSpan = (maxConnIdx - minConnIdx + 1) * rowH
 
   const regPlacements = useMemo(() => {
-    if (rowH === 0) return orderedRegistry.map(r => ({ id: r.id, spacerPx: 0 }))
+    if (rowH === 0 || regRowH === 0) return orderedRegistry.map(r => ({ id: r.id, spacerPx: 0 }))
+    // tbodyOffset   = projT0 - regT0_initial: thead height difference between the two tables.
+    // rowH          = project row height (used to compute target CY positions).
+    // regRowH       = registry row height (used for cursor steps; may differ from rowH).
+    // heightDelta   = (rowH - regRowH) / 2: corrects spacer when rows have different heights.
 
     // Pre-classify each registry row and compute the spacer it needs.
     // Pass 1: collect per-row info (no mutation, no flags).
@@ -261,7 +269,12 @@ function ClientBlock({ client, projects, registry }: {
     // Top of first unconnected project row = (maxConnProjIdx + 1) * rowH from tbody
     const unconnectedStart = maxConnProjIdx >= 0 ? (maxConnProjIdx + 1) * rowH : 0
 
-    // Pass 2: walk and assign spacers.
+    // heightDelta: extra offset so that spacerPx + regRowH/2 lands at the same Y
+    // as avgIdx*rowH + rowH/2 (the project row center).
+    // When rowH == regRowH this is 0; otherwise corrects for the size difference.
+    const heightDelta = (rowH - regRowH) / 2
+
+    // Walk and assign spacers (cursor steps by regRowH, not rowH).
     let cursor = 0
     let unconnStartUsed = false
 
@@ -269,41 +282,52 @@ function ClientBlock({ client, projects, registry }: {
       const row = info[i]
 
       if (row.kind === 'connected') {
-        const spacerPx = Math.max(0, row.avgIdx * rowH - cursor)
-        cursor += spacerPx + rowH
+        const spacerPx = Math.max(0, tbodyOffset + row.avgIdx * rowH + heightDelta - cursor)
+        cursor += spacerPx + regRowH
         return { id: r.id, spacerPx }
       }
 
       // First unconnected row: jump cursor to unconnectedStart
       if (!unconnStartUsed && maxConnProjIdx >= 0) {
         unconnStartUsed = true
-        const spacerPx = Math.max(0, unconnectedStart - cursor)
-        cursor += spacerPx + rowH
+        const spacerPx = Math.max(0, tbodyOffset + unconnectedStart + heightDelta - cursor)
+        cursor += spacerPx + regRowH
         return { id: r.id, spacerPx }
       }
 
-      cursor += rowH
+      cursor += regRowH
       return { id: r.id, spacerPx: 0 }
     })
-  }, [orderedRegistry, matchPairs, orderedProjects, rowH])
+  }, [orderedRegistry, matchPairs, orderedProjects, rowH, regRowH, tbodyOffset])
 
   // ── Measurement effects ───────────────────────────────────────────────────
 
-  // Pass 1: measure rowH from first rendered project row.
+  // Pass 1: measure rowH + tbodyOffset from first rendered project row.
+  // Runs when spacers are all 0 (rowH===0 → regPlacements returns all spacerPx:0),
+  // so regTbodyRef gives the "natural" tbody top before any spacers are applied.
   // useLayoutEffect blocks paint → re-render with correct spacers before first paint.
   useLayoutEffect(() => {
-    if (!expanded) { setRowH(0); setGroupLineData([]); return }
-    const el = orderedProjects[0] ? projRowRefs.current[orderedProjects[0].id] : null
-    const h = el?.getBoundingClientRect().height ?? 0
-    if (h > 0) setRowH(h)
-  }, [expanded, orderedProjects.length])
+    if (!expanded) { setRowH(0); setRegRowH(0); setTbodyOffset(0); setGroupLineData([]); return }
+    const projEl = orderedProjects[0] ? projRowRefs.current[orderedProjects[0].id] : null
+    const h = projEl?.getBoundingClientRect().height ?? 0
+    if (h > 0) {
+      if (tablesRef.current && projTbodyRef.current && regTbodyRef.current) {
+        const cRect  = tablesRef.current.getBoundingClientRect()
+        const projT0 = projTbodyRef.current.getBoundingClientRect().top - cRect.top
+        const regT0  = regTbodyRef.current.getBoundingClientRect().top  - cRect.top
+        setTbodyOffset(projT0 - regT0)
+      }
+      // Measure actual registry row height (may differ from project row height).
+      // Spacer computation uses this to keep registry row centers aligned with project row centers.
+      const firstRegId = orderedRegistry[0]?.id
+      const regEl = firstRegId ? regRowRefs.current[firstRegId] : null
+      setRegRowH(regEl?.getBoundingClientRect().height ?? h)
+      setRowH(h)
+    }
+  }, [expanded, orderedProjects.length, orderedRegistry.length])
 
   // Pass 2: compute SVG line coordinates.
-  //
-  // Strategy (same as bracketDisplay.js):
-  //   • Project rows — measure each row's actual DOM position (no spacers, always reliable).
-  //   • Registry rows — compute from regTbodyRef.top + accumulated cursor (mirrors regPlacements).
-  //     This avoids measuring spacer-affected rows whose layout may not be flushed yet.
+  // Both project and registry rows are measured from actual DOM positions — pixel-perfect.
   useLayoutEffect(() => {
     if (!expanded || rowH === 0 || !tablesRef.current || !regTbodyRef.current) {
       setGroupLineData([])
@@ -313,16 +337,14 @@ function ClientBlock({ client, projects, registry }: {
     const compute = () => {
       if (!tablesRef.current || !regTbodyRef.current) return
       const cRect = tablesRef.current.getBoundingClientRect()
-      // Registry tbody starts here (relative to SVG origin = tablesRef top)
-      const regT0 = regTbodyRef.current.getBoundingClientRect().top - cRect.top
 
-      let regCursor = 0
       const lines: GroupLine[] = []
 
-      for (const { id: regId, spacerPx } of regPlacements) {
-        regCursor += spacerPx
-        const regCY = regT0 + regCursor + rowH / 2
-        regCursor += rowH
+      for (const { id: regId } of regPlacements) {
+        const regEl = regRowRefs.current[regId]
+        if (!regEl) continue
+        const regR = regEl.getBoundingClientRect()
+        const regCY = regR.top - cRect.top + regR.height / 2
 
         const connProjIds = matchPairs
           .filter(mp => mp.regId === regId)
@@ -400,7 +422,7 @@ function ClientBlock({ client, projects, registry }: {
                   <thead>
                     <tr>{PROJ_COLS.map(c => <th key={c.key} style={thBase}><span style={thLabel}>{c.label}</span></th>)}</tr>
                   </thead>
-                  <tbody>
+                  <tbody ref={projTbodyRef}>
                     {orderedProjects.map(p => {
                       const ci = projColorMap.get(p.id)
                       const bg = ci !== undefined ? GROUP_PALETTE[ci].bg : '#fff'
@@ -479,7 +501,7 @@ function ClientBlock({ client, projects, registry }: {
                               <td colSpan={REG_COLS.length} style={{ padding: 0, height: spacerPx, border: 'none', background: '#fff' }} />
                             </tr>
                           )}
-                          <tr style={{ background: bg }}>
+                          <tr ref={el => { regRowRefs.current[regId] = el }} style={{ background: bg }}>
                             {REG_COLS.map(c => <td key={c.key} style={tdStyle}>{renderRegCell(c, r)}</td>)}
                           </tr>
                         </Fragment>
