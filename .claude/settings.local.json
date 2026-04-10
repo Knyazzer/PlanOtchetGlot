@@ -52,7 +52,10 @@
       "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" \"node_modules/.pnpm/node_modules/.bin/prisma\" migrate deploy --schema=packages/db/prisma/schema.prisma)",
       "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" \"node_modules/.pnpm/node_modules/.bin/prisma\" generate --schema=packages/db/prisma/schema.prisma)",
       "Read(//d/Pet projects/scripts/PlanOtchetGlot/**)",
-      "Bash(powershell -Command \"Set-Location 'D:\\\\Pet projects\\\\scripts\\\\PlanOtchetGlot'; pnpm --filter '@tv-shifts/web' exec tsc --noEmit 2>&1 | Select-Object -First 60\")"
+      "Bash(powershell -Command \"Set-Location 'D:\\\\Pet projects\\\\scripts\\\\PlanOtchetGlot'; pnpm --filter '@tv-shifts/web' exec tsc --noEmit 2>&1 | Select-Object -First 60\")",
+      "Bash(docker compose:*)",
+      "Bash(node_modules/.bin/prisma db:*)",
+      "Bash(node -e \"const {PrismaClient} = require\\('./node_modules/@prisma/client'\\); const p = new PrismaClient\\(\\); console.log\\(Object.keys\\(p\\).filter\\(k => !k.startsWith\\('_'\\) && !k.startsWith\\('$'\\)\\)\\)\")"
     ]
   }
 }

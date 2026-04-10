@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Debug: DealsPage connector lines</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Inter, system-ui, sans-serif; background: #f1f5f9; padding: 24px; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04); max-width: 1400px; }
+  .header { padding: 13px 20px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; background: #fff; }
+  .header-title { font-size: 15px; font-weight: 700; color: #1e293b; }
+  .header-meta  { font-size: 13px; color: #94a3b8; }
+  .subheaders { display: flex; border-bottom: 1px solid #e2e8f0; }
+  .subheader { flex: 1; padding: 8px 12px; font-size: 12px; font-weight: 600; color: #64748b; background: #f8fafc; }
+  .subheader-gap { width: 48px; background: #f8fafc; flex-shrink: 0; }
+
+  /* debug panel */
+  .debug { margin-top: 16px; background: #fefce8; border: 1px solid #fde047; border-radius: 8px; padding: 12px 16px; max-width: 1400px; font-size: 12px; font-family: monospace; }
+  .debug h3 { font-size: 13px; margin-bottom: 8px; color: #854d0e; }
+  .debug dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+  .debug dt { color: #a16207; font-weight: 600; white-space: nowrap; }
+  .debug dd { color: #1e293b; }
+</style>
+</head>
+<body>
+
+<!--
+  Test scenario:
+    p1 = r1  (group 1, blue)
+    p2 = r1
+    p3 = r1
+    p4 = r2  (group 2, green)
+    p5 = r2
+    p6 = r3  (group 3, amber)
+    p7 - r4  (both unconnected)
+    p8 - r5  (both unconnected)
+-->
+
+<div class="card">
+  <div class="header">
+    <span class="header-title">Тестовый клиент</span>
+    <span class="header-meta">8 стр. · 5 матр. · 3 группы</span>
+  </div>
+  <div class="subheaders">
+    <div class="subheader">Таблица проектов · 8</div>
+    <div class="subheader-gap"></div>
+    <div class="subheader">Реестр матриц · 5</div>
+  </div>
+
+  <div id="tables" style="display: flex; align-items: stretch;">
+
+    <!-- LEFT: project table -->
+    <div style="flex: 1 1 0%; min-width: 0px; overflow-x: auto;">
+      <table style="border-collapse: collapse; font-size: 13px; width: 100%;">
+        <thead>
+          <tr>
+            <th style="background:#f1f5f9;padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;">Статус</th>
+            <th style="background:#f1f5f9;padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;">Название</th>
+            <th style="background:#f1f5f9;padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;">Дата</th>
+            <th style="background:#f1f5f9;padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;">Формат</th>
+          </tr>
+        </thead>
+        <tbody id="proj-tbody">
+          <!-- group 1: p1,p2,p3 → r1 (blue) -->
+          <tr id="p1" style="background:#dbeafe;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(139,92,246,.13);color:#8b5cf6;">Препрод.</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект А — эпизод 1</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">1 мая 2026</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">ТВ</td>
+          </tr>
+          <tr id="p2" style="background:#dbeafe;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(139,92,246,.13);color:#8b5cf6;">Препрод.</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект А — эпизод 2</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">8 мая 2026</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">ТВ</td>
+          </tr>
+          <tr id="p3" style="background:#dbeafe;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(59,130,246,.13);color:#3b82f6;">На согл.</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект А — эпизод 3</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">15 мая 2026</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">ТВ</td>
+          </tr>
+          <!-- group 2: p4,p5 → r2 (green) -->
+          <tr id="p4" style="background:#dcfce7;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(16,185,129,.13);color:#10b981;">Продакшн</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект Б — ролик 1</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">20 мая 2026</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">Продакшн</td>
+          </tr>
+          <tr id="p5" style="background:#dcfce7;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(16,185,129,.13);color:#10b981;">Продакшн</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект Б — ролик 2</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">25 мая 2026</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">Продакшн</td>
+          </tr>
+          <!-- group 3: p6 → r3 (amber) -->
+          <tr id="p6" style="background:#fef3c7;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(22,163,74,.13);color:#16a34a;">Сдан</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект В — имиджевый</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">2 июн. 2026</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">Видео</td>
+          </tr>
+          <!-- unconnected: p7, p8 -->
+          <tr id="p7" style="background:#fff;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(22,163,74,.13);color:#16a34a;">Сдан</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Отчётный ролик Q1</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">10 янв. 2026</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">Продакшн</td>
+          </tr>
+          <tr id="p8" style="background:#fff;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:rgba(22,163,74,.13);color:#16a34a;">Сдан</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Корпоратив 2025</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">20 дек. 2025</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">Менеджмент</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- GAP: SVG drawn by JS -->
+    <div id="gap" style="width:48px;flex-shrink:0;position:relative;background:#f8fafc;">
+      <svg id="svg" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;"></svg>
+    </div>
+
+    <!-- RIGHT: registry table -->
+    <div style="flex: 1 1 0%; min-width: 0px; overflow-x: auto;">
+      <table style="border-collapse: collapse; font-size: 13px; width: 100%;">
+        <thead>
+          <tr>
+            <th style="background:#f1f5f9;padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;">Статус</th>
+            <th style="background:#f1f5f9;padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;">Матрица</th>
+            <th style="background:#f1f5f9;padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;">Юнит</th>
+            <th style="background:#f1f5f9;padding:8px 10px;border-bottom:2px solid #e2e8f0;text-align:left;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;">Название</th>
+          </tr>
+        </thead>
+        <tbody id="reg-tbody">
+          <!-- r1: connected (group 1, blue), avgIdx=1.0, spacer=rowH -->
+          <tr id="spacer-r1"><td colspan="4" id="spacer-cell-r1" style="padding:0;border:none;background:#fff;height:0;"></td></tr>
+          <tr id="r1" style="background:#dbeafe;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;">В работе</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><a href="#" style="color:#3b82f6;text-decoration:underline;font-family:monospace;font-size:12px;">ТВ1001</a></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">ТВ</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект А (матрица)</td>
+          </tr>
+          <!-- r2: connected (group 2, green), avgIdx=3.5 -->
+          <tr id="spacer-r2"><td colspan="4" id="spacer-cell-r2" style="padding:0;border:none;background:#fff;height:0;"></td></tr>
+          <tr id="r2" style="background:#dcfce7;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;">Смета</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><a href="#" style="color:#3b82f6;text-decoration:underline;font-family:monospace;font-size:12px;">ТВ1002</a></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">ТВ</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект Б (матрица)</td>
+          </tr>
+          <!-- r3: connected (group 3, amber), avgIdx=5.0 -->
+          <tr id="spacer-r3"><td colspan="4" id="spacer-cell-r3" style="padding:0;border:none;background:#fff;height:0;"></td></tr>
+          <tr id="r3" style="background:#fef3c7;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;">Сдан</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><a href="#" style="color:#3b82f6;text-decoration:underline;font-family:monospace;font-size:12px;">ТВ1003</a></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">ТВ</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Проект В (матрица)</td>
+          </tr>
+          <!-- r4, r5: unconnected -->
+          <tr id="spacer-r4"><td colspan="4" id="spacer-cell-r4" style="padding:0;border:none;background:#fff;height:0;"></td></tr>
+          <tr id="r4" style="background:#fff;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;">Производство</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><a href="#" style="color:#3b82f6;text-decoration:underline;font-family:monospace;font-size:12px;">КМ2001</a></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">Корп</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Поддержка сайта</td>
+          </tr>
+          <tr id="spacer-r5"><td colspan="4" id="spacer-cell-r5" style="padding:0;border:none;background:#fff;height:0;"></td></tr>
+          <tr id="r5" style="background:#fff;">
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><span style="padding:2px 8px;border-radius:8px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;">Запрос</span></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;"><a href="#" style="color:#3b82f6;text-decoration:underline;font-family:monospace;font-size:12px;">ТВ9999</a></td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;white-space:nowrap;">ТВ</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;color:#374151;">Архивный проект</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── Debug panel ── -->
+<div class="debug" id="debug-panel">
+  <h3>Координаты (вычислено скриптом)</h3>
+  <dl id="debug-dl"></dl>
+</div>
+
+<script>
+const GAP  = 48;
+const MIDX = GAP / 2;
+
+const GROUP_PALETTE = [
+  { bg: '#dbeafe', line: '#3b82f6' }, // blue
+  { bg: '#dcfce7', line: '#16a34a' }, // green
+  { bg: '#fef3c7', line: '#d97706' }, // amber
+  { bg: '#f3e8ff', line: '#9333ea' }, // purple
+  { bg: '#fce7f3', line: '#db2777' }, // pink
+];
+
+// Registry rows in render order
+const REG_ORDER = ['r1','r2','r3','r4','r5'];
+
+// Which project rows each registry row is connected to (empty = unconnected)
+const CONNECTIONS = {
+  r1: ['p1','p2','p3'],   // group 1
+  r2: ['p4','p5'],         // group 2
+  r3: ['p6'],              // group 3
+  r4: [],                  // unconnected
+  r5: [],                  // unconnected
+};
+
+// Project rows in render order
+const PROJ_ORDER = ['p1','p2','p3','p4','p5','p6','p7','p8'];
+
+// Color index per registry row (connected groups only)
+const GROUP_COLOR = { r1: 0, r2: 1, r3: 2 };
+
+function computePlacements(rowH, tbodyOffset) {
+  // tbodyOffset = projT0 - regT0_initial
+  // Corrects for thead height difference between the two tables.
+  // Without this, avgIdx*rowH targets regTbody-relative Y, not projTbody-relative Y.
+  const info = REG_ORDER.map(regId => {
+    const connProjIds = CONNECTIONS[regId] || [];
+    if (connProjIds.length === 0) return { kind: 'unconnected' };
+    const indices = connProjIds.map(id => PROJ_ORDER.indexOf(id)).filter(i => i >= 0);
+    if (indices.length === 0) return { kind: 'unconnected' };
+    const avgIdx = indices.reduce((a, b) => a + b, 0) / indices.length;
+    return { kind: 'connected', avgIdx };
+  });
+
+  const allConnIndices = Object.values(CONNECTIONS)
+    .flat()
+    .map(id => PROJ_ORDER.indexOf(id))
+    .filter(i => i >= 0);
+  const maxConnProjIdx = allConnIndices.length > 0 ? Math.max(...allConnIndices) : -1;
+  // unconnectedStart is also in projTbody-relative coords
+  const unconnectedStart = maxConnProjIdx >= 0 ? (maxConnProjIdx + 1) * rowH : 0;
+
+  let cursor = 0;
+  let unconnStartUsed = false;
+
+  return REG_ORDER.map((regId, i) => {
+    const row = info[i];
+
+    if (row.kind === 'connected') {
+      // Target regTbody-relative center = tbodyOffset + avgIdx*rowH + rowH/2
+      // → spacerPx so that: cursor + spacerPx + rowH/2 = tbodyOffset + avgIdx*rowH + rowH/2
+      const spacerPx = Math.max(0, tbodyOffset + row.avgIdx * rowH - cursor);
+      cursor += spacerPx + rowH;
+      return { id: regId, spacerPx, kind: 'connected', avgIdx: row.avgIdx };
+    }
+
+    if (!unconnStartUsed && maxConnProjIdx >= 0) {
+      unconnStartUsed = true;
+      const spacerPx = Math.max(0, tbodyOffset + unconnectedStart - cursor);
+      cursor += spacerPx + rowH;
+      return { id: regId, spacerPx, kind: 'unconnected-first' };
+    }
+
+    cursor += rowH;
+    return { id: regId, spacerPx: 0, kind: 'unconnected' };
+  });
+}
+
+function draw() {
+  const tablesEl  = document.getElementById('tables');
+  const svgEl     = document.getElementById('svg');
+  const projTbody = document.getElementById('proj-tbody');
+  const regTbody  = document.getElementById('reg-tbody');
+
+  // Reset all spacers to 0 so we can measure the "natural" regT0
+  for (const id of REG_ORDER) {
+    const cell = document.getElementById('spacer-cell-' + id);
+    if (cell) cell.style.height = '0px';
+  }
+
+  const cRect = tablesEl.getBoundingClientRect();
+  const rowH  = document.getElementById('p1').getBoundingClientRect().height;
+
+  // Measure both tbody tops with spacers at 0
+  const projT0      = projTbody.getBoundingClientRect().top - cRect.top;
+  const regT0Initial = regTbody.getBoundingClientRect().top - cRect.top;
+  const tbodyOffset  = projT0 - regT0Initial;
+
+  // Step 1: compute spacers with offset correction
+  const placements = computePlacements(rowH, tbodyOffset);
+
+  // Step 2: apply spacer heights to DOM
+  for (const { id, spacerPx } of placements) {
+    const cell = document.getElementById('spacer-cell-' + id);
+    if (cell) cell.style.height = spacerPx + 'px';
+  }
+
+  // Step 3: wait for DOM reflow, then measure and draw
+  requestAnimationFrame(() => {
+    const regT0 = regTbody.getBoundingClientRect().top - cRect.top;
+
+    // Compute registry row centers mathematically
+    let regCursor = 0;
+    const regCYs = {};
+    for (const { id, spacerPx } of placements) {
+      regCursor += spacerPx;
+      regCYs[id] = regT0 + regCursor + rowH / 2;
+      regCursor += rowH;
+    }
+
+    // Compute project row centers from DOM
+    const projCYs = {};
+    for (const pid of PROJ_ORDER) {
+      const el = document.getElementById(pid);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        projCYs[pid] = r.top - cRect.top + r.height / 2;
+      }
+    }
+
+    // Draw SVG
+    svgEl.innerHTML = '';
+    const svgH = tablesEl.getBoundingClientRect().height;
+    svgEl.setAttribute('viewBox', `0 0 ${GAP} ${svgH}`);
+
+    function line(x1, y1, x2, y2, color) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      el.setAttribute('x1', x1); el.setAttribute('y1', y1);
+      el.setAttribute('x2', x2); el.setAttribute('y2', y2);
+      el.setAttribute('stroke', color);
+      el.setAttribute('stroke-width', '1.5');
+      el.setAttribute('stroke-opacity', '0.85');
+      svgEl.appendChild(el);
+    }
+    function dot(cx, cy, color) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      el.setAttribute('cx', cx); el.setAttribute('cy', cy); el.setAttribute('r', '3');
+      el.setAttribute('fill', color); el.setAttribute('fill-opacity', '0.85');
+      svgEl.appendChild(el);
+    }
+
+    // Draw bracket connectors for each connected registry row
+    for (const regId of REG_ORDER) {
+      const connProjIds = CONNECTIONS[regId] || [];
+      if (connProjIds.length === 0) continue;
+
+      const ci = GROUP_COLOR[regId] ?? 0;
+      const color = GROUP_PALETTE[ci].line;
+      const regCY = regCYs[regId];
+      const pCYs = connProjIds.map(pid => projCYs[pid]).filter(y => y !== undefined);
+      if (pCYs.length === 0) continue;
+
+      const minCY = Math.min(...pCYs);
+      const maxCY = Math.max(...pCYs);
+
+      // Horizontal stubs from each project row to MIDX
+      pCYs.forEach(cy => line(0, cy, MIDX, cy, color));
+      // Vertical spine
+      if (pCYs.length > 1) {
+        line(MIDX, minCY, MIDX, maxCY, color);
+      } else if (Math.abs(pCYs[0] - regCY) > 0.5) {
+        line(MIDX, pCYs[0], MIDX, regCY, color);
+      }
+      // Horizontal to registry row
+      line(MIDX, regCY, GAP, regCY, color);
+      // Dots
+      pCYs.forEach(cy => dot(0, cy, color));
+      dot(GAP, regCY, color);
+    }
+
+    // Debug panel
+    const fmt = v => Math.round(v * 100) / 100;
+    const allConnIdx = Object.values(CONNECTIONS).flat().map(id => PROJ_ORDER.indexOf(id)).filter(i=>i>=0);
+    const maxIdx = allConnIdx.length > 0 ? Math.max(...allConnIdx) : -1;
+
+    let html = `
+      <dt>rowH</dt><dd>${fmt(rowH)} px</dd>
+      <dt>projT0</dt><dd>${fmt(projT0)} px</dd>
+      <dt>regT0 (initial)</dt><dd>${fmt(regT0Initial)} px</dd>
+      <dt>tbodyOffset</dt><dd style="color:${Math.abs(tbodyOffset)>0.5?'orange':'green'}">${fmt(tbodyOffset)} px (projT0 − regT0)</dd>
+      <dt>maxConnProjIdx</dt><dd>${maxIdx} (${PROJ_ORDER[maxIdx]})</dd>
+      <dt>unconnectedStart</dt><dd>${fmt((maxIdx+1)*rowH)} px = ${maxIdx+1} × rowH</dd>
+      <dt>─</dt><dd>─────────────────────────────</dd>
+    `;
+    for (const p of placements) {
+      const domEl = document.getElementById(p.id);
+      const domCY = domEl ? domEl.getBoundingClientRect().top - cRect.top + rowH / 2 : null;
+      const calcCY = regCYs[p.id];
+      const delta = domCY !== null ? calcCY - domCY : null;
+      const ok = delta !== null && Math.abs(delta) <= 2;
+      const connStr = (CONNECTIONS[p.id]||[]).join(', ') || '—';
+      html += `
+        <dt>${p.id} (${p.kind})</dt>
+        <dd>spacer=${fmt(p.spacerPx)}px · connTo=[${connStr}] · calcCY=${fmt(calcCY)} · domCY=${domCY!==null?fmt(domCY):'—'} · Δ=<span style="color:${ok?'green':'red'}">${delta!==null?fmt(delta):'—'}</span></dd>
+      `;
+    }
+    document.getElementById('debug-dl').innerHTML = html;
+  });
+}
+
+window.addEventListener('load', draw);
+window.addEventListener('resize', draw);
+</script>
+</body>
+</html>

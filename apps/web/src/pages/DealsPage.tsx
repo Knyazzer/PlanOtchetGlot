@@ -1,969 +1,614 @@
-import { useState, type CSSProperties } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useMemo, useLayoutEffect, useRef, Fragment, type CSSProperties } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
-import { useIsAdmin } from '../hooks/useAuth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface StatusRow {
+interface Project {
   id: string
-  name: string
-  client: string | null
-  date: string
-  sheetMatrixId: string | null
+  googleRowIndex: number | null
   source: string
-  // поля для применения фильтров из Таблиц
-  status: string | null
+  status: string
+  client: string | null
+  name: string
+  date: string | null
   format: string | null
   location: string | null
+  sheetMatrixId: string | null
 }
 
-interface MatrixRegistry {
+interface RegistryEntry {
   id: string
   matrixId: string
-  name: string
-  client: string | null
+  sheetUrl: string | null
   status: string | null
   unit: string | null
+  client: string | null
+  name: string | null
   format: string | null
 }
 
-type DealStatus = 'preliminary' | 'in_progress' | 'completed'
+interface ColDef { key: string; label: string }
 
-interface Deal {
-  id: string
-  name: string | null
-  client: string | null
-  status: DealStatus
-  createdAt: string
-  statusRows: StatusRow[]
-  matrices: MatrixRegistry[]
-}
-
-interface PotentialGroup {
-  matrix: MatrixRegistry
-  rows: StatusRow[]
+interface GroupLine {
+  id: string        // regId
+  projCYs: number[] // Y centers of connected project rows (in SVG coords)
+  regCY: number     // Y center of registry row (in SVG coords)
+  color: string
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<DealStatus, string> = {
-  preliminary: 'Предварительно',
-  in_progress: 'На реализации',
-  completed: 'Завершён',
-}
-
-const STATUS_COLORS: Record<DealStatus, { bg: string; text: string }> = {
-  preliminary: { bg: '#fef3c7', text: '#b45309' },
-  in_progress: { bg: '#dbeafe', text: '#1d4ed8' },
-  completed: { bg: '#dcfce7', text: '#15803d' },
-}
-
-const LS_TAB_KEY = 'deals-tab'
-
-// Те же метки статусов, что в SyncDataPage — нужны для сравнения с сохранёнными фильтрами
-const ROW_STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<string, string> = {
   request: 'Запрос', negotiation: 'На согл.', preproduction: 'Препрод.',
   production: 'Продакшн', postproduction: 'Постпрод.', delivered: 'Сдан',
   rejected: 'Не согл.', cancelled: 'Отменён', manual: 'Ручной',
 }
 
-// Читаем активные фильтры из localStorage (установленные в Таблицах)
-function readSyncFilters(): { primary: Record<string, string[]>; secondary: Record<string, string[]> } {
-  function parse(key: string): Record<string, string[]> {
-    try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : {} } catch { return {} }
-  }
-  return { primary: parse('sync-primary-proj'), secondary: parse('sync-col-proj') }
+const STATUS_COLORS: Record<string, string> = {
+  request: '#f59e0b', negotiation: '#3b82f6', preproduction: '#8b5cf6',
+  production: '#10b981', postproduction: '#06b6d4', delivered: '#16a34a',
+  rejected: '#ef4444', cancelled: '#6b7280', manual: '#64748b',
 }
 
-// Возвращает display-значение поля строки (аналог getProjValue в SyncDataPage)
-function getRowFilterValue(row: StatusRow, col: string): string {
-  switch (col) {
-    case 'status':   return ROW_STATUS_LABELS[row.status ?? ''] ?? (row.status ?? '')
-    case 'client':   return row.client ?? ''
-    case 'format':   return row.format ?? ''
-    case 'location': return row.location ?? ''
-    default:         return ''
-  }
-}
-
-// Возвращает true если строка проходит оба фильтра (primary AND secondary)
-function rowPassesSyncFilters(
-  row: StatusRow,
-  primary: Record<string, string[]>,
-  secondary: Record<string, string[]>,
-): boolean {
-  // Первичный фильтр: AND по колонкам, OR по значениям
-  for (const [col, sel] of Object.entries(primary)) {
-    if (sel.length === 0) continue
-    if (!sel.includes(getRowFilterValue(row, col))) return false
-  }
-  // Вторичный фильтр: то же самое + специальная обработка matrixId
-  for (const [col, sel] of Object.entries(secondary)) {
-    if (sel.length === 0) continue
-    if (col === 'matrixId') {
-      const hasId = !!row.sheetMatrixId
-      const wantHas = sel.includes('Есть ID')
-      const wantNot = sel.includes('Нет ID')
-      if (wantHas && !wantNot && !hasId) return false
-      if (!wantHas && wantNot && hasId) return false
-      continue
-    }
-    if (!sel.includes(getRowFilterValue(row, col))) return false
-  }
-  return true
-}
-
-function countActiveSyncFilters(primary: Record<string, string[]>, secondary: Record<string, string[]>) {
-  return (
-    Object.values(primary).reduce((s, a) => s + a.length, 0) +
-    Object.values(secondary).reduce((s, a) => s + a.length, 0)
-  )
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-export function DealsPage() {
-  const isAdmin = useIsAdmin()
-
-  // Сохраняем активную вкладку в localStorage
-  const [tab, setTab] = useState<'deals' | 'potential'>(() => {
-    const saved = localStorage.getItem(LS_TAB_KEY)
-    return saved === 'potential' ? 'potential' : 'deals'
-  })
-
-  // Поисковый запрос живёт на уровне страницы — не сбрасывается при переключении вкладок
-  const [search, setSearch] = useState('')
-
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [prefill, setPrefill] = useState<Partial<DealFormData> | null>(null)
-
-  function switchTab(t: 'deals' | 'potential') {
-    setTab(t)
-    localStorage.setItem(LS_TAB_KEY, t)
-  }
-
-  function openCreate(data?: Partial<DealFormData>) {
-    setPrefill(data ?? null)
-    setShowCreateModal(true)
-  }
-
-  const q = search.trim().toLowerCase()
-
-  return (
-    <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1e293b' }}>Проекты</h1>
-        {isAdmin && tab === 'deals' && (
-          <button
-            onClick={() => openCreate()}
-            style={{
-              background: '#2563eb',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '8px 18px',
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            + Создать проект
-          </button>
-        )}
-      </div>
-
-      {/* Search — общий для обеих вкладок, не сбрасывается при переключении */}
-      <div style={{ marginBottom: 16 }}>
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Поиск по клиенту, названию, матрице..."
-          style={{
-            width: '100%',
-            maxWidth: 420,
-            padding: '8px 12px',
-            border: '1px solid #e2e8f0',
-            borderRadius: 8,
-            fontSize: 14,
-            color: '#1e293b',
-            outline: 'none',
-            boxSizing: 'border-box',
-          }}
-        />
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: '2px solid #e2e8f0' }}>
-        {(['deals', 'potential'] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => switchTab(t)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '10px 20px',
-              fontSize: 15,
-              fontWeight: tab === t ? 600 : 400,
-              color: tab === t ? '#2563eb' : '#64748b',
-              cursor: 'pointer',
-              borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent',
-              marginBottom: -2,
-            }}
-          >
-            {t === 'deals' ? 'Проекты' : 'Потенциальные'}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      {tab === 'deals' && <DealsTab isAdmin={isAdmin} search={q} />}
-      {tab === 'potential' && (
-        <PotentialTab isAdmin={isAdmin} search={q} onCreateDeal={openCreate} />
-      )}
-
-      {/* Create Modal */}
-      {showCreateModal && (
-        <DealFormModal
-          prefill={prefill}
-          onClose={() => { setShowCreateModal(false); setPrefill(null) }}
-        />
-      )}
-    </div>
-  )
-}
-
-// ─── Deals Tab ────────────────────────────────────────────────────────────────
-
-function DealsTab({ isAdmin, search }: { isAdmin: boolean; search: string }) {
-  const { data: deals = [], isLoading } = useQuery<Deal[]>({
-    queryKey: ['deals'],
-    queryFn: () => api.get('/deals').then((r) => r.data),
-  })
-
-  const filtered = search
-    ? deals.filter((d) => {
-        const hay = [
-          d.client,
-          d.name,
-          ...d.matrices.map((m) => m.name),
-          ...d.matrices.map((m) => m.client),
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-        return hay.includes(search)
-      })
-    : deals
-
-  if (isLoading) return <LoadingState />
-  if (deals.length === 0) {
-    return (
-      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8', fontSize: 16 }}>
-        Проектов пока нет. Создайте первый или перейдите во вкладку «Потенциальные».
-      </div>
-    )
-  }
-  if (filtered.length === 0) {
-    return (
-      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8', fontSize: 16 }}>
-        Ничего не найдено
-      </div>
-    )
-  }
-
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 16 }}>
-      {filtered.map((deal) => (
-        <DealCard key={deal.id} deal={deal} isAdmin={isAdmin} />
-      ))}
-    </div>
-  )
-}
-
-// ─── Deal Card ────────────────────────────────────────────────────────────────
-
-function DealCard({ deal, isAdmin }: { deal: Deal; isAdmin: boolean }) {
-  const [expanded, setExpanded] = useState(false)
-  const [showDelete, setShowDelete] = useState(false)
-  const qc = useQueryClient()
-
-  const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/deals/${deal.id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['deals'] })
-      qc.invalidateQueries({ queryKey: ['deals-potential'] })
-    },
-  })
-
-  const st = STATUS_COLORS[deal.status]
-
-  return (
-    <div style={{
-      background: '#fff',
-      borderRadius: 12,
-      border: '1px solid #e2e8f0',
-      overflow: 'hidden',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-    }}>
-      {/* Card Header */}
-      <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f1f5f9' : 'none' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 2 }}>
-              {deal.client ?? deal.name ?? '—'}
-            </div>
-            {deal.matrices.length > 0 && (
-              <div style={{ fontSize: 13, color: '#64748b' }}>
-                {deal.matrices.map((m) => m.name).join(', ')}
-              </div>
-            )}
-          </div>
-          <span style={{
-            fontSize: 12,
-            padding: '3px 10px',
-            borderRadius: 10,
-            background: st.bg,
-            color: st.text,
-            fontWeight: 600,
-            flexShrink: 0,
-            marginLeft: 8,
-          }}>
-            {STATUS_LABELS[deal.status]}
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 13, color: '#94a3b8' }}>
-            {deal.statusRows.length} {pluralShifts(deal.statusRows.length)}
-            {deal.matrices.length > 0 && ` · ${deal.matrices.length} матриц`}
-          </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 6,
-                padding: '4px 10px',
-                fontSize: 13,
-                color: '#475569',
-                cursor: 'pointer',
-              }}
-            >
-              {expanded ? 'Свернуть' : 'Подробнее'}
-            </button>
-            {isAdmin && (
-              <button
-                onClick={() => setShowDelete(true)}
-                style={{
-                  background: '#fff5f5',
-                  border: '1px solid #fecaca',
-                  borderRadius: 6,
-                  padding: '4px 10px',
-                  fontSize: 13,
-                  color: '#dc2626',
-                  cursor: 'pointer',
-                }}
-              >
-                Удалить
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Expanded Details */}
-      {expanded && (
-        <div style={{ padding: '16px 20px' }}>
-          {deal.matrices.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={sectionLabel}>Матрицы</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {deal.matrices.map((m) => (
-                  <div key={m.id} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '6px 10px',
-                    background: '#f8fafc',
-                    borderRadius: 6,
-                    fontSize: 13,
-                  }}>
-                    <span style={{ fontWeight: 500, color: '#1e293b' }}>{m.name}</span>
-                    <span style={{ color: '#64748b' }}>
-                      {[m.unit, m.format].filter(Boolean).join(' · ')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {deal.statusRows.length > 0 && (
-            <div>
-              <div style={sectionLabel}>Строки расписания</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {deal.statusRows.map((row) => (
-                  <div key={row.id} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '5px 10px',
-                    background: '#f8fafc',
-                    borderRadius: 6,
-                    fontSize: 13,
-                  }}>
-                    <span style={{ color: '#1e293b' }}>{row.name || '—'}</span>
-                    <span style={{ color: '#94a3b8', flexShrink: 0, marginLeft: 8 }}>
-                      {format(new Date(row.date), 'd MMM yyyy', { locale: ru })}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Delete Confirm */}
-      {showDelete && (
-        <DeleteConfirm
-          text={`Удалить проект «${deal.client ?? deal.name ?? '—'}»? Данные таблиц и матрицы не удаляются.`}
-          onConfirm={() => deleteMutation.mutate()}
-          onCancel={() => setShowDelete(false)}
-          loading={deleteMutation.isPending}
-        />
-      )}
-    </div>
-  )
-}
-
-// ─── Potential Tab ────────────────────────────────────────────────────────────
-
-function PotentialTab({
-  isAdmin,
-  search,
-  onCreateDeal,
-}: {
-  isAdmin: boolean
-  search: string
-  onCreateDeal: (prefill: Partial<DealFormData>) => void
-}) {
-  const { data: groups = [], isLoading } = useQuery<PotentialGroup[]>({
-    queryKey: ['deals-potential'],
-    queryFn: () => api.get('/deals/potential').then((r) => r.data),
-    enabled: isAdmin,
-  })
-
-  if (!isAdmin) {
-    return (
-      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8', fontSize: 16 }}>
-        Только для администраторов
-      </div>
-    )
-  }
-
-  if (isLoading) return <LoadingState />
-
-  // Читаем фильтры, настроенные в Таблицах
-  const { primary, secondary } = readSyncFilters()
-  const activeSyncFiltersCount = countActiveSyncFilters(primary, secondary)
-
-  const filtered: { group: PotentialGroup; filteredRows: StatusRow[] }[] = groups
-    .map((group) => {
-      // 1. Применяем фильтры из Таблиц к строкам группы
-      let rows = activeSyncFiltersCount > 0
-        ? group.rows.filter((r) => rowPassesSyncFilters(r, primary, secondary))
-        : group.rows
-
-      // 2. Применяем текстовый поиск
-      if (search) {
-        const matrixMatch = [group.matrix.client, group.matrix.name]
-          .filter(Boolean)
-          .some((v) => v!.toLowerCase().includes(search))
-
-        const matchedRows = rows.filter((r) =>
-          (r.name ?? '').toLowerCase().includes(search) ||
-          (r.client ?? '').toLowerCase().includes(search)
-        )
-
-        if (!matrixMatch && matchedRows.length === 0) return null
-        if (!matrixMatch) rows = matchedRows
-      }
-
-      if (rows.length === 0) return null
-
-      return { group, filteredRows: rows }
-    })
-    .filter((x): x is { group: PotentialGroup; filteredRows: StatusRow[] } => x !== null)
-
-  if (groups.length === 0) {
-    return (
-      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8', fontSize: 16 }}>
-        Потенциальных совпадений не найдено
-      </div>
-    )
-  }
-
-  return (
-    <>
-      {/* Индикатор активных фильтров из Таблиц */}
-      {activeSyncFiltersCount > 0 && (
-        <div style={{
-          marginBottom: 16,
-          padding: '8px 14px',
-          background: '#eff6ff',
-          border: '1px solid #bfdbfe',
-          borderRadius: 8,
-          fontSize: 13,
-          color: '#1d4ed8',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}>
-          <span>Активны фильтры из «Таблиц»: {activeSyncFiltersCount}</span>
-          <span style={{ color: '#64748b' }}>·</span>
-          <span style={{ color: '#64748b' }}>
-            {filtered.length} из {groups.length} групп
-          </span>
-        </div>
-      )}
-
-      {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8', fontSize: 16 }}>
-          Ничего не найдено
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 16 }}>
-          {filtered.map(({ group, filteredRows }) => (
-            <PotentialCard
-              key={group.matrix.id}
-              group={group}
-              filteredRows={filteredRows}
-              onCreate={() =>
-                onCreateDeal({
-                  client: group.matrix.client ?? '',
-                  matrixIds: [group.matrix.id],
-                  statusRowIds: filteredRows.map((r) => r.id),
-                })
-              }
-            />
-          ))}
-        </div>
-      )}
-    </>
-  )
-}
-
-function PotentialCard({
-  group,
-  filteredRows,
-  onCreate,
-}: {
-  group: PotentialGroup
-  filteredRows: StatusRow[]
-  onCreate: () => void
-}) {
-  const [expanded, setExpanded] = useState(false)
-  const isFiltered = filteredRows.length !== group.rows.length
-
-  return (
-    <div style={{
-      background: '#fff',
-      borderRadius: 12,
-      border: '1px solid #e2e8f0',
-      overflow: 'hidden',
-      boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
-    }}>
-      <div style={{ padding: '16px 20px', borderBottom: expanded ? '1px solid #f1f5f9' : 'none' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>
-          {group.matrix.client ?? group.matrix.name}
-        </div>
-        <div style={{ fontSize: 13, color: '#64748b', marginBottom: 12 }}>
-          {group.matrix.name}
-          {[group.matrix.unit, group.matrix.format].filter(Boolean).length > 0 &&
-            ` · ${[group.matrix.unit, group.matrix.format].filter(Boolean).join(' / ')}`}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 13, color: '#94a3b8' }}>
-            {filteredRows.length} {pluralShifts(filteredRows.length)}
-            {isFiltered && (
-              <span style={{ color: '#f59e0b', marginLeft: 4 }}>
-                из {group.rows.length}
-              </span>
-            )}
-          </span>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 6,
-                padding: '4px 10px',
-                fontSize: 13,
-                color: '#475569',
-                cursor: 'pointer',
-              }}
-            >
-              {expanded ? 'Свернуть' : 'Показать'}
-            </button>
-            <button
-              onClick={onCreate}
-              style={{
-                background: '#2563eb',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                padding: '4px 14px',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Создать проект
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {filteredRows.map((row) => (
-            <div key={row.id} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              padding: '5px 10px',
-              background: '#f8fafc',
-              borderRadius: 6,
-              fontSize: 13,
-            }}>
-              <span style={{ color: '#1e293b' }}>{row.name || '—'}</span>
-              <span style={{ color: '#94a3b8', flexShrink: 0, marginLeft: 8 }}>
-                {format(new Date(row.date), 'd MMM yyyy', { locale: ru })}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Deal Form Modal ──────────────────────────────────────────────────────────
-
-interface DealFormData {
-  client: string
-  name: string
-  status: DealStatus
-  matrixIds: string[]
-  statusRowIds: string[]
-}
-
-function DealFormModal({
-  prefill,
-  onClose,
-}: {
-  prefill: Partial<DealFormData> | null
-  onClose: () => void
-}) {
-  const qc = useQueryClient()
-  const [form, setForm] = useState<DealFormData>({
-    client: prefill?.client ?? '',
-    name: prefill?.name ?? '',
-    status: prefill?.status ?? 'preliminary',
-    matrixIds: prefill?.matrixIds ?? [],
-    statusRowIds: prefill?.statusRowIds ?? [],
-  })
-
-  const { data: allRows = [] } = useQuery<StatusRow[]>({
-    queryKey: ['status-rows-for-deal'],
-    queryFn: () => api.get('/status-rows', { params: { withSeparators: false } }).then((r) => r.data),
-  })
-
-  const { data: matricesData = [] } = useQuery<MatrixRegistry[]>({
-    queryKey: ['sync-registry'],
-    queryFn: () => api.get('/sync/registry').then((r) => r.data),
-  })
-
-  const createMutation = useMutation({
-    mutationFn: (data: typeof form) =>
-      api.post('/deals', {
-        client: data.client || null,
-        name: data.name || null,
-        status: data.status,
-        matrixIds: data.matrixIds,
-        statusRowIds: data.statusRowIds,
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['deals'] })
-      qc.invalidateQueries({ queryKey: ['deals-potential'] })
-      onClose()
-    },
-  })
-
-  const toggle = (arr: string[], id: string) =>
-    arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]
-
-  const selectedMatrixIds = new Set(
-    matricesData
-      .filter((m) => form.matrixIds.includes(m.id))
-      .map((m) => m.matrixId)
-  )
-
-  const filteredRows =
-    form.matrixIds.length > 0
-      ? allRows.filter((r) => r.sheetMatrixId && selectedMatrixIds.has(r.sheetMatrixId))
-      : allRows
-
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 20,
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div style={{
-        background: '#fff',
-        borderRadius: 14,
-        width: '100%',
-        maxWidth: 640,
-        maxHeight: '90vh',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-      }}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Создать проект</h2>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', lineHeight: 1 }}
-          >
-            ×
-          </button>
-        </div>
-
-        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 20 }}>
-          <div>
-            <label style={labelStyle}>Клиент</label>
-            <input
-              value={form.client}
-              onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
-              placeholder="Название клиента"
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Название проекта (необязательно)</label>
-            <input
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              placeholder="Оставьте пустым чтобы использовать имя клиента"
-              style={inputStyle}
-            />
-          </div>
-
-          <div>
-            <label style={labelStyle}>Статус</label>
-            <select
-              value={form.status}
-              onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as DealStatus }))}
-              style={{ ...inputStyle, cursor: 'pointer' }}
-            >
-              {(Object.entries(STATUS_LABELS) as [DealStatus, string][]).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
-          </div>
-
-          {matricesData.length > 0 && (
-            <div>
-              <label style={labelStyle}>Матрицы ({form.matrixIds.length} выбрано)</label>
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, maxHeight: 160, overflowY: 'auto' }}>
-                {matricesData.map((m) => (
-                  <label key={m.id} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid #f8fafc',
-                    background: form.matrixIds.includes(m.id) ? '#eff6ff' : '#fff',
-                    fontSize: 13,
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={form.matrixIds.includes(m.id)}
-                      onChange={() => setForm((f) => ({ ...f, matrixIds: toggle(f.matrixIds, m.id) }))}
-                    />
-                    <span style={{ fontWeight: 500, color: '#1e293b' }}>{m.name}</span>
-                    {m.client && <span style={{ color: '#64748b' }}>{m.client}</span>}
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label style={labelStyle}>
-              Строки расписания ({form.statusRowIds.length} выбрано)
-              {form.matrixIds.length > 0 && ' · отфильтровано по матрицам'}
-            </label>
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, maxHeight: 200, overflowY: 'auto' }}>
-              {filteredRows.length === 0 ? (
-                <div style={{ padding: 16, color: '#94a3b8', fontSize: 13, textAlign: 'center' }}>Нет строк</div>
-              ) : (
-                filteredRows.map((row) => (
-                  <label key={row.id} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '7px 12px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid #f8fafc',
-                    background: form.statusRowIds.includes(row.id) ? '#eff6ff' : '#fff',
-                    fontSize: 13,
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={form.statusRowIds.includes(row.id)}
-                      onChange={() => setForm((f) => ({ ...f, statusRowIds: toggle(f.statusRowIds, row.id) }))}
-                    />
-                    <span style={{ color: '#1e293b' }}>{row.name || '—'}</span>
-                    <span style={{ color: '#94a3b8', marginLeft: 'auto', flexShrink: 0 }}>
-                      {format(new Date(row.date), 'd MMM yyyy', { locale: ru })}
-                    </span>
-                  </label>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button
-            onClick={onClose}
-            style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '9px 20px', fontSize: 14, color: '#475569', cursor: 'pointer' }}
-          >
-            Отмена
-          </button>
-          <button
-            onClick={() => createMutation.mutate(form)}
-            disabled={createMutation.isPending}
-            style={{
-              background: createMutation.isPending ? '#93c5fd' : '#2563eb',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '9px 24px',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: createMutation.isPending ? 'default' : 'pointer',
-            }}
-          >
-            {createMutation.isPending ? 'Создаём...' : 'Создать'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Delete Confirm ───────────────────────────────────────────────────────────
-
-function DeleteConfirm({
-  text,
-  onConfirm,
-  onCancel,
-  loading,
-}: {
-  text: string
-  onConfirm: () => void
-  onCancel: () => void
-  loading: boolean
-}) {
-  return (
-    <div style={{ padding: '14px 20px', background: '#fff5f5', borderTop: '1px solid #fecaca', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ fontSize: 14, color: '#7f1d1d' }}>{text}</div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={onConfirm}
-          disabled={loading}
-          style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', fontSize: 13, fontWeight: 600, cursor: loading ? 'default' : 'pointer' }}
-        >
-          {loading ? 'Удаление...' : 'Удалить'}
-        </button>
-        <button
-          onClick={onCancel}
-          style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '6px 16px', fontSize: 13, color: '#475569', cursor: 'pointer' }}
-        >
-          Отмена
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// ─── Loading State ────────────────────────────────────────────────────────────
-
-function LoadingState() {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 16 }}>
-      {[1, 2, 3].map((i) => (
-        <div key={i} style={{
-          background: '#f8fafc',
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          height: 120,
-        }} />
-      ))}
-    </div>
-  )
-}
+const PROJ_COLS: ColDef[] = [
+  { key: 'status',   label: 'A Статус'  },
+  { key: 'name',     label: 'C Название' },
+  { key: 'date',     label: 'G Дата'    },
+  { key: 'format',   label: 'I Формат'  },
+  { key: 'location', label: 'J Локация' },
+]
+
+const REG_COLS: ColDef[] = [
+  { key: 'status',     label: 'A Статус'    },
+  { key: 'matrixLink', label: 'B+C Матрица' },
+  { key: 'unit',       label: 'E Юнит'      },
+  { key: 'name',       label: 'G Название'  },
+  { key: 'format',     label: 'H Формат'    },
+]
+
+const GAP  = 48
+const MIDX = GAP / 2
+
+// Cycled palette for linked groups (bg + line color)
+const GROUP_PALETTE = [
+  { bg: '#dbeafe', line: '#3b82f6' }, // blue
+  { bg: '#dcfce7', line: '#16a34a' }, // green
+  { bg: '#fef3c7', line: '#d97706' }, // amber
+  { bg: '#f3e8ff', line: '#9333ea' }, // purple
+  { bg: '#fce7f3', line: '#db2777' }, // pink
+  { bg: '#e0f2fe', line: '#0284c7' }, // sky
+  { bg: '#d1fae5', line: '#059669' }, // emerald
+  { bg: '#fff7ed', line: '#ea580c' }, // orange
+]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function pluralShifts(n: number) {
-  if (n % 10 === 1 && n % 100 !== 11) return 'строка'
-  if ([2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100)) return 'строки'
-  return 'строк'
+function fmtDate(raw: string | null) {
+  if (!raw) return '—'
+  try { return format(new Date(raw), 'd MMM yyyy', { locale: ru }) } catch { return raw }
 }
 
-const sectionLabel: CSSProperties = {
+function renderProjCell(col: ColDef, p: Project) {
+  switch (col.key) {
+    case 'status':
+      return (
+        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: `${STATUS_COLORS[p.status] ?? '#94a3b8'}22`, color: STATUS_COLORS[p.status] ?? '#94a3b8' }}>
+          {STATUS_LABELS[p.status] ?? p.status}
+        </span>
+      )
+    case 'name':     return p.name
+    case 'date':     return fmtDate(p.date)
+    case 'format':   return p.format ?? '—'
+    case 'location': return p.location ?? '—'
+    default:         return null
+  }
+}
+
+function renderRegCell(col: ColDef, r: RegistryEntry) {
+  switch (col.key) {
+    case 'status':
+      return r.status
+        ? <span style={{ padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: '#f1f5f9', color: '#475569' }}>{r.status}</span>
+        : <span style={{ color: '#94a3b8' }}>—</span>
+    case 'matrixLink':
+      return r.sheetUrl?.startsWith('https://')
+        ? <a href={r.sheetUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', fontFamily: 'monospace', fontSize: 12 }}>{r.matrixId}</a>
+        : <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{r.matrixId}</span>
+    case 'unit':   return r.unit   ?? '—'
+    case 'name':   return r.name   ?? '—'
+    case 'format': return r.format ?? '—'
+    default:       return null
+  }
+}
+
+// ─── Client Block ─────────────────────────────────────────────────────────────
+
+function ClientBlock({ client, projects, registry }: {
+  client: string
+  projects: Project[]
+  registry: RegistryEntry[]
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const tablesRef   = useRef<HTMLDivElement>(null)
+  const regTbodyRef = useRef<HTMLTableSectionElement | null>(null)
+  const projRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({})
+
+  const [rowH, setRowH]               = useState(0)
+  const [groupLineData, setGroupLineData] = useState<GroupLine[]>([])
+
+  // ── Connection map ────────────────────────────────────────────────────────
+
+  const matchPairs = useMemo(() => {
+    const pairs: { projId: string; regId: string }[] = []
+    for (const p of projects) {
+      if (!p.sheetMatrixId) continue
+      for (const r of registry) {
+        if (r.matrixId === p.sheetMatrixId) pairs.push({ projId: p.id, regId: r.id })
+      }
+    }
+    return pairs
+  }, [projects, registry])
+
+  // ── Group color maps ──────────────────────────────────────────────────────
+  //
+  // Each registry row that has ≥1 connection gets a palette color (by order).
+  // Project rows inherit the same color from their connected registry row.
+
+  const groupColorMap = useMemo(() => {
+    const map = new Map<string, number>()  // regId → palette index
+    let idx = 0
+    for (const r of registry) {
+      if (matchPairs.some(mp => mp.regId === r.id)) {
+        map.set(r.id, idx % GROUP_PALETTE.length)
+        idx++
+      }
+    }
+    return map
+  }, [registry, matchPairs])
+
+  const projColorMap = useMemo(() => {
+    const map = new Map<string, number>()  // projId → palette index
+    for (const { projId, regId } of matchPairs) {
+      const ci = groupColorMap.get(regId)
+      if (ci !== undefined) map.set(projId, ci)
+    }
+    return map
+  }, [matchPairs, groupColorMap])
+
+  // ── Row ordering ──────────────────────────────────────────────────────────
+  //
+  // Both tables are reordered so connected rows form compact groups.
+  //
+  // orderedProjects: groups (each = all proj rows for one registry row, in
+  //   original order) followed by unconnected proj rows.
+  //
+  // orderedRegistry: registry rows ordered by the first project row they own
+  //   (so they appear top-to-bottom in the same order as their groups).
+
+  const orderedProjects = useMemo(() => {
+    const result: Project[] = []
+    const placed = new Set<string>()
+    // Iterate registry in original order to respect user's ordering
+    for (const r of registry) {
+      const group = projects
+        .filter(p => p.sheetMatrixId === r.matrixId)
+        .sort((a, b) => projects.indexOf(a) - projects.indexOf(b))
+      for (const p of group) {
+        if (!placed.has(p.id)) { result.push(p); placed.add(p.id) }
+      }
+    }
+    // Unconnected projects after all groups
+    for (const p of projects) {
+      if (!placed.has(p.id)) result.push(p)
+    }
+    return result
+  }, [projects, registry])
+
+  const orderedRegistry = useMemo(() => {
+    const result: RegistryEntry[] = []
+    const placed = new Set<string>()
+    // Follow orderedProjects to pick registry rows in group order
+    for (const p of orderedProjects) {
+      if (!p.sheetMatrixId) continue
+      const r = registry.find(x => x.matrixId === p.sheetMatrixId)
+      if (r && !placed.has(r.id)) { result.push(r); placed.add(r.id) }
+    }
+    // Unconnected registry rows last
+    for (const r of registry) {
+      if (!placed.has(r.id)) result.push(r)
+    }
+    return result
+  }, [orderedProjects, registry])
+
+  // ── Registry row spacers ──────────────────────────────────────────────────
+  //
+  // Connected rows: centered at avgProjIndex * rowH from registry tbody top.
+  //
+  // Unconnected rows: pushed below the last connected project row, with a gap
+  // of half the total connected project span.
+  //   unconnectedStart = (maxConnIdx + 1) * rowH + connSpan / 2
+  //   connSpan = (maxConnIdx - minConnIdx + 1) * rowH
+
+  const regPlacements = useMemo(() => {
+    if (rowH === 0) return orderedRegistry.map(r => ({ id: r.id, spacerPx: 0 }))
+
+    // Pre-classify each registry row and compute the spacer it needs.
+    // Pass 1: collect per-row info (no mutation, no flags).
+    type RowInfo =
+      | { kind: 'connected'; avgIdx: number }
+      | { kind: 'unconnected' }
+
+    const info: RowInfo[] = orderedRegistry.map(r => {
+      const connIds = matchPairs.filter(mp => mp.regId === r.id).map(mp => mp.projId)
+      if (connIds.length === 0) return { kind: 'unconnected' }
+      const indices = connIds
+        .map(id => orderedProjects.findIndex(p => p.id === id))
+        .filter(i => i >= 0)
+      if (indices.length === 0) return { kind: 'unconnected' }
+      const avgIdx = indices.reduce((a, b) => a + b, 0) / indices.length
+      return { kind: 'connected', avgIdx }
+    })
+
+    // Actual max project row index among ALL connected rows (across all groups).
+    // Used to align unconnected registry rows with unconnected project rows.
+    const allConnProjIndices = matchPairs
+      .map(mp => orderedProjects.findIndex(p => p.id === mp.projId))
+      .filter(i => i >= 0)
+    const maxConnProjIdx = allConnProjIndices.length > 0 ? Math.max(...allConnProjIndices) : -1
+    // Top of first unconnected project row = (maxConnProjIdx + 1) * rowH from tbody
+    const unconnectedStart = maxConnProjIdx >= 0 ? (maxConnProjIdx + 1) * rowH : 0
+
+    // Pass 2: walk and assign spacers.
+    let cursor = 0
+    let unconnStartUsed = false
+
+    return orderedRegistry.map((r, i) => {
+      const row = info[i]
+
+      if (row.kind === 'connected') {
+        const spacerPx = Math.max(0, row.avgIdx * rowH - cursor)
+        cursor += spacerPx + rowH
+        return { id: r.id, spacerPx }
+      }
+
+      // First unconnected row: jump cursor to unconnectedStart
+      if (!unconnStartUsed && maxConnProjIdx >= 0) {
+        unconnStartUsed = true
+        const spacerPx = Math.max(0, unconnectedStart - cursor)
+        cursor += spacerPx + rowH
+        return { id: r.id, spacerPx }
+      }
+
+      cursor += rowH
+      return { id: r.id, spacerPx: 0 }
+    })
+  }, [orderedRegistry, matchPairs, orderedProjects, rowH])
+
+  // ── Measurement effects ───────────────────────────────────────────────────
+
+  // Pass 1: measure rowH from first rendered project row.
+  // useLayoutEffect blocks paint → re-render with correct spacers before first paint.
+  useLayoutEffect(() => {
+    if (!expanded) { setRowH(0); setGroupLineData([]); return }
+    const el = orderedProjects[0] ? projRowRefs.current[orderedProjects[0].id] : null
+    const h = el?.getBoundingClientRect().height ?? 0
+    if (h > 0) setRowH(h)
+  }, [expanded, orderedProjects.length])
+
+  // Pass 2: compute SVG line coordinates.
+  //
+  // Strategy (same as bracketDisplay.js):
+  //   • Project rows — measure each row's actual DOM position (no spacers, always reliable).
+  //   • Registry rows — compute from regTbodyRef.top + accumulated cursor (mirrors regPlacements).
+  //     This avoids measuring spacer-affected rows whose layout may not be flushed yet.
+  useLayoutEffect(() => {
+    if (!expanded || rowH === 0 || !tablesRef.current || !regTbodyRef.current) {
+      setGroupLineData([])
+      return
+    }
+
+    const compute = () => {
+      if (!tablesRef.current || !regTbodyRef.current) return
+      const cRect = tablesRef.current.getBoundingClientRect()
+      // Registry tbody starts here (relative to SVG origin = tablesRef top)
+      const regT0 = regTbodyRef.current.getBoundingClientRect().top - cRect.top
+
+      let regCursor = 0
+      const lines: GroupLine[] = []
+
+      for (const { id: regId, spacerPx } of regPlacements) {
+        regCursor += spacerPx
+        const regCY = regT0 + regCursor + rowH / 2
+        regCursor += rowH
+
+        const connProjIds = matchPairs
+          .filter(mp => mp.regId === regId)
+          .map(mp => mp.projId)
+        if (connProjIds.length === 0) continue
+
+        const ci = groupColorMap.get(regId) ?? 0
+        const color = GROUP_PALETTE[ci].line
+
+        // Project rows: measure actual DOM position (project table has no spacers)
+        const projCYs = connProjIds
+          .map(projId => {
+            const el = projRowRefs.current[projId]
+            if (!el) return null
+            const r = el.getBoundingClientRect()
+            return r.top - cRect.top + r.height / 2
+          })
+          .filter((y): y is number => y !== null)
+
+        if (projCYs.length > 0) {
+          lines.push({ id: regId, projCYs, regCY, color })
+        }
+      }
+
+      setGroupLineData(lines)
+    }
+
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(tablesRef.current)
+    return () => ro.disconnect()
+  }, [expanded, rowH, matchPairs, groupColorMap, regPlacements])
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  const countParts: string[] = []
+  if (projects.length > 0)  countParts.push(`${projects.length} стр.`)
+  if (registry.length > 0)  countParts.push(`${registry.length} матр.`)
+  if (matchPairs.length > 0) countParts.push(`${matchPairs.length} связей`)
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+      {/* Accordion header */}
+      <button
+        onClick={() => setExpanded(v => !v)}
+        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '13px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', borderBottom: expanded ? '1px solid #e2e8f0' : 'none' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{client}</span>
+          {countParts.length > 0 && (
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>{countParts.join(' · ')}</span>
+          )}
+        </div>
+        <span style={{ fontSize: 14, color: '#94a3b8', display: 'inline-block', transition: 'transform 0.15s', transform: expanded ? 'rotate(180deg)' : 'none' }}>▾</span>
+      </button>
+
+      {expanded && (
+        <>
+          {/* Sub-headers */}
+          <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ flex: 1, ...subHeader }}>Таблица проектов · {projects.length}</div>
+            <div style={{ width: GAP, background: '#f8fafc', flexShrink: 0 }} />
+            <div style={{ flex: 1, ...subHeader }}>Реестр матриц · {registry.length}</div>
+          </div>
+
+          {/* Tables + gap */}
+          <div ref={tablesRef} style={{ display: 'flex', alignItems: 'stretch' }}>
+
+            {/* Left — projects (reordered by group) */}
+            <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+              {orderedProjects.length === 0 ? (
+                <div style={emptyMsg}>Нет строк</div>
+              ) : (
+                <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr>{PROJ_COLS.map(c => <th key={c.key} style={thBase}><span style={thLabel}>{c.label}</span></th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {orderedProjects.map(p => {
+                      const ci = projColorMap.get(p.id)
+                      const bg = ci !== undefined ? GROUP_PALETTE[ci].bg : '#fff'
+                      return (
+                        <tr
+                          key={p.id}
+                          ref={el => { projRowRefs.current[p.id] = el }}
+                          style={{ background: bg }}
+                        >
+                          {PROJ_COLS.map(c => <td key={c.key} style={tdStyle}>{renderProjCell(c, p)}</td>)}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Gap — SVG bracket connectors (same logic as bracketDisplay.js) */}
+            <div style={{ width: GAP, flexShrink: 0, position: 'relative', background: '#f8fafc' }}>
+              <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible' }}>
+                {groupLineData.map(gl => {
+                  const minCY = Math.min(...gl.projCYs)
+                  const maxCY = Math.max(...gl.projCYs)
+                  return (
+                    <g key={gl.id}>
+                      {/* Horizontal stubs: each project row → midX */}
+                      {gl.projCYs.map((cy, i) => (
+                        <line key={i} x1={0} y1={cy} x2={MIDX} y2={cy}
+                          stroke={gl.color} strokeWidth={1.5} strokeOpacity={0.85} />
+                      ))}
+                      {/* Vertical spine at midX connecting all project stubs */}
+                      {gl.projCYs.length > 1 && (
+                        <line x1={MIDX} y1={minCY} x2={MIDX} y2={maxCY}
+                          stroke={gl.color} strokeWidth={1.5} strokeOpacity={0.85} />
+                      )}
+                      {/* Vertical from spine to registry row (if spine midpoint ≠ regCY) */}
+                      {gl.projCYs.length === 1 && Math.abs(gl.projCYs[0] - gl.regCY) > 0.5 && (
+                        <line x1={MIDX} y1={gl.projCYs[0]} x2={MIDX} y2={gl.regCY}
+                          stroke={gl.color} strokeWidth={1.5} strokeOpacity={0.85} />
+                      )}
+                      {/* Horizontal stub: midX → registry row */}
+                      <line x1={MIDX} y1={gl.regCY} x2={GAP} y2={gl.regCY}
+                        stroke={gl.color} strokeWidth={1.5} strokeOpacity={0.85} />
+                      {/* Dots at project endpoints */}
+                      {gl.projCYs.map((cy, i) => (
+                        <circle key={i} cx={0} cy={cy} r={3} fill={gl.color} fillOpacity={0.85} />
+                      ))}
+                      {/* Dot at registry endpoint */}
+                      <circle cx={GAP} cy={gl.regCY} r={3} fill={gl.color} fillOpacity={0.85} />
+                    </g>
+                  )
+                })}
+              </svg>
+            </div>
+
+            {/* Right — registry (reordered + spacers for vertical alignment) */}
+            <div style={{ flex: 1, minWidth: 0, overflowX: 'auto' }}>
+              {orderedRegistry.length === 0 ? (
+                <div style={emptyMsg}>Нет строк</div>
+              ) : (
+                <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr>{REG_COLS.map(c => <th key={c.key} style={thBase}><span style={thLabel}>{c.label}</span></th>)}</tr>
+                  </thead>
+                  <tbody ref={regTbodyRef}>
+                    {regPlacements.map(({ id: regId, spacerPx }) => {
+                      const r = orderedRegistry.find(x => x.id === regId)!
+                      const ci = groupColorMap.get(regId)
+                      const bg = ci !== undefined ? GROUP_PALETTE[ci].bg : '#fff'
+                      return (
+                        <Fragment key={regId}>
+                          {/* Exact-height spacer to push this row to the center of its group */}
+                          {spacerPx > 0 && (
+                            <tr>
+                              <td colSpan={REG_COLS.length} style={{ padding: 0, height: spacerPx, border: 'none', background: '#fff' }} />
+                            </tr>
+                          )}
+                          <tr style={{ background: bg }}>
+                            {REG_COLS.map(c => <td key={c.key} style={tdStyle}>{renderRegCell(c, r)}</td>)}
+                          </tr>
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export function DealsPage() {
+  const [search, setSearch] = useState('')
+
+  const { data: allProjects = [], isLoading: projLoading } = useQuery<Project[]>({
+    queryKey: ['status-rows-clients'],
+    queryFn: () => api.get('/status-rows').then(r => r.data),
+  })
+
+  const { data: registry = [], isLoading: regLoading } = useQuery<RegistryEntry[]>({
+    queryKey: ['registry-clients'],
+    queryFn: () => api.get('/sync/registry').then(r => r.data),
+  })
+
+  const isLoading = projLoading || regLoading
+
+  const clients = useMemo(() => {
+    const set = new Set<string>()
+    allProjects.forEach(p => set.add(p.client ?? ''))
+    registry.forEach(r => set.add(r.client ?? ''))
+    return Array.from(set).sort((a, b) => {
+      if (!a) return 1
+      if (!b) return -1
+      return a.localeCompare(b, 'ru')
+    })
+  }, [allProjects, registry])
+
+  const q = search.trim().toLowerCase()
+  const filtered = useMemo(
+    () => q ? clients.filter(c => c.toLowerCase().includes(q)) : clients,
+    [clients, q],
+  )
+
+  return (
+    <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1e293b' }}>Клиенты</h1>
+        {!isLoading && (
+          <span style={{ fontSize: 14, color: '#94a3b8' }}>{filtered.length} клиентов</span>
+        )}
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Поиск по клиенту..."
+          style={{ width: '100%', maxWidth: 360, padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, color: '#1e293b', outline: 'none', boxSizing: 'border-box' }}
+        />
+      </div>
+
+      {isLoading ? (
+        <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>Загрузка...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>
+          {q ? 'Ничего не найдено' : 'Нет данных — запустите синхронизацию'}
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {filtered.map(client => (
+            <ClientBlock
+              key={client}
+              client={client || '(без клиента)'}
+              projects={allProjects.filter(p => (p.client ?? '') === client)}
+              registry={registry.filter(r => (r.client ?? '') === client)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const subHeader: CSSProperties = {
+  padding: '8px 12px',
   fontSize: 12,
   fontWeight: 600,
   color: '#64748b',
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  marginBottom: 8,
+  background: '#f8fafc',
 }
 
-const labelStyle: CSSProperties = {
-  display: 'block',
-  fontSize: 13,
+const thBase: CSSProperties = {
+  position: 'sticky',
+  top: 0,
+  background: '#f1f5f9',
+  padding: '8px 10px',
+  borderBottom: '2px solid #e2e8f0',
+  textAlign: 'left',
+  verticalAlign: 'bottom',
+  zIndex: 1,
+}
+
+const thLabel: CSSProperties = {
+  fontSize: 12,
+  color: '#334155',
   fontWeight: 600,
-  color: '#374151',
-  marginBottom: 6,
+  whiteSpace: 'nowrap',
 }
 
-const inputStyle: CSSProperties = {
-  width: '100%',
-  padding: '9px 12px',
-  border: '1px solid #e2e8f0',
-  borderRadius: 8,
-  fontSize: 14,
-  color: '#1e293b',
-  outline: 'none',
-  boxSizing: 'border-box',
+const tdStyle: CSSProperties = {
+  padding: '6px 10px',
+  borderBottom: '1px solid #f1f5f9',
+  color: '#374151',
+  whiteSpace: 'nowrap',
+}
+
+const emptyMsg: CSSProperties = {
+  padding: 24,
+  textAlign: 'center',
+  color: '#94a3b8',
+  fontSize: 13,
 }
