@@ -190,13 +190,13 @@ function ClientBlock({ client, projects, registry }: {
   registry: RegistryEntry[]
 }) {
   const [expanded, setExpanded] = useState(false)
-  const tablesRef   = useRef<HTMLDivElement>(null)
-  const regTbodyRef = useRef<HTMLTableSectionElement | null>(null)
-  const projRowRefs = useRef<Record<string, HTMLTableRowElement | null>>({})
-  const regRowRefs  = useRef<Record<string, HTMLTableRowElement | null>>({})
+  const tablesRef    = useRef<HTMLDivElement>(null)
+  const regTbodyRef  = useRef<HTMLTableSectionElement | null>(null)
+  const projRowRefs  = useRef<Record<string, HTMLTableRowElement | null>>({})
+  const regRowRefs   = useRef<Record<string, HTMLTableRowElement | null>>({})
+  // spacerTdRefs: direct DOM control for spacer heights (bypasses React state → no two-pass lag)
+  const spacerTdRefs = useRef<Record<string, HTMLTableCellElement | null>>({})
 
-  const [rowH, setRowH]                 = useState(0)
-  const [regPlacements, setRegPlacements] = useState<Array<{ id: string; spacerPx: number }>>([])
   const [groupLineData, setGroupLineData] = useState<GroupLine[]>([])
 
   // ── Connection map ────────────────────────────────────────────────────────
@@ -283,96 +283,94 @@ function ClientBlock({ client, projects, registry }: {
     return result
   }, [orderedProjects, registry])
 
-  // ── Measurement effects ───────────────────────────────────────────────────
+  // ── Measurement effect ────────────────────────────────────────────────────
+  //
+  // Single-pass approach (mirrors debug.html draw() exactly):
+  //   1. Reset spacer heights to 0px directly in DOM (via spacerTdRefs)
+  //   2. Measure project row CYs and regT0/regRowH (getBoundingClientRect forces layout)
+  //   3. Compute spacers with computeRegPlacements
+  //   4. Apply spacer heights directly in DOM (no React state — no re-render needed)
+  //   5. Measure registry row CYs (getBoundingClientRect forces layout with new spacers)
+  //   6. Build SVG line data and call setGroupLineData
+  //
+  // This eliminates the two-pass state-update lag that caused 66 px drift in production.
 
-  // Pass 1: measure actual project row CYs and registry row height from DOM,
-  // then compute spacers via computeRegPlacements (mirrors debug.html logic).
-  // Runs with spacers = 0 (initial render after expand), so regTbodyRef gives
-  // the natural tbody top. useLayoutEffect blocks paint → correct spacers on first paint.
   useLayoutEffect(() => {
-    if (!expanded) { setRowH(0); setRegPlacements([]); setGroupLineData([]); return }
+    if (!expanded) { setGroupLineData([]); return }
     if (!tablesRef.current || !regTbodyRef.current) return
 
-    const cRect = tablesRef.current.getBoundingClientRect()
-
-    // Project row centers from DOM
-    const projCYs = new Map<string, number>()
-    for (const p of orderedProjects) {
-      const el = projRowRefs.current[p.id]
-      if (el) {
-        const r = el.getBoundingClientRect()
-        projCYs.set(p.id, r.top - cRect.top + r.height / 2)
-      }
-    }
-
-    const h = orderedProjects[0]
-      ? (projRowRefs.current[orderedProjects[0].id]?.getBoundingClientRect().height ?? 0)
-      : 0
-    if (h === 0) return
-
-    // Registry tbody top and actual row height (measured while spacers = 0)
-    const regT0 = regTbodyRef.current.getBoundingClientRect().top - cRect.top
-    const firstRegId = orderedRegistry[0]?.id
-    const firstRegEl = firstRegId ? regRowRefs.current[firstRegId] : null
-    const regRowH = firstRegEl?.getBoundingClientRect().height ?? h
-
-    setRowH(h)
-    setRegPlacements(computeRegPlacements(
-      orderedRegistry, orderedProjects, matchPairs, projCYs, regT0, regRowH,
-    ))
-  }, [expanded, orderedProjects.length, orderedRegistry.length])
-
-  // Pass 2: compute SVG line coordinates.
-  // Both project and registry rows are measured from actual DOM positions — pixel-perfect.
-  useLayoutEffect(() => {
-    if (!expanded || rowH === 0 || !tablesRef.current || !regTbodyRef.current) {
-      setGroupLineData([])
-      return
-    }
-
-    const compute = () => {
+    const measure = () => {
       if (!tablesRef.current || !regTbodyRef.current) return
+
+      // Step 1: reset all spacers to 0 so layout is "natural"
+      for (const el of Object.values(spacerTdRefs.current)) {
+        if (el) el.style.height = '0px'
+      }
+
+      // Step 2: measure project row centers (layout forced by getBoundingClientRect)
       const cRect = tablesRef.current.getBoundingClientRect()
+      const projCYs = new Map<string, number>()
+      for (const p of orderedProjects) {
+        const el = projRowRefs.current[p.id]
+        if (el) {
+          const r = el.getBoundingClientRect()
+          projCYs.set(p.id, r.top - cRect.top + r.height / 2)
+        }
+      }
 
+      const regT0 = regTbodyRef.current.getBoundingClientRect().top - cRect.top
+      const firstRegId = orderedRegistry[0]?.id
+      const firstRegEl = firstRegId ? regRowRefs.current[firstRegId] : null
+      const firstProjEl = orderedProjects[0] ? projRowRefs.current[orderedProjects[0].id] : null
+      const regRowH = firstRegEl?.getBoundingClientRect().height
+        ?? firstProjEl?.getBoundingClientRect().height
+        ?? 0
+      if (regRowH === 0) return
+
+      // Step 3: compute spacers
+      const placements = computeRegPlacements(
+        orderedRegistry, orderedProjects, matchPairs, projCYs, regT0, regRowH,
+      )
+
+      // Step 4: apply spacer heights directly to DOM (no React re-render)
+      for (const { id, spacerPx } of placements) {
+        const el = spacerTdRefs.current[id]
+        if (el) el.style.height = spacerPx + 'px'
+      }
+
+      // Step 5 + 6: measure registry row centers (getBoundingClientRect forces layout
+      // with the new spacer heights), then build SVG line data
       const lines: GroupLine[] = []
+      for (const { id: regId } of placements) {
+        const connProjIds = matchPairs.filter(mp => mp.regId === regId).map(mp => mp.projId)
+        if (connProjIds.length === 0) continue
 
-      for (const { id: regId } of regPlacements) {
         const regEl = regRowRefs.current[regId]
         if (!regEl) continue
         const regR = regEl.getBoundingClientRect()
         const regCY = regR.top - cRect.top + regR.height / 2
 
-        const connProjIds = matchPairs
-          .filter(mp => mp.regId === regId)
-          .map(mp => mp.projId)
-        if (connProjIds.length === 0) continue
+        const connProjCYs = connProjIds
+          .map(id => projCYs.get(id))
+          .filter((y): y is number => y !== undefined)
+        if (connProjCYs.length === 0) continue
 
         const ci = groupColorMap.get(regId) ?? 0
-        const color = GROUP_PALETTE[ci].line
-
-        // Project rows: measure actual DOM position (project table has no spacers)
-        const projCYs = connProjIds
-          .map(projId => {
-            const el = projRowRefs.current[projId]
-            if (!el) return null
-            const r = el.getBoundingClientRect()
-            return r.top - cRect.top + r.height / 2
-          })
-          .filter((y): y is number => y !== null)
-
-        if (projCYs.length > 0) {
-          lines.push({ id: regId, projCYs, regCY, color })
-        }
+        lines.push({ id: regId, projCYs: connProjCYs, regCY, color: GROUP_PALETTE[ci].line })
       }
 
       setGroupLineData(lines)
     }
 
-    compute()
-    const ro = new ResizeObserver(compute)
-    ro.observe(tablesRef.current)
+    measure()
+
+    // Re-measure on project-table resize (observing left div avoids loop since
+    // spacer mutations only grow the registry/right side, not the project/left side)
+    const leftDiv = tablesRef.current.firstElementChild
+    const ro = new ResizeObserver(measure)
+    if (leftDiv) ro.observe(leftDiv)
     return () => ro.disconnect()
-  }, [expanded, rowH, matchPairs, groupColorMap, regPlacements])
+  }, [expanded, orderedProjects, orderedRegistry, matchPairs, groupColorMap])
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -485,19 +483,20 @@ function ClientBlock({ client, projects, registry }: {
                     <tr>{REG_COLS.map(c => <th key={c.key} style={thBase}><span style={thLabel}>{c.label}</span></th>)}</tr>
                   </thead>
                   <tbody ref={regTbodyRef}>
-                    {regPlacements.map(({ id: regId, spacerPx }) => {
-                      const r = orderedRegistry.find(x => x.id === regId)!
-                      const ci = groupColorMap.get(regId)
+                    {orderedRegistry.map(r => {
+                      const ci = groupColorMap.get(r.id)
                       const bg = ci !== undefined ? GROUP_PALETTE[ci].bg : '#fff'
                       return (
-                        <Fragment key={regId}>
-                          {/* Exact-height spacer to push this row to the center of its group */}
-                          {spacerPx > 0 && (
-                            <tr>
-                              <td colSpan={REG_COLS.length} style={{ padding: 0, height: spacerPx, border: 'none', background: '#fff' }} />
-                            </tr>
-                          )}
-                          <tr ref={el => { regRowRefs.current[regId] = el }} style={{ background: bg }}>
+                        <Fragment key={r.id}>
+                          {/* Spacer height controlled directly via DOM (spacerTdRefs) — no React state */}
+                          <tr aria-hidden="true">
+                            <td
+                              colSpan={REG_COLS.length}
+                              ref={el => { spacerTdRefs.current[r.id] = el }}
+                              style={{ padding: 0, border: 'none', background: '#fff' }}
+                            />
+                          </tr>
+                          <tr ref={el => { regRowRefs.current[r.id] = el }} style={{ background: bg }}>
                             {REG_COLS.map(c => <td key={c.key} style={tdStyle}>{renderRegCell(c, r)}</td>)}
                           </tr>
                         </Fragment>
