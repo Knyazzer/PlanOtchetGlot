@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
-import { runFullSync, fetchMatrixPreview } from '../services/syncService'
+import { runFullSync, fetchMatrixPreview, fetchMatrixShifts } from '../services/syncService'
 
 export async function syncRoutes(app: FastifyInstance) {
   // POST /sync/trigger — ручной запуск (admin или producer)
@@ -67,6 +67,23 @@ export async function syncRoutes(app: FastifyInstance) {
     try {
       const preview = await fetchMatrixPreview(entry.sheetUrl, sheet)
       return preview
+    } catch (e: any) {
+      return reply.code(500).send({ error: e.message })
+    }
+  })
+
+  // GET /sync/matrix-shifts/:matrixId — смены из матрицы
+  app.get('/matrix-shifts/:matrixId', { preHandler: requireRole('admin') }, async (request, reply) => {
+    const { matrixId } = request.params as { matrixId: string }
+
+    const entry = await prisma.matrixRegistry.findFirst({ where: { matrixId } })
+    if (!entry) return reply.code(404).send({ error: 'Matrix not found' })
+    if (!entry.sheetUrl) return reply.code(400).send({ error: 'No URL for this matrix' })
+
+    try {
+      const data = await fetchMatrixShifts(entry.sheetUrl)
+      if (!data) return reply.code(404).send({ error: 'Shifts sheet not found in this spreadsheet' })
+      return data
     } catch (e: any) {
       return reply.code(500).send({ error: e.message })
     }

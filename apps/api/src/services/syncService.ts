@@ -761,6 +761,102 @@ export async function fetchMatrixPreview(
   }
 }
 
+// ─── Matrix Shifts ───────────────────────────────────────────────────────────
+
+export interface ShiftRow {
+  isSeparator: true
+  text: string
+}
+
+export interface ShiftEmployee {
+  isSeparator: false
+  name: string
+  role: string | null
+  employmentType: string | null
+  shifts: boolean[] // length = 7, indices 0–6 → columns J–P
+}
+
+export interface MatrixShiftsData {
+  sheetTitle: string
+  dates: string[]    // display values for columns J–P (7 items)
+  activeCols: number[] // 0-based indices (0–6) where at least one "1" exists
+  rows: (ShiftRow | ShiftEmployee)[]
+}
+
+// Sheet name patterns to look for (case-insensitive)
+const SHIFTS_SHEET_KEYWORDS = ['₽ смены', '₽ специалист', 'смены', 'специалист', 'сотрудник']
+
+export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixShiftsData | null> {
+  const sheetsApi = getSheets()
+  const spreadsheetId = extractSpreadsheetId(spreadsheetUrl)
+  if (!spreadsheetId) return null
+
+  // Step 1 — find the right sheet name
+  const meta = await sheetsApi.spreadsheets.get({ spreadsheetId, includeGridData: false })
+  const allTitles = (meta.data.sheets ?? []).map((s) => s.properties?.title ?? '')
+
+  console.log(`[matrix-shifts] Available sheets: ${JSON.stringify(allTitles)}`)
+
+  const sheetTitle = allTitles.find((t) =>
+    SHIFTS_SHEET_KEYWORDS.some((k) => t.toLowerCase().includes(k))
+  )
+  console.log(`[matrix-shifts] Matched sheet: ${sheetTitle ?? 'none'}`)
+  if (!sheetTitle) return null
+
+  // Step 2 — fetch FORMATTED_VALUE for A1:P200
+  const safeTitle = sheetTitle.replace(/'/g, "\\'")
+  const res = await sheetsApi.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${safeTitle}'!A1:P200`,
+    valueRenderOption: 'FORMATTED_VALUE',
+  })
+
+  const rawRows = (res.data.values ?? []) as string[][]
+
+  // Row 3 (index 2) — day numbers in columns J–P (0-based indices 9–15)
+  const dateRow = rawRows[2] ?? []
+  const dates: string[] = Array.from({ length: 7 }, (_, i) => (dateRow[9 + i] ?? '').trim())
+
+  // Determine which columns (0–6) have at least one "1" in rows 4+ (index 3+)
+  const activeCols: number[] = []
+  for (let ci = 0; ci < 7; ci++) {
+    const hasShift = rawRows.slice(3).some((row) => (row[9 + ci] ?? '').trim() === '1')
+    if (hasShift) activeCols.push(ci)
+  }
+
+  // Parse employee rows and separators from row 4+ (index 3+)
+  const rows: (ShiftRow | ShiftEmployee)[] = []
+  for (let ri = 3; ri < rawRows.length; ri++) {
+    const row = rawRows[ri]
+    const name           = (row[2]  ?? '').trim() // C
+    const role           = (row[6]  ?? '').trim() // G
+    const employmentType = (row[8]  ?? '').trim() // I
+    const shiftVals      = Array.from({ length: 7 }, (_, ci) => (row[9 + ci] ?? '').trim())
+
+    // Skip rows with no meaningful data in C, G, I, J–P
+    // J–P only counts if value is exactly "1" (shift marker); numbers like "13"/"Итог" are totals rows
+    const hasData = name || role || employmentType || shiftVals.some((v) => v === '1')
+    if (!hasData) continue
+
+    if (!name) {
+      // No name in C but something else has data → separator
+      const text = row.find((c) => c?.trim())?.trim() ?? ''
+      rows.push({ isSeparator: true, text })
+      continue
+    }
+
+    rows.push({
+      isSeparator: false,
+      name,
+      role: role || null,
+      employmentType: employmentType || null,
+      shifts: shiftVals.map((v) => v === '1'),
+    })
+  }
+
+  return { sheetTitle, dates, activeCols, rows }
+}
+
 // ─── Full Sync Orchestration ─────────────────────────────────────────────────
 
 export interface SyncResult {

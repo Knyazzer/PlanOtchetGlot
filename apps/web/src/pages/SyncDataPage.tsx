@@ -860,12 +860,59 @@ function ProjectsTable({
 
 // ─── Registry Detail Modal ───────────────────────────────────────────────────
 
+interface ShiftRow { isSeparator: true; text: string }
+interface ShiftEmployee { isSeparator: false; name: string; role: string | null; employmentType: string | null; shifts: boolean[] }
+interface MatrixShiftsData { sheetTitle: string; dates: string[]; activeCols: number[]; rows: (ShiftRow | ShiftEmployee)[] }
+
 function RegistryDetailModal({ entry, onClose }: { entry: RegistryEntry; onClose: () => void }) {
+  const [tab, setTab] = useState<'info' | 'shifts'>('info')
+  const storageKey = `matrix-seps-${entry.matrixId}`
+
+  const [customSeps, setCustomSeps] = useState<Map<number, { name: string; date: string }>>(() => {
+    try {
+      const raw = localStorage.getItem(storageKey)
+      if (raw) return new Map(JSON.parse(raw) as [number, { name: string; date: string }][])
+    } catch {}
+    return new Map()
+  })
+  const [editingSep, setEditingSep] = useState<{ ri: number; name: string; date: string } | null>(null)
+
+  const persistSeps = (next: Map<number, { name: string; date: string }>) => {
+    localStorage.setItem(storageKey, JSON.stringify([...next.entries()]))
+    setCustomSeps(next)
+  }
+
+  const handleRowCtrlClick = (e: React.MouseEvent, ri: number, defaultName: string) => {
+    if (!e.ctrlKey) return
+    e.preventDefault()
+    const existing = customSeps.get(ri)
+    setEditingSep({ ri, name: existing?.name ?? defaultName, date: existing?.date ?? '' })
+  }
+
+  const saveCustomSep = () => {
+    if (!editingSep) return
+    persistSeps(new Map(customSeps).set(editingSep.ri, { name: editingSep.name, date: editingSep.date }))
+    setEditingSep(null)
+  }
+
+  const removeCustomSep = (ri: number) => {
+    const next = new Map(customSeps)
+    next.delete(ri)
+    persistSeps(next)
+    setEditingSep(null)
+  }
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
+
+  const { data: shiftsData, isLoading: shiftsLoading, error: shiftsError } = useQuery<MatrixShiftsData>({
+    queryKey: ['matrix-shifts', entry.matrixId],
+    queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}`).then((r) => r.data),
+    enabled: tab === 'shifts',
+  })
 
   type FieldDef = { label: string; value: string | null | undefined; mono?: boolean; link?: boolean }
 
@@ -898,12 +945,13 @@ function RegistryDetailModal({ entry, onClose }: { entry: RegistryEntry; onClose
   }
 
   return (
+    <>
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onMouseDown={onClose}
     >
       <div
-        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '94vw', maxWidth: 900, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -926,25 +974,173 @@ function RegistryDetailModal({ entry, onClose }: { entry: RegistryEntry; onClose
           </div>
         </div>
 
-        {/* Two-column body */}
-        <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', gap: 24 }}>
-            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {leftCol.map((f) => <Field key={f.label} {...f} />)}
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+          {(['info', 'shifts'] as const).map((t) => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              padding: '8px 20px', fontSize: 13, border: 'none', cursor: 'pointer', background: 'none',
+              borderBottom: tab === t ? '2px solid #3b82f6' : '2px solid transparent',
+              color: tab === t ? '#3b82f6' : '#64748b', fontWeight: tab === t ? 600 : 400,
+            }}>
+              {t === 'info' ? 'Инфо' : 'Смены'}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab: Info */}
+        {tab === 'info' && (
+          <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 24 }}>
+              <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {leftCol.map((f) => <Field key={f.label} {...f} />)}
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {rightCol.map((f) => <Field key={f.label} {...f} />)}
+              </div>
             </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {rightCol.map((f) => <Field key={f.label} {...f} />)}
+            <div style={{ display: 'flex', gap: 16, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
+              <Field label="Строка в гугл таблице" value={entry.googleRowIndex != null ? String(entry.googleRowIndex) : null} />
+              <Field label="Источник" value="registry" />
             </div>
           </div>
+        )}
 
-          {/* Bottom metadata row */}
-          <div style={{ display: 'flex', gap: 16, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
-            <Field label="Строка в гугл таблице" value={entry.googleRowIndex != null ? String(entry.googleRowIndex) : null} />
-            <Field label="Источник" value="registry" />
+        {/* Tab: Shifts */}
+        {tab === 'shifts' && (
+          <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
+            {shiftsLoading && <div style={{ color: '#64748b', fontSize: 14 }}>Загрузка...</div>}
+            {shiftsError && <div style={{ color: '#ef4444', fontSize: 14 }}>Ошибка: {(shiftsError as any)?.response?.data?.error ?? (shiftsError as any)?.message}</div>}
+            {shiftsData && shiftsData.activeCols.length === 0 && (
+              <div style={{ color: '#94a3b8', fontSize: 14 }}>Нет проставленных смен</div>
+            )}
+            {shiftsData && shiftsData.activeCols.length > 0 && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Лист: {shiftsData.sheetTitle}</div>
+                  <div style={{ fontSize: 11, color: '#cbd5e1' }}>Ctrl+клик по строке — сделать разделителем</div>
+                </div>
+                <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
+                  <thead>
+                    <tr style={{ background: '#f1f5f9' }}>
+                      <th style={{ ...shiftTh, textAlign: 'left', minWidth: 160 }}>ФИО</th>
+                      <th style={{ ...shiftTh, textAlign: 'left', minWidth: 100, maxWidth: 220, whiteSpace: 'normal', wordBreak: 'break-word' }}>Функция</th>
+                      <th style={{ ...shiftTh, textAlign: 'left', minWidth: 70 }}>Тип</th>
+                      {shiftsData.activeCols.map((ci) => (
+                        <th key={ci} style={{ ...shiftTh, textAlign: 'center', minWidth: 36 }}>
+                          {shiftsData.dates[ci] || String(ci + 1)}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shiftsData.rows.map((row, ri) => {
+                      const rowText = row.isSeparator ? (row.text ?? '') : (row.name ?? '')
+                      if (!rowText.trim()) return null
+                      const customSep = customSeps.get(ri)
+                      const colSpanCount = 3 + shiftsData.activeCols.length
+                      const empIndex = ri // use original index for alternating bg
+
+                      if (customSep) {
+                        return (
+                          <tr key={ri} onClick={(e) => handleRowCtrlClick(e, ri, rowText)} title="Ctrl+клик — изменить разделитель" style={{ cursor: 'default' }}>
+                            <td colSpan={colSpanCount} style={{
+                              padding: '6px 10px', background: '#f1f5f9',
+                              borderTop: '2px solid #cbd5e1', borderBottom: '1px solid #e2e8f0',
+                              borderLeft: '3px solid #3b82f6', fontSize: 12, fontWeight: 600, color: '#334155',
+                            }}>
+                              {customSep.name}{customSep.date ? <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 8 }}>{customSep.date}</span> : null}
+                            </td>
+                          </tr>
+                        )
+                      }
+
+                      if (row.isSeparator) {
+                        return (
+                          <tr key={ri} onClick={(e) => handleRowCtrlClick(e, ri, rowText)} title="Ctrl+клик — сделать разделителем"
+                            style={{ background: empIndex % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'default' }}>
+                            <td style={shiftTd}>{row.text}</td>
+                            <td style={shiftTd} colSpan={colSpanCount - 1} />
+                          </tr>
+                        )
+                      }
+
+                      return (
+                        <tr key={ri} onClick={(e) => handleRowCtrlClick(e, ri, rowText)} title="Ctrl+клик — сделать разделителем"
+                          style={{ background: empIndex % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'default' }}>
+                          <td style={shiftTd}>{row.name}</td>
+                          <td style={{ ...shiftTd, color: '#64748b', whiteSpace: 'normal', maxWidth: 220, wordBreak: 'break-word' }}>{row.role ?? '—'}</td>
+                          <td style={{ ...shiftTd, color: '#64748b' }}>{row.employmentType ?? '—'}</td>
+                          {shiftsData.activeCols.map((ci) => (
+                            <td key={ci} style={{ ...shiftTd, textAlign: 'center' }}>
+                              {row.shifts[ci]
+                                ? <span style={{ display: 'inline-block', width: 18, height: 18, borderRadius: 4, background: '#3b82f6' }} />
+                                : null}
+                            </td>
+                          ))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Custom separator config popup */}
+
+    {editingSep !== null && (
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        onMouseDown={() => setEditingSep(null)}
+      >
+        <div
+          style={{ background: '#fff', borderRadius: 10, padding: 20, width: 320, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 14 }}>Настройка разделителя</div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 4 }}>Название</label>
+            <input
+              autoFocus
+              value={editingSep.name}
+              onChange={(e) => setEditingSep({ ...editingSep, name: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter') saveCustomSep(); if (e.key === 'Escape') setEditingSep(null) }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, outline: 'none' }}
+            />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 4 }}>Дата</label>
+            <input
+              value={editingSep.date}
+              onChange={(e) => setEditingSep({ ...editingSep, date: e.target.value })}
+              onKeyDown={(e) => { if (e.key === 'Enter') saveCustomSep(); if (e.key === 'Escape') setEditingSep(null) }}
+              placeholder="напр. 12.04.2026"
+              style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, outline: 'none' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {customSeps.has(editingSep.ri) && (
+              <button onClick={() => removeCustomSep(editingSep!.ri)}
+                style={{ padding: '6px 12px', fontSize: 12, border: '1px solid #fee2e2', borderRadius: 6, background: '#fef2f2', color: '#ef4444', cursor: 'pointer', marginRight: 'auto' }}>
+                Убрать
+              </button>
+            )}
+            <button onClick={() => setEditingSep(null)}
+              style={{ padding: '6px 12px', fontSize: 12, border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}>
+              Отмена
+            </button>
+            <button onClick={saveCustomSep}
+              style={{ padding: '6px 12px', fontSize: 12, border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
+              Сохранить
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    )}
+    </>
   )
 }
 
@@ -1581,6 +1777,22 @@ const tdStyle: React.CSSProperties = {
   color: '#374151',
   whiteSpace: 'normal',
   overflowWrap: 'normal',
+}
+
+const shiftTh: React.CSSProperties = {
+  padding: '6px 10px',
+  borderBottom: '2px solid #e2e8f0',
+  fontWeight: 600,
+  fontSize: 12,
+  color: '#334155',
+  whiteSpace: 'nowrap',
+}
+
+const shiftTd: React.CSSProperties = {
+  padding: '5px 10px',
+  borderBottom: '1px solid #f1f5f9',
+  color: '#374151',
+  whiteSpace: 'nowrap',
 }
 
 const separatorTd: React.CSSProperties = {
