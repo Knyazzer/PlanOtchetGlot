@@ -60,7 +60,10 @@
       "Bash(npm list:*)",
       "Bash(where npx:*)",
       "mcp__plugin_playwright_playwright__browser_navigate",
-      "mcp__plugin_playwright_playwright__browser_take_screenshot"
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "Bash(cmd /c \"npx tsc --noEmit -p apps/web/tsconfig.json 2>&1\")",
+      "Bash(findstr /i \"deals\")"
     ]
   },
   "enabledPlugins": {

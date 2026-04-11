@@ -191,6 +191,7 @@ function ClientBlock({ client, projects, registry }: {
 }) {
   const [expanded, setExpanded] = useState(false)
   const tablesRef    = useRef<HTMLDivElement>(null)
+  const gapDivRef    = useRef<HTMLDivElement>(null)   // SVG is position:absolute inside this div
   const regTbodyRef  = useRef<HTMLTableSectionElement | null>(null)
   const projRowRefs  = useRef<Record<string, HTMLTableRowElement | null>>({})
   const regRowRefs   = useRef<Record<string, HTMLTableRowElement | null>>({})
@@ -300,7 +301,7 @@ function ClientBlock({ client, projects, registry }: {
     if (!tablesRef.current || !regTbodyRef.current) return
 
     const measure = () => {
-      if (!tablesRef.current || !regTbodyRef.current) return
+      if (!tablesRef.current || !gapDivRef.current || !regTbodyRef.current) return
 
       // Step 1: reset all spacers to 0 so layout is "natural"
       for (const el of Object.values(spacerTdRefs.current)) {
@@ -308,31 +309,52 @@ function ClientBlock({ client, projects, registry }: {
       }
 
       // Step 2: measure project row centers (layout forced by getBoundingClientRect)
-      const cRect = tablesRef.current.getBoundingClientRect()
+      //
+      // getBoundingClientRect() returns zoomed viewport coordinates.
+      // el.style.height = 'Xpx' and SVG y attributes use CSS pixels (pre-zoom).
+      // At browser zoom > 100% (or Windows display scaling) these differ by the
+      // zoom factor, causing spacers to be applied at wrong sizes and SVG lines
+      // to be drawn at wrong positions.
+      //
+      // Fix: compute zoomFactor = getBoundingClientRect().height / offsetHeight
+      // for any rendered element, then divide all getBoundingClientRect values by
+      // it so everything is in CSS pixels throughout.
+      const cRect = tablesRef.current.getBoundingClientRect()  // kept for debug only
+      const gapDivRect = gapDivRef.current.getBoundingClientRect()
+      const origin = gapDivRect.top  // zoomed viewport coords
+
+      // Detect zoom: getBoundingClientRect is in zoomed coords, offsetHeight is CSS px
+      const anyRowEl = (orderedProjects[0] && projRowRefs.current[orderedProjects[0].id])
+        ?? (orderedRegistry[0] && regRowRefs.current[orderedRegistry[0].id])
+      const zoomFactor = (anyRowEl && anyRowEl.offsetHeight > 0)
+        ? anyRowEl.getBoundingClientRect().height / anyRowEl.offsetHeight
+        : 1
+
       const projCYs = new Map<string, number>()
       for (const p of orderedProjects) {
         const el = projRowRefs.current[p.id]
         if (el) {
           const r = el.getBoundingClientRect()
-          projCYs.set(p.id, r.top - cRect.top + r.height / 2)
+          projCYs.set(p.id, (r.top - origin + r.height / 2) / zoomFactor)
         }
       }
 
-      const regT0 = regTbodyRef.current.getBoundingClientRect().top - cRect.top
+      const regT0 = (regTbodyRef.current.getBoundingClientRect().top - origin) / zoomFactor
       const firstRegId = orderedRegistry[0]?.id
       const firstRegEl = firstRegId ? regRowRefs.current[firstRegId] : null
       const firstProjEl = orderedProjects[0] ? projRowRefs.current[orderedProjects[0].id] : null
-      const regRowH = firstRegEl?.getBoundingClientRect().height
+      const regRowHZoomed = firstRegEl?.getBoundingClientRect().height
         ?? firstProjEl?.getBoundingClientRect().height
         ?? 0
+      const regRowH = regRowHZoomed / zoomFactor  // CSS pixels
       if (regRowH === 0) return
 
-      // Step 3: compute spacers
+      // Step 3: compute spacers (all values now in CSS pixels)
       const placements = computeRegPlacements(
         orderedRegistry, orderedProjects, matchPairs, projCYs, regT0, regRowH,
       )
 
-      // Step 4: apply spacer heights directly to DOM (no React re-render)
+      // Step 4: apply spacer heights directly to DOM (values already in CSS pixels)
       for (const { id, spacerPx } of placements) {
         const el = spacerTdRefs.current[id]
         if (el) el.style.height = spacerPx + 'px'
@@ -348,7 +370,7 @@ function ClientBlock({ client, projects, registry }: {
         const regEl = regRowRefs.current[regId]
         if (!regEl) continue
         const regR = regEl.getBoundingClientRect()
-        const regCY = regR.top - cRect.top + regR.height / 2
+        const regCY = (regR.top - origin + regR.height / 2) / zoomFactor
 
         const connProjCYs = connProjIds
           .map(id => projCYs.get(id))
@@ -359,23 +381,23 @@ function ClientBlock({ client, projects, registry }: {
         lines.push({ id: regId, projCYs: connProjCYs, regCY, color: GROUP_PALETTE[ci].line })
       }
 
-      // ── DEBUG (remove after fix) ───────────────────────────────────────────
+      // ── DEBUG ────────────────────────────────────────────────────────────────
       console.group(`[ClientBlock "${client}"] measure()`)
-      console.log('cRect.top =', cRect.top)
-      console.log('regT0 =', regT0, '  regRowH =', regRowH)
+      console.log('tablesRef.top =', cRect.top, '  gapDiv.top =', gapDivRect.top, '  diff =', (gapDivRect.top - cRect.top).toFixed(3))
+      console.log('zoomFactor =', zoomFactor.toFixed(4), '  origin(gapDiv) =', origin, '  regT0(css) =', regT0, '  regRowH(css) =', regRowH)
       console.log('projCYs:', Object.fromEntries(projCYs))
       for (const pl of placements) {
         const el = spacerTdRefs.current[pl.id]
         const dataEl = regRowRefs.current[pl.id]
         const actualH = el?.getBoundingClientRect().height ?? null
-        const dataCY = dataEl ? dataEl.getBoundingClientRect().top - cRect.top + dataEl.getBoundingClientRect().height / 2 : null
+        const dataCY = dataEl ? dataEl.getBoundingClientRect().top - origin + dataEl.getBoundingClientRect().height / 2 : null
         console.log(`  reg[${pl.id}] spacer=${pl.spacerPx.toFixed(2)}px  spacerActualH=${actualH}  dataCY=${dataCY?.toFixed(2)}`)
       }
       for (const gl of lines) {
         console.log(`  SVG line: projCYs=${gl.projCYs.map(y => y.toFixed(2)).join(',')}  regCY=${gl.regCY.toFixed(2)}  diff=${(gl.regCY - gl.projCYs.reduce((a,b)=>a+b,0)/gl.projCYs.length).toFixed(2)}`)
       }
       console.groupEnd()
-      // ── END DEBUG ──────────────────────────────────────────────────────────
+      // ── END DEBUG ────────────────────────────────────────────────────────────
 
       setGroupLineData(lines)
     }
@@ -454,7 +476,7 @@ function ClientBlock({ client, projects, registry }: {
             </div>
 
             {/* Gap — SVG bracket connectors (same logic as bracketDisplay.js) */}
-            <div style={{ width: GAP, flexShrink: 0, position: 'relative', background: '#f8fafc' }}>
+            <div ref={gapDivRef} style={{ width: GAP, flexShrink: 0, position: 'relative', background: '#f8fafc' }}>
               <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible' }}>
                 {groupLineData.map(gl => {
                   const minCY = Math.min(...gl.projCYs)
