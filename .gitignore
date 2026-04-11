@@ -11,3 +11,4 @@ packages/db/node_modules
 # Excel примеры таблиц (не нужны в репо)
 _TABLES EXMPL/
 *.xlsx
+.playwright-mcp/
