@@ -26,14 +26,90 @@ function extractSpreadsheetId(url: string): string | null {
   return match?.[1] ?? null
 }
 
+function hexColor(r: number, g: number, b: number): string {
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+}
+
+function bgHexOrNull(color: sheets_v4.Schema$Color | null | undefined): string | null {
+  if (!color) return null
+  const r = Math.round((color.red   ?? 1) * 255)
+  const g = Math.round((color.green ?? 1) * 255)
+  const b = Math.round((color.blue  ?? 1) * 255)
+  if (r >= 252 && g >= 252 && b >= 252) return null
+  return hexColor(r, g, b)
+}
+
+function fgHexOrNull(color: sheets_v4.Schema$Color | null | undefined): string | null {
+  if (!color) return null
+  const r = Math.round((color.red   ?? 0) * 255)
+  const g = Math.round((color.green ?? 0) * 255)
+  const b = Math.round((color.blue  ?? 0) * 255)
+  if (r <= 30 && g <= 30 && b <= 30) return null
+  return hexColor(r, g, b)
+}
+
+// Returns explicit cell background color (non-white), or null.
+function getCellColor(cell: sheets_v4.Schema$CellData | null | undefined): string | null {
+  return bgHexOrNull(cell?.userEnteredFormat?.backgroundColor ?? cell?.effectiveFormat?.backgroundColor)
+}
+
+// Returns explicit cell text color (non-black), or null.
+function getCellTextColor(cell: sheets_v4.Schema$CellData | null | undefined): string | null {
+  return fgHexOrNull(
+    cell?.userEnteredFormat?.textFormat?.foregroundColor
+    ?? cell?.effectiveFormat?.textFormat?.foregroundColor
+  )
+}
+
+// Evaluates conditional formatting rules for a cell and returns the matching colors.
+// Google Sheets API does not include conditional formatting in effectiveFormat —
+// we must evaluate rules manually.
+function evalConditionalColor(
+  cellValue: string,
+  rowIndex: number,
+  colIndex: number,
+  conditionalFormats: sheets_v4.Schema$ConditionalFormatRule[]
+): { bg: string | null; fg: string | null } {
+  for (const rule of conditionalFormats) {
+    const inRange = rule.ranges?.some((r) =>
+      rowIndex >= (r.startRowIndex ?? 0) &&
+      (r.endRowIndex   == null || rowIndex < r.endRowIndex) &&
+      colIndex >= (r.startColumnIndex ?? 0) &&
+      (r.endColumnIndex == null || colIndex < r.endColumnIndex)
+    ) ?? false
+    if (!inRange) continue
+
+    const boolRule = rule.booleanRule
+    if (!boolRule?.condition) continue
+
+    const { type, values } = boolRule.condition
+    const v0 = values?.[0]?.userEnteredValue ?? ''
+    let matches = false
+
+    switch (type) {
+      case 'TEXT_EQ':           matches = cellValue.trim() === v0; break
+      case 'TEXT_CONTAINS':     matches = cellValue.includes(v0); break
+      case 'TEXT_NOT_CONTAINS': matches = !cellValue.includes(v0); break
+      case 'TEXT_STARTS_WITH':  matches = cellValue.startsWith(v0); break
+      case 'TEXT_ENDS_WITH':    matches = cellValue.endsWith(v0); break
+      case 'NOT_BLANK':         matches = cellValue !== ''; break
+      case 'BLANK':             matches = cellValue === ''; break
+      // CUSTOM_FORMULA requires formula evaluation — skip
+    }
+
+    if (!matches) continue
+
+    const fmt = boolRule.format
+    const bg = bgHexOrNull(fmt?.backgroundColor)
+    const fg = fgHexOrNull(fmt?.textFormat?.foregroundColor)
+    if (bg || fg) return { bg, fg }
+  }
+  return { bg: null, fg: null }
+}
+
 // Considers a cell "highlighted" if its background is non-white
 function isColored(cell: sheets_v4.Schema$CellData | null | undefined): boolean {
-  const bg = cell?.userEnteredFormat?.backgroundColor
-  if (!bg) return false
-  const red = bg.red ?? 1
-  const green = bg.green ?? 1
-  const blue = bg.blue ?? 1
-  return !(red >= 0.99 && green >= 0.99 && blue >= 0.99)
+  return getCellColor(cell) !== null
 }
 
 function cellStr(cell: sheets_v4.Schema$CellData | null | undefined): string {
@@ -131,8 +207,10 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     ranges: ['A1:AK'],
   })
 
-  const rows = res.data.sheets?.[0]?.data?.[0]?.rowData ?? []
-  let upserted = 0
+  const sheet = res.data.sheets?.[0]
+  const rows = sheet?.data?.[0]?.rowData ?? []
+  const conditionalFormats = sheet?.conditionalFormats ?? []
+let upserted = 0
   const errors: string[] = []
 
   // Колонки (0-indexed):
@@ -193,11 +271,24 @@ async function syncProjects(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     const statusRaw = cellStr(cells[0])
     const status = parseProjectStatus(statusRaw) as any
 
-    // Подсвеченные ячейки → uncertainFields
-    const fieldNames = ['status', 'client', 'name', 'execProducer', 'lineProducer', 'accountManager', 'date', 'time', 'format']
+    // Цвета ячеек → uncertainFields (формат "fieldName:#bgColor" или "fieldName:#bgColor|#fgColor" или "fieldName:|#fgColor")
+    // Колонки 0 (status), 8 (format), 9 (location) — цвета задаются фронтом через маппинг, не читаем из таблицы
+    const fieldNames = ['status', 'client', 'name', 'execProducer', 'lineProducer', 'accountManager', 'date', 'time', 'format', 'location', 'sheetMatrixId']
+    const skipColorCols = new Set([0, 8, 9])
     const uncertainFields: string[] = []
-    for (let col = 0; col < 9; col++) {
-      if (isColored(cells[col])) uncertainFields.push(fieldNames[col])
+    for (let col = 0; col < 11; col++) {
+      if (skipColorCols.has(col)) continue
+      const cell = cells[col]
+      let bg = getCellColor(cell)
+      let fg = getCellTextColor(cell)
+      if (!bg && !fg) {
+        const cond = evalConditionalColor(cellStr(cell), i, col, conditionalFormats)
+        bg = cond.bg
+        fg = cond.fg
+      }
+      if (bg || fg) {
+        uncertainFields.push(`${fieldNames[col]}:${bg ?? ''}${fg ? `|${fg}` : ''}`)
+      }
     }
 
     // Дата — колонка G (индекс 6)

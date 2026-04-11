@@ -42,21 +42,29 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       status?: string
       search?: string
       withSeparators?: string
+      slim?: string
+    }
+
+    const where = {
+      ...(query.withSeparators !== 'true' && { NOT: { source: 'separator' as any } }),
+      ...(query.dateFrom && { date: { gte: new Date(query.dateFrom) } }),
+      ...(query.dateTo && { date: { lte: new Date(query.dateTo) } }),
+      ...(query.status && { status: query.status as any }),
+      ...(query.search && {
+        OR: [
+          { name: { contains: query.search, mode: 'insensitive' } },
+          { client: { contains: query.search, mode: 'insensitive' } },
+        ],
+      }),
+    }
+
+    // slim=true — без join'ов (для страниц которым не нужны вложенные данные)
+    if (query.slim === 'true') {
+      return prisma.statusRow.findMany({ where, orderBy: { googleRowIndex: 'asc' } })
     }
 
     return prisma.statusRow.findMany({
-      where: {
-        ...(query.withSeparators !== 'true' && { NOT: { source: 'separator' as any } }),
-        ...(query.dateFrom && { date: { gte: new Date(query.dateFrom) } }),
-        ...(query.dateTo && { date: { lte: new Date(query.dateTo) } }),
-        ...(query.status && { status: query.status as any }),
-        ...(query.search && {
-          OR: [
-            { name: { contains: query.search, mode: 'insensitive' } },
-            { client: { contains: query.search, mode: 'insensitive' } },
-          ],
-        }),
-      },
+      where,
       include: {
         matrixRegistry: true,
         assignments: {

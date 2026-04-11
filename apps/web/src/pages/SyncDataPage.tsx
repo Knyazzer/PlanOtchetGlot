@@ -48,6 +48,49 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: 'Не согл.', cancelled: 'Отменён', manual: 'Ручной',
 }
 
+// Chip-цвета из Google Sheets (dropdown с цветными чипами)
+const STATUS_CHIP_COLORS: Record<string, string> = {
+  request:        '#fce8e6',  // Запрос — светло-розовый
+  negotiation:    '#fce5cd',  // На согласовании — персиковый
+  preproduction:  '#fff2cc',  // Препродакшн — жёлтый
+  production:     '#c9daf8',  // Продакшн — голубой
+  postproduction: '#1c4587',  // Постпродакшн — тёмно-синий
+  delivered:      '#d9ead3',  // Сдан — светло-зелёный
+  rejected:       '#660000',  // Не согласован — тёмно-бордовый
+  cancelled:      '#cc0000',  // Отменён — красный
+  manual:         '#f1f5f9',  // Ручной
+}
+
+const FORMAT_CHIP_COLORS: Record<string, string> = {
+  'ТВ':          '#c9daf8',  // голубой
+  'Радио':       '#fff2cc',  // жёлтый
+  'Телерадио':   '#fce5cd',  // персиковый
+  'Продакшн':    '#d9d2e9',  // лавандовый
+  'Дизайн':      '#d9ead3',  // светло-зелёный
+  'Оффлайн':     '#0c343d',  // тёмно-бирюзовый
+  'Виртуальный': '#ead1dc',  // светло-розовый
+  'Менеджмент':  '#f4cccc',  // розовый
+}
+
+const LOCATION_CHIP_COLORS: Record<string, string> = {
+  'Знаменка крыша':  '#fff2cc',  // жёлтый
+  'Знаменка чёрная': '#000000',  // чёрный
+  'Знаменка камин':  '#fce5cd',  // персиковый
+  'Романов':         '#d9d2e9',  // лавандовый
+  'Выезд':           '#c9daf8',  // голубой
+}
+
+// Возвращает chip-цвет ячейки по значению (фолбэк когда нет явного цвета из таблицы)
+function getValueChipColor(fieldKey: string, p: Project): string | undefined {
+  switch (fieldKey) {
+    case 'status':   return STATUS_CHIP_COLORS[p.status]
+    case 'format':   return p.format   ? FORMAT_CHIP_COLORS[p.format]   : undefined
+    case 'location': return p.location ? LOCATION_CHIP_COLORS[p.location] : undefined
+    default:         return undefined
+  }
+}
+
+// Старые цвета-ацкенты для бейджей (используются только как запасной вариант)
 const STATUS_COLORS: Record<string, string> = {
   request: '#f59e0b', negotiation: '#3b82f6', preproduction: '#8b5cf6',
   production: '#10b981', postproduction: '#06b6d4', delivered: '#16a34a',
@@ -370,6 +413,153 @@ function applyProjColFilters(rows: Project[], colFilters: Record<string, string[
   })
 }
 
+// ─── Project Detail Modal ─────────────────────────────────────────────────────
+
+type CellColor = { bg?: string; fg?: string }
+
+// Parse "fieldName:#bgColor", "fieldName:#bgColor|#fgColor", or "fieldName:|#fgColor"
+function parseUncertainColors(fields: string[]): Record<string, CellColor> {
+  const map: Record<string, CellColor> = {}
+  for (const f of fields) {
+    const colonIdx = f.indexOf(':')
+    if (colonIdx <= 0) continue
+    const fieldName = f.slice(0, colonIdx)
+    const colorPart = f.slice(colonIdx + 1)
+    const pipeIdx = colorPart.indexOf('|')
+    const entry: CellColor = {}
+    if (pipeIdx >= 0) {
+      const bg = colorPart.slice(0, pipeIdx)
+      const fg = colorPart.slice(pipeIdx + 1)
+      if (bg.startsWith('#')) entry.bg = bg
+      if (fg.startsWith('#')) entry.fg = fg
+    } else if (colorPart.startsWith('#')) {
+      entry.bg = colorPart  // legacy format: bg only
+    }
+    if (entry.bg || entry.fg) map[fieldName] = entry
+  }
+  return map
+}
+
+// Compute readable text color (black or white) for a given hex background
+function contrastColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  // Perceived luminance
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return lum > 0.55 ? '#1e293b' : '#fff'
+}
+
+function ProjectDetailModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  const status = STATUS_LABELS[project.status] ?? project.status
+  const statusColor = STATUS_COLORS[project.status] ?? '#94a3b8'
+
+  // Map from fieldKey → Google Sheets cell color
+  const cellColors = parseUncertainColors(project.uncertainFields)
+
+  type FieldDef = { label: string; fieldKey: string; value: string | number | null | undefined; mono?: boolean }
+
+  const leftCol: FieldDef[] = [
+    { label: 'Дата',    fieldKey: 'date',     value: fmtDate(project.date) },
+    { label: 'Время',   fieldKey: 'time',     value: project.time },
+    { label: 'Формат',  fieldKey: 'format',   value: project.format },
+    { label: 'Локация', fieldKey: 'location', value: project.location },
+  ]
+
+  const rightCol: FieldDef[] = [
+    { label: 'Исп. продюсер',    fieldKey: 'execProducer',   value: project.execProducer },
+    { label: 'Лайн-продюсер',    fieldKey: 'lineProducer',   value: project.lineProducer },
+    { label: 'Аккаунт-менеджер', fieldKey: 'accountManager', value: project.accountManager },
+  ]
+
+  const bottomRow: FieldDef[] = [
+    { label: 'ID матрицы',       fieldKey: 'sheetMatrixId',  value: project.sheetMatrixId, mono: true },
+    { label: 'Строка в таблице', fieldKey: 'googleRowIndex', value: project.googleRowIndex },
+    { label: 'Источник',         fieldKey: 'source',         value: project.source },
+  ]
+
+  function Field({ label, fieldKey, value, mono }: FieldDef) {
+    const display = value != null && value !== '' ? String(value) : null
+    const chipBg = getValueChipColor(fieldKey, project)
+    const cc = chipBg ? { bg: chipBg } : cellColors[fieldKey]
+    const bg = cc?.bg
+    const hasColor = !!(bg || cc?.fg)
+    const textColor = cc?.fg ?? (bg ? contrastColor(bg) : (display ? '#1e293b' : '#cbd5e1'))
+    return (
+      <div
+        style={{
+          borderRadius: 6,
+          padding: hasColor ? '6px 8px' : '0 0 10px 0',
+          borderBottom: hasColor ? 'none' : '1px solid #f1f5f9',
+          background: bg ?? 'transparent',
+        }}
+      >
+        <div style={{ fontSize: 11, color: hasColor ? `${textColor}99` : '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 13, color: textColor, fontFamily: mono ? 'monospace' : undefined }}>
+          {display ?? '—'}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onMouseDown={onClose}
+    >
+      <div
+        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', lineHeight: 1.4 }}>{project.name}</div>
+            {project.client && <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{project.client}</div>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <span style={{ padding: '3px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: `${statusColor}22`, color: statusColor }}>
+              {status}
+            </span>
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px', borderRadius: 4 }}
+              title="Закрыть (Esc)"
+            >×</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Two columns: left = дата/формат/локация, right = продюсеры */}
+          <div style={{ display: 'flex', gap: 24 }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {leftCol.map(f => <Field key={f.fieldKey} {...f} />)}
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {rightCol.map(f => <Field key={f.fieldKey} {...f} />)}
+            </div>
+          </div>
+
+          {/* Bottom row: матрица / строка / источник */}
+          <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 16px' }}>
+            {bottomRow.map(f => <Field key={f.fieldKey} {...f} />)}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Projects Table ───────────────────────────────────────────────────────────
 
 function ProjectsTable({
@@ -384,6 +574,7 @@ function ProjectsTable({
 }) {
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-proj')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown on scroll
@@ -450,14 +641,19 @@ function ProjectsTable({
     })
   }
 
-  function renderProjCell(col: ColDef, p: Project) {
+  function renderProjCell(col: ColDef, p: Project, cc?: CellColor) {
     switch (col.key) {
-      case 'status':
+      case 'status': {
+        // Если есть цвет из таблицы — просто текст (td уже покрашен)
+        if (cc?.bg || cc?.fg) {
+          return <span style={{ fontSize: 11, fontWeight: 600 }}>{STATUS_LABELS[p.status] ?? p.status}</span>
+        }
         return (
           <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: `${STATUS_COLORS[p.status] ?? '#94a3b8'}22`, color: STATUS_COLORS[p.status] ?? '#94a3b8' }}>
             {STATUS_LABELS[p.status] ?? p.status}
           </span>
         )
+      }
       case 'client':   return p.client ?? '—'
       case 'name':     return p.name
       case 'date':     return fmtDate(p.date)
@@ -469,6 +665,7 @@ function ProjectsTable({
   }
 
   return (
+    <>
     <div style={panelStyle}>
       <div style={panelHeader}>
         <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
@@ -537,17 +734,34 @@ function ProjectsTable({
                     </tr>
                   )
                 }
+                const cellColors = parseUncertainColors(p.uncertainFields ?? [])
+                const rowBg = i % 2 === 0 ? '#fff' : '#f8fafc'
                 return (
-                  <tr key={p.id} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                    {visibleCols.map((col) => (
-                      <td
-                        key={col.key}
-                        style={col.key === 'name' ? { ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' } : tdStyle}
-                        title={col.key === 'name' ? p.name : undefined}
-                      >
-                        {renderProjCell(col, p)}
-                      </td>
-                    ))}
+                  <tr
+                    key={p.id}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSelectedProject(p)}
+                    title="Нажмите для просмотра деталей"
+                  >
+                    {visibleCols.map((col) => {
+                      const chipBg = getValueChipColor(col.key, p)
+                      const cc = chipBg ? { bg: chipBg } : cellColors[col.key]
+                      const effectiveBg = cc?.bg ?? rowBg
+                      const effectiveFg = cc?.fg ?? (cc?.bg ? contrastColor(cc.bg) : undefined)
+                      return (
+                        <td
+                          key={col.key}
+                          style={{
+                            ...(col.key === 'name' ? { ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' } : tdStyle),
+                            background: effectiveBg,
+                            color: effectiveFg,
+                          }}
+                          title={col.key === 'name' ? p.name : undefined}
+                        >
+                          {renderProjCell(col, p, cc)}
+                        </td>
+                      )
+                    })}
                   </tr>
                 )
               })}
@@ -556,6 +770,11 @@ function ProjectsTable({
         )}
       </div>
     </div>
+
+    {selectedProject && (
+      <ProjectDetailModal project={selectedProject} onClose={() => setSelectedProject(null)} />
+    )}
+    </>
   )
 }
 
@@ -760,7 +979,7 @@ export function SyncDataPage() {
 
   const { data: allProjects = [], isLoading: projLoading } = useQuery<Project[]>({
     queryKey: ['status-rows-sync'],
-    queryFn: () => api.get('/status-rows?withSeparators=true').then((r) => r.data),
+    queryFn: () => api.get('/status-rows?withSeparators=true&slim=true').then((r) => r.data),
   })
 
   const { data: sheetUrls } = useQuery<{ projectsSheetUrl: string | null; registrySheetUrl: string | null }>({

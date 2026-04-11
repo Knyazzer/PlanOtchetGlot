@@ -63,7 +63,9 @@
       "mcp__plugin_playwright_playwright__browser_take_screenshot",
       "mcp__plugin_playwright_playwright__browser_snapshot",
       "Bash(cmd /c \"npx tsc --noEmit -p apps/web/tsconfig.json 2>&1\")",
-      "Bash(findstr /i \"deals\")"
+      "Bash(findstr /i \"deals\")",
+      "Bash(pnpm exec:*)",
+      "Bash(\"d:/Pet projects/scripts/PlanOtchetGlot/apps/web/node_modules/.bin/tsc\" --noEmit -p \"d:/Pet projects/scripts/PlanOtchetGlot/apps/web/tsconfig.json\")"
     ]
   },
   "enabledPlugins": {

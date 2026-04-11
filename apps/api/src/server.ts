@@ -23,7 +23,23 @@ import { prisma } from '@tv-shifts/db'
 
 const app = Fastify({ logger: true })
 
+// Ждём готовности PostgreSQL (на случай если Docker ещё поднимается)
+async function waitForDB(retries = 30, delayMs = 2000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await prisma.$connect()
+      console.log('[db] PostgreSQL ready')
+      return
+    } catch {
+      console.log(`[db] Waiting for PostgreSQL... (${i + 1}/${retries})`)
+      await new Promise(r => setTimeout(r, delayMs))
+    }
+  }
+  throw new Error('[db] PostgreSQL did not become available in time')
+}
+
 async function main() {
+  await waitForDB()
   await app.register(cors, {
     origin: [
       process.env.WEB_URL ?? 'http://localhost:5173',
