@@ -777,7 +777,7 @@ function ProjectsTable({
                   const hasFilter = (colFilters[col.key] ?? []).length > 0
                   const isOpen = openDrop === col.key
                   return (
-                    <th key={col.key} style={{ ...thBase, position: 'relative', overflow: 'visible' }}>
+                    <th key={col.key} style={{ ...thBase, overflow: 'visible' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
                         <span style={thLabel}>{col.label}</span>
                         {col.filterable && (
@@ -1014,28 +1014,32 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded }: { entry: Regist
 
         {/* Tab: Shifts */}
         {tab === 'shifts' && (
-          <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px' }}>
-            {shiftsLoading && <div style={{ color: '#64748b', fontSize: 14 }}>Загрузка...</div>}
-            {shiftsError && <div style={{ color: '#ef4444', fontSize: 14 }}>Ошибка: {(shiftsError as any)?.response?.data?.error ?? (shiftsError as any)?.message}</div>}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Meta row — outside scroll so it stays fixed */}
+            {shiftsData && shiftsData.activeCols.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 20px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>Лист: {shiftsData.sheetTitle}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ fontSize: 11, color: '#cbd5e1' }}>Ctrl+клик по строке — сделать разделителем</div>
+                  <button
+                    onClick={() => setForceRefresh((v) => !v)}
+                    disabled={shiftsFetching}
+                    title="Обновить из Google Sheets"
+                    style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
+                  >
+                    {shiftsFetching ? '...' : '↻ Обновить'}
+                  </button>
+                </div>
+              </div>
+            )}
+            <div style={{ flex: 1, overflow: 'auto', padding: '0 20px 16px' }}>
+            {shiftsLoading && <div style={{ color: '#64748b', fontSize: 14, padding: '16px 0' }}>Загрузка...</div>}
+            {shiftsError && <div style={{ color: '#ef4444', fontSize: 14, padding: '16px 0' }}>Ошибка: {(shiftsError as any)?.response?.data?.error ?? (shiftsError as any)?.message}</div>}
             {shiftsData && shiftsData.activeCols.length === 0 && (
-              <div style={{ color: '#94a3b8', fontSize: 14 }}>Нет проставленных смен</div>
+              <div style={{ color: '#94a3b8', fontSize: 14, padding: '16px 0' }}>Нет проставленных смен</div>
             )}
             {shiftsData && shiftsData.activeCols.length > 0 && (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ fontSize: 12, color: '#94a3b8' }}>Лист: {shiftsData.sheetTitle}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ fontSize: 11, color: '#cbd5e1' }}>Ctrl+клик по строке — сделать разделителем</div>
-                    <button
-                      onClick={() => setForceRefresh((v) => !v)}
-                      disabled={shiftsFetching}
-                      title="Обновить из Google Sheets"
-                      style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
-                    >
-                      {shiftsFetching ? '...' : '↻ Обновить'}
-                    </button>
-                  </div>
-                </div>
                 <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
                   <thead>
                     <tr style={{ background: '#f1f5f9' }}>
@@ -1101,6 +1105,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded }: { entry: Regist
                 </table>
               </>
             )}
+            </div>
           </div>
         )}
       </div>
@@ -1499,7 +1504,7 @@ function RegistryTable({
                   const hasFilter = (colFilters[col.key] ?? []).length > 0
                   const isOpen = openDrop === col.key
                   return (
-                    <th key={col.key} style={{ ...thBase, position: 'relative', overflow: 'visible' }}>
+                    <th key={col.key} style={{ ...thBase, overflow: 'visible' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
                         <span style={thLabel}>{col.label}</span>
                         {col.filterable && (
@@ -1778,7 +1783,7 @@ const panelStyle: React.CSSProperties = {
   background: '#fff',
   borderRadius: 10,
   border: '1px solid #e2e8f0',
-  overflow: 'hidden',
+  overflow: 'clip',
 }
 
 const panelHeader: React.CSSProperties = {
@@ -1816,12 +1821,16 @@ const tdStyle: React.CSSProperties = {
 }
 
 const shiftTh: React.CSSProperties = {
+  position: 'sticky',
+  top: 0,
+  background: '#f8fafc',
   padding: '6px 10px',
   borderBottom: '2px solid #e2e8f0',
   fontWeight: 600,
   fontSize: 12,
   color: '#334155',
   whiteSpace: 'nowrap',
+  zIndex: 1,
 }
 
 const shiftTd: React.CSSProperties = {
