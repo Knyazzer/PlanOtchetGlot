@@ -125,10 +125,10 @@ const PROJ_COLS: ColDef[] = [
 // -H -I:  A B C D G J
 // -G -J:  A B C D
 function getProjHiddenCols(width: number): Set<string> {
-  if (width >= 900) return new Set()
-  if (width >= 720) return new Set(['matrixId'])
-  if (width >= 560) return new Set(['matrixId', 'lineProducer', 'accountManager'])
-  if (width >= 400) return new Set(['matrixId', 'lineProducer', 'accountManager', 'time', 'format'])
+  if (width >= 1200) return new Set()
+  if (width >= 1000) return new Set(['matrixId'])
+  if (width >= 780)  return new Set(['matrixId', 'lineProducer', 'accountManager'])
+  if (width >= 560)  return new Set(['matrixId', 'lineProducer', 'accountManager', 'time', 'format'])
   return new Set(['matrixId', 'lineProducer', 'accountManager', 'time', 'format', 'date', 'location'])
 }
 
@@ -151,9 +151,9 @@ const REG_COLS: ColDef[] = [
 // -J:       A B C E F G I
 // -E -I:    A B C F G
 function getRegHiddenCols(width: number): Set<string> {
-  if (width >= 900) return new Set()
-  if (width >= 680) return new Set(['format', 'manager', 'curator'])
-  if (width >= 500) return new Set(['format', 'manager', 'curator', 'producer'])
+  if (width >= 1100) return new Set()
+  if (width >= 860)  return new Set(['format', 'manager', 'curator'])
+  if (width >= 640)  return new Set(['format', 'manager', 'curator', 'producer'])
   return new Set(['format', 'manager', 'curator', 'producer', 'unit', 'date'])
 }
 
@@ -695,13 +695,13 @@ function ProjectsTable({
         )}
       </div>
 
-      <div ref={scrollRef} style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
+      <div ref={scrollRef} style={{ overflowX: 'hidden', overflowY: 'auto', flex: 1 }}>
         {loading ? (
           <div style={emptyMsg}>Загрузка...</div>
         ) : projects.length === 0 ? (
           <div style={emptyMsg}>Данные не загружены — запустите синхронизацию</div>
         ) : (
-          <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
             <thead>
               <tr>
                 {visibleCols.map((col) => {
@@ -764,7 +764,7 @@ function ProjectsTable({
                         <td
                           key={col.key}
                           style={{
-                            ...(col.key === 'name' ? { ...tdStyle, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' } : tdStyle),
+                            ...tdStyle,
                             background: effectiveBg,
                             color: effectiveFg,
                           }}
@@ -927,13 +927,13 @@ function RegistryTable({
         )}
       </div>
 
-      <div ref={scrollRef} style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
+      <div ref={scrollRef} style={{ overflowX: 'hidden', overflowY: 'auto', flex: 1 }}>
         {loading ? (
           <div style={emptyMsg}>Загрузка...</div>
         ) : registry.length === 0 ? (
           <div style={emptyMsg}>Данные не загружены — запустите синхронизацию</div>
         ) : (
-          <table style={{ borderCollapse: 'collapse', fontSize: 13 }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
             <thead>
               <tr>
                 {visibleCols.map((col) => {
@@ -975,7 +975,7 @@ function RegistryTable({
                   {visibleCols.map((col) => (
                     <td
                       key={col.key}
-                      style={col.key === 'name' ? { ...tdStyle, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' } : tdStyle}
+                      style={tdStyle}
                       title={col.key === 'name' ? (r.name ?? '') : undefined}
                     >
                       {renderRegCell(col, r)}
@@ -1232,7 +1232,8 @@ const tdStyle: React.CSSProperties = {
   padding: '6px 10px',
   borderBottom: '1px solid #f1f5f9',
   color: '#374151',
-  whiteSpace: 'nowrap',
+  whiteSpace: 'normal',
+  overflowWrap: 'normal',
 }
 
 const separatorTd: React.CSSProperties = {
