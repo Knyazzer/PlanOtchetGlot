@@ -65,7 +65,8 @@
       "Bash(cmd /c \"npx tsc --noEmit -p apps/web/tsconfig.json 2>&1\")",
       "Bash(findstr /i \"deals\")",
       "Bash(pnpm exec:*)",
-      "Bash(\"d:/Pet projects/scripts/PlanOtchetGlot/apps/web/node_modules/.bin/tsc\" --noEmit -p \"d:/Pet projects/scripts/PlanOtchetGlot/apps/web/tsconfig.json\")"
+      "Bash(\"d:/Pet projects/scripts/PlanOtchetGlot/apps/web/node_modules/.bin/tsc\" --noEmit -p \"d:/Pet projects/scripts/PlanOtchetGlot/apps/web/tsconfig.json\")",
+      "Bash(DATABASE_URL=postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts pnpm --filter @tv-shifts/db exec prisma migrate dev --name add_google_row_index_to_registry)"
     ]
   },
   "enabledPlugins": {

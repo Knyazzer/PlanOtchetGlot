@@ -428,17 +428,18 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 
     const entry = {
       sheetUrl,
-      status:   cellStr(cells[0])  || null,  // A
-      unit:     cellStr(cells[4])  || null,  // E
-      client:   cellStr(cells[5])  || null,  // F
-      name:     cellStr(cells[6])  || null,  // G
-      format:   cellStr(cells[7])  || null,  // H
-      date,                                   // I
-      producer: cellStr(cells[9])  || null,  // J
-      manager:  cellStr(cells[10]) || null,  // K
-      curator:  cellStr(cells[11]) || null,  // L
+      status:        cellStr(cells[0])  || null,  // A
+      unit:          cellStr(cells[4])  || null,  // E
+      client:        cellStr(cells[5])  || null,  // F
+      name:          cellStr(cells[6])  || null,  // G
+      format:        cellStr(cells[7])  || null,  // H
+      date,                                        // I
+      producer:      cellStr(cells[9])  || null,  // J
+      manager:       cellStr(cells[10]) || null,  // K
+      curator:       cellStr(cells[11]) || null,  // L
       projectId,
-      lastSyncedAt: new Date(),
+      googleRowIndex: i + 1,
+      lastSyncedAt:  new Date(),
     }
 
     try {
@@ -634,6 +635,132 @@ async function syncMatrix(
   return { upserted, errors }
 }
 
+// ─── Matrix Preview ──────────────────────────────────────────────────────────
+
+export interface MatrixCell {
+  value: string
+  bg: string | null
+  fg: string | null
+  bold: boolean
+  italic: boolean
+  colSpan?: number
+  rowSpan?: number
+  hidden?: boolean // covered by a merge
+}
+
+export interface MatrixSheetData {
+  title: string
+  rows: MatrixCell[][]
+  colWidths: number[] // pixel widths per column
+}
+
+export interface MatrixPreview {
+  spreadsheetTitle: string
+  spreadsheetUrl: string
+  sheets: { title: string; sheetId: number }[]
+  data: MatrixSheetData | null
+}
+
+export async function fetchMatrixPreview(
+  spreadsheetUrl: string,
+  sheetTitle?: string,
+): Promise<MatrixPreview> {
+  const sheetsApi = getSheets()
+  const spreadsheetId = extractSpreadsheetId(spreadsheetUrl)
+  if (!spreadsheetId) throw new Error('Invalid matrix URL')
+
+  // Step 1 — get sheet list without grid data (fast)
+  const meta = await sheetsApi.spreadsheets.get({ spreadsheetId, includeGridData: false })
+  const allSheetsMeta = meta.data.sheets ?? []
+  const sheetList = allSheetsMeta.map((s) => ({
+    title: s.properties?.title ?? '',
+    sheetId: s.properties?.sheetId ?? 0,
+  }))
+
+  const spreadsheetTitle = meta.data.properties?.title ?? ''
+  const targetTitle = sheetTitle ?? sheetList[0]?.title ?? ''
+  if (!targetTitle) return { spreadsheetTitle, spreadsheetUrl, sheets: sheetList, data: null }
+
+  // Step 2 — get grid data (colors, merges, widths) + formatted values in parallel
+  const safeTitle = targetTitle.replace(/'/g, "\\'")
+  const rangeStr = `'${safeTitle}'!A1:AZ300`
+
+  const [res, fmtRes] = await Promise.all([
+    sheetsApi.spreadsheets.get({
+      spreadsheetId,
+      includeGridData: true,
+      ranges: [rangeStr],
+    }),
+    sheetsApi.spreadsheets.values.get({
+      spreadsheetId,
+      range: rangeStr,
+      valueRenderOption: 'FORMATTED_VALUE',
+    }),
+  ])
+
+  const fmtValues: string[][] = (fmtRes.data.values ?? []) as string[][]
+
+  const targetSheet = res.data.sheets?.[0]
+  if (!targetSheet) return { spreadsheetTitle, spreadsheetUrl, sheets: sheetList, data: null }
+
+  const gridData = targetSheet.data?.[0]
+  const rowData  = gridData?.rowData ?? []
+
+  // Determine number of columns from the data
+  const colCount = rowData.reduce((max, row) => Math.max(max, row.values?.length ?? 0), 0)
+
+  // Column widths (px) from metadata, fallback 100px
+  const colMeta = gridData?.columnMetadata ?? []
+  const colWidths: number[] = Array.from({ length: colCount }, (_, ci) => {
+    const px = colMeta[ci]?.pixelSize
+    return px && px > 0 ? px : 100
+  })
+
+  // Build merge lookup: for each (row, col) → { rowSpan, colSpan } or hidden
+  type MergeInfo = { rowSpan: number; colSpan: number } | 'hidden'
+  const mergeMap = new Map<string, MergeInfo>()
+  for (const m of targetSheet.merges ?? []) {
+    const r0 = m.startRowIndex ?? 0
+    const r1 = m.endRowIndex   ?? r0 + 1
+    const c0 = m.startColumnIndex ?? 0
+    const c1 = m.endColumnIndex   ?? c0 + 1
+    mergeMap.set(`${r0}_${c0}`, { rowSpan: r1 - r0, colSpan: c1 - c0 })
+    for (let r = r0; r < r1; r++) {
+      for (let c = c0; c < c1; c++) {
+        if (r === r0 && c === c0) continue
+        mergeMap.set(`${r}_${c}`, 'hidden')
+      }
+    }
+  }
+
+  const rows: MatrixCell[][] = rowData.map((row, ri) => {
+    const cells = row.values ?? []
+    return Array.from({ length: colCount }, (_, ci) => {
+      const cell = cells[ci]
+      const mergeInfo = mergeMap.get(`${ri}_${ci}`)
+      if (mergeInfo === 'hidden') return { value: '', bg: null, fg: null, bold: false, italic: false, hidden: true }
+      // FORMATTED_VALUE from values.get = exactly what Google Sheets displays
+      const value = fmtValues[ri]?.[ci] ?? cell?.formattedValue ?? ''
+      const mc: MatrixCell = {
+        value,
+        bg:     getCellColor(cell),
+        fg:     getCellTextColor(cell),
+        bold:   cell?.userEnteredFormat?.textFormat?.bold   ?? false,
+        italic: cell?.userEnteredFormat?.textFormat?.italic ?? false,
+      }
+      if (mergeInfo) { mc.rowSpan = mergeInfo.rowSpan; mc.colSpan = mergeInfo.colSpan }
+      return mc
+    })
+  })
+
+  return {
+    spreadsheetTitle,
+    spreadsheetUrl,
+    sheets: sheetList,
+    data: { title: targetTitle, rows, colWidths },
+  }
+}
+
 // ─── Full Sync Orchestration ─────────────────────────────────────────────────
 
 export interface SyncResult {
@@ -717,73 +844,6 @@ export async function runFullSync(): Promise<SyncResult> {
   }
 
   await delay(1000)
-
-  // ── 3. Sync individual matrices ────────────────────────────────────────
-  const registryEntries = await prisma.matrixRegistry.findMany({
-    where: { sheetUrl: { not: null } },
-  })
-
-  for (const entry of registryEntries) {
-    if (!entry.sheetUrl?.startsWith('http')) continue
-
-    const matrixLog = await prisma.syncLog.create({
-      data: { type: 'matrix', targetId: entry.matrixId, status: 'running' },
-    })
-
-    try {
-      const result = await syncMatrix(sheets, {
-        id: entry.id,
-        matrixId: entry.matrixId,
-        sheetUrl: entry.sheetUrl,
-        projectId: entry.projectId,
-      })
-      shiftsUpserted += result.upserted
-      allErrors.push(...result.errors)
-      await prisma.syncLog.update({
-        where: { id: matrixLog.id },
-        data: {
-          status: result.errors.length > 0 ? 'error' : 'success',
-          changesCount: result.upserted,
-          errors: result.errors,
-          finishedAt: new Date(),
-        },
-      })
-    } catch (e: any) {
-      allErrors.push(`Matrix ${entry.matrixId} sync failed: ${e.message}`)
-      await prisma.syncLog.update({
-        where: { id: matrixLog.id },
-        data: { status: 'error', errors: [e.message], finishedAt: new Date() },
-      })
-    }
-
-    await delay(500) // between matrices
-  }
-
-  // ── Notification: no_matrix for status rows without a linked matrix ───
-  const rowsWithoutMatrix = await prisma.statusRow.findMany({
-    where: {
-      source: 'projects_table',
-      matrixUrl: null,
-      matrixRegistry: null,
-    },
-  })
-
-  for (const row of rowsWithoutMatrix) {
-    const exists = await prisma.notification.findFirst({
-      where: { type: 'no_matrix', entityId: row.id },
-    })
-    if (!exists) {
-      await prisma.notification.create({
-        data: {
-          type: 'no_matrix',
-          entityType: 'status_row',
-          entityId: row.id,
-          message: `У строки «${row.name}» не найдена матрица`,
-          userId: null,
-        },
-      })
-    }
-  }
 
   return {
     projectsUpserted,

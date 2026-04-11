@@ -17,6 +17,7 @@ interface Project {
   lineProducer: string | null
   accountManager: string | null
   date: string | null
+  dateApproximate: string | null
   time: string | null
   format: string | null
   location: string | null
@@ -38,6 +39,8 @@ interface RegistryEntry {
   manager: string | null
   curator: string | null
   projectId: string | null
+  googleRowIndex: number | null
+  lastSyncedAt: string | null
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -162,6 +165,18 @@ function getRegHiddenCols(width: number): Set<string> {
 function fmtDate(raw: string | null) {
   if (!raw) return '—'
   try { return format(new Date(raw), 'd MMM yyyy', { locale: ru }) } catch { return raw }
+}
+
+function fmtTime(raw: string | null) {
+  if (!raw) return '—'
+  const num = parseFloat(raw)
+  if (!isNaN(num) && /^\d*\.?\d+$/.test(raw.trim()) && num >= 0 && num < 1) {
+    const totalMin = Math.round(num * 24 * 60)
+    const h = Math.floor(totalMin / 60)
+    const m = totalMin % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+  return raw
 }
 
 function uniq(values: (string | null | undefined)[]): string[] {
@@ -380,6 +395,20 @@ function GlobalSettingsPopup({
 
 // ─── Projects column filter helpers ───────────────────────────────────────────
 
+// Maps each project id to the month label of its nearest preceding separator row
+function buildMonthMap(projects: Project[]): Record<string, string> {
+  const map: Record<string, string> = {}
+  let currentMonth = ''
+  for (const p of projects) {
+    if (p.source === 'separator') {
+      currentMonth = p.name
+    } else {
+      map[p.id] = currentMonth
+    }
+  }
+  return map
+}
+
 function getProjValue(p: Project, col: string): string {
   switch (col) {
     case 'status':   return STATUS_LABELS[p.status] ?? p.status
@@ -464,8 +493,8 @@ function ProjectDetailModal({ project, onClose }: { project: Project; onClose: (
   type FieldDef = { label: string; fieldKey: string; value: string | number | null | undefined; mono?: boolean }
 
   const leftCol: FieldDef[] = [
-    { label: 'Дата',    fieldKey: 'date',     value: fmtDate(project.date) },
-    { label: 'Время',   fieldKey: 'time',     value: project.time },
+    { label: 'Дата',    fieldKey: 'date',     value: project.dateApproximate ?? fmtDate(project.date) },
+    { label: 'Время',   fieldKey: 'time',     value: fmtTime(project.time) },
     { label: 'Формат',  fieldKey: 'format',   value: project.format },
     { label: 'Локация', fieldKey: 'location', value: project.location },
   ]
@@ -599,6 +628,20 @@ function ProjectsTable({
   }, [openDrop])
 
   const allNonSep = useMemo(() => projects.filter((p) => p.source !== 'separator'), [projects])
+  const monthMap = useMemo(() => buildMonthMap(projects), [projects])
+
+  // Ordered list of block names (separator names) as they appear in the table
+  const blockOrder = useMemo(() => {
+    const seen = new Set<string>()
+    const result: string[] = []
+    for (const p of projects) {
+      if (p.source === 'separator' && p.name && !seen.has(p.name)) {
+        seen.add(p.name)
+        result.push(p.name)
+      }
+    }
+    return result
+  }, [projects])
 
   const afterPrimary = useMemo(() => {
     return allNonSep.filter((p) => {
@@ -610,16 +653,41 @@ function ProjectsTable({
     })
   }, [allNonSep, primaryFilters])
 
-  const colValues = useMemo(() => ({
-    status:   uniq(afterPrimary.map((p) => STATUS_LABELS[p.status] ?? p.status)),
-    client:   uniq(afterPrimary.map((p) => p.client)),
-    date:     uniq(afterPrimary.map((p) => { const d = fmtDate(p.date); return d !== '—' ? d : null })),
-    format:   uniq(afterPrimary.map((p) => p.format)),
-    location: uniq(afterPrimary.map((p) => p.location)),
-    matrixId: ['Есть ID', 'Нет ID'] as string[],
-  }), [afterPrimary])
+  const colValues = useMemo(() => {
+    // For date: only show blocks that actually have rows in afterPrimary
+    const activeBlocks = new Set(afterPrimary.map((p) => monthMap[p.id]).filter(Boolean))
+    return {
+      status:   uniq(afterPrimary.map((p) => STATUS_LABELS[p.status] ?? p.status)),
+      client:   uniq(afterPrimary.map((p) => p.client)),
+      date:     blockOrder.filter((b) => activeBlocks.has(b)),
+      format:   uniq(afterPrimary.map((p) => p.format)),
+      location: uniq(afterPrimary.map((p) => p.location)),
+      matrixId: ['Есть ID', 'Нет ID'] as string[],
+    }
+  }, [afterPrimary, monthMap, blockOrder])
 
-  const afterSecondary = useMemo(() => applyProjColFilters(afterPrimary, colFilters), [afterPrimary, colFilters])
+  const afterSecondary = useMemo(() => {
+    return afterPrimary.filter((p) => {
+      for (const [col, sel] of Object.entries(colFilters)) {
+        if (sel.length === 0) continue
+        if (col === 'date') {
+          if (!sel.includes(monthMap[p.id] ?? '')) return false
+          continue
+        }
+        if (col === 'matrixId') {
+          const hasId = !!p.sheetMatrixId
+          const wantHas = sel.includes('Есть ID')
+          const wantNot = sel.includes('Нет ID')
+          if (wantHas && !wantNot && !hasId) return false
+          if (!wantHas && wantNot && hasId) return false
+          continue
+        }
+        const val = getProjValue(p, col)
+        if (!sel.includes(val)) return false
+      }
+      return true
+    })
+  }, [afterPrimary, colFilters, monthMap])
   const visibleIds = useMemo(() => new Set(afterSecondary.map((p) => p.id)), [afterSecondary])
 
   const rows = useMemo(() => {
@@ -667,8 +735,8 @@ function ProjectsTable({
       case 'execProducer':   return p.execProducer ?? '—'
       case 'lineProducer':   return p.lineProducer ?? '—'
       case 'accountManager': return p.accountManager ?? '—'
-      case 'date':           return fmtDate(p.date)
-      case 'time':           return p.time ?? '—'
+      case 'date':           return p.dateApproximate ?? fmtDate(p.date)
+      case 'time':           return fmtTime(p.time)
       case 'format':         return p.format ?? '—'
       case 'location':       return p.location ?? '—'
       case 'matrixId':       return <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{p.sheetMatrixId ?? '—'}</span>
@@ -790,6 +858,263 @@ function ProjectsTable({
   )
 }
 
+// ─── Registry Detail Modal ───────────────────────────────────────────────────
+
+function RegistryDetailModal({ entry, onClose }: { entry: RegistryEntry; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  type FieldDef = { label: string; value: string | null | undefined; mono?: boolean; link?: boolean }
+
+  const leftCol: FieldDef[] = [
+    { label: 'ID матрицы', value: entry.matrixId, mono: true },
+    { label: 'Ссылка',     value: entry.sheetUrl, link: true },
+    { label: 'Юнит',       value: entry.unit },
+    { label: 'Формат',     value: entry.format },
+    { label: 'Дата',       value: fmtDate(entry.date) },
+  ]
+
+  const rightCol: FieldDef[] = [
+    { label: 'Продюсер', value: entry.producer },
+    { label: 'Менеджер', value: entry.manager },
+    { label: 'Куратор',  value: entry.curator },
+  ]
+
+  function Field({ label, value, mono, link }: FieldDef) {
+    const display = value && value !== '—' ? value : null
+    return (
+      <div style={{ paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 13, color: display ? '#1e293b' : '#cbd5e1', fontFamily: mono ? 'monospace' : undefined }}>
+          {link && display
+            ? <a href={display} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', wordBreak: 'break-all' }}>{display}</a>
+            : (display ?? '—')}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onMouseDown={onClose}
+    >
+      <div
+        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', lineHeight: 1.4 }}>{entry.name ?? entry.matrixId}</div>
+            {entry.client && <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{entry.client}</div>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {entry.status && (
+              <span style={{ padding: '3px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: '#f1f5f9', color: '#475569' }}>
+                {entry.status}
+              </span>
+            )}
+            <button
+              onClick={onClose}
+              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px', borderRadius: 4 }}
+              title="Закрыть (Esc)"
+            >×</button>
+          </div>
+        </div>
+
+        {/* Two-column body */}
+        <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', gap: 24 }}>
+            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {leftCol.map((f) => <Field key={f.label} {...f} />)}
+            </div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {rightCol.map((f) => <Field key={f.label} {...f} />)}
+            </div>
+          </div>
+
+          {/* Bottom metadata row */}
+          <div style={{ display: 'flex', gap: 16, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
+            <Field label="Строка в гугл таблице" value={entry.googleRowIndex != null ? String(entry.googleRowIndex) : null} />
+            <Field label="Источник" value="registry" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Matrix Preview Modal ─────────────────────────────────────────────────────
+
+interface MatrixCell {
+  value: string
+  bg: string | null
+  fg: string | null
+  bold: boolean
+  italic: boolean
+  colSpan?: number
+  rowSpan?: number
+  hidden?: boolean
+}
+
+interface MatrixPreview {
+  spreadsheetTitle: string
+  spreadsheetUrl: string
+  sheets: { title: string; sheetId: number }[]
+  data: { title: string; rows: MatrixCell[][]; colWidths: number[] } | null
+}
+
+function MatrixPreviewModal({ matrixId, onClose }: { matrixId: string; onClose: () => void }) {
+  const [activeSheet, setActiveSheet] = useState<string | undefined>(undefined)
+
+  const { data, isLoading, error } = useQuery<MatrixPreview>({
+    queryKey: ['matrix-preview', matrixId, activeSheet],
+    queryFn: () => api.get(`/sync/matrix-preview/${encodeURIComponent(matrixId)}${activeSheet ? `?sheet=${encodeURIComponent(activeSheet)}` : ''}`).then((r) => r.data),
+  })
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  // Lock body scroll
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  const sheets = data?.sheets ?? []
+  const sheetData = data?.data
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#fff',
+          borderRadius: 12,
+          boxShadow: '0 24px 80px rgba(0,0,0,0.25)',
+          width: '96vw',
+          height: '92vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {data?.spreadsheetTitle ?? matrixId}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', fontFamily: 'monospace', marginTop: 2 }}>{matrixId}</div>
+          </div>
+          {data?.spreadsheetUrl && (
+            <a href={data.spreadsheetUrl} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 13, color: '#3b82f6', textDecoration: 'none', flexShrink: 0 }}>
+              Открыть в Google ↗
+            </a>
+          )}
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: '#94a3b8', lineHeight: 1, flexShrink: 0 }}>✕</button>
+        </div>
+
+        {/* Sheet tabs */}
+        {sheets.length > 1 && (
+          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e2e8f0', overflowX: 'auto', flexShrink: 0 }}>
+            {sheets.map((s) => {
+              const isActive = (activeSheet ?? sheets[0]?.title) === s.title
+              return (
+                <button
+                  key={s.sheetId}
+                  onClick={() => setActiveSheet(s.title)}
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: 13,
+                    border: 'none',
+                    borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                    background: 'none',
+                    cursor: 'pointer',
+                    color: isActive ? '#3b82f6' : '#64748b',
+                    fontWeight: isActive ? 600 : 400,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  {s.title}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Grid */}
+        <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+          {isLoading && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: 14 }}>
+              Загрузка...
+            </div>
+          )}
+          {error && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#ef4444', fontSize: 14 }}>
+              Ошибка загрузки: {(error as any).message}
+            </div>
+          )}
+          {!isLoading && !error && sheetData && (
+            <table style={{ borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed' }}>
+              <colgroup>
+                {sheetData.colWidths.map((w, ci) => (
+                  <col key={ci} style={{ width: w }} />
+                ))}
+              </colgroup>
+              <tbody>
+                {sheetData.rows.map((row, ri) => (
+                  <tr key={ri}>
+                    {row.map((cell, ci) => {
+                      if (cell.hidden) return null
+                      return (
+                        <td
+                          key={ci}
+                          rowSpan={cell.rowSpan}
+                          colSpan={cell.colSpan}
+                          style={{
+                            padding: '3px 6px',
+                            border: '1px solid #e2e8f0',
+                            background: cell.bg ?? (ri === 0 ? '#f1f5f9' : '#fff'),
+                            color: cell.fg ?? '#1e293b',
+                            fontWeight: cell.bold ? 600 : 400,
+                            fontStyle: cell.italic ? 'italic' : 'normal',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            verticalAlign: 'middle',
+                            maxWidth: 300,
+                          }}
+                        >
+                          {cell.value}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {!isLoading && !error && !sheetData && data && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', fontSize: 14 }}>
+              Нет данных на этом листе
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Registry Table ───────────────────────────────────────────────────────────
 
 function getRegValue(r: RegistryEntry, col: string): string {
@@ -812,6 +1137,8 @@ function RegistryTable({
 }) {
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-reg')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
+  const [selectedMatrix, setSelectedMatrix] = useState<string | null>(null)
+  const [selectedEntry, setSelectedEntry] = useState<RegistryEntry | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(9999)
@@ -896,7 +1223,14 @@ function RegistryTable({
             ? <a href={r.sheetUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Матрица</a>
             : r.sheetUrl
           : <span style={{ color: '#94a3b8' }}>—</span>
-      case 'matrixId': return <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{r.matrixId}</span>
+      case 'matrixId': return (
+        <button
+          onClick={(e) => { e.stopPropagation(); setSelectedMatrix(r.matrixId) }}
+          style={{ fontFamily: 'monospace', fontSize: 12, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+        >
+          {r.matrixId}
+        </button>
+      )
       case 'unit':     return r.unit ?? '—'
       case 'client':   return r.client ?? '—'
       case 'name':     return r.name ?? '—'
@@ -910,6 +1244,7 @@ function RegistryTable({
   }
 
   return (
+    <>
     <div ref={containerRef} style={panelStyle}>
       <div style={panelHeader}>
         <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
@@ -971,7 +1306,12 @@ function RegistryTable({
               {afterSecondary.length === 0 ? (
                 <tr><td colSpan={colSpanCount} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Нет строк по выбранным фильтрам</td></tr>
               ) : afterSecondary.map((r, i) => (
-                <tr key={r.id} style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                <tr
+                  key={r.id}
+                  style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'pointer' }}
+                  onClick={() => setSelectedEntry(r)}
+                  title="Нажмите для просмотра деталей"
+                >
                   {visibleCols.map((col) => (
                     <td
                       key={col.key}
@@ -988,6 +1328,13 @@ function RegistryTable({
         )}
       </div>
     </div>
+    {selectedEntry && (
+      <RegistryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+    )}
+    {selectedMatrix && (
+      <MatrixPreviewModal matrixId={selectedMatrix} onClose={() => setSelectedMatrix(null)} />
+    )}
+    </>
   )
 }
 
