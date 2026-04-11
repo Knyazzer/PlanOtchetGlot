@@ -6,15 +6,17 @@
 
 | Инструмент | Версия | Назначение |
 |-----------|--------|-----------|
-| React | 18+ | UI-фреймворк |
+| React | 19 | UI-фреймворк |
 | TypeScript | 5+ | Типизация |
-| Vite | 5+ | Сборка |
-| TanStack Router | latest | Роутинг |
+| Vite | 8+ | Сборка |
 | TanStack Query | v5 | Кэш, синхронизация с сервером |
 | FullCalendar | v6 | Производственный календарь |
-| shadcn/ui | latest | UI-компоненты (таблицы, формы, модалки) |
-| Tailwind CSS | v3 | Стили |
-| Zustand | latest | Глобальное состояние (UI) |
+| Zustand | v5 | Глобальное состояние (только auth) |
+| Axios | latest | HTTP-клиент |
+| date-fns | latest | Работа с датами |
+
+> **Важно**: нет UI-библиотеки (shadcn/ui, MUI, Tailwind) — весь стиль через inline styles.  
+> **Роутинг**: нет React Router — навигация через `useState<Page>` в `AppShell.tsx`, страница сохраняется в `localStorage`.
 
 ### Backend (`apps/api`)
 
@@ -25,7 +27,9 @@
 | Fastify | v4 | HTTP-сервер |
 | Prisma | v5 | ORM, миграции |
 | @fastify/jwt | latest | JWT авторизация |
-| bcrypt | latest | Хэширование паролей |
+| @fastify/cookie | latest | Cookie support |
+| @fastify/cors | latest | CORS |
+| bcryptjs | latest | Хэширование паролей |
 | googleapis | latest | Google Sheets API v4 (read-only) |
 | node-cron | latest | Планировщик синхронизации |
 | zod | latest | Валидация входящих данных |
@@ -42,9 +46,9 @@
 | Инструмент | Назначение |
 |-----------|-----------|
 | Docker | Контейнеризация |
-| Docker Compose | Оркестрация локального окружения |
+| Docker Compose | Оркестрация (dev: только postgres, prod: все сервисы + nginx + certbot + backup) |
 | pnpm workspaces | Монорепо |
-| Nginx | Reverse proxy (фаза 2, сервер) |
+| Nginx | Reverse proxy + SSL termination (production) |
 
 ---
 
@@ -54,107 +58,100 @@
 tv-shifts/
 ├── apps/
 │   ├── web/                    # React-приложение
-│   │   ├── src/
-│   │   │   ├── pages/          # Страницы (calendar, admin, profile, backlog)
-│   │   │   ├── components/     # UI-компоненты
-│   │   │   ├── hooks/          # TanStack Query хуки
-│   │   │   ├── stores/         # Zustand сторы
-│   │   │   └── lib/            # Утилиты, конфиги
-│   │   └── vite.config.ts
+│   │   └── src/
+│   │       ├── pages/          # Страницы (по одной на экран)
+│   │       ├── components/     # AppShell (навигация + SyncButton + NotificationBell)
+│   │       ├── hooks/          # useAuth (useCurrentUser, useIsAdmin, useIsProducer)
+│   │       ├── stores/         # auth.ts — Zustand store
+│   │       └── lib/            # api.ts — axios instance с auto-retry на 401
 │   │
 │   └── api/                    # Fastify-сервер
-│       ├── src/
-│       │   ├── routes/         # HTTP-роуты
-│       │   ├── services/       # Бизнес-логика
-│       │   ├── sync/           # Google Sheets синхронизация
-│       │   │   ├── projects-parser.ts
-│       │   │   ├── registry-parser.ts
-│       │   │   └── matrix-parser.ts
-│       │   ├── scheduler/      # node-cron задачи
-│       │   └── plugins/        # Fastify плагины (jwt, cors, etc.)
-│       └── tsconfig.json
+│       └── src/
+│           ├── routes/         # HTTP-роуты (по одному файлу на ресурс)
+│           ├── services/       # syncService.ts, changeLog.ts
+│           └── plugins/        # auth.ts — authenticate + requireRole preHandlers
 │
 ├── packages/
 │   └── db/                     # Prisma schema + generated client
 │       ├── prisma/
 │       │   ├── schema.prisma
+│       │   ├── seed.ts
 │       │   └── migrations/
-│       └── index.ts
+│       └── index.ts            -- экспортирует prisma client и типы
 │
-├── docker-compose.yml
-├── docker-compose.prod.yml
-├── pnpm-workspace.yaml
+├── docker-compose.yml          # dev: только PostgreSQL
+├── docker-compose.prod.yml     # prod: api + web + nginx + certbot + backup
+├── nginx/nginx.conf
+├── start.ps1                   # запуск api + web в отдельных PowerShell окнах
 └── package.json
-```
-
----
-
-## Сетевая схема (локальная сеть)
-
-```
-[Браузер сотрудника] ──HTTP──> [Docker: Nginx :80]
-                                        │
-                          ┌─────────────┼─────────────┐
-                          ▼             ▼             
-                   [web :3000]   [api :4000]
-                                        │
-                                 [postgres :5432]
-                                        │
-                               [Google Sheets API]
 ```
 
 ---
 
 ## Авторизация
 
-- JWT access token (15 минут) + refresh token (7 дней)
-- Токены хранятся в httpOnly cookies
-- Роли проверяются на уровне middleware Fastify
+- JWT access token (15 минут) + refresh token (7 дней) в httpOnly cookies
+- `@fastify/jwt` читает cookie `access_token` автоматически
+- `preHandler: authenticate` — проверяет JWT, возвращает 401 если нет/просрочен
+- `preHandler: requireRole('admin', 'producer')` — проверяет JWT + роль
+- Axios interceptor на фронтенде: при 401 автоматически запрашивает `/auth/refresh`, повторяет запрос
+
+---
+
+## Навигация (фронтенд)
+
+Нет React Router. Навигация реализована через:
+- `useState<Page>` в `AppShell.tsx` — список страниц: `calendar | analytics | users | tasks | profile | syncdata | deals`
+- Активная страница сохраняется в `localStorage` (ключ `app-page`)
+- Часть вкладок скрыта по роли: `analytics`, `users`, `syncdata` — только admin
 
 ---
 
 ## Google Sheets API
 
 - Используется **Google Sheets API v4** (read-only)
-- Аутентификация через **Service Account** (JSON-ключ, не требует OAuth пользователя)
-- Читаем: значения ячеек + форматирование (цвет фона) + объединённые ячейки
+- Аутентификация: **Service Account** (приватные таблицы) или `GOOGLE_API_KEY` (публичные)
+- Читаем: значения ячеек (`userEnteredValue` / `effectiveValue`) + форматирование (цвет фона) + объединённые ячейки
 - Запрос: `spreadsheets.get` с `includeGridData: true` для получения цветов
+- Google API не возвращает условное форматирование в `effectiveFormat` — оцениваем правила вручную (`evalConditionalColor`)
 
-### Rate limits
+### Rate limits и retry
 
-Google Sheets API: 60 запросов в минуту на проект.
-При ~50 матрицах синхронизация идёт батчами с задержками между запросами.
+- Google Sheets API: 60 запросов/мин на проект
+- Задержка 1500ms между матрицами (~2 запроса каждая → ~80/мин при 50 матрицах)
+- При 429/503: ретрай до 3 раз с задержками 3s / 6s
 
 ---
 
 ## Парсер матрицы (логика)
 
-```typescript
-// Псевдокод парсера листа ₽ СМЕНЫ
-function parseMatrixShifts(sheet: GoogleSheet, projectDate: Date) {
-  // 1. Читаем строку 2 → получаем даты для колонок J-P
-  const dates = readDatesRow(sheet, row=2, cols='J:P')
+```
+Лист «₽ СМЕНЫ» (или «₽ СПЕЦИАЛИСТЫ»):
 
-  // 2. Для каждой строки начиная с 4
-  for (const row of sheet.rows.from(4)) {
-    const name = row.C           // ФИО
-    const role = row.G           // Функция
-    const empType = row.I        // ШТАТ или ИП/СЗТ
+Строка 2:    [даты для колонок J–P]
+Строки 4+:   C=ФИО  G=функция  I=тип занятости  J–P=маркеры (1 = работает)
 
-    if (!name) continue          // Пустая строка — пропускаем
+Маппинг типа смены:
+  J, K, L  → zastroyka  (до даты проекта)
+  M        → efir        (день проекта)
+  N, O, P  → demontazh  (после даты проекта)
 
-    // 3. Для каждой даты смотрим маркер
-    for (const [colIndex, date] of dates.entries()) {
-      const marker = row[colIndex]  // 1 или пусто
-      if (!marker) continue
+Строка включается если есть хотя бы одно непустое поле в C/G/I/J–P.
+Строки «Итог:» пропускаются.
+```
 
-      // 4. Определяем тип смены по позиции
-      const shiftType = date < projectDate ? 'застройка'
-                      : date > projectDate ? 'демонтаж'
-                      : 'эфир'
+---
 
-      yield { name, role, empType, date, shiftType }
-    }
-  }
-}
+## Сетевая схема (production)
+
+```
+[Браузер] ──HTTPS──> [Nginx :443]
+                         │
+               ┌─────────┴──────────┐
+               ▼                    ▼
+          [web :80]           [api :4000]
+                                    │
+                             [postgres :5432]
+                                    │
+                           [Google Sheets API]
 ```

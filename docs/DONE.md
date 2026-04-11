@@ -9,16 +9,15 @@
 ### Инфраструктура
 - [x] pnpm монорепо: `apps/api`, `apps/web`, `packages/db`
 - [x] TypeScript во всех пакетах
-- [x] `docker-compose.yml` (prod): PostgreSQL + API + Web
-- [x] `docker-compose.dev.yml` (dev): только PostgreSQL на порту 5433
+- [x] `docker-compose.yml` (prod): PostgreSQL + API + Web + Nginx + Certbot + автобэкап
+- [x] `docker-compose.dev.yml` (dev): только PostgreSQL на порту 5432
 - [x] `.env.example` со всеми переменными
 - [x] `start.ps1` — запуск API и Web в отдельных окнах PowerShell
 
 ### База данных (`packages/db`)
-- [x] Prisma schema: 11 моделей — `User`, `Project`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`
-- [x] Все enum'ы: `Role`, `ProjectStatus`, `ProjectSource`, `EmploymentType`, `ShiftType`, `ShiftSource`, `SyncType`, `SyncStatus`, `NotificationType`, `TaskStatus`, `ChangeSource`
-- [x] Первая миграция (`20260407085319_init`)
-- [x] Seed-скрипт: 5 пользователей (admin + 3 employee + producer), 2 проекта, 2 задачи
+- [x] Prisma schema: 15 моделей — `User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`
+- [x] Все enum'ы: `Role`, `StatusRowStatus`, `StatusRowSource`, `EmploymentType`, `ShiftType`, `ShiftSource`, `SyncType`, `SyncStatus`, `NotificationType`, `TaskStatus`, `ChangeSource`, `DayType`, `DealStatus`
+- [x] Seed-скрипт: 5 пользователей (admin + 3 employee + producer), тестовые проекты и задачи
 
 ### Авторизация — API (`apps/api/src/routes/auth.ts`)
 - [x] `POST /auth/login` — JWT access (15 мин) + refresh (7 дн) в httpOnly cookies
@@ -51,21 +50,24 @@
 
 ## Этап 2 — Производственный календарь
 
-### Проекты — API (`apps/api/src/routes/projects.ts`)
-- [x] `GET /projects` — список с фильтрами по дате, статусу, поиску; включает assignments
-- [x] `GET /projects/:id` — детальный проект со сменами внутри assignments
-- [x] `POST /projects` — ручное создание (admin)
-- [x] `PATCH /projects/:id` — редактирование (admin)
-- [x] `DELETE /projects/:id` — удаление (admin)
-- [x] `GET /projects/conflicts` — поиск конфликтов (один сотрудник, два проекта в один день)
+### Проекты / StatusRow — API (`apps/api/src/routes/statusRows.ts`)
+- [x] `GET /status-rows` — список с фильтрами по дате, статусу, поиску; `?withSeparators=true` для включения разделителей
+- [x] `GET /status-rows/:id` — детальная строка со сменами внутри assignments
+- [x] `POST /status-rows` — ручное создание (admin)
+- [x] `PATCH /status-rows/:id` — редактирование (admin), логирование через `logChanges`
+- [x] `DELETE /status-rows/:id` — удаление (admin)
+- [x] `GET /status-rows/conflicts` — поиск конфликтов (один сотрудник, два проекта в один день)
+- [x] Поддержка `ProjectDay` — отдельные дни (застройка/эфир) через `days[]` в теле запроса
 
 ### Производственный календарь — Web (`apps/web/src/pages/CalendarPage.tsx`)
-- [x] FullCalendar в режиме месяц / неделя с переключением
+- [x] FullCalendar в режиме месяц с навигацией
 - [x] Русская локализация, неделя начинается с понедельника
-- [x] Проекты как события, цвет по статусу (preliminary / ready / completed / manual)
+- [x] Проекты как события, цвет по статусу
 - [x] Правая панель — проекты без даты (с `dateApproximate` если есть)
 - [x] Клик на событие → модалка с полными деталями проекта и составом команды
-- [x] Кнопка «+ Проект» для admin/producer → форма ручного создания
+- [x] История изменений в модалке проекта (вкладка «История»)
+- [x] Конфликты — красный фон дат + блок в правой панели с деталями
+- [x] Кнопка «+ Проект» для admin → форма ручного создания
 - [x] Легенда статусов
 
 ---
@@ -74,75 +76,81 @@
 
 > `apps/api/src/services/syncService.ts` + `apps/api/src/routes/sync.ts`
 
-- [x] Google Sheets клиент через `googleapis` (Service Account auth)
+- [x] Google Sheets клиент через `googleapis` (Service Account auth или `GOOGLE_API_KEY`)
 - [x] `extractSpreadsheetId(url)` — извлечение ID из URL
 - [x] `isColored(cell)` — детекция подсвеченных ячеек через `userEnteredFormat.backgroundColor`
-- [x] `syncProjects()` — читает таблицу проектов с форматированием (includeGridData), определяет `uncertainFields` и статус по цветам ячеек, upsert по `googleRowIndex`
+- [x] Ручная обработка условного форматирования (`evalConditionalColor`) — Google API не возвращает его в `effectiveFormat`
+- [x] `syncProjects()` — читает таблицу проектов с форматированием (includeGridData), определяет `uncertainFields` и статус по цветам ячеек, upsert по `googleRowIndex`, создаёт разделители месяцев через raw SQL
 - [x] `syncRegistry()` — читает реестр матриц (A–L), upsert по `matrixId`, автосвязка с проектами по spreadsheet ID
-- [x] `syncMatrix()` — читает лист `₽ СМЕНЫ`: строка 2 → даты J–P, строки 4+ → состав команды; upsert `ProjectAssignment` + `ShiftEntry` (только для штатных сотрудников)
+- [x] `syncMatrix()` — читает лист `₽ СМЕНЫ` / `₽ СПЕЦИАЛИСТЫ`: строка 2 → даты J–P, строки 4+ → состав команды; upsert `ProjectAssignment` + `ShiftEntry` (только для штатных сотрудников); кэширует результат в `shifts_cache` + `has_shifts_data` на `MatrixRegistry`
 - [x] Маппинг типа смены по позиции колонки: J–L → zastroyka, M → efir, N–P → demontazh
 - [x] Маппинг `EmploymentType`: ШТАТ/ИП 7%/8%/10%/СЗТ
 - [x] Уведомления: `unmatched_name` при ненайденном ФИО, `no_matrix` для проектов без матрицы
-- [x] `runFullSync()` — оркестрация: projects → registry → matrices; логирует в `SyncLog` с кол-вом изменений и ошибками
-- [x] `POST /sync/trigger` — ручной запуск (async, 202); доступен admin/producer
-- [x] `GET /sync/logs` — история синхронизаций с фильтром по типу
+- [x] Ретрай при 429/503 (до 3 раз, задержки 3s/6s), задержка 1500ms между матрицами
+- [x] `runFullSync()` — оркестрация: projects → registry → matrices; логирует в `SyncLog`
+- [x] Abort-механизм: `requestSyncAbort()` устанавливает флаг, матричный цикл проверяет его перед каждой матрицей; сбрасывается в начале `runFullSync()`
+- [x] `POST /sync/trigger` — ручной запуск (async, 202); возвращает `totalMatrices`; доступен admin/producer
+- [x] `POST /sync/stop` — остановить синхронизацию матриц; доступен admin/producer
+- [x] `GET /sync/logs` — история синхронизаций с фильтром по типу (**admin only** — см. TODO)
+- [x] `GET /sync/registry` — все записи реестра матриц (raw SQL для camelCase полей)
+- [x] `GET /sync/matrix-preview/:matrixId` — просмотр содержимого матрицы из Google Sheets
+- [x] `GET /sync/matrix-shifts/:matrixId` — смены из матрицы (из кэша или Google Sheets при `?refresh=true`)
+- [x] `POST /sync/reset` — удалить все импортированные данные (raw SQL из-за Prisma DLL lock)
+- [x] `GET /sync/sheet-urls` — публичные ссылки на исходные Google Sheets
 - [x] node-cron в `server.ts` — запускает `runFullSync()` каждые 30 минут
-- [x] `SyncButton` в шапке (admin/producer) — кнопка ручного запуска, цветной индикатор статуса, дроп-даун с историей логов (тип, статус, кол-во изменений, ошибки), авто-обновление пока идёт синхронизация
-- [x] API ключ (`GOOGLE_API_KEY`) как альтернатива Service Account для публичных таблиц
+- [x] `SyncButton` в шапке (admin/producer) — кнопка запуска/стопа, индикатор прогресса матриц, дроп-даун с историей логов; `totalMatrices` хранится в `sessionStorage` для переживания обновлений страницы
 
 ---
 
 ## Этап 4 — Учёт смен (API)
 
-> Web-часть — в TODO.
-
 - [x] `GET /shifts` — список с фильтрами (userId, projectId, dateFrom, dateTo, confirmed); сотрудник видит только свои
 - [x] `POST /shifts` — ручное создание (admin)
-- [x] `PATCH /shifts/:id/confirm` — подтвердить смену (admin)
+- [x] `PATCH /shifts/:id/confirm` — подтвердить смену (admin), логирование
 - [x] `PATCH /shifts/:id` — редактирование (admin)
 - [x] `GET /shifts/monthly-summary/:userId/:year/:month` — месячный итог, считается на лету если нет записи
-- [x] `PATCH /shifts/monthly-summary/:userId/:year/:month/vacation` — установить дни отпуска и порог (admin); `threshold = ceil(workingDays × 16/22)`
+- [x] `PATCH /shifts/monthly-summary/:userId/:year/:month/vacation` — установить дни отпуска и порог (admin)
 
 ---
 
-## Этап 5 — Уведомления (API)
-
-> Web-часть — в TODO.
+## Этап 5 — Уведомления (API + Web)
 
 - [x] `GET /notifications` — список для текущего пользователя + глобальные (userId=null), последние 50
 - [x] `PATCH /notifications/:id/read` — отметить прочитанным
-- [x] `PATCH /notifications/read-all` — отметить всё прочитанным
+- [x] `PATCH /notifications/read-all` — отметить всё прочитанным (см. TODO — баг с глобальными)
 - [x] `GET /notifications/count` — количество непрочитанных (для колокольчика)
+- [x] `NotificationBell` в шапке — бейдж с кол-вом непрочитанных, обновление каждые 60 сек, дроп-даун с прочитанными/непрочитанными
 
 ---
 
-## Этап 4 — Учёт смен (Web)
+## Этап 5 — Change Log
 
-- [x] `ProfilePage` — месячные смены со счётчиками (итого / порог / переработка / отпуск), навигация по месяцам
-- [x] Для admin — выбор сотрудника через селект
-- [x] Смены сгруппированы по дате, тип смены цветом, статус подтверждения
-- [x] Конфликты на `CalendarPage` — красный фон дат + блок в правой панели с деталями
-
----
-
-## Этап 5 — Уведомления (Web) + Change Log
-
-- [x] `NotificationBell` в шапке — бейдж с кол-вом непрочитанных, обновление каждые 60 сек
-- [x] Дроп-даун: непрочитанные сверху, прочитанные снизу; кнопка «Прочитать все»; клик по уведомлению помечает прочитанным
 - [x] `logChanges()` хелпер — сравнивает поля и пишет в `change_logs`
-- [x] Логирование в `PATCH /projects/:id` и `PATCH /shifts/:id/confirm`
-- [x] `GET /change-logs?entityType=&entityId=` — эндпоинт с фильтрами
-- [x] Вкладка «История изменений» в модалке проекта — diff старое/новое со временем и автором
+- [x] Логирование в `PATCH /status-rows/:id` и `PATCH /shifts/:id/confirm`
+- [x] `GET /change-logs?entityType=&entityId=&limit=` — эндпоинт с фильтрами
+- [x] Вкладка «История изменений» в модалке проекта
 
 ---
 
-## Этап 7 — Аналитика
+## Этап 6 — Бэклог задач (API)
 
-- [x] `GET /analytics/shifts` — смены по сотрудникам за период, группировка по типу (застройка/эфир/демонтаж), кол-во проектов
+- [x] `GET /tasks` — список с фильтром по статусу; include creator + assignments с users
+- [x] `POST /tasks` — создание (admin)
+- [x] `POST /tasks/:id/assign` — взять задачу (любой); меняет статус, создаёт TaskAssignment; транзакция
+- [x] `PATCH /tasks/:id/complete` — завершить; проверяет исполнителя или admin; транзакция
+- [x] `DELETE /tasks/:id` — удаление (admin)
+
+> **Примечание**: `TasksPage.tsx` (Web) — stub, UI ещё не реализован. См. TODO.
+
+---
+
+## Этап 7 — Аналитика (API)
+
+- [x] `GET /analytics/shifts` — смены по сотрудникам за период, группировка по типу, кол-во проектов
 - [x] `GET /analytics/projects` — проекты с составом команды и кол-вом смен
 - [x] `GET /analytics/tasks` — задачи с исполнителями + сводка по статусам
-- [x] `AnalyticsPage` с 4 вкладками: Смены (таблица + 3 карточки), Проекты (карточки), Задачи (таблица), Лог изменений (с фильтром по типу сущности)
-- [x] Навигация по месяцам для смен и проектов
+
+> **Примечание**: `AnalyticsPage.tsx` (Web) — stub, UI ещё не реализован. См. TODO.
 
 ---
 
@@ -155,19 +163,33 @@
 
 ---
 
-## Этап 6 — Бэклог задач
+## Этап 9 — Сущность Deal (Проекты)
 
-### Задачи — API (`apps/api/src/routes/tasks.ts`)
-- [x] `GET /tasks` — список с фильтром по статусу; include creator + assignments с users
-- [x] `POST /tasks` — создание (admin)
-- [x] `POST /tasks/:id/assign` — взять задачу (any); меняет статус на `in_progress`, создаёт `TaskAssignment`; транзакция
-- [x] `PATCH /tasks/:id/complete` — завершить; проверяет что это задача исполнителя или admin; транзакция
-- [x] `DELETE /tasks/:id` — удаление (admin)
+- [x] Переименование `Project` → `StatusRow` в схеме, enum-ах, роутах, сервисах, фронтенде
+- [x] Добавлена модель `ProjectDay` для отдельных дней застройки/эфира с типами
+- [x] Модели `Deal`, `DealStatusRow`, `DealMatrix` в `schema.prisma`; статусы `preliminary | in_progress | completed`
+- [x] `GET /deals` — список со вложенными statusRows и matrices
+- [x] `GET /deals/potential` — StatusRow с `sheetMatrixId` совпадающим в MatrixRegistry, без привязки к Deal (admin)
+- [x] `GET /deals/:id` — детальный Deal
+- [x] `POST /deals` — создать Deal (name, client, status, statusRowIds[], matrixIds[]) (admin)
+- [x] `PATCH /deals/:id` — обновить статус, заменить statusRows и matrices (admin)
+- [x] `DELETE /deals/:id` — удалить группировку (StatusRow и MatrixRegistry не удаляются) (admin)
+- [x] `DealsPage.tsx` — двухпанельный вид: таблица строк статусов (слева) + реестр матриц (справа), SVG-линии связи по `sheetMatrixId`, цветовая палитра групп, фильтры с персистентностью в localStorage
 
-### Задачи — Web (`apps/web/src/pages/TasksPage.tsx`)
-- [x] Список задач с фильтром по статусу (Все / Открыта / В работе / Готово)
-- [x] Отображение исполнителя и даты создания
-- [x] Кнопка «Взять» для открытых задач
-- [x] Кнопка «Завершить» для исполнителя или admin
-- [x] Кнопка «×» удаления (admin)
-- [x] Модалка создания задачи с названием и описанием (admin)
+---
+
+## SyncDataPage (Таблицы)
+
+- [x] `SyncDataPage.tsx` — полноценная страница с тремя уровнями фильтрации: первичные фильтры (popup ⚙), колоночные мультиселекты, видимость колонок — всё в localStorage
+- [x] `FilterGroup` определён на уровне модуля (не внутри компонента) — предотвращает reset скролла при ре-рендере
+- [x] Sticky-заголовки таблицы + абсолютно позиционированные дропдауны внутри `<th>`, обёртка с `overflow: clip`
+
+---
+
+## Исправленные баги
+
+- [x] Сепараторы попадали в панель "Без даты" — добавлен фильтр `p.source !== 'separator'`
+- [x] `GET /status-rows` возвращал сепараторы — добавлен `NOT: { source: 'separator' }` в WHERE
+- [x] `POST /sync/reset` падал на `'separator'` — заменено на `$queryRawUnsafe` с прямым SQL
+- [x] Мёртвый импорт `interactionPlugin` в `CalendarPage.tsx` — удалён
+- [x] Нет `onDelete: SetNull` на `ShiftEntry.confirmedBy` — добавлено в схему через `ALTER TABLE`

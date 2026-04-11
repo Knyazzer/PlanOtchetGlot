@@ -1,6 +1,6 @@
 # TV Shifts — Схема базы данных
 
-База данных: **PostgreSQL**. ORM: **Prisma**.
+База данных: **PostgreSQL**. ORM: **Prisma**. Схема: `packages/db/prisma/schema.prisma`.
 
 ---
 
@@ -16,7 +16,7 @@ users
 ├── password_hash   TEXT, NOT NULL
 ├── role            ENUM(employee, admin, producer)
 ├── tab_number      TEXT, NULLABLE          -- Табельный номер (только штат)
-├── is_staff        BOOLEAN, DEFAULT true   -- false = фрилансер (не в системе, только справочно)
+├── is_staff        BOOLEAN, DEFAULT true
 ├── is_active       BOOLEAN, DEFAULT true
 ├── created_at      TIMESTAMP
 └── updated_at      TIMESTAMP
@@ -24,30 +24,52 @@ users
 
 ---
 
-### projects — Проекты
+### status_rows — Строки из таблицы проектов (или ручные)
+
+Соответствует строкам Google Sheets «Таблица проектов». Разделители месяцев хранятся здесь же с `source = 'separator'` — их нужно исключать из большинства запросов.
 
 ```sql
-projects
+status_rows
 ├── id                  UUID, PK
-├── client              TEXT
+├── client              TEXT, NULLABLE
 ├── name                TEXT, NOT NULL
-├── exec_producer       TEXT
-├── line_producer       TEXT
-├── account_manager     TEXT
-├── date                DATE, NULLABLE          -- Может быть null (дата неизвестна)
-├── date_confirmed      BOOLEAN, DEFAULT false  -- true = дата утверждена
+├── exec_producer       TEXT, NULLABLE
+├── line_producer       TEXT, NULLABLE
+├── account_manager     TEXT, NULLABLE
+├── date                TIMESTAMP, NULLABLE
+├── date_confirmed      BOOLEAN, DEFAULT false
 ├── date_approximate    TEXT, NULLABLE          -- "май 2026" если точной даты нет
-├── time                TIME, NULLABLE
-├── format              TEXT
-├── location            TEXT
-├── status              ENUM(preliminary, ready, completed, manual)
-├── source              ENUM(projects_table, manual)  -- откуда пришёл
-├── matrix_url          TEXT, NULLABLE          -- Ссылка на матрицу (из таблицы проектов)
-├── matrix_registry_id  UUID, FK → matrix_registry, NULLABLE
+├── time                TEXT, NULLABLE
+├── format              TEXT, NULLABLE
+├── location            TEXT, NULLABLE
+├── notes               TEXT, NULLABLE
+├── status              ENUM(request, negotiation, preproduction, production,
+│                            postproduction, delivered, rejected, cancelled, manual)
+├── source              ENUM(projects_table, manual, separator)
+├── matrix_url          TEXT, NULLABLE          -- прямая ссылка на матрицу (из таблицы проектов)
+├── sheet_matrix_id     TEXT, NULLABLE          -- ID матрицы из реестра (напр. ТВ2632550)
 ├── uncertain_fields    TEXT[], DEFAULT '{}'    -- ['date', 'client', ...] — подсвеченные поля
 ├── google_row_index    INT, NULLABLE           -- Номер строки в Google Sheets
 ├── created_at          TIMESTAMP
 └── updated_at          TIMESTAMP
+
+INDEX: status_rows(date)
+```
+
+---
+
+### project_days — Отдельные дни проекта
+
+Позволяет проекту иметь несколько дней застройки/эфира с разными датами и временем начала.
+
+```sql
+project_days
+├── id          UUID, PK
+├── project_id  UUID, FK → status_rows(id), CASCADE DELETE
+├── date        TIMESTAMP, NOT NULL
+├── type        ENUM(zastroyka, efir)
+├── start_time  TEXT, NULLABLE
+└── created_at  TIMESTAMP
 ```
 
 ---
@@ -59,17 +81,20 @@ matrix_registry
 ├── id              UUID, PK
 ├── matrix_id       TEXT, UNIQUE, NOT NULL  -- ID из реестра (напр. ТВ2632550)
 ├── sheet_url       TEXT, NULLABLE          -- Ссылка на Google Sheets матрицы
-├── status          TEXT                    -- Производство / Сдан / пусто
-├── unit            TEXT                    -- Бизнес-юнит
-├── client          TEXT
-├── name            TEXT
-├── format          TEXT
-├── date            DATE, NULLABLE
-├── producer        TEXT
-├── manager         TEXT
-├── curator         TEXT
-├── project_id      UUID, FK → projects, NULLABLE  -- связь с проектом
-├── last_synced_at  TIMESTAMP
+├── status          TEXT, NULLABLE          -- Производство / Сдан / пусто
+├── unit            TEXT, NULLABLE          -- Бизнес-юнит
+├── client          TEXT, NULLABLE
+├── name            TEXT, NULLABLE
+├── format          TEXT, NULLABLE
+├── date            TIMESTAMP, NULLABLE
+├── producer        TEXT, NULLABLE
+├── manager         TEXT, NULLABLE
+├── curator         TEXT, NULLABLE
+├── project_id      UUID, UNIQUE, FK → status_rows(id), NULLABLE  -- связь 1:1 с проектом
+├── google_row_index INT, NULLABLE
+├── has_shifts_data  BOOLEAN, NULLABLE       -- true если в матрице есть лист со сменами
+├── shifts_cache     JSONB, NULLABLE         -- кэш последнего парсинга смен
+├── last_synced_at   TIMESTAMP, NULLABLE
 ├── created_at      TIMESTAMP
 └── updated_at      TIMESTAMP
 ```
@@ -82,17 +107,17 @@ matrix_registry
 
 ```sql
 project_assignments
-├── id                  UUID, PK
-├── project_id          UUID, FK → projects, NOT NULL
-├── user_id             UUID, FK → users, NULLABLE  -- null если ФИО не распознано
-├── unmatched_name      TEXT, NULLABLE              -- ФИО из матрицы если не найден в users
-├── role_on_site        TEXT                        -- Функция на площадке
-├── shift_format        TEXT                        -- Формат смены (Смена до 8ч. и др.)
-├── employment_type     ENUM(staff, ip_7, ip_8, ip_10, szt)  -- ШТАТ или фрилансер
-├── planned_shifts      INT, DEFAULT 0
-├── actual_shifts       INT, DEFAULT 0
-├── created_at          TIMESTAMP
-└── updated_at          TIMESTAMP
+├── id              UUID, PK
+├── project_id      UUID, FK → status_rows(id), CASCADE DELETE
+├── user_id         UUID, FK → users(id), NULLABLE  -- null если ФИО не распознано
+├── unmatched_name  TEXT, NULLABLE              -- ФИО из матрицы если не найден в users
+├── role_on_site    TEXT, NULLABLE              -- Функция на площадке
+├── shift_format    TEXT, NULLABLE              -- Формат смены (Смена до 8ч. и др.)
+├── employment_type ENUM(staff, ip_7, ip_8, ip_10, szt)
+├── planned_shifts  INT, DEFAULT 0
+├── actual_shifts   INT, DEFAULT 0
+├── created_at      TIMESTAMP
+└── updated_at      TIMESTAMP
 ```
 
 ---
@@ -104,17 +129,20 @@ project_assignments
 ```sql
 shift_entries
 ├── id              UUID, PK
-├── assignment_id   UUID, FK → project_assignments, NOT NULL
-├── user_id         UUID, FK → users, NOT NULL
-├── project_id      UUID, FK → projects, NOT NULL
-├── date            DATE, NOT NULL
-├── shift_type      ENUM(zastroyka, efir, demontazh)  -- застройка / эфир / демонтаж
+├── assignment_id   UUID, FK → project_assignments(id), CASCADE DELETE
+├── user_id         UUID, FK → users(id)
+├── project_id      UUID, FK → status_rows(id)
+├── date            TIMESTAMP, NOT NULL
+├── shift_type      ENUM(zastroyka, efir, demontazh)
 ├── confirmed       BOOLEAN, DEFAULT false
-├── confirmed_by    UUID, FK → users, NULLABLE
+├── confirmed_by    UUID, FK → users(id), SET NULL ON DELETE, NULLABLE
 ├── confirmed_at    TIMESTAMP, NULLABLE
-├── source          ENUM(matrix, manual)  -- откуда взялась смена
+├── source          ENUM(matrix, manual)
 ├── created_at      TIMESTAMP
 └── updated_at      TIMESTAMP
+
+INDEX: shift_entries(user_id, date)
+INDEX: shift_entries(date)
 ```
 
 ---
@@ -123,18 +151,18 @@ shift_entries
 
 ```sql
 monthly_summaries
-├── id                  UUID, PK
-├── user_id             UUID, FK → users, NOT NULL
-├── year                INT, NOT NULL
-├── month               INT, NOT NULL           -- 1–12
-├── working_days        INT, NOT NULL           -- рабочих дней в месяце
-├── threshold           INT, NOT NULL           -- ceil(working_days × 16/22)
-├── total_shifts        INT, DEFAULT 0          -- подтверждённые смены
-├── overtime_shifts     INT, DEFAULT 0          -- смены сверх порога
-├── vacation_days       INT, DEFAULT 0          -- добавлено вручную администратором
-├── updated_by          UUID, FK → users, NULLABLE
-├── created_at          TIMESTAMP
-└── updated_at          TIMESTAMP
+├── id              UUID, PK
+├── user_id         UUID, FK → users(id)
+├── year            INT, NOT NULL
+├── month           INT, NOT NULL       -- 1–12
+├── working_days    INT, NOT NULL       -- рабочих дней в месяце
+├── threshold       INT, NOT NULL       -- ceil(working_days × 16/22)
+├── total_shifts    INT, DEFAULT 0      -- подтверждённые смены
+├── overtime_shifts INT, DEFAULT 0      -- смены сверх порога
+├── vacation_days   INT, DEFAULT 0      -- добавлено вручную администратором
+├── updated_by      UUID, FK → users(id), NULLABLE
+├── created_at      TIMESTAMP
+└── updated_at      TIMESTAMP
 
 UNIQUE(user_id, year, month)
 ```
@@ -147,9 +175,9 @@ UNIQUE(user_id, year, month)
 tasks
 ├── id          UUID, PK
 ├── title       TEXT, NOT NULL
-├── description TEXT
+├── description TEXT, NULLABLE
 ├── status      ENUM(open, in_progress, done)
-├── created_by  UUID, FK → users, NOT NULL
+├── created_by  UUID, FK → users(id)
 ├── created_at  TIMESTAMP
 └── updated_at  TIMESTAMP
 ```
@@ -160,11 +188,11 @@ tasks
 
 ```sql
 task_assignments
-├── id              UUID, PK
-├── task_id         UUID, FK → tasks, NOT NULL
-├── user_id         UUID, FK → users, NOT NULL
-├── assigned_at     TIMESTAMP
-└── completed_at    TIMESTAMP, NULLABLE
+├── id           UUID, PK
+├── task_id      UUID, FK → tasks(id), CASCADE DELETE
+├── user_id      UUID, FK → users(id)
+├── assigned_at  TIMESTAMP
+└── completed_at TIMESTAMP, NULLABLE
 ```
 
 ---
@@ -173,15 +201,17 @@ task_assignments
 
 ```sql
 notifications
-├── id              UUID, PK
-├── type            ENUM(no_matrix, unmatched_name, data_conflict, schedule_change)
-├── entity_type     TEXT        -- 'project' | 'assignment' | 'shift'
-├── entity_id       UUID
-├── message         TEXT
-├── user_id         UUID, FK → users, NULLABLE  -- null = глобальное (всем)
-├── is_read         BOOLEAN, DEFAULT false
-├── created_at      TIMESTAMP
-└── updated_at      TIMESTAMP
+├── id          UUID, PK
+├── type        ENUM(no_matrix, unmatched_name, data_conflict, schedule_change)
+├── entity_type TEXT, NULLABLE    -- 'project' | 'assignment' | 'shift'
+├── entity_id   UUID, NULLABLE
+├── message     TEXT
+├── user_id     UUID, FK → users(id), NULLABLE  -- null = глобальное (всем)
+├── is_read     BOOLEAN, DEFAULT false
+├── created_at  TIMESTAMP
+└── updated_at  TIMESTAMP
+
+INDEX: notifications(user_id, is_read)
 ```
 
 ---
@@ -190,31 +220,67 @@ notifications
 
 ```sql
 change_logs
-├── id              UUID, PK
-├── entity_type     TEXT        -- 'project' | 'shift_entry' | 'assignment' | ...
-├── entity_id       UUID
-├── field           TEXT        -- какое поле изменилось
-├── old_value       TEXT
-├── new_value       TEXT
-├── changed_by      UUID, FK → users, NULLABLE  -- null = система (синхронизация)
-├── source          ENUM(sync, manual)
-└── changed_at      TIMESTAMP
+├── id          UUID, PK
+├── entity_type TEXT           -- 'project' | 'shift_entry' | 'assignment' | ...
+├── entity_id   UUID
+├── field       TEXT, NULLABLE -- какое поле изменилось
+├── old_value   TEXT, NULLABLE
+├── new_value   TEXT, NULLABLE
+├── changed_by  UUID, FK → users(id), NULLABLE  -- null = система (синхронизация)
+├── source      ENUM(sync, manual)
+└── changed_at  TIMESTAMP
 ```
 
 ---
 
 ### sync_logs — История синхронизаций
 
+Очищается при каждом старте сервера (`prisma.syncLog.deleteMany({})`).
+
 ```sql
 sync_logs
-├── id              UUID, PK
-├── type            ENUM(projects, registry, matrix)
-├── target_id       TEXT, NULLABLE  -- ID матрицы или spreadsheet ID
-├── status          ENUM(running, success, error)
-├── changes_count   INT, DEFAULT 0
-├── errors          JSONB           -- массив ошибок если были
-├── started_at      TIMESTAMP
-└── finished_at     TIMESTAMP, NULLABLE
+├── id           UUID, PK
+├── type         ENUM(projects, registry, matrix)
+├── target_id    TEXT, NULLABLE  -- ID матрицы или spreadsheet ID
+├── status       ENUM(running, success, error)
+├── changes_count INT, DEFAULT 0
+├── errors       JSONB, DEFAULT '[]'
+├── started_at   TIMESTAMP
+└── finished_at  TIMESTAMP, NULLABLE
+```
+
+---
+
+### deals — Группировки проектов
+
+```sql
+deals
+├── id         UUID, PK
+├── name       TEXT, NULLABLE
+├── client     TEXT, NULLABLE
+├── status     ENUM(preliminary, in_progress, completed)
+├── created_at TIMESTAMP
+└── updated_at TIMESTAMP
+```
+
+### deal_status_rows — M2M: Deal ↔ StatusRow
+
+```sql
+deal_status_rows
+├── deal_id       UUID, FK → deals(id), CASCADE DELETE
+└── status_row_id UUID, FK → status_rows(id), CASCADE DELETE
+
+PK(deal_id, status_row_id)
+```
+
+### deal_matrices — M2M: Deal ↔ MatrixRegistry
+
+```sql
+deal_matrices
+├── deal_id   UUID, FK → deals(id), CASCADE DELETE
+└── matrix_id UUID, FK → matrix_registry(id), CASCADE DELETE
+
+PK(deal_id, matrix_id)
 ```
 
 ---
@@ -222,35 +288,14 @@ sync_logs
 ## Связи (ERD кратко)
 
 ```
-users ──────────────────── shift_entries (user_id)
+users ──────────────────── shift_entries (user_id, confirmed_by)
   │                              │
   │                        project_assignments (user_id)
   │                              │
-  └── monthly_summaries     projects ──── matrix_registry
-  │                              │
-  └── task_assignments ──── tasks
-  │
+  └── monthly_summaries     status_rows ──── matrix_registry
+  │                              │      └──── project_days
+  └── task_assignments ──── tasks│
+  │                              └──── deal_status_rows ──── deals ──── deal_matrices ──── matrix_registry
   └── notifications
   └── change_logs
-```
-
----
-
-## Индексы (ключевые)
-
-```sql
--- Быстрый поиск смен по дате и пользователю
-CREATE INDEX idx_shift_entries_user_date ON shift_entries(user_id, date);
-
--- Производственный календарь — смены за период
-CREATE INDEX idx_shift_entries_date ON shift_entries(date);
-
--- Проекты по дате
-CREATE INDEX idx_projects_date ON projects(date);
-
--- Уведомления пользователя
-CREATE INDEX idx_notifications_user ON notifications(user_id, is_read);
-
--- Маппинг ФИО
-CREATE INDEX idx_users_full_name ON users(full_name);
 ```

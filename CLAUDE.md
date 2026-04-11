@@ -31,9 +31,13 @@ pnpm --filter @tv-shifts/api build
 pnpm --filter @tv-shifts/web build
 ```
 
-### TypeScript check (frontend)
+### TypeScript check
 ```bash
+# Frontend (no emit)
 node_modules/.bin/tsc --noEmit -p apps/web/tsconfig.json
+
+# API (compiles to dist/)
+pnpm --filter @tv-shifts/api build
 ```
 
 ### Database
@@ -42,6 +46,11 @@ pnpm db:generate    # Regenerate Prisma client after schema changes
 pnpm db:migrate     # Run pending migrations
 pnpm db:seed        # Seed with test data
 pnpm db:studio      # Open Prisma Studio GUI
+```
+
+When the API server is running it locks the Prisma client DLL — run migrations without regenerating the client:
+```bash
+cd packages/db && DATABASE_URL="..." npx prisma migrate dev --skip-generate
 ```
 
 ### Lint
@@ -56,6 +65,9 @@ pnpm --filter @tv-shifts/web lint
 2. Fastify uses Prisma to query PostgreSQL
 3. A `node-cron` job in the API syncs data from Google Sheets every 30 minutes (also triggerable via `POST /sync/trigger`)
 
+### Server Startup
+`apps/api/src/server.ts` waits for PostgreSQL (30 retries, 2s each) before starting. On every startup all `SyncLog` records are deleted — sync history does not persist across server restarts. API port defaults to 4000, overridable via `PORT` env var.
+
 ### Auth
 JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh_token` (7 days, scoped to `/auth/refresh`). `@fastify/jwt` on backend reads the cookie automatically. Zustand auth store on frontend (`apps/web/src/stores/auth.ts`). The axios client in `apps/web/src/lib/api.ts` auto-retries on 401 via `/auth/refresh`.
 
@@ -65,6 +77,7 @@ JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh
 - All UI uses **inline styles** (no UI component library — no shadcn/ui, no MUI)
 - **FullCalendar** — used only in `CalendarPage.tsx`
 - Auth-gated routing is handled in `App.tsx`: unauthenticated → `LoginPage`, authenticated → `AppShell`
+- **In-app navigation** uses `useState<Page>` in `AppShell.tsx` (no React Router) — the current page is persisted to `localStorage` under key `app-page`. Some nav items are `adminOnly` and hidden from non-admin users.
 
 ### API Routes (registered at root, no `/api` prefix)
 | Prefix | File |
@@ -83,7 +96,7 @@ JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh
 Route auth guard lives in `apps/api/src/plugins/auth.ts` — call `request.jwtVerify()` inside route handlers, or use the `authenticate` / `requireRole(role)` preHandlers.
 
 ### Database Models
-`User`, `StatusRow`, `StatusRowDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`
+`User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`
 
 Schema: `packages/db/prisma/schema.prisma`
 
@@ -114,6 +127,10 @@ Sync logic: `apps/api/src/services/syncService.ts`. Reads two sheets:
 
 Cell colors (`userEnteredFormat.backgroundColor`) and merged cells are used for status detection. Authentication uses a Google Service Account (or `GOOGLE_API_KEY` for public sheets).
 
+**Matrix sync flow**: for each `MatrixRegistry` entry, `fetchMatrixShifts` parses the "₽ СМЕНЫ" (or "₽ СПЕЦИАЛИСТЫ") sheet. A row is kept only if at least one of columns C, G, I, or J–P contains data (only `"1"` counts in J–P; totals rows like "Итог:" are skipped). The parsed result is saved immediately to `shifts_cache` (Json) and `has_shifts_data` (Boolean) on `MatrixRegistry` before employee matching begins — so row highlighting in the UI appears during sync without waiting for the full process. Rate-limit errors (429/503) are retried up to 3 times with 3s/6s delays. There is a 1500ms delay between matrices.
+
+**Sync abort**: `requestSyncAbort()` exported from `syncService.ts` sets `_abortRequested = true`. The matrix loop checks this flag before processing each matrix. `POST /sync/stop` calls it. After abort, `totalMatrices` must be cleared in the frontend to reset `isRunning` state.
+
 ### Separator Rows
 `StatusRow` records with `source = 'separator'` are month dividers injected by sync. They have no real project data. Frontend must filter them out except in `SyncDataPage` (use `?withSeparators=true` query param). Always exclude them in API list endpoints: `NOT: { source: 'separator' as any }`.
 
@@ -127,6 +144,16 @@ Column dropdowns (`ColDropdown`) render **inside `<th>` via `position: absolute;
 
 `FilterGroup` component is defined at **module level** (not inside other components) to prevent React from recreating it on each render, which would cause scroll-position resets.
 
+**Sticky table headers**: `thBase` uses `position: sticky; top: 0`. Do not override `position` on individual `<th>` — `sticky` also acts as positioning context for absolutely-positioned dropdown children. The outer panel wrapper uses `overflow: clip` (not `overflow: hidden`) — `hidden` creates a scroll container that breaks sticky.
+
+### AppShell Sync Window
+`SyncButton` in `apps/web/src/components/AppShell.tsx` polls `/sync/logs` and shows sync progress.
+
+- `totalMatrices` is returned by `POST /sync/trigger` and stored in `sessionStorage` (key `sync-total-matrices`) so it survives page refresh. Cleared on sync completion or abort.
+- `isRunning = logsRunning || matricesStillExpected` — stays `true` even during the 1.5s gaps between matrices by checking `totalMatrices > 0 && matrixDone < totalMatrices`.
+- `refetchInterval` reads sessionStorage directly (not React state) to stay at 2s during matrix gaps without stale closure issues.
+- "Остановить" button appears when `isRunning` and all `projects`/`registry` logs have finished (only matrices remain). On success it clears `totalMatrices` from state and sessionStorage, which collapses `isRunning`.
+
 ### Deal Entity
 `Deal` groups `StatusRow` records with `MatrixRegistry` entries. Relations via join tables `DealStatusRow` and `DealMatrix`. Status: `preliminary | in_progress | completed`. The `/deals/potential` endpoint returns unlinked `StatusRow` records that have a matching `sheetMatrixId` in `MatrixRegistry`.
 
@@ -139,6 +166,7 @@ Column dropdowns (`ColDropdown`) render **inside `<th>` via `position: absolute;
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY` — for Google Sheets sync
 - `GOOGLE_PROJECTS_SHEET_ID` + `GOOGLE_REGISTRY_SHEET_ID` — source spreadsheet IDs
 - `VITE_API_URL` — used by Vite at build time for frontend API calls (default `http://localhost:4000`)
+- `PORT` — API server port (default `4000`)
 
 ## Page Implementation Status
 
