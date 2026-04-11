@@ -327,46 +327,74 @@ interface SyncLog {
 function SyncButton() {
   const qc = useQueryClient()
   const [showLogs, setShowLogs] = useState(false)
-  const [justTriggered, setJustTriggered] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
+  // Всегда опрашиваем логи — состояние синка сохраняется после обновления страницы
   const { data: logs = [] } = useQuery<SyncLog[]>({
     queryKey: ['sync-logs'],
-    queryFn: () => api.get('/sync/logs', { params: { limit: 20 } }).then((r) => r.data),
-    enabled: showLogs || justTriggered,
+    queryFn: () => api.get('/sync/logs', { params: { limit: 500 } }).then((r) => r.data),
     refetchInterval: (query) => {
-      const data = query.state.data as SyncLog[] | undefined
-      const hasRunning = (data ?? []).some((l) => l.status === 'running')
-      return hasRunning || justTriggered ? 2000 : false
+      const data = (query.state.data as SyncLog[] ?? [])
+      const running = data.some((l) => l.status === 'running')
+      // Держим быстрый опрос пока ожидаем матрицы (даже в паузах между ними)
+      const total = parseInt(sessionStorage.getItem('sync-total-matrices') ?? '0', 10)
+      const done = data.filter((l) => l.type === 'matrix' && l.status !== 'running').length
+      return (running || (total > 0 && done < total)) ? 2000 : 30_000
     },
   })
 
+  // totalMatrices от бэкенда при триггере, сохраняем в sessionStorage чтобы не терять при refresh
+  const [totalMatrices, setTotalMatrices] = useState<number>(() =>
+    parseInt(sessionStorage.getItem('sync-total-matrices') ?? '0', 10)
+  )
+
   const trigger = useMutation({
     mutationFn: () => api.post('/sync/trigger'),
-    onSuccess: () => {
-      setJustTriggered(true)
+    onSuccess: (res) => {
+      const total = res.data?.totalMatrices ?? 0
+      setTotalMatrices(total)
+      sessionStorage.setItem('sync-total-matrices', String(total))
       setShowLogs(true)
       qc.invalidateQueries({ queryKey: ['sync-logs'] })
     },
   })
 
-  // Когда все логи завершились — сбрасываем флаг и обновляем данные страниц
+  // Берём только логи последней сессии — нужно до matrixDone/matrixTotal для isRunning
+  const lastProjectLogEarly = logs.find((l) => l.type === 'projects')
+  const sessionStartEarly = lastProjectLogEarly?.startedAt ?? null
+  const sessionLogsEarly = sessionStartEarly
+    ? logs.filter((l) => new Date(l.startedAt) >= new Date(sessionStartEarly))
+    : logs
+  const matrixLogsEarly = sessionLogsEarly.filter((l) => l.type === 'matrix')
+  const matrixDoneEarly = matrixLogsEarly.filter((l) => l.status !== 'running').length
+
+  // isRunning остаётся true пока не все матрицы обработаны (не сбрасываем в паузах между ними)
+  const logsRunning = logs.some((l) => l.status === 'running') || trigger.isPending
+  const matricesStillExpected = totalMatrices > 0 && matrixDoneEarly < totalMatrices
+  const isRunning = logsRunning || matricesStillExpected
+
+  // Когда синк завершился — инвалидируем данные страниц
+  const prevRunning = useRef(false)
   useEffect(() => {
-    const hasRunning = logs.some((l) => l.status === 'running')
-    if (justTriggered && !hasRunning && logs.length > 0) {
-      setJustTriggered(false)
+    if (prevRunning.current && !isRunning && logs.length > 0) {
       qc.invalidateQueries({ queryKey: ['status-rows'] })
       qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
       qc.invalidateQueries({ queryKey: ['sync-registry'] })
+      sessionStorage.removeItem('sync-total-matrices')
+      setTotalMatrices(0)
     }
-  }, [logs, justTriggered, qc])
+    prevRunning.current = isRunning
+  }, [isRunning, logs.length, qc])
 
-  // Только проекты и реестр (без отдельных матриц)
-  const displayLogs = logs.filter((l) => l.type === 'projects' || l.type === 'registry')
+  const displayLogs   = sessionLogsEarly.filter((l) => l.type === 'projects' || l.type === 'registry')
+  const matrixLogs    = matrixLogsEarly
+  const matrixRunning = matrixLogs.filter((l) => l.status === 'running').length
+  const matrixDone    = matrixDoneEarly
+  const matrixErrors  = matrixLogs.filter((l) => l.status === 'error').length
+  const matrixShifts  = matrixLogs.reduce((s, l) => s + (l.changesCount ?? 0), 0)
+  const matrixTotal   = totalMatrices > 0 ? totalMatrices : null
 
-  // Последний завершённый лог
   const lastDone = displayLogs.find((l) => l.status !== 'running' && l.type === 'projects')
-  const isRunning = logs.some((l) => l.status === 'running') || trigger.isPending || justTriggered
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -460,10 +488,7 @@ function SyncButton() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span style={{
-                      fontSize: 12,
-                      padding: '2px 8px',
-                      borderRadius: 8,
-                      fontWeight: 600,
+                      fontSize: 12, padding: '2px 8px', borderRadius: 8, fontWeight: 600,
                       background: log.status === 'success' ? '#dcfce7' : log.status === 'error' ? '#fee2e2' : '#fef3c7',
                       color: log.status === 'success' ? '#16a34a' : log.status === 'error' ? '#dc2626' : '#b45309',
                     }}>
@@ -488,6 +513,35 @@ function SyncButton() {
                 )}
               </div>
             ))}
+            {(matrixLogs.length > 0 || (isRunning && matrixTotal !== null)) && (
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{
+                      fontSize: 12, padding: '2px 8px', borderRadius: 8, fontWeight: 600,
+                      background: matrixRunning > 0 ? '#fef3c7' : matrixErrors > 0 ? '#fee2e2' : '#dcfce7',
+                      color: matrixRunning > 0 ? '#b45309' : matrixErrors > 0 ? '#dc2626' : '#16a34a',
+                    }}>
+                      {matrixRunning > 0
+                        ? `⟳ ${matrixDone}/${matrixTotal ?? '?'}`
+                        : matrixErrors > 0
+                          ? `✗ ${matrixErrors} ошибок`
+                          : `✓ ${matrixDone}${matrixTotal ? `/${matrixTotal}` : ''}`}
+                    </span>
+                    <span style={{ fontSize: 14, color: '#374151' }}>Матрицы</span>
+                    {matrixShifts > 0 && <span style={{ fontSize: 11, color: '#64748b' }}>+{matrixShifts} смен</span>}
+                    {matrixErrors > 0 && matrixRunning === 0 && (
+                      <span style={{ fontSize: 11, color: '#ef4444' }}>{matrixErrors} ошибок</span>
+                    )}
+                  </div>
+                  {matrixLogs[matrixLogs.length - 1] && (
+                    <span style={{ fontSize: 13, color: '#94a3b8' }}>
+                      {format(new Date(matrixLogs[matrixLogs.length - 1].startedAt), 'd MMM HH:mm', { locale: ru })}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

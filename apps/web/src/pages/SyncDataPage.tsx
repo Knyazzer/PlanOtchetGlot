@@ -40,6 +40,7 @@ interface RegistryEntry {
   curator: string | null
   projectId: string | null
   googleRowIndex: number | null
+  hasShiftsData: boolean | null
   lastSyncedAt: string | null
 }
 
@@ -864,7 +865,7 @@ interface ShiftRow { isSeparator: true; text: string }
 interface ShiftEmployee { isSeparator: false; name: string; role: string | null; employmentType: string | null; shifts: boolean[] }
 interface MatrixShiftsData { sheetTitle: string; dates: string[]; activeCols: number[]; rows: (ShiftRow | ShiftEmployee)[] }
 
-function RegistryDetailModal({ entry, onClose }: { entry: RegistryEntry; onClose: () => void }) {
+function RegistryDetailModal({ entry, onClose, onShiftsLoaded }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void }) {
   const [tab, setTab] = useState<'info' | 'shifts'>('info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
@@ -908,11 +909,17 @@ function RegistryDetailModal({ entry, onClose }: { entry: RegistryEntry; onClose
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const { data: shiftsData, isLoading: shiftsLoading, error: shiftsError } = useQuery<MatrixShiftsData>({
-    queryKey: ['matrix-shifts', entry.matrixId],
-    queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}`).then((r) => r.data),
+  const [forceRefresh, setForceRefresh] = useState(false)
+  const { data: shiftsData, isLoading: shiftsLoading, error: shiftsError, isFetching: shiftsFetching } = useQuery<MatrixShiftsData>({
+    queryKey: ['matrix-shifts', entry.matrixId, forceRefresh],
+    queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}${forceRefresh ? '?refresh=true' : ''}`).then((r) => r.data),
     enabled: tab === 'shifts',
+    staleTime: 10 * 60 * 1000, // 10 минут — не перезапрашиваем если данные свежие
   })
+
+  useEffect(() => {
+    if (shiftsData) onShiftsLoaded(entry.matrixId, shiftsData.activeCols.length > 0)
+  }, [shiftsData])
 
   type FieldDef = { label: string; value: string | null | undefined; mono?: boolean; link?: boolean }
 
@@ -1015,9 +1022,19 @@ function RegistryDetailModal({ entry, onClose }: { entry: RegistryEntry; onClose
             )}
             {shiftsData && shiftsData.activeCols.length > 0 && (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <div style={{ fontSize: 12, color: '#94a3b8' }}>Лист: {shiftsData.sheetTitle}</div>
-                  <div style={{ fontSize: 11, color: '#cbd5e1' }}>Ctrl+клик по строке — сделать разделителем</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ fontSize: 11, color: '#cbd5e1' }}>Ctrl+клик по строке — сделать разделителем</div>
+                    <button
+                      onClick={() => setForceRefresh((v) => !v)}
+                      disabled={shiftsFetching}
+                      title="Обновить из Google Sheets"
+                      style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
+                    >
+                      {shiftsFetching ? '...' : '↻ Обновить'}
+                    </button>
+                  </div>
                 </div>
                 <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
                   <thead>
@@ -1035,7 +1052,7 @@ function RegistryDetailModal({ entry, onClose }: { entry: RegistryEntry; onClose
                   <tbody>
                     {shiftsData.rows.map((row, ri) => {
                       const rowText = row.isSeparator ? (row.text ?? '') : (row.name ?? '')
-                      if (!rowText.trim()) return null
+                      if (row.isSeparator && !rowText.trim()) return null
                       const customSep = customSeps.get(ri)
                       const colSpanCount = 3 + shiftsData.activeCols.length
                       const empIndex = ri // use original index for alternating bg
@@ -1331,10 +1348,21 @@ function RegistryTable({
   sheetUrl: string | null
   primaryFilters: Record<string, string[]>
 }) {
+  const queryClient = useQueryClient()
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-reg')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [selectedMatrix, setSelectedMatrix] = useState<string | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<RegistryEntry | null>(null)
+  const [shiftsStatus, setShiftsStatus] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem('matrix-shifts-status') ?? '{}') } catch { return {} }
+  })
+  const handleShiftsLoaded = (matrixId: string, hasShifts: boolean) => {
+    setShiftsStatus((prev) => {
+      const next = { ...prev, [matrixId]: hasShifts }
+      localStorage.setItem('matrix-shifts-status', JSON.stringify(next))
+      return next
+    })
+  }
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(9999)
@@ -1501,12 +1529,18 @@ function RegistryTable({
             <tbody>
               {afterSecondary.length === 0 ? (
                 <tr><td colSpan={colSpanCount} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Нет строк по выбранным фильтрам</td></tr>
-              ) : afterSecondary.map((r, i) => (
+              ) : afterSecondary.map((r, i) => {
+                // hasShiftsData from DB (set during sync) takes priority; fall back to manual-open cache
+                const dbKnown  = r.hasShiftsData !== null && r.hasShiftsData !== undefined
+                const hasShifts = dbKnown ? r.hasShiftsData === true  : (shiftsStatus[r.matrixId] === true)
+                const noShifts  = dbKnown ? r.hasShiftsData === false : (shiftsStatus[r.matrixId] === false)
+                const known = hasShifts || noShifts
+                return (
                 <tr
                   key={r.id}
-                  style={{ background: i % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'pointer' }}
+                  style={{ background: noShifts ? (i % 2 === 0 ? '#fee2e2' : '#fecaca') : hasShifts ? (i % 2 === 0 ? '#dcfce7' : '#bbf7d0') : (i % 2 === 0 ? '#fff' : '#f8fafc'), cursor: 'pointer' }}
                   onClick={() => setSelectedEntry(r)}
-                  title="Нажмите для просмотра деталей"
+                  title={noShifts ? 'Нет данных о сменах' : known ? 'Есть данные о сменах' : 'Нажмите для просмотра деталей'}
                 >
                   {visibleCols.map((col) => (
                     <td
@@ -1518,14 +1552,15 @@ function RegistryTable({
                     </td>
                   ))}
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         )}
       </div>
     </div>
     {selectedEntry && (
-      <RegistryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      <RegistryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} onShiftsLoaded={handleShiftsLoaded} />
     )}
     {selectedMatrix && (
       <MatrixPreviewModal matrixId={selectedMatrix} onClose={() => setSelectedMatrix(null)} />
@@ -1563,6 +1598,7 @@ export function SyncDataPage() {
   const { data: registry = [], isLoading: regLoading } = useQuery<RegistryEntry[]>({
     queryKey: ['sync-registry'],
     queryFn: () => api.get('/sync/registry').then((r) => r.data),
+    refetchInterval: 5000, // обновляем каждые 5с — видим подсветку сразу по мере синка
   })
 
   const reset = useMutation({

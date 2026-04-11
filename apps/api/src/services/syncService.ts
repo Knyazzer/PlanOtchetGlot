@@ -461,7 +461,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 // ─── Sync: Individual Matrix ─────────────────────────────────────────────────
 
 async function syncMatrix(
-  sheets: sheets_v4.Sheets,
+  _sheets: sheets_v4.Sheets,
   registryEntry: { id: string; matrixId: string; sheetUrl: string | null; projectId: string | null }
 ): Promise<{ upserted: number; errors: string[] }> {
   if (!registryEntry.sheetUrl) return { upserted: 0, errors: [] }
@@ -476,75 +476,89 @@ async function syncMatrix(
 
   // ── Find the linked project ──────────────────────────────────────────────
   let projectId = registryEntry.projectId
-
-  // If not linked yet, try matching by spreadsheet ID in project.matrixUrl
   if (!projectId) {
     const linked = await prisma.statusRow.findFirst({
       where: { matrixUrl: { contains: spreadsheetId } },
     })
     projectId = linked?.id ?? null
   }
+  // ── Parse shifts using shared fetchMatrixShifts ──────────────────────────
+  // fetchMatrixShifts finds the sheet by keyword, applies correct row filtering,
+  // and returns parsed rows — same logic as the preview endpoint.
+  let shiftsData: Awaited<ReturnType<typeof fetchMatrixShifts>>
+  try {
+    shiftsData = await fetchMatrixShifts(registryEntry.sheetUrl)
+  } catch (e: any) {
+    errors.push(`Matrix ${registryEntry.matrixId}: ${e.message}`)
+    return { upserted, errors }
+  }
+  if (!shiftsData) {
+    // No shifts sheet found — mark as no shifts data
+    await prisma.$executeRawUnsafe(
+      `UPDATE matrix_registry SET last_synced_at = NOW(), has_shifts_data = false WHERE id = $1`,
+      registryEntry.id,
+    )
+    return { upserted, errors }
+  }
+
+  // Save hasShiftsData + cache immediately so frontend can show it even before processing employees
+  await prisma.$executeRawUnsafe(
+    `UPDATE matrix_registry SET has_shifts_data = $1, shifts_cache = $2::jsonb WHERE id = $3`,
+    shiftsData.activeCols.length > 0,
+    JSON.stringify(shiftsData),
+    registryEntry.id,
+  )
 
   if (!projectId) {
-    // No linked project — cannot create shifts without one
-    errors.push(`Matrix ${registryEntry.matrixId}: no linked project found`)
+    await prisma.$executeRawUnsafe(
+      `UPDATE matrix_registry SET last_synced_at = NOW() WHERE id = $1`,
+      registryEntry.id,
+    )
     return { upserted, errors }
   }
 
-  // ── Read ₽ СМЕНЫ sheet ───────────────────────────────────────────────────
-  let shiftsRows: string[][]
-  try {
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: '₽ СМЕНЫ!A1:P',
-      valueRenderOption: 'FORMATTED_VALUE',
-    })
-    shiftsRows = (res.data.values ?? []) as string[][]
-  } catch (e: any) {
-    errors.push(`Matrix ${registryEntry.matrixId}: cannot read ₽ СМЕНЫ — ${e.message}`)
-    return { upserted, errors }
+  // ── Resolve actual dates from day numbers ────────────────────────────────
+  // dates[] in shiftsData are formatted day strings (e.g. "25", "26").
+  // We need real Date objects. Use MatrixRegistry.date as the month anchor,
+  // falling back to the current month.
+  const anchorEntry = await prisma.matrixRegistry.findFirst({ where: { id: registryEntry.id } })
+  const anchorDate = anchorEntry?.date ?? new Date()
+  const anchorYear = anchorDate.getFullYear()
+  const anchorMonth = anchorDate.getMonth() // 0-based
+
+  const shiftDates: (Date | null)[] = shiftsData.dates.map((dayStr) => {
+    const day = parseInt(dayStr, 10)
+    if (!day || isNaN(day)) return null
+    return new Date(anchorYear, anchorMonth, day)
+  })
+
+  // Shift type by column position within J–P (0-indexed within activeCols source)
+  const shiftTypeByOffset = (colOffset: number): 'zastroyka' | 'efir' | 'demontazh' => {
+    if (colOffset < 3) return 'zastroyka' // J, K, L
+    if (colOffset === 3) return 'efir'    // M
+    return 'demontazh'                    // N, O, P
   }
 
-  // Row index 1 (row 2) contains dates in columns J–P (indices 9–15)
-  const dateRow = shiftsRows[1] ?? []
-  const shiftDates: (Date | null)[] = []
-  for (let col = 9; col <= 15; col++) {
-    const raw = (dateRow[col] ?? '').trim()
-    shiftDates.push(raw ? parseSheetDate(raw) : null)
-  }
+  // ── Process employee rows ────────────────────────────────────────────────
+  for (const row of shiftsData.rows) {
+    if (row.isSeparator) continue
 
-  // Shift type by column position within J–P (0-indexed offset from J=0)
-  const shiftTypeByOffset = (offset: number): 'zastroyka' | 'efir' | 'demontazh' => {
-    if (offset < 3) return 'zastroyka' // J, K, L
-    if (offset === 3) return 'efir'    // M
-    return 'demontazh'                  // N, O, P
-  }
+    const fullName = row.name.trim()
+    const roleOnSite      = row.role ?? null
+    const employmentRaw   = row.employmentType ?? ''
+    const employmentType  = parseEmploymentType(employmentRaw)
+    const isStaff         = isStaffType(employmentRaw)
 
-  // Rows 4+ (index 3+) — staff
-  for (let i = 3; i < shiftsRows.length; i++) {
-    const row = shiftsRows[i]
-    const fullName = (row[2] ?? '').trim() // Column C
+    // Only create assignments/shifts for rows with a name
     if (!fullName) continue
 
-    const roleOnSite = (row[6] ?? '').trim() || null   // Column G
-    const shiftFormat = (row[7] ?? '').trim() || null  // Column H
-    const employmentRaw = (row[8] ?? '').trim()        // Column I
-    const employmentType = parseEmploymentType(employmentRaw)
-    const isStaff = isStaffType(employmentRaw)
-
-    // Find user by exact full name match
     const user = await prisma.user.findFirst({
       where: { fullName: { equals: fullName, mode: 'insensitive' } },
     })
 
     if (!user) {
-      // Notify about unmatched name (deduplicate by entityId + message content)
       const exists = await prisma.notification.findFirst({
-        where: {
-          type: 'unmatched_name',
-          entityId: registryEntry.id,
-          message: { contains: fullName },
-        },
+        where: { type: 'unmatched_name', entityId: registryEntry.id, message: { contains: fullName } },
       })
       if (!exists) {
         await prisma.notification.create({
@@ -559,78 +573,45 @@ async function syncMatrix(
       }
     }
 
-    // Upsert ProjectAssignment
-    const assignmentData = {
-      roleOnSite,
-      shiftFormat,
-      employmentType,
-    }
-
     let assignment = await prisma.projectAssignment.findFirst({
-      where: {
-        projectId,
-        ...(user ? { userId: user.id } : { unmatchedName: fullName }),
-      },
+      where: { projectId, ...(user ? { userId: user.id } : { unmatchedName: fullName }) },
     })
-
     if (assignment) {
       assignment = await prisma.projectAssignment.update({
         where: { id: assignment.id },
-        data: assignmentData,
+        data: { roleOnSite, employmentType },
       })
     } else {
       assignment = await prisma.projectAssignment.create({
-        data: {
-          projectId,
-          userId: user?.id ?? null,
-          unmatchedName: user ? null : fullName,
-          ...assignmentData,
-        },
+        data: { projectId, userId: user?.id ?? null, unmatchedName: user ? null : fullName, roleOnSite, employmentType },
       })
     }
 
-    // Create ShiftEntries only for staff employees with a matched user
     if (!isStaff || !user) continue
 
-    for (let col = 9; col <= 15; col++) {
-      const marker = (row[col] ?? '').trim()
-      if (marker !== '1') continue
-
-      const offset = col - 9
-      const shiftDate = shiftDates[offset]
+    // Create ShiftEntries for active columns that have a "1"
+    for (const ci of shiftsData.activeCols) {
+      if (!row.shifts[ci]) continue
+      const shiftDate = shiftDates[ci]
       if (!shiftDate) continue
+      const shiftType = shiftTypeByOffset(ci)
 
-      const shiftType = shiftTypeByOffset(offset)
-
-      const existingShift = await prisma.shiftEntry.findFirst({
-        where: {
-          assignmentId: assignment.id,
-          date: shiftDate,
-          shiftType,
-        },
+      const exists = await prisma.shiftEntry.findFirst({
+        where: { assignmentId: assignment.id, date: shiftDate, shiftType },
       })
-
-      if (!existingShift) {
+      if (!exists) {
         await prisma.shiftEntry.create({
-          data: {
-            assignmentId: assignment.id,
-            userId: user.id,
-            projectId,
-            date: shiftDate,
-            shiftType,
-            source: 'matrix',
-          },
+          data: { assignmentId: assignment.id, userId: user.id, projectId, date: shiftDate, shiftType, source: 'matrix' },
         })
         upserted++
       }
     }
   }
 
-  // Update lastSyncedAt on registry
-  await prisma.matrixRegistry.update({
-    where: { id: registryEntry.id },
-    data: { lastSyncedAt: new Date() },
-  })
+  await prisma.$executeRawUnsafe(
+    `UPDATE matrix_registry SET last_synced_at = NOW() WHERE id = $1`,
+    registryEntry.id,
+  )
 
   return { upserted, errors }
 }
@@ -803,13 +784,28 @@ export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixS
   console.log(`[matrix-shifts] Matched sheet: ${sheetTitle ?? 'none'}`)
   if (!sheetTitle) return null
 
-  // Step 2 — fetch FORMATTED_VALUE for A1:P200
+  // Step 2 — fetch FORMATTED_VALUE for A1:P200 (retry once on rate-limit)
   const safeTitle = sheetTitle.replace(/'/g, "\\'")
-  const res = await sheetsApi.spreadsheets.values.get({
-    spreadsheetId,
-    range: `'${safeTitle}'!A1:P200`,
-    valueRenderOption: 'FORMATTED_VALUE',
-  })
+  let res
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      res = await sheetsApi.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${safeTitle}'!A1:P200`,
+        valueRenderOption: 'FORMATTED_VALUE',
+      })
+      break
+    } catch (e: any) {
+      const status = e?.response?.status ?? e?.code
+      if ((status === 429 || status === 503) && attempt < 2) {
+        console.warn(`[matrix-shifts] Rate limit hit, retrying in ${(attempt + 1) * 3}s...`)
+        await delay((attempt + 1) * 3000)
+        continue
+      }
+      throw e
+    }
+  }
+  if (!res) throw new Error('Failed to fetch matrix shifts after retries')
 
   const rawRows = (res.data.values ?? []) as string[][]
 
@@ -837,13 +833,6 @@ export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixS
     // J–P only counts if value is exactly "1" (shift marker); numbers like "13"/"Итог" are totals rows
     const hasData = name || role || employmentType || shiftVals.some((v) => v === '1')
     if (!hasData) continue
-
-    if (!name) {
-      // No name in C but something else has data → separator
-      const text = row.find((c) => c?.trim())?.trim() ?? ''
-      rows.push({ isSeparator: true, text })
-      continue
-    }
 
     rows.push({
       isSeparator: false,
@@ -940,6 +929,39 @@ export async function runFullSync(): Promise<SyncResult> {
   }
 
   await delay(1000)
+
+  // ── 3. Sync individual matrices ────────────────────────────────────────
+  const allEntries = await prisma.matrixRegistry.findMany({
+    select: { id: true, matrixId: true, sheetUrl: true, projectId: true },
+  })
+
+  for (const entry of allEntries) {
+    if (!entry.sheetUrl) continue
+    const matrixLog = await prisma.syncLog.create({
+      data: { type: 'matrix', targetId: entry.matrixId, status: 'running' },
+    })
+    try {
+      const result = await syncMatrix(sheets, entry)
+      shiftsUpserted += result.upserted
+      allErrors.push(...result.errors)
+      await prisma.syncLog.update({
+        where: { id: matrixLog.id },
+        data: {
+          status: result.errors.length > 0 ? 'error' : 'success',
+          changesCount: result.upserted,
+          errors: result.errors,
+          finishedAt: new Date(),
+        },
+      })
+    } catch (e: any) {
+      allErrors.push(`Matrix ${entry.matrixId} sync failed: ${e.message}`)
+      await prisma.syncLog.update({
+        where: { id: matrixLog.id },
+        data: { status: 'error', errors: [e.message], finishedAt: new Date() },
+      })
+    }
+    await delay(1500) // rate limiting between matrices (~2 req each → ~80 req/min, well under 300 limit)
+  }
 
   return {
     projectsUpserted,

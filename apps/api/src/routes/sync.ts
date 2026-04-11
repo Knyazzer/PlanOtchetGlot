@@ -6,6 +6,9 @@ import { runFullSync, fetchMatrixPreview, fetchMatrixShifts } from '../services/
 export async function syncRoutes(app: FastifyInstance) {
   // POST /sync/trigger — ручной запуск (admin или producer)
   app.post('/trigger', { preHandler: requireRole('admin', 'producer') }, async (_request, reply) => {
+    // Считаем матрицы заранее чтобы вернуть total фронтенду
+    const totalMatrices = await prisma.matrixRegistry.count({ where: { sheetUrl: { not: null } } })
+
     // Запускаем асинхронно, не ждём завершения
     runFullSync()
       .then((result) => {
@@ -15,7 +18,7 @@ export async function syncRoutes(app: FastifyInstance) {
         app.log.error({ err }, '[sync] Full sync failed')
       })
 
-    return reply.code(202).send({ message: 'Sync started' })
+    return reply.code(202).send({ message: 'Sync started', totalMatrices })
   })
 
   // GET /sync/sheet-urls — публичные URL исходных Google Sheets
@@ -33,7 +36,30 @@ export async function syncRoutes(app: FastifyInstance) {
 
   // GET /sync/registry — все записи реестра матриц (в порядке как в таблице)
   app.get('/registry', { preHandler: requireRole('admin') }, async () => {
-    return prisma.matrixRegistry.findMany({ orderBy: { createdAt: 'asc' } })
+    const rows = await prisma.$queryRawUnsafe<any[]>(`
+      SELECT mr.*,
+             mr.has_shifts_data AS "hasShiftsData"
+      FROM matrix_registry mr
+      ORDER BY mr.created_at ASC
+    `)
+    return rows.map((r: any) => ({
+      id:             r.id,
+      matrixId:       r.matrix_id,
+      sheetUrl:       r.sheet_url,
+      status:         r.status,
+      unit:           r.unit,
+      client:         r.client,
+      name:           r.name,
+      format:         r.format,
+      date:           r.date,
+      producer:       r.producer,
+      manager:        r.manager,
+      curator:        r.curator,
+      projectId:      r.project_id,
+      googleRowIndex: r.google_row_index,
+      hasShiftsData:  r.has_shifts_data,
+      lastSyncedAt:   r.last_synced_at,
+    }))
   })
 
   // POST /sync/reset — удалить все импортированные данные
@@ -72,17 +98,35 @@ export async function syncRoutes(app: FastifyInstance) {
     }
   })
 
-  // GET /sync/matrix-shifts/:matrixId — смены из матрицы
+  // GET /sync/matrix-shifts/:matrixId — смены из матрицы (из кэша БД или Google Sheets)
   app.get('/matrix-shifts/:matrixId', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { matrixId } = request.params as { matrixId: string }
+    const { refresh } = request.query as { refresh?: string }
 
-    const entry = await prisma.matrixRegistry.findFirst({ where: { matrixId } })
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT shifts_cache, sheet_url FROM matrix_registry WHERE matrix_id = $1 LIMIT 1`,
+      matrixId,
+    )
+    const entry = rows[0]
     if (!entry) return reply.code(404).send({ error: 'Matrix not found' })
-    if (!entry.sheetUrl) return reply.code(400).send({ error: 'No URL for this matrix' })
+
+    // Return cached data if available and no forced refresh
+    if (entry.shifts_cache && refresh !== 'true') {
+      return entry.shifts_cache
+    }
+
+    if (!entry.sheet_url) return reply.code(400).send({ error: 'No URL for this matrix' })
 
     try {
-      const data = await fetchMatrixShifts(entry.sheetUrl)
+      const data = await fetchMatrixShifts(entry.sheet_url)
       if (!data) return reply.code(404).send({ error: 'Shifts sheet not found in this spreadsheet' })
+      // Update cache
+      await prisma.$executeRawUnsafe(
+        `UPDATE matrix_registry SET shifts_cache = $1::jsonb, has_shifts_data = $2, last_synced_at = NOW() WHERE matrix_id = $3`,
+        JSON.stringify(data),
+        data.activeCols.length > 0,
+        matrixId,
+      )
       return data
     } catch (e: any) {
       return reply.code(500).send({ error: e.message })

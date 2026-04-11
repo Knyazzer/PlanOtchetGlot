@@ -66,7 +66,10 @@
       "Bash(findstr /i \"deals\")",
       "Bash(pnpm exec:*)",
       "Bash(\"d:/Pet projects/scripts/PlanOtchetGlot/apps/web/node_modules/.bin/tsc\" --noEmit -p \"d:/Pet projects/scripts/PlanOtchetGlot/apps/web/tsconfig.json\")",
-      "Bash(DATABASE_URL=postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts pnpm --filter @tv-shifts/db exec prisma migrate dev --name add_google_row_index_to_registry)"
+      "Bash(DATABASE_URL=postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts pnpm --filter @tv-shifts/db exec prisma migrate dev --name add_google_row_index_to_registry)",
+      "Bash(DATABASE_URL=postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts pnpm --filter @tv-shifts/db exec prisma migrate dev --name add_has_shifts_data)",
+      "Bash(DATABASE_URL=postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts pnpm --filter @tv-shifts/db exec prisma generate)",
+      "Bash(DATABASE_URL=postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts pnpm --filter @tv-shifts/db exec prisma migrate dev --name add_shifts_cache --skip-generate)"
     ]
   },
   "enabledPlugins": {
