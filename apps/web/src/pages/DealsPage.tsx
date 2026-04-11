@@ -359,17 +359,35 @@ function ClientBlock({ client, projects, registry }: {
         lines.push({ id: regId, projCYs: connProjCYs, regCY, color: GROUP_PALETTE[ci].line })
       }
 
+      // ── DEBUG (remove after fix) ───────────────────────────────────────────
+      console.group(`[ClientBlock "${client}"] measure()`)
+      console.log('cRect.top =', cRect.top)
+      console.log('regT0 =', regT0, '  regRowH =', regRowH)
+      console.log('projCYs:', Object.fromEntries(projCYs))
+      for (const pl of placements) {
+        const el = spacerTdRefs.current[pl.id]
+        const dataEl = regRowRefs.current[pl.id]
+        const actualH = el?.getBoundingClientRect().height ?? null
+        const dataCY = dataEl ? dataEl.getBoundingClientRect().top - cRect.top + dataEl.getBoundingClientRect().height / 2 : null
+        console.log(`  reg[${pl.id}] spacer=${pl.spacerPx.toFixed(2)}px  spacerActualH=${actualH}  dataCY=${dataCY?.toFixed(2)}`)
+      }
+      for (const gl of lines) {
+        console.log(`  SVG line: projCYs=${gl.projCYs.map(y => y.toFixed(2)).join(',')}  regCY=${gl.regCY.toFixed(2)}  diff=${(gl.regCY - gl.projCYs.reduce((a,b)=>a+b,0)/gl.projCYs.length).toFixed(2)}`)
+      }
+      console.groupEnd()
+      // ── END DEBUG ──────────────────────────────────────────────────────────
+
       setGroupLineData(lines)
     }
 
     measure()
 
-    // Re-measure on project-table resize (observing left div avoids loop since
-    // spacer mutations only grow the registry/right side, not the project/left side)
-    const leftDiv = tablesRef.current.firstElementChild
-    const ro = new ResizeObserver(measure)
-    if (leftDiv) ro.observe(leftDiv)
-    return () => ro.disconnect()
+    // Re-measure on window resize (text reflow can shift row heights/positions).
+    // We use window instead of ResizeObserver on tablesRef to avoid a feedback loop:
+    // applying spacers makes the registry table taller, which stretches the flex
+    // container, which would re-fire a ResizeObserver on any child — infinite loop.
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
   }, [expanded, orderedProjects, orderedRegistry, matchPairs, groupColorMap])
 
   // ── Render ────────────────────────────────────────────────────────────────
