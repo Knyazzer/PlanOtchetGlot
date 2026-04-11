@@ -56,7 +56,14 @@
       "Bash(docker compose:*)",
       "Bash(node_modules/.bin/prisma db:*)",
       "Bash(node -e \"const {PrismaClient} = require\\('./node_modules/@prisma/client'\\); const p = new PrismaClient\\(\\); console.log\\(Object.keys\\(p\\).filter\\(k => !k.startsWith\\('_'\\) && !k.startsWith\\('$'\\)\\)\\)\")",
-      "Bash(./node_modules/.bin/tsc --noEmit -p apps/web/tsconfig.json)"
+      "Bash(./node_modules/.bin/tsc --noEmit -p apps/web/tsconfig.json)",
+      "Bash(npm list:*)",
+      "Bash(where npx:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot"
     ]
+  },
+  "enabledPlugins": {
+    "playwright@claude-plugins-official": true
   }
 }
