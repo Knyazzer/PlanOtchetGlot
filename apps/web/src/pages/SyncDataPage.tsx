@@ -105,25 +105,57 @@ interface ColDef {
 }
 
 const PROJ_COLS: ColDef[] = [
-  { key: 'status',   label: 'A Статус',  filterable: true },
-  { key: 'client',   label: 'B Клиент',  filterable: true },
-  { key: 'name',     label: 'C Название' },
-  { key: 'date',     label: 'G Дата',    filterable: true },
-  { key: 'format',   label: 'I Формат',  filterable: true },
-  { key: 'location', label: 'J Локация', filterable: true },
-  { key: 'matrixId', label: 'K Матрица', filterable: true, special: 'matrixId' },
+  { key: 'status',         label: 'A Статус',       filterable: true },
+  { key: 'client',         label: 'B Клиент',       filterable: true },
+  { key: 'name',           label: 'C Название' },
+  { key: 'execProducer',   label: 'D Исп.прод.' },
+  { key: 'lineProducer',   label: 'E Лайн-прод.' },
+  { key: 'accountManager', label: 'F Аккаунт' },
+  { key: 'date',           label: 'G Дата',         filterable: true },
+  { key: 'time',           label: 'H Время' },
+  { key: 'format',         label: 'I Формат',       filterable: true },
+  { key: 'location',       label: 'J Локация',      filterable: true },
+  { key: 'matrixId',       label: 'K Матрица',      filterable: true, special: 'matrixId' },
 ]
+
+// Брейкпоинты по ширине: убираем столбцы по мере сужения
+// Полная: A B C D E F G H I J K
+// -K:     A B C D E F G H I J
+// -E -F:  A B C D G H I J
+// -H -I:  A B C D G J
+// -G -J:  A B C D
+function getProjHiddenCols(width: number): Set<string> {
+  if (width >= 900) return new Set()
+  if (width >= 720) return new Set(['matrixId'])
+  if (width >= 560) return new Set(['matrixId', 'lineProducer', 'accountManager'])
+  if (width >= 400) return new Set(['matrixId', 'lineProducer', 'accountManager', 'time', 'format'])
+  return new Set(['matrixId', 'lineProducer', 'accountManager', 'time', 'format', 'date', 'location'])
+}
 
 const REG_COLS: ColDef[] = [
   { key: 'status',   label: 'A Статус',   filterable: true },
-  { key: 'sheetUrl', label: 'B Матрица'   },
-  { key: 'matrixId', label: 'C ID'        },
+  { key: 'sheetUrl', label: 'B Матрица' },
+  { key: 'matrixId', label: 'C ID' },
   { key: 'unit',     label: 'E Юнит',     filterable: true },
   { key: 'client',   label: 'F Заказчик', filterable: true },
-  { key: 'name',     label: 'G Название'  },
-  { key: 'format',   label: 'H Формат'   },
-  { key: 'date',     label: 'I Дата'     },
+  { key: 'name',     label: 'G Название' },
+  { key: 'format',   label: 'H Формат' },
+  { key: 'date',     label: 'I Дата' },
+  { key: 'producer', label: 'J Продюсер' },
+  { key: 'manager',  label: 'K Менеджер' },
+  { key: 'curator',  label: 'L Куратор' },
 ]
+
+// Полная: A B C E F G H I J K L
+// -H -K -L: A B C E F G I J
+// -J:       A B C E F G I
+// -E -I:    A B C F G
+function getRegHiddenCols(width: number): Set<string> {
+  if (width >= 900) return new Set()
+  if (width >= 680) return new Set(['format', 'manager', 'curator'])
+  if (width >= 500) return new Set(['format', 'manager', 'curator', 'producer'])
+  return new Set(['format', 'manager', 'curator', 'producer', 'unit', 'date'])
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -268,8 +300,6 @@ function FilterGroup({ label, values, colKey, filters, onToggle }: {
 function GlobalSettingsPopup({
   projFilters, onProjFilters,
   regFilters, onRegFilters,
-  projHidden, onToggleProjCol,
-  regHidden, onToggleRegCol,
   projOpts, regOpts,
   onClose,
 }: {
@@ -277,10 +307,6 @@ function GlobalSettingsPopup({
   onProjFilters: (f: Record<string, string[]>) => void
   regFilters: Record<string, string[]>
   onRegFilters: (f: Record<string, string[]>) => void
-  projHidden: Set<string>
-  onToggleProjCol: (c: string) => void
-  regHidden: Set<string>
-  onToggleRegCol: (c: string) => void
   projOpts: { status: string[]; format: string[]; location: string[] }
   regOpts: { status: string[]; unit: string[]; format: string[] }
   onClose: () => void
@@ -347,35 +373,6 @@ function GlobalSettingsPopup({
           </div>
         </div>
 
-        {/* Column visibility — Projects */}
-        <div style={settingsSection}>
-          <div style={settingsSectionTitle}>Столбцы — Проекты</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-            {PROJ_COLS.map((c) => {
-              const visible = !projHidden.has(c.key)
-              return (
-                <button key={c.key} onClick={() => onToggleProjCol(c.key)} style={colToggleBtn(visible)}>
-                  {c.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Column visibility — Registry */}
-        <div style={{ ...settingsSection, borderBottom: 'none', paddingBottom: 0 }}>
-          <div style={settingsSectionTitle}>Столбцы — Реестр</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-            {REG_COLS.map((c) => {
-              const visible = !regHidden.has(c.key)
-              return (
-                <button key={c.key} onClick={() => onToggleRegCol(c.key)} style={colToggleBtn(visible)}>
-                  {c.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
       </div>
     </div>
   )
@@ -564,18 +561,29 @@ function ProjectDetailModal({ project, onClose }: { project: Project; onClose: (
 
 function ProjectsTable({
   projects, loading, sheetUrl,
-  primaryFilters, hiddenCols,
+  primaryFilters,
 }: {
   projects: Project[]
   loading: boolean
   sheetUrl: string | null
   primaryFilters: Record<string, string[]>
-  hiddenCols: Set<string>
 }) {
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-proj')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(9999)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const obs = new ResizeObserver((entries) => setContainerWidth(entries[0].contentRect.width))
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const hiddenCols = getProjHiddenCols(containerWidth)
 
   // Close dropdown on scroll
   useEffect(() => {
@@ -654,19 +662,23 @@ function ProjectsTable({
           </span>
         )
       }
-      case 'client':   return p.client ?? '—'
-      case 'name':     return p.name
-      case 'date':     return fmtDate(p.date)
-      case 'format':   return p.format ?? '—'
-      case 'location': return p.location ?? '—'
-      case 'matrixId': return <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{p.sheetMatrixId ?? '—'}</span>
-      default:         return null
+      case 'client':         return p.client ?? '—'
+      case 'name':           return p.name
+      case 'execProducer':   return p.execProducer ?? '—'
+      case 'lineProducer':   return p.lineProducer ?? '—'
+      case 'accountManager': return p.accountManager ?? '—'
+      case 'date':           return fmtDate(p.date)
+      case 'time':           return p.time ?? '—'
+      case 'format':         return p.format ?? '—'
+      case 'location':       return p.location ?? '—'
+      case 'matrixId':       return <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{p.sheetMatrixId ?? '—'}</span>
+      default:               return null
     }
   }
 
   return (
     <>
-    <div style={panelStyle}>
+    <div ref={containerRef} style={panelStyle}>
       <div style={panelHeader}>
         <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
           <a href={sheetUrl ?? '#'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}>
@@ -791,17 +803,28 @@ function getRegValue(r: RegistryEntry, col: string): string {
 
 function RegistryTable({
   registry, loading, sheetUrl,
-  primaryFilters, hiddenCols,
+  primaryFilters,
 }: {
   registry: RegistryEntry[]
   loading: boolean
   sheetUrl: string | null
   primaryFilters: Record<string, string[]>
-  hiddenCols: Set<string>
 }) {
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-reg')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerWidth, setContainerWidth] = useState(9999)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const obs = new ResizeObserver((entries) => setContainerWidth(entries[0].contentRect.width))
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const hiddenCols = getRegHiddenCols(containerWidth)
 
   useEffect(() => {
     if (!openDrop) return
@@ -879,12 +902,15 @@ function RegistryTable({
       case 'name':     return r.name ?? '—'
       case 'format':   return r.format ?? '—'
       case 'date':     return fmtDate(r.date)
+      case 'producer': return r.producer ?? '—'
+      case 'manager':  return r.manager ?? '—'
+      case 'curator':  return r.curator ?? '—'
       default:         return null
     }
   }
 
   return (
-    <div style={panelStyle}>
+    <div ref={containerRef} style={panelStyle}>
       <div style={panelHeader}>
         <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
           <a href={sheetUrl ?? '#'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}>
@@ -971,11 +997,14 @@ export function SyncDataPage() {
   const qc = useQueryClient()
   const [resetResult, setResetResult] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [showProj, setShowProj] = useState(true)
+  const [showReg, setShowReg]  = useState(true)
+  const [splitPct, setSplitPct] = useState(50)  // % ширины левой панели
+  const containerRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
 
   const [projFilters, setProjFilters] = usePersistedFilters('sync-primary-proj')
   const [regFilters, setRegFilters] = usePersistedFilters('sync-primary-reg')
-  const [projHidden, toggleProjCol] = usePersistedHidden('sync-hidden-proj')
-  const [regHidden, toggleRegCol] = usePersistedHidden('sync-hidden-reg')
 
   const { data: allProjects = [], isLoading: projLoading } = useQuery<Project[]>({
     queryKey: ['status-rows-sync'],
@@ -1025,6 +1054,34 @@ export function SyncDataPage() {
     Object.values(projFilters).reduce((s, a) => s + a.length, 0) +
     Object.values(regFilters).reduce((s, a) => s + a.length, 0)
 
+  const both = showProj && showReg
+
+  function onDividerMouseDown(e: React.MouseEvent) {
+    e.preventDefault()
+    dragging.current = true
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current || !containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const pct = Math.min(85, Math.max(15, ((ev.clientX - rect.left) / rect.width) * 100))
+      setSplitPct(pct)
+    }
+    const onUp = () => {
+      dragging.current = false
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  const toggleBtnStyle = (active: boolean): React.CSSProperties => ({
+    padding: '5px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500,
+    border: `1px solid ${active ? '#3b82f6' : '#e2e8f0'}`,
+    background: active ? '#eff6ff' : '#f8fafc',
+    color: active ? '#2563eb' : '#94a3b8',
+    cursor: 'pointer',
+  })
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 104px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexShrink: 0 }}>
@@ -1060,32 +1117,73 @@ export function SyncDataPage() {
           {reset.isPending ? 'Удаление...' : 'Сбросить импорт'}
         </button>
         {resetResult && <span style={{ fontSize: 13, color: '#16a34a' }}>{resetResult}</span>}
+
+        {/* Переключатели видимости таблиц */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          <button onClick={() => setShowProj((v) => !v)} style={toggleBtnStyle(showProj)}>
+            Проекты
+          </button>
+          <button onClick={() => setShowReg((v) => !v)} style={toggleBtnStyle(showReg)}>
+            Реестр
+          </button>
+        </div>
       </div>
 
       {settingsOpen && (
         <GlobalSettingsPopup
           projFilters={projFilters} onProjFilters={setProjFilters}
           regFilters={regFilters} onRegFilters={setRegFilters}
-          projHidden={projHidden} onToggleProjCol={toggleProjCol}
-          regHidden={regHidden} onToggleRegCol={toggleRegCol}
           projOpts={projOpts} regOpts={regOpts}
           onClose={() => setSettingsOpen(false)}
         />
       )}
 
-      <div style={{ display: 'flex', gap: 12, flex: 1, minHeight: 0 }}>
-        <ProjectsTable
-          projects={projects} loading={projLoading}
-          sheetUrl={sheetUrls?.projectsSheetUrl ?? null}
-          primaryFilters={projFilters}
-          hiddenCols={projHidden}
-        />
-        <RegistryTable
-          registry={registry} loading={regLoading}
-          sheetUrl={sheetUrls?.registrySheetUrl ?? null}
-          primaryFilters={regFilters}
-          hiddenCols={regHidden}
-        />
+      <div ref={containerRef} style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
+        {!showProj && !showReg ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 14 }}>
+            Выберите таблицу для отображения
+          </div>
+        ) : both ? (
+          <>
+            <div style={{ width: `${splitPct}%`, minWidth: 0, display: 'flex' }}>
+              <ProjectsTable
+                projects={projects} loading={projLoading}
+                sheetUrl={sheetUrls?.projectsSheetUrl ?? null}
+                primaryFilters={projFilters}
+              />
+            </div>
+            <div
+              onMouseDown={onDividerMouseDown}
+              style={{ width: 8, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <div style={{ width: 2, height: 40, borderRadius: 2, background: '#cbd5e1' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+              <RegistryTable
+                registry={registry} loading={regLoading}
+                sheetUrl={sheetUrls?.registrySheetUrl ?? null}
+                primaryFilters={regFilters}
+              />
+            </div>
+          </>
+        ) : (
+          <div style={{ flex: 1, minWidth: 0, display: 'flex' }}>
+            {showProj && (
+              <ProjectsTable
+                projects={projects} loading={projLoading}
+                sheetUrl={sheetUrls?.projectsSheetUrl ?? null}
+                primaryFilters={projFilters}
+              />
+            )}
+            {showReg && (
+              <RegistryTable
+                registry={registry} loading={regLoading}
+                sheetUrl={sheetUrls?.registrySheetUrl ?? null}
+                primaryFilters={regFilters}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
