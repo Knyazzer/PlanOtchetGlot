@@ -359,6 +359,15 @@ function SyncButton() {
     },
   })
 
+  const stop = useMutation({
+    mutationFn: () => api.post('/sync/stop'),
+    onSuccess: () => {
+      sessionStorage.removeItem('sync-total-matrices')
+      setTotalMatrices(0)
+      qc.invalidateQueries({ queryKey: ['sync-logs'] })
+    },
+  })
+
   // Берём только логи последней сессии — нужно до matrixDone/matrixTotal для isRunning
   const lastProjectLogEarly = logs.find((l) => l.type === 'projects')
   const sessionStartEarly = lastProjectLogEarly?.startedAt ?? null
@@ -387,6 +396,7 @@ function SyncButton() {
   }, [isRunning, logs.length, qc])
 
   const displayLogs   = sessionLogsEarly.filter((l) => l.type === 'projects' || l.type === 'registry')
+  const canStop       = isRunning && displayLogs.length > 0 && displayLogs.every((l) => l.status !== 'running')
   const matrixLogs    = matrixLogsEarly
   const matrixRunning = matrixLogs.filter((l) => l.status === 'running').length
   const matrixDone    = matrixDoneEarly
@@ -454,22 +464,41 @@ function SyncButton() {
         }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontWeight: 600, fontSize: 16 }}>Синхронизация</span>
-            <button
-              onClick={() => { if (!isRunning) trigger.mutate() }}
-              disabled={isRunning}
-              style={{
-                background: isRunning ? '#e2e8f0' : '#2563eb',
-                color: isRunning ? '#94a3b8' : '#fff',
-                border: 'none',
-                borderRadius: 6,
-                padding: '7px 16px',
-                fontSize: 14,
-                cursor: isRunning ? 'default' : 'pointer',
-                fontWeight: 500,
-              }}
-            >
-              {isRunning ? 'Выполняется...' : 'Запустить'}
-            </button>
+            {canStop ? (
+              <button
+                onClick={() => stop.mutate()}
+                disabled={stop.isPending}
+                style={{
+                  background: stop.isPending ? '#fca5a5' : '#ef4444',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '7px 16px',
+                  fontSize: 14,
+                  cursor: stop.isPending ? 'default' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {stop.isPending ? 'Остановка...' : 'Остановить'}
+              </button>
+            ) : (
+              <button
+                onClick={() => { if (!isRunning) trigger.mutate() }}
+                disabled={isRunning}
+                style={{
+                  background: isRunning ? '#e2e8f0' : '#2563eb',
+                  color: isRunning ? '#94a3b8' : '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '7px 16px',
+                  fontSize: 14,
+                  cursor: isRunning ? 'default' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {isRunning ? 'Выполняется...' : 'Запустить'}
+              </button>
+            )}
           </div>
 
           <div style={{ overflowY: 'auto', flex: 1 }}>
@@ -498,7 +527,7 @@ function SyncButton() {
                       {log.type === 'projects' ? 'Таблица проектов' : 'Реестр матриц'}
                     </span>
                     {log.changesCount > 0 && (
-                      <span style={{ fontSize: 11, color: '#64748b' }}>+{log.changesCount}</span>
+                      <span style={{ fontSize: 11, color: '#64748b' }}>{log.changesCount}</span>
                     )}
                   </div>
                   <span style={{ fontSize: 13, color: '#94a3b8' }}>

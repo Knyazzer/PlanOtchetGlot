@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
-import { runFullSync, fetchMatrixPreview, fetchMatrixShifts } from '../services/syncService'
+import { runFullSync, fetchMatrixPreview, fetchMatrixShifts, requestSyncAbort } from '../services/syncService'
 
 export async function syncRoutes(app: FastifyInstance) {
   // POST /sync/trigger — ручной запуск (admin или producer)
@@ -19,6 +19,12 @@ export async function syncRoutes(app: FastifyInstance) {
       })
 
     return reply.code(202).send({ message: 'Sync started', totalMatrices })
+  })
+
+  // POST /sync/stop — остановить синхронизацию матриц
+  app.post('/stop', { preHandler: requireRole('admin', 'producer') }, async (_request, reply) => {
+    requestSyncAbort()
+    return reply.send({ message: 'Abort requested' })
   })
 
   // GET /sync/sheet-urls — публичные URL исходных Google Sheets

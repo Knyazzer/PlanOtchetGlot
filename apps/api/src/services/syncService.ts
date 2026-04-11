@@ -2,6 +2,13 @@ import { google, sheets_v4 } from 'googleapis'
 import { randomUUID } from 'crypto'
 import { prisma } from '@tv-shifts/db'
 
+// ─── Sync Abort ───────────────────────────────────────────────────────────────
+
+let _abortRequested = false
+export function requestSyncAbort() { _abortRequested = true }
+export function isSyncRunning() { return _abortRequested === false && _syncActive }
+let _syncActive = false
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getSheets(): sheets_v4.Sheets {
@@ -857,6 +864,8 @@ export interface SyncResult {
 }
 
 export async function runFullSync(): Promise<SyncResult> {
+  _abortRequested = false
+  _syncActive = true
   const startedAt = Date.now()
   const allErrors: string[] = []
   let projectsUpserted = 0
@@ -936,6 +945,10 @@ export async function runFullSync(): Promise<SyncResult> {
   })
 
   for (const entry of allEntries) {
+    if (_abortRequested) {
+      console.log('[sync] Abort requested — stopping matrix sync')
+      break
+    }
     if (!entry.sheetUrl) continue
     const matrixLog = await prisma.syncLog.create({
       data: { type: 'matrix', targetId: entry.matrixId, status: 'running' },
@@ -963,6 +976,7 @@ export async function runFullSync(): Promise<SyncResult> {
     await delay(1500) // rate limiting between matrices (~2 req each → ~80 req/min, well under 300 limit)
   }
 
+  _syncActive = false
   return {
     projectsUpserted,
     registryUpserted,
