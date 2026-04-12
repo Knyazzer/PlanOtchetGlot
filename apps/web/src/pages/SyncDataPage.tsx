@@ -608,9 +608,22 @@ function ProjectsTable({
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-proj')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(9999)
+
+  function openProject(p: Project) {
+    if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null }
+    setHighlightedId(p.id)
+    setSelectedProject(p)
+  }
+
+  function closeProject() {
+    setSelectedProject(null)
+    highlightTimer.current = setTimeout(() => { setHighlightedId(null); highlightTimer.current = null }, 1000)
+  }
 
   useEffect(() => {
     const el = containerRef.current
@@ -835,14 +848,18 @@ function ProjectsTable({
                 return (
                   <tr
                     key={p.id}
-                    style={{ cursor: 'pointer', outline: noMatrix ? '2px solid #f87171' : undefined, outlineOffset: '-1px', borderSpacing: 0 }}
-                    onClick={() => setSelectedProject(p)}
+                    style={{ cursor: 'pointer', outline: noMatrix && highlightedId !== p.id ? '2px solid #f87171' : undefined, outlineOffset: '-1px', borderSpacing: 0 }}
+                    onClick={() => openProject(p)}
                     title="Нажмите для просмотра деталей"
                   >
                     {visibleCols.map((col) => {
+                      const isHighlighted = highlightedId === p.id
                       const chipBg = getValueChipColor(col.key, p)
                       const cc = chipBg ? { bg: chipBg } : cellColors[col.key]
-                      const effectiveBg = cc?.bg ?? rowBg
+                      const baseBg = cc?.bg ?? rowBg
+                      const effectiveBg = isHighlighted
+                        ? `linear-gradient(rgba(147,197,253,0.35), rgba(147,197,253,0.35)), ${baseBg}`
+                        : baseBg
                       const effectiveFg = cc?.fg ?? (cc?.bg ? contrastColor(cc.bg) : undefined)
                       return (
                         <td
@@ -868,7 +885,7 @@ function ProjectsTable({
     </div>
 
     {selectedProject && (
-      <ProjectDetailModal project={selectedProject} onClose={() => setSelectedProject(null)} />
+      <ProjectDetailModal project={selectedProject} onClose={closeProject} />
     )}
     </>
   )
@@ -1390,6 +1407,20 @@ function RegistryTable({
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [selectedMatrix, setSelectedMatrix] = useState<string | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<RegistryEntry | null>(null)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function openEntry(r: RegistryEntry) {
+    if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null }
+    setHighlightedId(r.id)
+    setSelectedEntry(r)
+  }
+
+  function closeEntry() {
+    setSelectedEntry(null)
+    highlightTimer.current = setTimeout(() => { setHighlightedId(null); highlightTimer.current = null }, 1000)
+  }
+
   const [shiftsStatus, setShiftsStatus] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem('matrix-shifts-status') ?? '{}') } catch { return {} }
   })
@@ -1579,8 +1610,8 @@ function RegistryTable({
                 return (
                 <tr
                   key={r.id}
-                  style={{ background: noShifts ? (i % 2 === 0 ? '#fee2e2' : '#fecaca') : hasShifts ? (i % 2 === 0 ? '#dcfce7' : '#bbf7d0') : (i % 2 === 0 ? '#fff' : '#f8fafc'), cursor: 'pointer' }}
-                  onClick={() => setSelectedEntry(r)}
+                  style={{ background: highlightedId === r.id ? '#eff6ff' : noShifts ? (i % 2 === 0 ? '#fee2e2' : '#fecaca') : hasShifts ? (i % 2 === 0 ? '#dcfce7' : '#bbf7d0') : (i % 2 === 0 ? '#fff' : '#f8fafc'), cursor: 'pointer', outline: highlightedId === r.id ? '2px solid #93c5fd' : undefined, outlineOffset: '-1px' }}
+                  onClick={() => openEntry(r)}
                   title={noShifts ? 'Нет данных о сменах' : known ? 'Есть данные о сменах' : 'Нажмите для просмотра деталей'}
                 >
                   {visibleCols.map((col) => (
@@ -1601,7 +1632,7 @@ function RegistryTable({
       </div>
     </div>
     {selectedEntry && (
-      <RegistryDetailModal entry={selectedEntry} onClose={() => setSelectedEntry(null)} onShiftsLoaded={handleShiftsLoaded} />
+      <RegistryDetailModal entry={selectedEntry} onClose={closeEntry} onShiftsLoaded={handleShiftsLoaded} />
     )}
     {selectedMatrix && (
       <MatrixPreviewModal matrixId={selectedMatrix} onClose={() => setSelectedMatrix(null)} />
