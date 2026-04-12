@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
 import { findSheetConfig } from '../services/databaseService'
-import { copyTemplateToFolder, appendToInternalRegistry } from '../services/driveService'
+import { copyTemplateToFolder, setupMatrixPermissions, appendToInternalRegistry, checkSpreadsheetExists } from '../services/driveService'
 
 const createMatrixSchema = z.object({
   name:       z.string().min(1),
@@ -68,6 +68,13 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
       const fileName = `Матрица v4.1: ${client ?? ''}: ${name}: ${dateStr}`
       try {
         sheetUrl = await copyTemplateToFolder(activeTemplate.sheet_url, fileName, folderId)
+        // Set up sharing and sheet protections (non-fatal if fails)
+        const newSpreadsheetId = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1]
+        if (newSpreadsheetId) {
+          await setupMatrixPermissions(newSpreadsheetId).catch((e: unknown) => {
+            app.log.warn({ err: e }, '[internal-matrix] Permission setup failed (non-fatal)')
+          })
+        }
       } catch (e: any) {
         driveError = e.message
         app.log.error({ err: e }, '[internal-matrix] Drive copy failed')
@@ -167,6 +174,33 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
       `SELECT * FROM matrix_registry WHERE source = 'internal' AND client ILIKE $1 ORDER BY created_at DESC`,
       client
     )
+  })
+
+  // POST /internal-matrix/:id/check — проверить существование таблицы, удалить если не найдена
+  app.post('/:id/check', { preHandler: requireRole('admin') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+
+    const rows = await prisma.$queryRawUnsafe<MatrixRow[]>(
+      `SELECT * FROM matrix_registry WHERE id = $1 LIMIT 1`, id
+    )
+    const entry = rows[0]
+    if (!entry) return reply.code(404).send({ error: 'Матрица не найдена' })
+
+    if (!entry.sheet_url) return { exists: false, reason: 'no_url' }
+
+    const spreadsheetId = entry.sheet_url.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1]
+    if (!spreadsheetId) return { exists: false, reason: 'invalid_url' }
+
+    try {
+      const exists = await checkSpreadsheetExists(spreadsheetId)
+      if (!exists && entry.source === 'internal') {
+        await prisma.$executeRawUnsafe(`DELETE FROM matrix_registry WHERE id = $1`, id)
+        return { exists: false, deleted: true }
+      }
+      return { exists }
+    } catch (e: any) {
+      return reply.code(500).send({ error: e.message })
+    }
   })
 
   // GET /internal-matrix — list all internal matrices

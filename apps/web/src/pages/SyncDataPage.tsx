@@ -1315,7 +1315,7 @@ interface ShiftRow { isSeparator: true; text: string }
 interface ShiftEmployee { isSeparator: false; name: string; role: string | null; employmentType: string | null; shifts: boolean[] }
 interface MatrixShiftsData { sheetTitle: string; dates: string[]; activeCols: number[]; rows: (ShiftRow | ShiftEmployee)[] }
 
-function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void }) {
+function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, onCheck, checking }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; onCheck?: () => void; checking?: boolean }) {
   const [tab, setTab] = useState<'info' | 'shifts'>('info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
@@ -1431,6 +1431,16 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete 
               </span>
             )}
             <SourceBadge source={entry.source ?? 'google'} />
+            {onCheck && (
+              <button
+                onClick={onCheck}
+                disabled={checking}
+                title="Проверить — существует ли таблица в Drive"
+                style={{ background: 'none', border: '1px solid #e2e8f0', color: '#64748b', cursor: checking ? 'default' : 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}
+              >
+                {checking ? '...' : '↻ Проверить'}
+              </button>
+            )}
             {onEdit && (
               <button onClick={onEdit} style={{ background: 'none', border: '1px solid #e2e8f0', color: '#475569', cursor: 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}>
                 Изменить
@@ -1966,6 +1976,24 @@ function RegistryTable({
   const [formMatrix, setFormMatrix] = useState<RegistryEntry | 'new' | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [checking, setChecking] = useState<Set<string>>(new Set())
+  const [deletedNotice, setDeletedNotice] = useState<string | null>(null)
+
+  async function checkMatrix(r: RegistryEntry) {
+    setChecking((prev) => new Set(prev).add(r.id))
+    try {
+      const result = await api.post(`/internal-matrix/${r.id}/check`).then((res) => res.data)
+      if (result.deleted) {
+        setDeletedNotice(r.name ?? r.matrixId)
+        queryClient.invalidateQueries({ queryKey: ['sync-registry'] })
+        closeEntry()
+      }
+    } catch {
+      // ignore
+    } finally {
+      setChecking((prev) => { const s = new Set(prev); s.delete(r.id); return s })
+    }
+  }
 
   function openEntry(r: RegistryEntry) {
     if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null }
@@ -2206,16 +2234,19 @@ function RegistryTable({
         onClose={closeEntry}
         onShiftsLoaded={handleShiftsLoaded}
         onEdit={selectedEntry.source === 'internal' ? () => { setFormMatrix(selectedEntry); closeEntry() } : undefined}
-        onDelete={selectedEntry.source === 'internal' ? () => {
-          if (window.confirm(`Удалить матрицу «${selectedEntry.name}»?`)) {
-            api.delete(`/internal-matrix/${selectedEntry.id}`)
-              .then(() => { queryClient.invalidateQueries({ queryKey: ['sync-registry'] }); closeEntry() })
-          }
-        } : undefined}
+        onDelete={undefined}
+        onCheck={selectedEntry.source === 'internal' ? () => checkMatrix(selectedEntry) : undefined}
+        checking={checking.has(selectedEntry.id)}
       />
     )}
     {selectedMatrix && (
       <MatrixPreviewModal matrixId={selectedMatrix} onClose={() => setSelectedMatrix(null)} />
+    )}
+    {deletedNotice && (
+      <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', zIndex: 500, background: '#1e293b', color: '#fff', borderRadius: 10, padding: '12px 20px', fontSize: 13, boxShadow: '0 4px 24px rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: 420 }}>
+        <span>Матрица <b>«{deletedNotice}»</b> удалена вручную — запись удалена из реестра</span>
+        <button onClick={() => setDeletedNotice(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
+      </div>
     )}
     {formMatrix != null && (
       <MatrixFormModal

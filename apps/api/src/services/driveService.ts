@@ -22,6 +22,7 @@ function getDrive() {
   return google.drive({ version: 'v3', auth: oauth2 })
 }
 
+/** Service account — for reading/writing registry sheet data */
 function getSheets() {
   const auth = new google.auth.GoogleAuth({
     credentials: {
@@ -33,6 +34,17 @@ function getSheets() {
   return google.sheets({ version: 'v4', auth })
 }
 
+/** OAuth2 user account — for setting file permissions and sheet protections */
+function getSheetsOAuth() {
+  const clientId     = process.env.GOOGLE_DRIVE_CLIENT_ID
+  const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET
+  const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN
+  if (!clientId || !clientSecret || !refreshToken) throw new Error('OAuth2 не настроен')
+  const oauth2 = new google.auth.OAuth2(clientId, clientSecret)
+  oauth2.setCredentials({ refresh_token: refreshToken })
+  return google.sheets({ version: 'v4', auth: oauth2 })
+}
+
 function extractFileId(url: string): string | null {
   const match = url.match(/\/(?:spreadsheets|file)\/d\/([a-zA-Z0-9-_]+)/)
   return match?.[1] ?? null
@@ -42,6 +54,76 @@ function extractFileId(url: string): string | null {
 function extractFolderId(input: string): string {
   const match = input.match(/\/folders\/([a-zA-Z0-9-_]+)/)
   return match?.[1] ?? input.split('?')[0].trim()
+}
+
+/**
+ * Returns true if the Google Drive file exists and is accessible via OAuth2 credentials.
+ */
+export async function checkSpreadsheetExists(spreadsheetId: string): Promise<boolean> {
+  try {
+    const drive = getDrive()
+    const file = await drive.files.get({ fileId: spreadsheetId, fields: 'id,trashed', supportsAllDrives: true })
+    // File in trash is considered deleted
+    if (file.data.trashed) return false
+    return true
+  } catch (e: any) {
+    const status = e?.response?.status ?? e?.code
+    if (status === 404 || status === 403 || status === 410) return false
+    throw e
+  }
+}
+
+const PROTECTED_SHEET_NAMES = ['СВОД', '₽ СОТРУДНИКИ НА СМЕНАХ']
+
+/**
+ * Shares the spreadsheet with anyone (editor) and protects specific sheets
+ * so only the service account and the owner can edit them.
+ */
+export async function setupMatrixPermissions(spreadsheetId: string): Promise<void> {
+  const ownerEmail          = process.env.GOOGLE_DRIVE_OWNER_EMAIL
+  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+
+  const drive  = getDrive()
+  const sheets = getSheetsOAuth()
+
+  // Share with anyone — employees can edit unprotected sheets directly
+  await drive.permissions.create({
+    fileId: spreadsheetId,
+    supportsAllDrives: true,
+    requestBody: { role: 'writer', type: 'anyone' },
+  })
+
+  // Get sheet metadata to find sheet IDs by name
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties(sheetId,title)',
+  })
+
+  const sheetsToProtect = (meta.data.sheets ?? [])
+    .filter((s) => PROTECTED_SHEET_NAMES.includes(s.properties?.title ?? ''))
+    .map((s) => s.properties?.sheetId)
+    .filter((id): id is number => id != null)
+
+  if (sheetsToProtect.length === 0) return
+
+  const editors: string[] = []
+  if (ownerEmail)          editors.push(ownerEmail)
+  if (serviceAccountEmail) editors.push(serviceAccountEmail)
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: sheetsToProtect.map((sheetId) => ({
+        addProtectedRange: {
+          protectedRange: {
+            range: { sheetId },
+            description: 'Только для администраторов системы',
+            editors: { users: editors },
+          },
+        },
+      })),
+    },
+  })
 }
 
 /**
