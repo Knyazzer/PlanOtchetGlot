@@ -2292,15 +2292,22 @@ function RegistryTable({
     client: uniq(afterPrimary.map((r) => r.client)),
   }), [afterPrimary])
 
-  // Secondary filter
+  // Secondary filter + sort by date
   const afterSecondary = useMemo(() => {
-    return afterPrimary.filter((r) => {
-      for (const [col, sel] of Object.entries(colFilters)) {
-        if (sel.length === 0) return false
-        if (!sel.includes(getRegValue(r, col))) return false
-      }
-      return true
-    })
+    return afterPrimary
+      .filter((r) => {
+        for (const [col, sel] of Object.entries(colFilters)) {
+          if (sel.length === 0) return false
+          if (!sel.includes(getRegValue(r, col))) return false
+        }
+        return true
+      })
+      .sort((a, b) => {
+        if (!a.date && !b.date) return 0
+        if (!a.date) return 1
+        if (!b.date) return -1
+        return new Date(a.date).getTime() - new Date(b.date).getTime()
+      })
   }, [afterPrimary, colFilters])
 
   const visibleCols = REG_COLS.filter((c) => !hiddenCols.has(c.key))
