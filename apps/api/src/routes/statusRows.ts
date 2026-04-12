@@ -94,7 +94,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
         },
         days: { orderBy: { date: 'asc' } },
       },
-      orderBy: { date: 'asc' },
+      orderBy: [{ googleRowIndex: 'asc' }, { date: 'asc' }],
     })
   })
 

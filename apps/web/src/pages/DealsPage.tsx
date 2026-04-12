@@ -17,6 +17,7 @@ interface Project {
   format: string | null
   location: string | null
   sheetMatrixId: string | null
+  linkedMatrix: { matrixId: string } | null
 }
 
 interface RegistryEntry {
@@ -28,6 +29,7 @@ interface RegistryEntry {
   client: string | null
   name: string | null
   format: string | null
+  date: string | null
 }
 
 interface ColDef { key: string; label: string }
@@ -204,10 +206,16 @@ function ClientBlock({ client, projects, registry }: {
 
   const matchPairs = useMemo(() => {
     const pairs: { projId: string; regId: string }[] = []
+    const regById = new Map(registry.map(r => [r.matrixId, r.id]))
     for (const p of projects) {
-      if (!p.sheetMatrixId) continue
-      for (const r of registry) {
-        if (r.matrixId === p.sheetMatrixId) pairs.push({ projId: p.id, regId: r.id })
+      const seen = new Set<string>()
+      const candidates = [p.sheetMatrixId, p.linkedMatrix?.matrixId].filter(Boolean) as string[]
+      for (const mid of candidates) {
+        const regId = regById.get(mid)
+        if (regId && !seen.has(regId)) {
+          pairs.push({ projId: p.id, regId })
+          seen.add(regId)
+        }
       }
     }
     return pairs
@@ -249,40 +257,59 @@ function ClientBlock({ client, projects, registry }: {
   // orderedRegistry: registry rows ordered by the first project row they own
   //   (so they appear top-to-bottom in the same order as their groups).
 
+  const sortedProjects = useMemo(() =>
+    [...projects].sort((a, b) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return new Date(a.date).getTime() - new Date(b.date).getTime()
+    }),
+  [projects])
+
+  const sortedRegistry = useMemo(() =>
+    [...registry].sort((a, b) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return new Date(a.date as string).getTime() - new Date(b.date as string).getTime()
+    }),
+  [registry])
+
   const orderedProjects = useMemo(() => {
     const result: Project[] = []
     const placed = new Set<string>()
-    // Iterate registry in original order to respect user's ordering
-    for (const r of registry) {
-      const group = projects
-        .filter(p => p.sheetMatrixId === r.matrixId)
-        .sort((a, b) => projects.indexOf(a) - projects.indexOf(b))
+    // For each registry entry (in date order), place its connected projects (in date order)
+    for (const r of sortedRegistry) {
+      const connectedProjIds = new Set(matchPairs.filter(mp => mp.regId === r.id).map(mp => mp.projId))
+      const group = sortedProjects.filter(p => connectedProjIds.has(p.id))
       for (const p of group) {
         if (!placed.has(p.id)) { result.push(p); placed.add(p.id) }
       }
     }
-    // Unconnected projects after all groups
-    for (const p of projects) {
+    // Unconnected projects after all groups, sorted by date
+    for (const p of sortedProjects) {
       if (!placed.has(p.id)) result.push(p)
     }
     return result
-  }, [projects, registry])
+  }, [sortedProjects, sortedRegistry, matchPairs])
 
   const orderedRegistry = useMemo(() => {
     const result: RegistryEntry[] = []
     const placed = new Set<string>()
     // Follow orderedProjects to pick registry rows in group order
     for (const p of orderedProjects) {
-      if (!p.sheetMatrixId) continue
-      const r = registry.find(x => x.matrixId === p.sheetMatrixId)
-      if (r && !placed.has(r.id)) { result.push(r); placed.add(r.id) }
+      const connectedRegIds = matchPairs.filter(mp => mp.projId === p.id).map(mp => mp.regId)
+      for (const regId of connectedRegIds) {
+        const r = registry.find(x => x.id === regId)
+        if (r && !placed.has(r.id)) { result.push(r); placed.add(r.id) }
+      }
     }
-    // Unconnected registry rows last
-    for (const r of registry) {
+    // Unconnected registry rows last, sorted by date
+    for (const r of sortedRegistry) {
       if (!placed.has(r.id)) result.push(r)
     }
     return result
-  }, [orderedProjects, registry])
+  }, [orderedProjects, registry, sortedRegistry, matchPairs])
 
   // ── Measurement effect ────────────────────────────────────────────────────
   //
@@ -575,10 +602,26 @@ export function DealsPage() {
     const set = new Set<string>()
     allProjects.forEach(p => set.add(p.client ?? ''))
     registry.forEach(r => set.add(r.client ?? ''))
+
+    // Earliest date for each client (projects + registry)
+    const earliestDate = (client: string): number => {
+      const projDates = allProjects
+        .filter(p => (p.client ?? '') === client && p.date)
+        .map(p => new Date(p.date!).getTime())
+      const regDates = registry
+        .filter(r => (r.client ?? '') === client && r.date)
+        .map(r => new Date(r.date!).getTime())
+      const all = [...projDates, ...regDates]
+      return all.length > 0 ? Math.min(...all) : Infinity
+    }
+
     return Array.from(set).sort((a, b) => {
       if (!a) return 1
       if (!b) return -1
-      return a.localeCompare(b, 'ru')
+      const da = earliestDate(a)
+      const db = earliestDate(b)
+      if (da === db) return a.localeCompare(b, 'ru')
+      return da - db
     })
   }, [allProjects, registry])
 

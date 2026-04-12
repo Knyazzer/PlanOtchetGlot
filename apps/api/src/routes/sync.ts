@@ -46,7 +46,7 @@ export async function syncRoutes(app: FastifyInstance) {
       SELECT mr.*,
              mr.has_shifts_data AS "hasShiftsData"
       FROM matrix_registry mr
-      ORDER BY mr.created_at ASC
+      ORDER BY mr.date ASC NULLS LAST, mr.created_at ASC
     `)
     return rows.map((r: any) => ({
       id:             r.id,

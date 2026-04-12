@@ -39,7 +39,7 @@ export function AppShell() {
     { id: 'users', label: 'Сотрудники', adminOnly: true },
     { id: 'syncdata', label: 'Таблицы', adminOnly: true },
     { id: 'database', label: 'БД', adminOnly: true },
-    { id: 'deals', label: 'Проекты' },
+    { id: 'deals', label: 'Клиенты' },
     { id: 'profile', label: 'Профиль' },
   ]
 

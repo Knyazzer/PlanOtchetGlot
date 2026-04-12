@@ -1204,17 +1204,66 @@ function ProjectsTable({
   const visibleIds = useMemo(() => new Set(afterSecondary.map((p) => p.id)), [afterSecondary])
 
   const rows = useMemo(() => {
-    const result: Project[] = []
+    const byDate = (a: Project, b: Project) => {
+      if (!a.date && !b.date) return 0
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return new Date(a.date).getTime() - new Date(b.date).getTime()
+    }
+
+    const monthKey = (dateStr: string) => dateStr.slice(0, 7) // "YYYY-MM"
+
+    // Determine the month each separator represents by inspecting its original slice
+    const separators = projects.filter((p) => p.source === 'separator')
+    const sepMonths = new Map<string, string>() // sepId → "YYYY-MM"
     for (let i = 0; i < projects.length; i++) {
       const p = projects[i]
-      if (p.source === 'separator') {
-        const nextSepIdx = projects.findIndex((q, j) => j > i && q.source === 'separator')
-        const slice = projects.slice(i + 1, nextSepIdx === -1 ? undefined : nextSepIdx)
-        if (slice.some((q) => visibleIds.has(q.id))) result.push(p)
-      } else if (visibleIds.has(p.id)) {
-        result.push(p)
+      if (p.source !== 'separator') continue
+      const nextSepIdx = projects.findIndex((q, j) => j > i && q.source === 'separator')
+      const slice = projects.slice(i + 1, nextSepIdx === -1 ? undefined : nextSepIdx)
+      const firstDated = slice.find((q) => q.source !== 'separator' && q.date)
+      if (firstDated?.date) sepMonths.set(p.id, monthKey(firstDated.date))
+    }
+
+    // Group all visible non-separator projects by month
+    const byMonth = new Map<string, Project[]>()
+    const noMonth: Project[] = []
+    for (const p of projects) {
+      if (p.source === 'separator' || !visibleIds.has(p.id)) continue
+      if (p.date) {
+        const mk = monthKey(p.date)
+        if (!byMonth.has(mk)) byMonth.set(mk, [])
+        byMonth.get(mk)!.push(p)
+      } else {
+        noMonth.push(p)
       }
     }
+    // Sort each month bucket by date
+    for (const arr of byMonth.values()) arr.sort(byDate)
+
+    const result: Project[] = []
+    const usedMonths = new Set<string>()
+
+    for (const sep of separators) {
+      const mk = sepMonths.get(sep.id)
+      const bucket = mk ? (byMonth.get(mk) ?? []) : []
+      if (bucket.length > 0 || noMonth.length === 0) {
+        if (bucket.length > 0) {
+          result.push(sep)
+          result.push(...bucket)
+          if (mk) usedMonths.add(mk)
+        }
+      }
+    }
+
+    // Months without a matching separator (e.g. manual project in a new month)
+    for (const [mk, bucket] of byMonth.entries()) {
+      if (!usedMonths.has(mk)) result.push(...bucket)
+    }
+
+    // Projects with no date at all — at the end
+    result.push(...noMonth)
+
     return result
   }, [projects, visibleIds])
 
