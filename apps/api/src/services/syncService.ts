@@ -1,6 +1,7 @@
 import { google, sheets_v4 } from 'googleapis'
 import { randomUUID } from 'crypto'
 import { prisma } from '@tv-shifts/db'
+import { findSheetConfig } from './databaseService'
 
 // ─── Sync Abort ───────────────────────────────────────────────────────────────
 
@@ -10,19 +11,17 @@ let _syncActive = false
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getSheets(): sheets_v4.Sheets {
-  // Если задан простой API ключ — используем его (таблицы должны быть открыты по ссылке)
-  if (process.env.GOOGLE_API_KEY) {
-    return google.sheets({ version: 'v4', auth: process.env.GOOGLE_API_KEY })
+function getSheets(apiKey?: string | null): sheets_v4.Sheets {
+  if (apiKey) {
+    return google.sheets({ version: 'v4', auth: apiKey })
   }
-
-  // Иначе — Service Account (для приватных таблиц)
+  // Fallback: service account (for internal/private sheets)
   const auth = new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   })
   return google.sheets({ version: 'v4', auth })
 }
@@ -461,7 +460,6 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 // ─── Sync: Individual Matrix ─────────────────────────────────────────────────
 
 async function syncMatrix(
-  _sheets: sheets_v4.Sheets,
   registryEntry: { id: string; matrixId: string; sheetUrl: string | null; projectId: string | null }
 ): Promise<{ upserted: number; errors: string[] }> {
   if (!registryEntry.sheetUrl) return { upserted: 0, errors: [] }
@@ -646,7 +644,8 @@ export async function fetchMatrixPreview(
   spreadsheetUrl: string,
   sheetTitle?: string,
 ): Promise<MatrixPreview> {
-  const sheetsApi = getSheets()
+  const apiKey = (await findSheetConfig('registry'))?.api_key ?? null
+  const sheetsApi = getSheets(apiKey)
   const spreadsheetId = extractSpreadsheetId(spreadsheetUrl)
   if (!spreadsheetId) throw new Error('Invalid matrix URL')
 
@@ -768,7 +767,8 @@ export interface MatrixShiftsData {
 const SHIFTS_SHEET_KEYWORDS = ['₽ смены', '₽ специалист', 'смены', 'специалист', 'сотрудник']
 
 export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixShiftsData | null> {
-  const sheetsApi = getSheets()
+  const apiKey = (await findSheetConfig('registry'))?.api_key ?? null
+  const sheetsApi = getSheets(apiKey)
   const spreadsheetId = extractSpreadsheetId(spreadsheetUrl)
   if (!spreadsheetId) return null
 
@@ -857,6 +857,10 @@ export interface SyncResult {
 }
 
 export async function runFullSync(): Promise<SyncResult> {
+  if (_syncActive) {
+    console.warn('[sync] Already running — skipping')
+    return { projectsUpserted: 0, registryUpserted: 0, shiftsUpserted: 0, errors: ['Sync already in progress'], durationMs: 0 }
+  }
   _abortRequested = false
   _syncActive = true
   const startedAt = Date.now()
@@ -865,7 +869,17 @@ export async function runFullSync(): Promise<SyncResult> {
   let registryUpserted = 0
   let shiftsUpserted = 0
 
+  // Load per-table API keys from DB (override env defaults)
+  const [projectsCfg, registryCfg] = await Promise.all([
+    findSheetConfig('projects'),
+    findSheetConfig('registry'),
+  ])
+
+  const projectsSheets = getSheets(projectsCfg?.api_key)
+  const registrySheets = getSheets(registryCfg?.api_key) // used for registry sheet read
+
   const hasCredentials =
+    projectsCfg?.api_key || registryCfg?.api_key ||
     process.env.GOOGLE_API_KEY ||
     (process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY)
 
@@ -874,15 +888,13 @@ export async function runFullSync(): Promise<SyncResult> {
     return { projectsUpserted: 0, registryUpserted: 0, shiftsUpserted: 0, errors: ['Google credentials not configured'], durationMs: 0 }
   }
 
-  const sheets = getSheets()
-
   // ── 1. Sync projects table ─────────────────────────────────────────────
   const projectsLog = await prisma.syncLog.create({
     data: { type: 'projects', status: 'running' },
   })
 
   try {
-    const result = await syncProjects(sheets)
+    const result = await syncProjects(projectsSheets)
     projectsUpserted = result.upserted
     allErrors.push(...result.errors)
     await prisma.syncLog.update({
@@ -910,7 +922,7 @@ export async function runFullSync(): Promise<SyncResult> {
   })
 
   try {
-    const result = await syncRegistry(sheets)
+    const result = await syncRegistry(registrySheets)
     registryUpserted = result.upserted
     allErrors.push(...result.errors)
     await prisma.syncLog.update({
@@ -947,7 +959,7 @@ export async function runFullSync(): Promise<SyncResult> {
       data: { type: 'matrix', targetId: entry.matrixId, status: 'running' },
     })
     try {
-      const result = await syncMatrix(sheets, entry)
+      const result = await syncMatrix(entry)
       shiftsUpserted += result.upserted
       allErrors.push(...result.errors)
       await prisma.syncLog.update({

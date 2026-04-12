@@ -202,37 +202,77 @@ interface SyncLog {
   targetId: string | null
 }
 
+function SyncLogRow({ log, label }: { log: SyncLog; label: string }) {
+  return (
+    <div style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{
+            fontSize: 12, padding: '2px 8px', borderRadius: 8, fontWeight: 600,
+            background: log.status === 'success' ? '#dcfce7' : log.status === 'error' ? '#fee2e2' : '#fef3c7',
+            color: log.status === 'success' ? '#16a34a' : log.status === 'error' ? '#dc2626' : '#b45309',
+          }}>
+            {log.status === 'success' ? '✓ OK' : log.status === 'error' ? '✗ Ошибка' : '⟳ ...'}
+          </span>
+          <span style={{ fontSize: 14, color: '#374151' }}>{label}</span>
+          {log.changesCount > 0 && <span style={{ fontSize: 11, color: '#64748b' }}>{log.changesCount}</span>}
+        </div>
+        <span style={{ fontSize: 13, color: '#94a3b8' }}>
+          {format(new Date(log.startedAt), 'd MMM HH:mm', { locale: ru })}
+        </span>
+      </div>
+      {log.errors?.length > 0 && (
+        <div style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>
+          {log.errors.slice(0, 2).join(' · ')}
+          {log.errors.length > 2 && ` +${log.errors.length - 2}`}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SyncButton() {
   const qc = useQueryClient()
   const [showLogs, setShowLogs] = useState(false)
+  const [showMatrixErrors, setShowMatrixErrors] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Всегда опрашиваем логи — состояние синка сохраняется после обновления страницы
-  const { data: logs = [] } = useQuery<SyncLog[]>({
-    queryKey: ['sync-logs'],
-    queryFn: () => api.get('/sync/logs', { params: { limit: 500 } }).then((r) => r.data),
-    refetchInterval: (query) => {
-      const data = (query.state.data as SyncLog[] ?? [])
-      const running = data.some((l) => l.status === 'running')
-      // Держим быстрый опрос пока ожидаем матрицы (даже в паузах между ними)
-      const total = parseInt(sessionStorage.getItem('sync-total-matrices') ?? '0', 10)
-      const done = data.filter((l) => l.type === 'matrix' && l.status !== 'running').length
-      return (running || (total > 0 && done < total)) ? 2000 : 30_000
-    },
-  })
-
-  // totalMatrices от бэкенда при триггере, сохраняем в sessionStorage чтобы не терять при refresh
+  // sessionStartMs ставится ДО запроса — чтобы сразу скрыть старые логи
+  const [sessionStartMs, setSessionStartMs] = useState<number>(() =>
+    parseInt(sessionStorage.getItem('sync-session-start') ?? '0', 10)
+  )
   const [totalMatrices, setTotalMatrices] = useState<number>(() =>
     parseInt(sessionStorage.getItem('sync-total-matrices') ?? '0', 10)
   )
 
+  // Опрос логов
+  const { data: logs = [] } = useQuery<SyncLog[]>({
+    queryKey: ['sync-logs'],
+    queryFn: () => api.get('/sync/logs', { params: { limit: 500 } }).then((r) => r.data),
+    refetchInterval: (query) => {
+      const data = query.state.data as SyncLog[] ?? []
+      const running = data.some((l) => l.status === 'running')
+      const total = parseInt(sessionStorage.getItem('sync-total-matrices') ?? '0', 10)
+      const start = parseInt(sessionStorage.getItem('sync-session-start') ?? '0', 10)
+      const sessionData = start > 0 ? data.filter((l) => new Date(l.startedAt).getTime() >= start - 10_000) : data
+      const done = sessionData.filter((l) => l.type === 'matrix' && l.status !== 'running').length
+      return (running || (total > 0 && done < total)) ? 2000 : 30_000
+    },
+  })
+
   const trigger = useMutation({
+    // onMutate: ставим sessionStart ДО отправки запроса — сразу прячем старые логи
+    onMutate: () => {
+      const now = Date.now()
+      setSessionStartMs(now)
+      sessionStorage.setItem('sync-session-start', String(now))
+      setShowLogs(true)
+    },
     mutationFn: () => api.post('/sync/trigger'),
     onSuccess: (res) => {
       const total = res.data?.totalMatrices ?? 0
       setTotalMatrices(total)
       sessionStorage.setItem('sync-total-matrices', String(total))
-      setShowLogs(true)
       qc.invalidateQueries({ queryKey: ['sync-logs'] })
     },
   })
@@ -241,48 +281,58 @@ function SyncButton() {
     mutationFn: () => api.post('/sync/stop'),
     onSuccess: () => {
       sessionStorage.removeItem('sync-total-matrices')
+      sessionStorage.removeItem('sync-session-start')
       setTotalMatrices(0)
+      setSessionStartMs(0)
       qc.invalidateQueries({ queryKey: ['sync-logs'] })
     },
   })
 
-  // Берём только логи последней сессии — нужно до matrixDone/matrixTotal для isRunning
-  const lastProjectLogEarly = logs.find((l) => l.type === 'projects')
-  const sessionStartEarly = lastProjectLogEarly?.startedAt ?? null
-  const sessionLogsEarly = sessionStartEarly
-    ? logs.filter((l) => new Date(l.startedAt) >= new Date(sessionStartEarly))
+  // Логи текущей сессии — только после sessionStartMs (буфер 10с на серверное время)
+  const sessionLogs  = sessionStartMs > 0
+    ? logs.filter((l) => new Date(l.startedAt).getTime() >= sessionStartMs - 10_000)
     : logs
-  const matrixLogsEarly = sessionLogsEarly.filter((l) => l.type === 'matrix')
-  const matrixDoneEarly = matrixLogsEarly.filter((l) => l.status !== 'running').length
+  const projectsLog  = sessionLogs.find((l) => l.type === 'projects') ?? null
+  const registryLog  = sessionLogs.find((l) => l.type === 'registry') ?? null
+  const anchorTime   = projectsLog ? new Date(projectsLog.startedAt).getTime() : 0
+  const matrixLogs   = anchorTime > 0
+    ? sessionLogs.filter((l) => l.type === 'matrix' && new Date(l.startedAt).getTime() >= anchorTime)
+    : []
 
-  // isRunning остаётся true пока не все матрицы обработаны (не сбрасываем в паузах между ними)
-  const logsRunning = logs.some((l) => l.status === 'running') || trigger.isPending
-  const matricesStillExpected = totalMatrices > 0 && matrixDoneEarly < totalMatrices
-  const isRunning = logsRunning || matricesStillExpected
-
-  // Когда синк завершился — инвалидируем данные страниц
-  const prevRunning = useRef(false)
-  useEffect(() => {
-    if (prevRunning.current && !isRunning && logs.length > 0) {
-      qc.invalidateQueries({ queryKey: ['status-rows'] })
-      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
-      qc.invalidateQueries({ queryKey: ['sync-registry'] })
-      sessionStorage.removeItem('sync-total-matrices')
-      setTotalMatrices(0)
-    }
-    prevRunning.current = isRunning
-  }, [isRunning, logs.length, qc])
-
-  const displayLogs   = sessionLogsEarly.filter((l) => l.type === 'projects' || l.type === 'registry')
-  const canStop       = isRunning && displayLogs.length > 0 && displayLogs.every((l) => l.status !== 'running')
-  const matrixLogs    = matrixLogsEarly
+  const matrixDone    = matrixLogs.filter((l) => l.status !== 'running').length
   const matrixRunning = matrixLogs.filter((l) => l.status === 'running').length
-  const matrixDone    = matrixDoneEarly
   const matrixErrors  = matrixLogs.filter((l) => l.status === 'error').length
   const matrixShifts  = matrixLogs.reduce((s, l) => s + (l.changesCount ?? 0), 0)
   const matrixTotal   = totalMatrices > 0 ? totalMatrices : null
 
-  const lastDone = displayLogs.find((l) => l.status !== 'running' && l.type === 'projects')
+  const anyLogRunning   = logs.some((l) => l.status === 'running')
+  const matricesPending = totalMatrices > 0 && matrixDone < totalMatrices
+  const isRunning       = trigger.isPending || anyLogRunning || matricesPending
+
+  // Таблицы завершены когда оба лога есть и не running
+  // (registry может появиться с задержкой — не блокируем матрицы на это)
+  const projectsDone    = !!projectsLog && projectsLog.status !== 'running'
+  const registryDone    = !!registryLog && registryLog.status !== 'running'
+  const tablesDone      = projectsDone && registryDone
+  const showMatricesRow = matrixLogs.length > 0 || (projectsDone && matricesPending && matrixTotal !== null)
+  const canStop         = projectsDone && (anyLogRunning || matricesPending)
+
+  // Завершение — инвалидируем кеши страниц
+  const prevRunning = useRef(false)
+  useEffect(() => {
+    if (prevRunning.current && !isRunning && sessionLogs.length > 0) {
+      qc.invalidateQueries({ queryKey: ['status-rows'] })
+      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
+      qc.invalidateQueries({ queryKey: ['sync-registry'] })
+      sessionStorage.removeItem('sync-total-matrices')
+      sessionStorage.removeItem('sync-session-start')
+      setTotalMatrices(0)
+      setSessionStartMs(0)
+    }
+    prevRunning.current = isRunning
+  }, [isRunning, sessionLogs.length, qc])
+
+  const lastDone = !isRunning && projectsLog?.status !== 'running' ? projectsLog : null
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -325,6 +375,36 @@ function SyncButton() {
         )}
       </button>
 
+      {showMatrixErrors && (() => {
+        const allMatrixErrors = matrixLogs.flatMap((l) => l.errors ?? [])
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            onMouseDown={() => setShowMatrixErrors(false)}
+          >
+            <div
+              style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: 560, maxHeight: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>Ошибки матриц ({allMatrixErrors.length})</div>
+                <button onClick={() => setShowMatrixErrors(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px' }}>×</button>
+              </div>
+              <div style={{ overflowY: 'auto', padding: '12px 20px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {allMatrixErrors.map((err, i) => (
+                  <div key={i} style={{ fontSize: 12, color: '#dc2626', background: '#fef2f2', borderRadius: 6, padding: '7px 10px', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                    {err}
+                  </div>
+                ))}
+                {allMatrixErrors.length === 0 && (
+                  <div style={{ color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: 16 }}>Ошибок нет</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {showLogs && (
         <div style={{
           position: 'absolute',
@@ -340,88 +420,55 @@ function SyncButton() {
           display: 'flex',
           flexDirection: 'column',
         }}>
+          {/* Header */}
           <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: 16 }}>Синхронизация</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: 16 }}>Синхронизация</span>
+              {isRunning && (
+                <span style={{ fontSize: 13, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
+                  Выполняется...
+                </span>
+              )}
+            </div>
             {canStop ? (
               <button
                 onClick={() => stop.mutate()}
                 disabled={stop.isPending}
-                style={{
-                  background: stop.isPending ? '#fca5a5' : '#ef4444',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  padding: '7px 16px',
-                  fontSize: 14,
-                  cursor: stop.isPending ? 'default' : 'pointer',
-                  fontWeight: 500,
-                }}
+                style={{ background: stop.isPending ? '#fca5a5' : '#ef4444', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 16px', fontSize: 14, cursor: stop.isPending ? 'default' : 'pointer', fontWeight: 500 }}
               >
                 {stop.isPending ? 'Остановка...' : 'Остановить'}
               </button>
             ) : (
               <button
                 onClick={() => { if (!isRunning) trigger.mutate() }}
-                disabled={isRunning}
-                style={{
-                  background: isRunning ? '#e2e8f0' : '#2563eb',
-                  color: isRunning ? '#94a3b8' : '#fff',
-                  border: 'none',
-                  borderRadius: 6,
-                  padding: '7px 16px',
-                  fontSize: 14,
-                  cursor: isRunning ? 'default' : 'pointer',
-                  fontWeight: 500,
-                }}
+                disabled={isRunning || trigger.isPending}
+                style={{ background: isRunning || trigger.isPending ? '#e2e8f0' : '#2563eb', color: isRunning || trigger.isPending ? '#94a3b8' : '#fff', border: 'none', borderRadius: 6, padding: '7px 16px', fontSize: 14, cursor: isRunning || trigger.isPending ? 'default' : 'pointer', fontWeight: 500 }}
               >
-                {isRunning ? 'Выполняется...' : 'Запустить'}
+                Запустить
               </button>
             )}
           </div>
 
+          {/* Rows */}
           <div style={{ overflowY: 'auto', flex: 1 }}>
-            {isRunning && (
-              <div style={{ padding: '14px 16px', fontSize: 14, color: '#f59e0b', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span>⟳</span> Синхронизация выполняется...
-              </div>
+            {!projectsLog && !isRunning && (
+              <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 15 }}>История пуста</div>
             )}
-            {displayLogs.length === 0 && !isRunning && (
-              <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 15 }}>
-                История пуста
-              </div>
-            )}
-            {displayLogs.map((log) => (
-              <div key={log.id} style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{
-                      fontSize: 12, padding: '2px 8px', borderRadius: 8, fontWeight: 600,
-                      background: log.status === 'success' ? '#dcfce7' : log.status === 'error' ? '#fee2e2' : '#fef3c7',
-                      color: log.status === 'success' ? '#16a34a' : log.status === 'error' ? '#dc2626' : '#b45309',
-                    }}>
-                      {log.status === 'success' ? '✓ OK' : log.status === 'error' ? '✗ Ошибка' : '⟳ ...'}
-                    </span>
-                    <span style={{ fontSize: 14, color: '#374151' }}>
-                      {log.type === 'projects' ? 'Таблица проектов' : 'Реестр матриц'}
-                    </span>
-                    {log.changesCount > 0 && (
-                      <span style={{ fontSize: 11, color: '#64748b' }}>{log.changesCount}</span>
-                    )}
-                  </div>
-                  <span style={{ fontSize: 13, color: '#94a3b8' }}>
-                    {format(new Date(log.startedAt), 'd MMM HH:mm', { locale: ru })}
-                  </span>
-                </div>
-                {log.errors?.length > 0 && (
-                  <div style={{ fontSize: 13, color: '#dc2626', marginTop: 4 }}>
-                    {log.errors.slice(0, 2).join(' · ')}
-                    {log.errors.length > 2 && ` +${log.errors.length - 2}`}
-                  </div>
-                )}
-              </div>
-            ))}
-            {(matrixLogs.length > 0 || (isRunning && matrixTotal !== null)) && (
-              <div style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9' }}>
+
+            {/* Projects row */}
+            {projectsLog && <SyncLogRow log={projectsLog} label="Таблица проектов" />}
+
+            {/* Registry row */}
+            {registryLog && <SyncLogRow log={registryLog} label="Реестр матриц" />}
+
+            {/* Matrices row — только после завершения обеих таблиц */}
+            {showMatricesRow && (
+              <div
+                style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9', cursor: matrixErrors > 0 && matrixRunning === 0 ? 'pointer' : 'default' }}
+                onClick={() => { if (matrixErrors > 0 && matrixRunning === 0) setShowMatrixErrors(true) }}
+                title={matrixErrors > 0 && matrixRunning === 0 ? 'Нажмите чтобы увидеть ошибки' : undefined}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span style={{
@@ -438,7 +485,7 @@ function SyncButton() {
                     <span style={{ fontSize: 14, color: '#374151' }}>Матрицы</span>
                     {matrixShifts > 0 && <span style={{ fontSize: 11, color: '#64748b' }}>+{matrixShifts} смен</span>}
                     {matrixErrors > 0 && matrixRunning === 0 && (
-                      <span style={{ fontSize: 11, color: '#ef4444' }}>{matrixErrors} ошибок</span>
+                      <span style={{ fontSize: 11, color: '#ef4444', textDecoration: 'underline' }}>подробнее →</span>
                     )}
                   </div>
                   {matrixLogs[matrixLogs.length - 1] && (

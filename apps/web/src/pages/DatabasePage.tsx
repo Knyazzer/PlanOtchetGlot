@@ -4,14 +4,28 @@ import { api } from '../lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface MatrixTemplate {
+  id: string
+  name: string
+  sheet_url: string
+  is_active: boolean
+  created_at: string
+}
+
 interface TableConfig {
   key: string
   label: string
   description: string
   editable: boolean
   sheetUrl: string | null
+  apiKey: string | null
   rowCount: number
   lastSyncedAt: string | null
+}
+
+interface DbConfigResponse {
+  tables: TableConfig[]
+  internalRegistry: { sheetUrl: string | null; apiKey: string | null }
 }
 
 interface PreviewData {
@@ -62,35 +76,17 @@ function PreviewModal({ tableKey, label, onClose }: { tableKey: string; label: s
         style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '94vw', maxWidth: 960, maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>{label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {data && <span style={{ fontSize: 12, color: '#94a3b8' }}>{data.rows.length} строк</span>}
-            <button
-              onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px' }}
-              title="Закрыть (Esc)"
-            >×</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px' }}>×</button>
           </div>
         </div>
-
-        {/* Body */}
         <div style={{ flex: 1, overflow: 'auto', padding: '0 20px 20px' }}>
-          {isLoading && (
-            <div style={{ color: '#64748b', fontSize: 14, padding: '24px 0' }}>Загрузка...</div>
-          )}
-          {error && (
-            <div style={{ color: '#ef4444', fontSize: 14, padding: '24px 0' }}>
-              Ошибка: {(error as any)?.response?.data?.error ?? (error as any)?.message}
-            </div>
-          )}
-          {isEmpty && (
-
-            <div style={{ color: '#94a3b8', fontSize: 14, padding: '24px 0' }}>
-              Данные не загружены
-            </div>
-          )}
+          {isLoading && <div style={{ color: '#64748b', fontSize: 14, padding: '24px 0' }}>Загрузка...</div>}
+          {error && <div style={{ color: '#ef4444', fontSize: 14, padding: '24px 0' }}>Ошибка: {(error as any)?.response?.data?.error ?? (error as any)?.message}</div>}
+          {isEmpty && <div style={{ color: '#94a3b8', fontSize: 14, padding: '24px 0' }}>Данные не загружены</div>}
           {data && data.rows.length > 0 && (
             <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%', marginTop: 4 }}>
               <thead>
@@ -126,39 +122,60 @@ function PreviewModal({ tableKey, label, onClose }: { tableKey: string; label: s
 function TableCard({ table, onPreview }: { table: TableConfig; onPreview: () => void }) {
   const qc = useQueryClient()
   const [urlDraft, setUrlDraft] = useState(table.sheetUrl ?? '')
-  const [saved, setSaved] = useState(false)
+  const [keyDraft, setKeyDraft] = useState(table.apiKey ?? '')
+  const [urlSaved, setUrlSaved] = useState(false)
+  const [keySaved, setKeySaved] = useState(false)
+  const [showKey, setShowKey] = useState(false)
 
-  // Sync draft when server data changes
   useEffect(() => { setUrlDraft(table.sheetUrl ?? '') }, [table.sheetUrl])
+  useEffect(() => { setKeyDraft(table.apiKey ?? '') }, [table.apiKey])
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['db-config'] })
+    qc.invalidateQueries({ queryKey: ['db-preview', table.key] })
+  }
 
   const saveUrl = useMutation({
     mutationFn: (sheetUrl: string | null) =>
       api.patch(`/database/config/${table.key}`, { sheetUrl }).then((r) => r.data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['db-config'] })
-      qc.invalidateQueries({ queryKey: ['db-preview', table.key] })
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    },
+    onSuccess: () => { invalidate(); setUrlSaved(true); setTimeout(() => setUrlSaved(false), 2000) },
+  })
+
+  const saveKey = useMutation({
+    mutationFn: (apiKey: string | null) =>
+      api.patch(`/database/config/${table.key}`, { apiKey }).then((r) => r.data),
+    onSuccess: () => { invalidate(); setKeySaved(true); setTimeout(() => setKeySaved(false), 2000) },
   })
 
   const refresh = useMutation({
     mutationFn: () => api.post(`/database/refresh/${table.key}`).then((r) => r.data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['db-config'] })
-      qc.invalidateQueries({ queryKey: ['db-preview', table.key] })
-    },
+    onSuccess: invalidate,
   })
 
   const urlChanged = urlDraft !== (table.sheetUrl ?? '')
+  const keyChanged = keyDraft !== (table.apiKey ?? '')
   const canRefresh = table.editable && !!table.sheetUrl && !urlChanged
   const refreshError = refresh.error
     ? ((refresh.error as any)?.response?.data?.error ?? (refresh.error as any)?.message ?? 'Ошибка')
     : null
 
+  const inputBase: React.CSSProperties = {
+    flex: 1, minWidth: 0, fontSize: 12, padding: '6px 10px',
+    border: '1px solid #e2e8f0', borderRadius: 6, outline: 'none',
+    fontFamily: 'monospace', color: '#334155', background: '#f8fafc',
+  }
+
+  const saveBtn = (changed: boolean, pending: boolean, saved: boolean): React.CSSProperties => ({
+    fontSize: 12, padding: '6px 12px', borderRadius: 6, border: 'none',
+    background: changed ? '#3b82f6' : '#f1f5f9',
+    color: changed ? '#fff' : '#94a3b8',
+    cursor: changed && !pending ? 'pointer' : 'default',
+    fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
+  })
+
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Title row */}
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Title */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -180,45 +197,50 @@ function TableCard({ table, onPreview }: { table: TableConfig; onPreview: () => 
 
       {/* URL row */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        {table.editable ? (
-          <>
-            <input
-              value={urlDraft}
-              onChange={(e) => setUrlDraft(e.target.value)}
-              placeholder="https://docs.google.com/spreadsheets/d/..."
-              style={{
-                flex: 1, minWidth: 0, fontSize: 12, padding: '6px 10px',
-                border: '1px solid #e2e8f0', borderRadius: 6, outline: 'none',
-                fontFamily: 'monospace', color: '#334155', background: '#f8fafc',
-              }}
-            />
-            <button
-              onClick={() => saveUrl.mutate(urlDraft.trim() || null)}
-              disabled={!urlChanged || saveUrl.isPending}
-              style={{
-                fontSize: 12, padding: '6px 12px', borderRadius: 6, border: 'none',
-                background: urlChanged ? '#3b82f6' : '#f1f5f9',
-                color: urlChanged ? '#fff' : '#94a3b8',
-                cursor: urlChanged && !saveUrl.isPending ? 'pointer' : 'default',
-                fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
-              }}
-            >
-              {saveUrl.isPending ? 'Сохраняю...' : saved ? '✓ Сохранено' : 'Сохранить'}
-            </button>
-          </>
-        ) : (
-          <a
-            href={table.sheetUrl ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: 12, color: '#3b82f6', textDecoration: 'underline', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}
-          >
-            {table.sheetUrl ?? '—'}
-          </a>
-        )}
+        <input
+          value={urlDraft}
+          onChange={(e) => setUrlDraft(e.target.value)}
+          placeholder="https://docs.google.com/spreadsheets/d/..."
+          style={inputBase}
+        />
+        <button
+          onClick={() => saveUrl.mutate(urlDraft.trim() || null)}
+          disabled={!urlChanged || saveUrl.isPending}
+          style={saveBtn(urlChanged, saveUrl.isPending, urlSaved)}
+        >
+          {saveUrl.isPending ? 'Сохраняю...' : urlSaved ? '✓ Сохранено' : 'Сохранить'}
+        </button>
       </div>
 
-      {/* Footer row */}
+      {/* API Key row */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>API ключ:</div>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            type={showKey ? 'text' : 'password'}
+            value={keyDraft}
+            onChange={(e) => setKeyDraft(e.target.value)}
+            placeholder="AIza..."
+            style={inputBase}
+          />
+          <button
+            onClick={() => setShowKey((v) => !v)}
+            style={{ fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
+            title={showKey ? 'Скрыть' : 'Показать'}
+          >
+            {showKey ? '🙈' : '👁'}
+          </button>
+          <button
+            onClick={() => saveKey.mutate(keyDraft.trim() || null)}
+            disabled={!keyChanged || saveKey.isPending}
+            style={saveBtn(keyChanged, saveKey.isPending, keySaved)}
+          >
+            {saveKey.isPending ? 'Сохраняю...' : keySaved ? '✓' : 'Сохранить'}
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ fontSize: 11, color: '#94a3b8' }}>
           {table.editable
@@ -257,7 +279,6 @@ function TableCard({ table, onPreview }: { table: TableConfig; onPreview: () => 
         </div>
       </div>
 
-      {/* Refresh error */}
       {refreshError && (
         <div style={{ fontSize: 12, color: '#ef4444', background: '#fef2f2', padding: '6px 10px', borderRadius: 6 }}>
           {refreshError}
@@ -267,12 +288,250 @@ function TableCard({ table, onPreview }: { table: TableConfig; onPreview: () => 
   )
 }
 
+// ─── Internal Registry Card ───────────────────────────────────────────────────
+
+function InternalRegistryCard({ sheetUrl, apiKey }: { sheetUrl: string | null; apiKey: string | null }) {
+  const qc = useQueryClient()
+  const [urlDraft, setUrlDraft] = useState(sheetUrl ?? '')
+  const [keyDraft, setKeyDraft] = useState(apiKey ?? '')
+  const [urlSaved, setUrlSaved] = useState(false)
+  const [keySaved, setKeySaved] = useState(false)
+  const [showKey, setShowKey] = useState(false)
+
+  useEffect(() => { setUrlDraft(sheetUrl ?? '') }, [sheetUrl])
+  useEffect(() => { setKeyDraft(apiKey ?? '') }, [apiKey])
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['db-config'] })
+
+  const saveUrl = useMutation({
+    mutationFn: (url: string | null) =>
+      api.patch('/database/config/internal_registry', { sheetUrl: url }).then((r) => r.data),
+    onSuccess: () => { invalidate(); setUrlSaved(true); setTimeout(() => setUrlSaved(false), 2000) },
+  })
+
+  const saveKey = useMutation({
+    mutationFn: (key: string | null) =>
+      api.patch('/database/config/internal_registry', { apiKey: key }).then((r) => r.data),
+    onSuccess: () => { invalidate(); setKeySaved(true); setTimeout(() => setKeySaved(false), 2000) },
+  })
+
+  const urlChanged = urlDraft !== (sheetUrl ?? '')
+  const keyChanged = keyDraft !== (apiKey ?? '')
+
+  const inputBase: React.CSSProperties = {
+    flex: 1, minWidth: 0, fontSize: 12, padding: '6px 10px',
+    border: '1px solid #e2e8f0', borderRadius: 6, outline: 'none',
+    fontFamily: 'monospace', color: '#334155', background: '#f8fafc',
+  }
+
+  const saveBtn = (changed: boolean, pending: boolean): React.CSSProperties => ({
+    fontSize: 12, padding: '6px 12px', borderRadius: 6, border: 'none',
+    background: changed ? '#3b82f6' : '#f1f5f9',
+    color: changed ? '#fff' : '#94a3b8',
+    cursor: changed && !pending ? 'pointer' : 'default',
+    fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
+  })
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Реестр матриц (выходная таблица)</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.4 }}>
+          Google Sheet, куда будут записываться созданные внутренние матрицы
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          value={urlDraft}
+          onChange={(e) => setUrlDraft(e.target.value)}
+          placeholder="https://docs.google.com/spreadsheets/d/..."
+          style={inputBase}
+        />
+        <button
+          onClick={() => saveUrl.mutate(urlDraft.trim() || null)}
+          disabled={!urlChanged || saveUrl.isPending}
+          style={saveBtn(urlChanged, saveUrl.isPending)}
+        >
+          {saveUrl.isPending ? 'Сохраняю...' : urlSaved ? '✓ Сохранено' : 'Сохранить'}
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>API ключ:</div>
+        <input
+          type={showKey ? 'text' : 'password'}
+          value={keyDraft}
+          onChange={(e) => setKeyDraft(e.target.value)}
+          placeholder="AIza..."
+          style={inputBase}
+        />
+        <button
+          onClick={() => setShowKey((v) => !v)}
+          style={{ fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
+        >
+          {showKey ? '🙈' : '👁'}
+        </button>
+        <button
+          onClick={() => saveKey.mutate(keyDraft.trim() || null)}
+          disabled={!keyChanged || saveKey.isPending}
+          style={saveBtn(keyChanged, saveKey.isPending)}
+        >
+          {saveKey.isPending ? 'Сохраняю...' : keySaved ? '✓' : 'Сохранить'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Matrix Templates Section ─────────────────────────────────────────────────
+
+function MatrixTemplatesSection() {
+  const qc = useQueryClient()
+  const [addUrl, setAddUrl] = useState('')
+  const [addName, setAddName] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const { data: templates = [] } = useQuery<MatrixTemplate[]>({
+    queryKey: ['matrix-templates'],
+    queryFn: () => api.get('/matrix-templates').then((r) => r.data),
+    staleTime: 30_000,
+  })
+
+  const addTemplate = useMutation({
+    mutationFn: () => api.post('/matrix-templates', { name: addName.trim(), sheetUrl: addUrl.trim() }).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['matrix-templates'] })
+      setAddUrl(''); setAddName(''); setAdding(false); setError(null)
+    },
+    onError: (e: any) => setError(e?.response?.data?.error ?? e?.message ?? 'Ошибка'),
+  })
+
+  const activate = useMutation({
+    mutationFn: (id: string) => api.post(`/matrix-templates/${id}/activate`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['matrix-templates'] }),
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api.delete(`/matrix-templates/${id}`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['matrix-templates'] }),
+  })
+
+  const inputStyle: React.CSSProperties = {
+    fontSize: 12, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6,
+    outline: 'none', color: '#1e293b', background: '#f8fafc', fontFamily: 'monospace',
+  }
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Шаблоны матриц</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Ссылки на Google Sheets — шаблоны, по которым создаются новые матрицы</div>
+        </div>
+        <button
+          onClick={() => setAdding((v) => !v)}
+          style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500 }}
+        >
+          + Добавить
+        </button>
+      </div>
+
+      {adding && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: '#f8fafc', borderRadius: 8, padding: 12 }}>
+          <input
+            value={addName}
+            onChange={(e) => setAddName(e.target.value)}
+            placeholder="Название шаблона"
+            style={{ ...inputStyle, fontFamily: 'inherit' }}
+          />
+          <input
+            value={addUrl}
+            onChange={(e) => setAddUrl(e.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/..."
+            style={inputStyle}
+          />
+          {error && <div style={{ fontSize: 12, color: '#ef4444' }}>{error}</div>}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => { if (!addName.trim() || !addUrl.trim()) { setError('Заполните название и URL'); return } addTemplate.mutate() }}
+              disabled={addTemplate.isPending}
+              style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500 }}
+            >
+              {addTemplate.isPending ? 'Сохраняю...' : 'Сохранить'}
+            </button>
+            <button onClick={() => { setAdding(false); setError(null) }} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
+
+      {templates.length === 0 && !adding && (
+        <div style={{ fontSize: 13, color: '#94a3b8' }}>Шаблоны не добавлены</div>
+      )}
+
+      {templates.map((t) => (
+        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: t.is_active ? '#eff6ff' : '#f8fafc', borderRadius: 8, border: t.is_active ? '1px solid #bfdbfe' : '1px solid #e2e8f0' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>{t.name}</span>
+              {t.is_active && (
+                <span style={{ fontSize: 10, fontWeight: 700, background: '#2563eb', color: '#fff', borderRadius: 6, padding: '2px 7px', letterSpacing: '0.02em' }}>АКТИВНЫЙ</span>
+              )}
+            </div>
+            <a
+              href={t.sheet_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 11, color: '#3b82f6', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 480 }}
+            >
+              {t.sheet_url}
+            </a>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+            {!t.is_active && (
+              <button
+                onClick={() => activate.mutate(t.id)}
+                disabled={activate.isPending}
+                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}
+              >
+                Выбрать для создания
+              </button>
+            )}
+            <button
+              onClick={() => { if (window.confirm(`Удалить шаблон «${t.name}»?`)) remove.mutate(t.id) }}
+              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fecaca', background: 'none', cursor: 'pointer', color: '#ef4444' }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Section Label ─────────────────────────────────────────────────────────────
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 8, marginBottom: 2 }}>
+      {children}
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+type Tab = 'external' | 'internal'
+
 export function DatabasePage() {
+  const [tab, setTab] = useState<Tab>('external')
   const [previewKey, setPreviewKey] = useState<string | null>(null)
 
-  const { data, isLoading, error } = useQuery<{ tables: TableConfig[] }>({
+  const { data, isLoading, error } = useQuery<DbConfigResponse>({
     queryKey: ['db-config'],
     queryFn: () => api.get('/database/config').then((r) => r.data),
     staleTime: 30_000,
@@ -280,41 +539,65 @@ export function DatabasePage() {
 
   const previewTable = data?.tables.find((t) => t.key === previewKey)
 
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    fontSize: 13, fontWeight: 600, padding: '7px 18px', borderRadius: 7,
+    border: 'none', cursor: 'pointer',
+    background: active ? '#2563eb' : 'transparent',
+    color: active ? '#fff' : '#64748b',
+    transition: 'background 0.15s, color 0.15s',
+  })
+
   return (
     <div style={{ padding: '24px 28px', maxWidth: 860, margin: '0 auto' }}>
-      <div style={{ marginBottom: 24 }}>
+      {/* Header */}
+      <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 20, fontWeight: 700, color: '#1e293b' }}>Источники данных</div>
         <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-          Настройка подключений к Google Sheets и ручная загрузка данных
+          Настройка подключений к Google Sheets и внутренние конфигурации
         </div>
       </div>
 
-      {isLoading && (
-        <div style={{ color: '#64748b', fontSize: 14 }}>Загрузка...</div>
-      )}
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: '#f1f5f9', borderRadius: 9, padding: 3, width: 'fit-content' }}>
+        <button style={tabStyle(tab === 'external')} onClick={() => setTab('external')}>
+          Внешние Google Sheets
+        </button>
+        <button style={tabStyle(tab === 'internal')} onClick={() => setTab('internal')}>
+          Внутренние
+        </button>
+      </div>
+
+      {isLoading && <div style={{ color: '#64748b', fontSize: 14 }}>Загрузка...</div>}
       {error && (
         <div style={{ color: '#ef4444', fontSize: 14 }}>
           Ошибка загрузки: {(error as any)?.response?.data?.error ?? (error as any)?.message}
         </div>
       )}
 
-      {data && (
+      {data && tab === 'external' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Секция: Автосинк */}
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4, marginBottom: 2 }}>
-            Автоматическая синхронизация
-          </div>
+          <SectionLabel>Автоматическая синхронизация</SectionLabel>
           {data.tables.filter((t) => !t.editable).map((t) => (
             <TableCard key={t.key} table={t} onPreview={() => setPreviewKey(t.key)} />
           ))}
 
-          {/* Секция: Ручная загрузка */}
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 12, marginBottom: 2 }}>
-            Ручная загрузка
-          </div>
+          <SectionLabel>Ручная загрузка</SectionLabel>
           {data.tables.filter((t) => t.editable).map((t) => (
             <TableCard key={t.key} table={t} onPreview={() => setPreviewKey(t.key)} />
           ))}
+        </div>
+      )}
+
+      {data && tab === 'internal' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <SectionLabel>Реестр матриц</SectionLabel>
+          <InternalRegistryCard
+            sheetUrl={data.internalRegistry.sheetUrl}
+            apiKey={data.internalRegistry.apiKey}
+          />
+
+          <SectionLabel>Шаблоны матриц</SectionLabel>
+          <MatrixTemplatesSection />
         </div>
       )}
 

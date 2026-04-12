@@ -65,6 +65,8 @@ export async function syncRoutes(app: FastifyInstance) {
       googleRowIndex: r.google_row_index,
       hasShiftsData:  r.has_shifts_data,
       lastSyncedAt:   r.last_synced_at,
+      source:         r.source ?? 'google',
+      templateId:     r.template_id ?? null,
     }))
   })
 

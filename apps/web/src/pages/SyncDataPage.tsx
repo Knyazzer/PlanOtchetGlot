@@ -42,6 +42,23 @@ interface RegistryEntry {
   googleRowIndex: number | null
   hasShiftsData: boolean | null
   lastSyncedAt: string | null
+  source: string
+  templateId: string | null
+}
+
+interface MatrixTemplate {
+  id: string
+  name: string
+  sheet_url: string
+  is_active: boolean
+}
+
+interface ProjectMember {
+  id: string
+  project_id: string
+  name: string
+  position: string | null
+  shifts: Record<string, string>
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -484,7 +501,7 @@ function contrastColor(hex: string): string {
   return lum > 0.55 ? '#1e293b' : '#fff'
 }
 
-function ProjectDetailModal({ project, onClose }: { project: Project; onClose: () => void }) {
+function ProjectDetailModal({ project, onClose, onEdit, onDelete }: { project: Project; onClose: () => void; onEdit?: () => void; onDelete?: () => void }) {
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -554,14 +571,31 @@ function ProjectDetailModal({ project, onClose }: { project: Project; onClose: (
       >
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', lineHeight: 1.4 }}>{project.name}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <SourceBadge source={project.source} />
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', lineHeight: 1.4 }}>{project.name}</div>
+            </div>
             {project.client && <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{project.client}</div>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <span style={{ padding: '3px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: `${statusColor}22`, color: statusColor }}>
               {status}
             </span>
+            {project.source === 'manual' && onEdit && (
+              <button
+                onClick={onEdit}
+                style={{ background: 'none', border: '1px solid #e2e8f0', color: '#475569', cursor: 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}
+                title="Редактировать"
+              >Изменить</button>
+            )}
+            {project.source === 'manual' && onDelete && (
+              <button
+                onClick={onDelete}
+                style={{ background: 'none', border: '1px solid #fecaca', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}
+                title="Удалить проект"
+              >Удалить</button>
+            )}
             <button
               onClick={onClose}
               style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px', borderRadius: 4 }}
@@ -588,6 +622,352 @@ function ProjectDetailModal({ project, onClose }: { project: Project; onClose: (
             {bottomRow.map(f => <Field key={f.fieldKey} {...f} />)}
           </div>
 
+          {/* Sections only for internal projects */}
+          {project.source === 'manual' && (
+            <>
+              <ProjectMatrixSection projectId={project.id} client={project.client} />
+              <ProjectTeamSection projectId={project.id} />
+            </>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Project Matrix Section ───────────────────────────────────────────────────
+
+function ProjectMatrixSection({ projectId, client }: { projectId: string; client: string | null }) {
+  const qc = useQueryClient()
+  const [picking, setPicking] = useState(false)
+  const [pickedMatrixId, setPickedMatrixId] = useState<string>('')
+  const [pickedSlot, setPickedSlot] = useState<string>('1')
+
+  const { data: linkInfo, isLoading } = useQuery<{
+    matrixRegistryId: string | null
+    blockSlot: number | null
+    linkedMatrix: { id: string; name: string | null; client: string | null; matrixId: string; sheetUrl: string | null; source: string } | null
+  }>({
+    queryKey: ['project-link', projectId],
+    queryFn: () => api.get(`/status-rows/${projectId}/link-info`).then((r) => r.data),
+    staleTime: 30_000,
+  })
+
+  const { data: matrices = [] } = useQuery<{ id: string; name: string | null; client: string | null; matrix_id: string }[]>({
+    queryKey: ['internal-matrices', client],
+    queryFn: () => api.get('/internal-matrix').then((r) => r.data),
+    enabled: picking,
+    staleTime: 30_000,
+  })
+
+  const link = useMutation({
+    mutationFn: () => api.patch(`/status-rows/${projectId}`, {
+      matrixRegistryId: pickedMatrixId || null,
+      blockSlot: pickedMatrixId ? parseInt(pickedSlot) : null,
+    }).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project-link', projectId] })
+      setPicking(false)
+    },
+  })
+
+  const unlink = useMutation({
+    mutationFn: () => api.patch(`/status-rows/${projectId}`, { matrixRegistryId: null, blockSlot: null }).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-link', projectId] }),
+  })
+
+  const sectionLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }
+
+  return (
+    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+      <div style={sectionLabel}>Матрица (внутренняя)</div>
+      {isLoading && <div style={{ fontSize: 13, color: '#94a3b8' }}>Загрузка...</div>}
+      {!isLoading && linkInfo && (
+        <>
+          {linkInfo.linkedMatrix ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4', borderRadius: 8, padding: '8px 12px' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#15803d' }}>{linkInfo.linkedMatrix.name ?? linkInfo.linkedMatrix.matrixId}</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>
+                  {linkInfo.linkedMatrix.client && `${linkInfo.linkedMatrix.client} · `}Блок {linkInfo.blockSlot ?? '—'}
+                </div>
+              </div>
+              <button onClick={() => unlink.mutate()} disabled={unlink.isPending} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #bbf7d0', background: 'none', color: '#16a34a', cursor: 'pointer' }}>
+                Отвязать
+              </button>
+              <button onClick={() => { setPicking(true); setPickedMatrixId(linkInfo.linkedMatrix!.id); setPickedSlot(String(linkInfo.blockSlot ?? 1)) }} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
+                Изменить
+              </button>
+            </div>
+          ) : (
+            <div style={{ fontSize: 13, color: '#94a3b8' }}>Не привязана</div>
+          )}
+
+          {!picking && (
+            <button onClick={() => setPicking(true)} style={{ marginTop: 8, fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
+              {linkInfo.linkedMatrix ? 'Изменить привязку' : '+ Привязать матрицу'}
+            </button>
+          )}
+
+          {picking && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8, background: '#f8fafc', borderRadius: 8, padding: 12 }}>
+              <select
+                value={pickedMatrixId}
+                onChange={(e) => setPickedMatrixId(e.target.value)}
+                style={{ fontSize: 13, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, color: '#1e293b', background: '#fff' }}
+              >
+                <option value="">— Выберите матрицу —</option>
+                {matrices.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name ?? m.matrix_id}{m.client ? ` (${m.client})` : ''}</option>
+                ))}
+              </select>
+              {matrices.length === 0 && <div style={{ fontSize: 12, color: '#94a3b8' }}>Нет созданных матриц</div>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>Блок №</span>
+                <input type="number" min="1" max="20" value={pickedSlot} onChange={(e) => setPickedSlot(e.target.value)}
+                  style={{ width: 60, fontSize: 13, padding: '5px 8px', border: '1px solid #e2e8f0', borderRadius: 6, color: '#1e293b', background: '#fff' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => link.mutate()} disabled={!pickedMatrixId || link.isPending}
+                  style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: pickedMatrixId ? 'pointer' : 'default', fontWeight: 500 }}>
+                  {link.isPending ? 'Сохраняю...' : 'Привязать'}
+                </button>
+                <button onClick={() => setPicking(false)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Project Team Section ─────────────────────────────────────────────────────
+
+function ProjectTeamSection({ projectId }: { projectId: string }) {
+  const qc = useQueryClient()
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [newPos, setNewPos] = useState('')
+
+  const { data: members = [], isLoading } = useQuery<ProjectMember[]>({
+    queryKey: ['project-members', projectId],
+    queryFn: () => api.get(`/project-members?projectId=${projectId}`).then((r) => r.data),
+    staleTime: 30_000,
+  })
+
+  const addMember = useMutation({
+    mutationFn: () => api.post('/project-members', { projectId, name: newName.trim(), position: newPos.trim() || null }).then((r) => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['project-members', projectId] }); setNewName(''); setNewPos(''); setAdding(false) },
+  })
+
+  const removeMember = useMutation({
+    mutationFn: (id: string) => api.delete(`/project-members/${id}`).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', projectId] }),
+  })
+
+  const sectionLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }
+  const inputS: React.CSSProperties = { fontSize: 13, padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, color: '#1e293b', background: '#fff', flex: 1, minWidth: 0 }
+
+  return (
+    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={sectionLabel}>Команда{members.length > 0 ? ` (${members.length})` : ''}</div>
+        <button onClick={() => setAdding((v) => !v)} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>+ Добавить</button>
+      </div>
+
+      {isLoading && <div style={{ fontSize: 13, color: '#94a3b8' }}>Загрузка...</div>}
+
+      {adding && (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="ФИО *" style={inputS} />
+          <input value={newPos} onChange={(e) => setNewPos(e.target.value)} placeholder="Должность" style={{ ...inputS, flex: '0 0 160px' }} />
+          <button onClick={() => { if (newName.trim()) addMember.mutate() }} disabled={!newName.trim() || addMember.isPending}
+            style={{ fontSize: 12, padding: '6px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', flexShrink: 0 }}>
+            {addMember.isPending ? '...' : 'OK'}
+          </button>
+          <button onClick={() => setAdding(false)} style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569', flexShrink: 0 }}>×</button>
+        </div>
+      )}
+
+      {members.length === 0 && !isLoading && !adding && (
+        <div style={{ fontSize: 13, color: '#94a3b8' }}>Команда не назначена</div>
+      )}
+
+      {members.map((m) => (
+        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: '#f8fafc', borderRadius: 6, marginBottom: 4 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: '#1e293b' }}>{m.name}</span>
+            {m.position && <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>{m.position}</span>}
+          </div>
+          <button onClick={() => removeMember.mutate(m.id)} style={{ fontSize: 12, color: '#94a3b8', border: 'none', background: 'none', cursor: 'pointer', padding: '2px 6px' }} title="Удалить">×</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Source badge ─────────────────────────────────────────────────────────────
+
+function SourceBadge({ source }: { source: string }) {
+  const isInternal = source === 'manual'
+  return (
+    <span title={isInternal ? 'Создан внутри системы' : 'Из Google Sheets'} style={{
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      width: 18, height: 18, borderRadius: 4, fontSize: 10, fontWeight: 700,
+      background: isInternal ? '#dcfce7' : '#dbeafe',
+      color: isInternal ? '#16a34a' : '#2563eb',
+      flexShrink: 0,
+    }}>
+      {isInternal ? '✎' : 'G'}
+    </span>
+  )
+}
+
+// ─── Project Form Modal ───────────────────────────────────────────────────────
+
+const STATUS_OPTIONS = [
+  { value: 'request',        label: 'Запрос' },
+  { value: 'negotiation',    label: 'На согласовании' },
+  { value: 'preproduction',  label: 'Препродакшн' },
+  { value: 'production',     label: 'Продакшн' },
+  { value: 'postproduction', label: 'Постпродакшн' },
+  { value: 'delivered',      label: 'Сдан' },
+  { value: 'rejected',       label: 'Не согласован' },
+  { value: 'cancelled',      label: 'Отменён' },
+]
+
+function ProjectFormModal({
+  project,
+  onClose,
+  onSaved,
+}: {
+  project?: Project
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const isEdit = !!project
+
+  const [form, setForm] = useState({
+    name:           project?.name           ?? '',
+    client:         project?.client         ?? '',
+    execProducer:   project?.execProducer   ?? '',
+    lineProducer:   project?.lineProducer   ?? '',
+    accountManager: project?.accountManager ?? '',
+    date:           project?.date ? project.date.slice(0, 10) : '',
+    time:           project?.time           ?? '',
+    format:         project?.format         ?? '',
+    location:       project?.location       ?? '',
+    status:         project?.status         ?? 'request',
+  })
+
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => { window.removeEventListener('keydown', handler); document.body.style.overflow = '' }
+  }, [onClose])
+
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const save = useMutation({
+    mutationFn: () => {
+      const body = {
+        name:           form.name.trim(),
+        client:         form.client.trim()         || null,
+        execProducer:   form.execProducer.trim()   || null,
+        lineProducer:   form.lineProducer.trim()   || null,
+        accountManager: form.accountManager.trim() || null,
+        date:           form.date ? new Date(form.date).toISOString() : null,
+        time:           form.time.trim()           || null,
+        format:         form.format.trim()         || null,
+        location:       form.location.trim()       || null,
+        status:         form.status,
+      }
+      return isEdit
+        ? api.patch(`/status-rows/${project!.id}`, body).then((r) => r.data)
+        : api.post('/status-rows', body).then((r) => r.data)
+    },
+    onSuccess: () => { onSaved(); onClose() },
+    onError: (e: any) => setError(e?.response?.data?.error ?? e?.message ?? 'Ошибка'),
+  })
+
+  const fieldStyle: React.CSSProperties = {
+    width: '100%', fontSize: 13, padding: '7px 10px', border: '1px solid #e2e8f0',
+    borderRadius: 6, outline: 'none', boxSizing: 'border-box', color: '#1e293b', background: '#f8fafc',
+  }
+  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }
+  const fieldGroup = (label: string, key: string, placeholder?: string) => (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={labelStyle}>{label}</div>
+      <input style={fieldStyle} value={(form as any)[key]} onChange={set(key)} placeholder={placeholder} />
+    </div>
+  )
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onMouseDown={onClose}
+    >
+      <div
+        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать проект' : 'Новый проект'}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px' }}>×</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {fieldGroup('Название *', 'name', 'Название проекта')}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {fieldGroup('Клиент', 'client', 'Клиент')}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={labelStyle}>Статус</div>
+              <select style={fieldStyle} value={form.status} onChange={set('status')}>
+                {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {fieldGroup('Исп. продюсер', 'execProducer')}
+            {fieldGroup('Лайн-продюсер', 'lineProducer')}
+          </div>
+
+          {fieldGroup('Аккаунт-менеджер', 'accountManager')}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={labelStyle}>Дата</div>
+              <input type="date" style={fieldStyle} value={form.date} onChange={set('date')} />
+            </div>
+            {fieldGroup('Время', 'time', '10:00')}
+            {fieldGroup('Формат', 'format', 'ТВ / Онлайн')}
+          </div>
+
+          {fieldGroup('Локация', 'location', 'Адрес или название')}
+
+          {error && <div style={{ fontSize: 13, color: '#ef4444', background: '#fef2f2', padding: '8px 12px', borderRadius: 6 }}>{error}</div>}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
+          <button
+            onClick={() => { if (!form.name.trim()) { setError('Название обязательно'); return } save.mutate() }}
+            disabled={save.isPending}
+            style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: 'none', background: save.isPending ? '#93c5fd' : '#2563eb', color: '#fff', cursor: save.isPending ? 'default' : 'pointer', fontWeight: 500 }}
+          >
+            {save.isPending ? 'Сохраняю...' : isEdit ? 'Сохранить' : 'Создать'}
+          </button>
         </div>
       </div>
     </div>
@@ -605,14 +985,24 @@ function ProjectsTable({
   sheetUrl: string | null
   primaryFilters: Record<string, string[]>
 }) {
+  const qc = useQueryClient()
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-proj')
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [formProject, setFormProject] = useState<Project | 'new' | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(9999)
+
+  const deleteProject = useMutation({
+    mutationFn: (id: string) => api.delete(`/status-rows/${id}`).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
+      closeProject()
+    },
+  })
 
   function openProject(p: Project) {
     if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null }
@@ -730,7 +1120,7 @@ function ProjectsTable({
   }, [projects, visibleIds])
 
   const visibleCols = PROJ_COLS.filter((c) => !hiddenCols.has(c.key))
-  const colSpanCount = visibleCols.length
+  const colSpanCount = visibleCols.length + 1 // +1 for source icon column
   const totalColFilters = Object.values(colFilters).reduce((s, a) => s + a.length, 0)
 
 
@@ -773,11 +1163,19 @@ function ProjectsTable({
             {afterSecondary.length} / {allNonSep.length}
           </span>
         </span>
-        {totalColFilters > 0 && (
-          <button onClick={() => setColFilters({})} style={resetBtn}>
-            Сбросить ({totalColFilters})
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {totalColFilters > 0 && (
+            <button onClick={() => setColFilters({})} style={resetBtn}>
+              Сбросить ({totalColFilters})
+            </button>
+          )}
+          <button
+            onClick={() => setFormProject('new')}
+            style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+          >
+            + Добавить проект
           </button>
-        )}
+        </div>
       </div>
 
       <div ref={scrollRef} style={{ overflowX: 'hidden', overflowY: 'auto', flex: 1 }}>
@@ -789,6 +1187,7 @@ function ProjectsTable({
           <table style={{ borderCollapse: 'separate', borderSpacing: '0 4px', fontSize: 13, width: '100%' }}>
             <thead>
               <tr>
+                <th style={{ ...thBase, width: 28, padding: '6px 4px 6px 8px' }} />
                 {visibleCols.map((col) => {
                   const allVals = (colValues as Record<string, string[]>)[col.key] ?? []
                   const activeSel = colFilters[col.key]
@@ -852,6 +1251,9 @@ function ProjectsTable({
                     onClick={() => openProject(p)}
                     title="Нажмите для просмотра деталей"
                   >
+                    <td style={{ ...tdStyle, width: 28, padding: '4px 4px 4px 8px', background: highlightedId === p.id ? `linear-gradient(rgba(147,197,253,0.35),rgba(147,197,253,0.35)),${rowBg}` : rowBg }}>
+                      <SourceBadge source={p.source} />
+                    </td>
                     {visibleCols.map((col) => {
                       const isHighlighted = highlightedId === p.id
                       const chipBg = getValueChipColor(col.key, p)
@@ -885,7 +1287,23 @@ function ProjectsTable({
     </div>
 
     {selectedProject && (
-      <ProjectDetailModal project={selectedProject} onClose={closeProject} />
+      <ProjectDetailModal
+        project={selectedProject}
+        onClose={closeProject}
+        onEdit={() => { setFormProject(selectedProject); closeProject() }}
+        onDelete={() => {
+          if (window.confirm(`Удалить проект «${selectedProject.name}»?`)) {
+            deleteProject.mutate(selectedProject.id)
+          }
+        }}
+      />
+    )}
+    {formProject != null && (
+      <ProjectFormModal
+        project={formProject === 'new' ? undefined : formProject}
+        onClose={() => setFormProject(null)}
+        onSaved={() => { qc.invalidateQueries({ queryKey: ['status-rows-sync'] }); setFormProject(null) }}
+      />
     )}
     </>
   )
@@ -897,7 +1315,7 @@ interface ShiftRow { isSeparator: true; text: string }
 interface ShiftEmployee { isSeparator: false; name: string; role: string | null; employmentType: string | null; shifts: boolean[] }
 interface MatrixShiftsData { sheetTitle: string; dates: string[]; activeCols: number[]; rows: (ShiftRow | ShiftEmployee)[] }
 
-function RegistryDetailModal({ entry, onClose, onShiftsLoaded }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void }) {
+function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void }) {
   const [tab, setTab] = useState<'info' | 'shifts'>('info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
@@ -1006,11 +1424,22 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded }: { entry: Regist
             <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', lineHeight: 1.4 }}>{entry.name ?? entry.matrixId}</div>
             {entry.client && <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{entry.client}</div>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {entry.status && (
               <span style={{ padding: '3px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: '#f1f5f9', color: '#475569' }}>
                 {entry.status}
               </span>
+            )}
+            <SourceBadge source={entry.source ?? 'google'} />
+            {onEdit && (
+              <button onClick={onEdit} style={{ background: 'none', border: '1px solid #e2e8f0', color: '#475569', cursor: 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}>
+                Изменить
+              </button>
+            )}
+            {onDelete && (
+              <button onClick={onDelete} style={{ background: 'none', border: '1px solid #fecaca', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}>
+                Удалить
+              </button>
             )}
             <button
               onClick={onClose}
@@ -1393,6 +1822,130 @@ function getRegValue(r: RegistryEntry, col: string): string {
   }
 }
 
+// ─── Matrix Form Modal ────────────────────────────────────────────────────────
+
+function MatrixFormModal({
+  matrix,
+  onClose,
+  onSaved,
+}: {
+  matrix?: RegistryEntry
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const isEdit = !!matrix
+  const [form, setForm] = useState({
+    name:       matrix?.name       ?? '',
+    client:     matrix?.client     ?? '',
+    unit:       matrix?.unit       ?? '',
+    format:     matrix?.format     ?? '',
+    date:       matrix?.date ? matrix.date.slice(0, 10) : '',
+    producer:   matrix?.producer   ?? '',
+    manager:    matrix?.manager    ?? '',
+    curator:    matrix?.curator    ?? '',
+    templateId: matrix?.templateId ?? '',
+  })
+  const [error, setError] = useState<string | null>(null)
+
+  const { data: templates = [] } = useQuery<MatrixTemplate[]>({
+    queryKey: ['matrix-templates'],
+    queryFn: () => api.get('/matrix-templates').then((r) => r.data),
+  })
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    document.body.style.overflow = 'hidden'
+    return () => { window.removeEventListener('keydown', handler); document.body.style.overflow = '' }
+  }, [onClose])
+
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const save = useMutation({
+    mutationFn: () => {
+      const body = {
+        name:       form.name.trim(),
+        client:     form.client.trim()     || null,
+        unit:       form.unit.trim()       || null,
+        format:     form.format.trim()     || null,
+        date:       form.date ? new Date(form.date).toISOString() : null,
+        producer:   form.producer.trim()   || null,
+        manager:    form.manager.trim()    || null,
+        curator:    form.curator.trim()    || null,
+        templateId: form.templateId       || null,
+      }
+      return isEdit
+        ? api.patch(`/internal-matrix/${matrix!.id}`, body).then((r) => r.data)
+        : api.post('/internal-matrix', body).then((r) => r.data)
+    },
+    onSuccess: () => { onSaved(); onClose() },
+    onError: (e: any) => setError(e?.response?.data?.error ?? e?.message ?? 'Ошибка'),
+  })
+
+  const fs: React.CSSProperties = {
+    width: '100%', fontSize: 13, padding: '7px 10px', border: '1px solid #e2e8f0',
+    borderRadius: 6, outline: 'none', color: '#1e293b', background: '#f8fafc', boxSizing: 'border-box',
+  }
+  const ls: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }
+  const fg = (label: string, key: string, placeholder?: string) => (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={ls}>{label}</div>
+      <input style={fs} value={(form as any)[key]} onChange={set(key)} placeholder={placeholder} />
+    </div>
+  )
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onMouseDown={onClose}>
+      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 520, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onMouseDown={(e) => e.stopPropagation()}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать матрицу' : 'Новая матрица'}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20 }}>×</button>
+        </div>
+        <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {fg('Название *', 'name', 'Название матрицы')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {fg('Клиент', 'client')}
+            {fg('Юнит', 'unit')}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {fg('Формат', 'format')}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={ls}>Дата</div>
+              <input type="date" style={fs} value={form.date} onChange={set('date')} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            {fg('Продюсер', 'producer')}
+            {fg('Менеджер', 'manager')}
+            {fg('Куратор', 'curator')}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={ls}>Шаблон матрицы</div>
+            <select style={fs} value={form.templateId} onChange={set('templateId')}>
+              <option value="">— Без шаблона —</option>
+              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.is_active ? ' (активный)' : ''}</option>)}
+            </select>
+          </div>
+          {error && <div style={{ fontSize: 13, color: '#ef4444', background: '#fef2f2', padding: '8px 12px', borderRadius: 6 }}>{error}</div>}
+        </div>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button onClick={onClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
+          <button
+            onClick={() => { if (!form.name.trim()) { setError('Название обязательно'); return } save.mutate() }}
+            disabled={save.isPending}
+            style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: 'none', background: save.isPending ? '#93c5fd' : '#2563eb', color: '#fff', cursor: save.isPending ? 'default' : 'pointer', fontWeight: 500 }}
+          >
+            {save.isPending ? 'Сохраняю...' : isEdit ? 'Сохранить' : 'Создать'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Registry Table ───────────────────────────────────────────────────────────
+
 function RegistryTable({
   registry, loading, sheetUrl,
   primaryFilters,
@@ -1407,6 +1960,7 @@ function RegistryTable({
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [selectedMatrix, setSelectedMatrix] = useState<string | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<RegistryEntry | null>(null)
+  const [formMatrix, setFormMatrix] = useState<RegistryEntry | 'new' | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -1540,11 +2094,19 @@ function RegistryTable({
             {afterSecondary.length} / {registry.length}
           </span>
         </span>
-        {totalColFilters > 0 && (
-          <button onClick={() => setColFilters({})} style={resetBtn}>
-            Сбросить ({totalColFilters})
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {totalColFilters > 0 && (
+            <button onClick={() => setColFilters({})} style={resetBtn}>
+              Сбросить ({totalColFilters})
+            </button>
+          )}
+          <button
+            onClick={() => setFormMatrix('new')}
+            style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+          >
+            + Создать матрицу
           </button>
-        )}
+        </div>
       </div>
 
       <div ref={scrollRef} style={{ overflowX: 'hidden', overflowY: 'auto', flex: 1 }}>
@@ -1632,10 +2194,28 @@ function RegistryTable({
       </div>
     </div>
     {selectedEntry && (
-      <RegistryDetailModal entry={selectedEntry} onClose={closeEntry} onShiftsLoaded={handleShiftsLoaded} />
+      <RegistryDetailModal
+        entry={selectedEntry}
+        onClose={closeEntry}
+        onShiftsLoaded={handleShiftsLoaded}
+        onEdit={selectedEntry.source === 'internal' ? () => { setFormMatrix(selectedEntry); closeEntry() } : undefined}
+        onDelete={selectedEntry.source === 'internal' ? () => {
+          if (window.confirm(`Удалить матрицу «${selectedEntry.name}»?`)) {
+            api.delete(`/internal-matrix/${selectedEntry.id}`)
+              .then(() => { queryClient.invalidateQueries({ queryKey: ['sync-registry'] }); closeEntry() })
+          }
+        } : undefined}
+      />
     )}
     {selectedMatrix && (
       <MatrixPreviewModal matrixId={selectedMatrix} onClose={() => setSelectedMatrix(null)} />
+    )}
+    {formMatrix != null && (
+      <MatrixFormModal
+        matrix={formMatrix === 'new' ? undefined : formMatrix}
+        onClose={() => setFormMatrix(null)}
+        onSaved={() => { queryClient.invalidateQueries({ queryKey: ['sync-registry'] }); setFormMatrix(null) }}
+      />
     )}
     </>
   )

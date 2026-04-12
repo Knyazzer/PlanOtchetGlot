@@ -19,6 +19,9 @@ import { syncRoutes } from './routes/sync'
 import { changeLogsRoutes } from './routes/changeLogs'
 import { analyticsRoutes } from './routes/analytics'
 import { databaseRoutes } from './routes/database'
+import { matrixTemplatesRoutes } from './routes/matrixTemplates'
+import { internalMatrixRoutes } from './routes/internalMatrix'
+import { projectMembersRoutes } from './routes/projectMembers'
 import { runFullSync } from './services/syncService'
 import { prisma } from '@tv-shifts/db'
 
@@ -77,6 +80,9 @@ async function main() {
   await app.register(changeLogsRoutes, { prefix: '/change-logs' })
   await app.register(analyticsRoutes, { prefix: '/analytics' })
   await app.register(databaseRoutes, { prefix: '/database' })
+  await app.register(matrixTemplatesRoutes, { prefix: '/matrix-templates' })
+  await app.register(internalMatrixRoutes, { prefix: '/internal-matrix' })
+  await app.register(projectMembersRoutes, { prefix: '/project-members' })
 
   // Удалить все логи синхронизации при старте (старые данные неактуальны)
   await prisma.syncLog.deleteMany({})

@@ -133,14 +133,18 @@ model StatusRow {
   notes           String?
   uncertainFields String[]        @default([]) @map("uncertain_fields")
   googleRowIndex  Int?            @map("google_row_index")
+  matrixRegistryId String?        @map("matrix_registry_id")
+  blockSlot       Int?            @map("block_slot")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   matrixRegistry  MatrixRegistry?
+  linkedMatrix    MatrixRegistry? @relation("ProjectMatrixLink", fields: [matrixRegistryId], references: [id])
   assignments     ProjectAssignment[]
   shiftEntries    ShiftEntry[]
   days            ProjectDay[]
   dealStatusRows  DealStatusRow[]
+  members         ProjectMember[]
 
   @@index([date])
   @@map("status_rows")
@@ -177,11 +181,14 @@ model MatrixRegistry {
   hasShiftsData  Boolean? @map("has_shifts_data")
   shiftsCache    Json?    @map("shifts_cache")
   lastSyncedAt   DateTime? @map("last_synced_at")
+  source         String    @default("google")
+  templateId     String?   @map("template_id")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  statusRow    StatusRow?     @relation(fields: [projectId], references: [id])
+  statusRow    StatusRow?      @relation(fields: [projectId], references: [id])
   dealMatrices DealMatrix[]
+  linkedProjects StatusRow[]   @relation("ProjectMatrixLink")
 
   @@map("matrix_registry")
 }
@@ -351,6 +358,29 @@ model DealMatrix {
 
   @@id([dealId, matrixId])
   @@map("deal_matrices")
+}
+
+model MatrixTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  sheetUrl  String   @map("sheet_url")
+  isActive  Boolean  @default(false) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("matrix_templates")
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String   @map("project_id")
+  name      String
+  position  String?
+  shifts    Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("project_members")
 }
 
 model SheetConfig {

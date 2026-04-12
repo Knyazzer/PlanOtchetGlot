@@ -6,8 +6,9 @@ import {
   refreshSheetData,
   allSheetConfigs,
   findSheetConfig,
-  upsertSheetUrl,
+  upsertConfig,
   TABLE_KEYS,
+  ALL_CONFIG_KEYS,
   TABLE_META,
   type TableKey,
   type SheetConfigRow,
@@ -15,7 +16,7 @@ import {
 
 export async function databaseRoutes(app: FastifyInstance) {
 
-  // GET /database/config — состояние всех 5 таблиц
+  // GET /database/config — состояние всех таблиц
   app.get('/config', { preHandler: requireRole('admin') }, async () => {
     const base = 'https://docs.google.com/spreadsheets/d'
 
@@ -27,22 +28,31 @@ export async function databaseRoutes(app: FastifyInstance) {
 
     const configMap = new Map<string, SheetConfigRow>(configs.map((c) => [c.table_key, c]))
 
+    const envProjectsUrl = process.env.GOOGLE_PROJECTS_SHEET_ID
+      ? `${base}/${process.env.GOOGLE_PROJECTS_SHEET_ID}`
+      : null
+    const envRegistryUrl = process.env.GOOGLE_REGISTRY_SHEET_ID
+      ? `${base}/${process.env.GOOGLE_REGISTRY_SHEET_ID}`
+      : null
+
+    const projectsCfg = configMap.get('projects')
+    const registryCfg = configMap.get('registry')
+    const internalRegistryCfg = configMap.get('internal_registry')
+
     const tables = [
       {
         key: 'projects',
         ...TABLE_META.projects,
-        sheetUrl: process.env.GOOGLE_PROJECTS_SHEET_ID
-          ? `${base}/${process.env.GOOGLE_PROJECTS_SHEET_ID}`
-          : null,
+        sheetUrl: projectsCfg?.sheet_url ?? envProjectsUrl,
+        apiKey: projectsCfg?.api_key ?? null,
         rowCount: projectsCount,
         lastSyncedAt: null,
       },
       {
         key: 'registry',
         ...TABLE_META.registry,
-        sheetUrl: process.env.GOOGLE_REGISTRY_SHEET_ID
-          ? `${base}/${process.env.GOOGLE_REGISTRY_SHEET_ID}`
-          : null,
+        sheetUrl: registryCfg?.sheet_url ?? envRegistryUrl,
+        apiKey: registryCfg?.api_key ?? null,
         rowCount: registryCount,
         lastSyncedAt: null,
       },
@@ -53,25 +63,39 @@ export async function databaseRoutes(app: FastifyInstance) {
           key,
           ...TABLE_META[key],
           sheetUrl: cfg?.sheet_url ?? null,
+          apiKey: cfg?.api_key ?? null,
           rowCount: data?.rows?.length ?? 0,
           lastSyncedAt: cfg?.last_synced_at ?? null,
         }
       }),
     ]
 
-    return { tables }
+    return {
+      tables,
+      internalRegistry: {
+        sheetUrl: internalRegistryCfg?.sheet_url ?? null,
+        apiKey: internalRegistryCfg?.api_key ?? null,
+      },
+    }
   })
 
-  // PATCH /database/config/:key — обновить URL таблицы (только для редактируемых)
+  // PATCH /database/config/:key — обновить URL и/или API-ключ таблицы
   app.patch('/config/:key', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { key } = request.params as { key: string }
-    if (!TABLE_KEYS.includes(key as TableKey)) {
+    if (!ALL_CONFIG_KEYS.includes(key as any)) {
       return reply.code(400).send({ error: 'Неизвестный ключ таблицы' })
     }
-    const body = z.object({ sheetUrl: z.string().url().nullable() }).safeParse(request.body)
-    if (!body.success) return reply.code(400).send({ error: 'Неверный формат URL' })
+    const body = z.object({
+      sheetUrl: z.string().url().nullable().optional(),
+      apiKey: z.string().nullable().optional(),
+    }).safeParse(request.body)
+    if (!body.success) return reply.code(400).send({ error: 'Неверный формат данных' })
 
-    await upsertSheetUrl(key, body.data.sheetUrl)
+    const update: { sheetUrl?: string | null; apiKey?: string | null } = {}
+    if ('sheetUrl' in body.data) update.sheetUrl = body.data.sheetUrl ?? null
+    if ('apiKey' in body.data) update.apiKey = body.data.apiKey ?? null
+
+    await upsertConfig(key, update)
     return { ok: true }
   })
 

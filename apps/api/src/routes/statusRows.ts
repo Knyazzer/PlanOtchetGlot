@@ -19,18 +19,21 @@ const createStatusRowSchema = z.object({
   accountManager: z.string().nullable().optional(),
   efirDate: z.string().nullable().optional(),
   zastroykDate: z.string().nullable().optional(),
-  date: z.string().datetime().nullable().optional(),
+  date: z.string().nullable().optional(),
   dateApproximate: z.string().nullable().optional(),
   time: z.string().nullable().optional(),
   format: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  status: z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   days: z.array(daySchema).optional(),
 })
 
 const updateStatusRowSchema = createStatusRowSchema.partial().extend({
-  status: z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
-  dateConfirmed: z.boolean().optional(),
+  status:          z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
+  dateConfirmed:   z.boolean().optional(),
+  matrixRegistryId: z.string().uuid().nullable().optional(),
+  blockSlot:       z.number().int().nullable().optional(),
 })
 
 export async function statusRowsRoutes(app: FastifyInstance) {
@@ -96,6 +99,30 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     return row
   })
 
+  // GET /status-rows/:id/link-info — matrixRegistryId, blockSlot, linked matrix details
+  app.get('/:id/link-info', { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT sr.matrix_registry_id AS "matrixRegistryId", sr.block_slot AS "blockSlot",
+              mr.id AS "mId", mr.name AS "mName", mr.client AS "mClient",
+              mr.matrix_id AS "mMatrixId", mr.sheet_url AS "mSheetUrl", mr.source AS "mSource"
+       FROM status_rows sr
+       LEFT JOIN matrix_registry mr ON mr.id = sr.matrix_registry_id
+       WHERE sr.id = $1`,
+      id
+    )
+    if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
+    const r = rows[0]
+    return {
+      matrixRegistryId: r.matrixRegistryId,
+      blockSlot: r.blockSlot,
+      linkedMatrix: r.mId ? {
+        id: r.mId, name: r.mName, client: r.mClient,
+        matrixId: r.mMatrixId, sheetUrl: r.mSheetUrl, source: r.mSource,
+      } : null,
+    }
+  })
+
   // POST /status-rows — ручное создание (admin only)
   app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
     const body = createStatusRowSchema.safeParse(request.body)
@@ -103,7 +130,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const { days, efirDate, zastroykDate, ...rowData } = body.data
+    const { days, efirDate, zastroykDate, status: bodyStatus, ...rowData } = body.data
 
     const autoDays: { date: Date; type: 'efir' | 'zastroyka' }[] = []
     if (zastroykDate) autoDays.push({ date: new Date(zastroykDate), type: 'zastroyka' })
@@ -118,7 +145,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       data: {
         ...rowData,
         date: earliestDate ?? undefined,
-        status: 'manual',
+        status: (bodyStatus ?? 'request') as any,
         source: 'manual',
         days: allDays.length > 0
           ? { create: allDays.map((d) => ({ date: d.date, type: d.type, startTime: null })) }
@@ -142,7 +169,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     const before = await prisma.statusRow.findUnique({ where: { id } })
     if (!before) return reply.code(404).send({ error: 'StatusRow not found' })
 
-    const { days, ...rowFields } = body.data
+    const { days, matrixRegistryId, blockSlot, ...rowFields } = body.data
     const data: any = { ...rowFields }
     if (data.date) data.date = new Date(data.date)
 
@@ -158,6 +185,23 @@ export async function statusRowsRoutes(app: FastifyInstance) {
           })),
         })
       }
+    }
+
+    // matrixRegistryId / blockSlot — new fields unknown to the Prisma client, use raw SQL
+    if (matrixRegistryId !== undefined || blockSlot !== undefined) {
+      const sets: string[] = []
+      const vals: unknown[] = []
+      let i = 1
+      if (matrixRegistryId !== undefined) { sets.push(`matrix_registry_id = $${i++}`); vals.push(matrixRegistryId) }
+      if (blockSlot !== undefined)         { sets.push(`block_slot = $${i++}`);         vals.push(blockSlot) }
+      sets.push(`updated_at = NOW()`)
+      vals.push(id)
+      await prisma.$executeRawUnsafe(
+        `UPDATE status_rows SET ${sets.join(', ')} WHERE id = $${i}`,
+        ...vals
+      )
+      delete data.matrixRegistryId
+      delete data.blockSlot
     }
 
     const row = await prisma.statusRow.update({
