@@ -14,7 +14,7 @@ export async function tasksRoutes(app: FastifyInstance) {
     const query = request.query as { status?: string }
     return prisma.task.findMany({
       where: {
-        ...(query.status && { status: query.status as any }),
+        ...(query.status && { status: query.status as 'open' | 'in_progress' | 'done' }),
       },
       include: {
         creator: { select: { id: true, fullName: true } },

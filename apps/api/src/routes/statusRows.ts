@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { prisma } from '@tv-shifts/db'
+import { Prisma, prisma } from '@tv-shifts/db'
 import { authenticate, requireRole } from '../plugins/auth'
 import { logChanges } from '../services/changeLog'
 
@@ -52,8 +52,8 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       ...(query.status && { status: query.status as any }),
       ...(query.search && {
         OR: [
-          { name: { contains: query.search, mode: 'insensitive' } },
-          { client: { contains: query.search, mode: 'insensitive' } },
+          { name: { contains: query.search, mode: Prisma.QueryMode.insensitive } },
+          { client: { contains: query.search, mode: Prisma.QueryMode.insensitive } },
         ],
       }),
     }

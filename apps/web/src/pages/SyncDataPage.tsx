@@ -909,16 +909,23 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded }: { entry: Regist
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const [forceRefresh, setForceRefresh] = useState(false)
+  const qc = useQueryClient()
+  const [refreshKey, setRefreshKey] = useState(0)
   const { data: shiftsData, isLoading: shiftsLoading, error: shiftsError, isFetching: shiftsFetching } = useQuery<MatrixShiftsData>({
-    queryKey: ['matrix-shifts', entry.matrixId, forceRefresh],
-    queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}${forceRefresh ? '?refresh=true' : ''}`).then((r) => r.data),
+    queryKey: ['matrix-shifts', entry.matrixId, refreshKey],
+    queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}${refreshKey > 0 ? '?refresh=true' : ''}`).then((r) => r.data),
     enabled: tab === 'shifts',
     staleTime: 10 * 60 * 1000, // 10 минут — не перезапрашиваем если данные свежие
   })
 
   useEffect(() => {
-    if (shiftsData) onShiftsLoaded(entry.matrixId, shiftsData.activeCols.length > 0)
+    if (!shiftsData) return
+    onShiftsLoaded(entry.matrixId, shiftsData.activeCols.length > 0)
+    // Синхронизируем базовый ключ (refreshKey=0) со свежими данными,
+    // чтобы при следующем открытии модала не было отката к устаревшему кэшу
+    if (refreshKey > 0) {
+      qc.setQueryData(['matrix-shifts', entry.matrixId, 0], shiftsData)
+    }
   }, [shiftsData])
 
   type FieldDef = { label: string; value: string | null | undefined; mono?: boolean; link?: boolean }
@@ -1022,7 +1029,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded }: { entry: Regist
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ fontSize: 11, color: '#cbd5e1' }}>Ctrl+клик по строке — сделать разделителем</div>
                   <button
-                    onClick={() => setForceRefresh((v) => !v)}
+                    onClick={() => setRefreshKey((k) => k + 1)}
                     disabled={shiftsFetching}
                     title="Обновить из Google Sheets"
                     style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
@@ -1036,7 +1043,17 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded }: { entry: Regist
             {shiftsLoading && <div style={{ color: '#64748b', fontSize: 14, padding: '16px 0' }}>Загрузка...</div>}
             {shiftsError && <div style={{ color: '#ef4444', fontSize: 14, padding: '16px 0' }}>Ошибка: {(shiftsError as any)?.response?.data?.error ?? (shiftsError as any)?.message}</div>}
             {shiftsData && shiftsData.activeCols.length === 0 && (
-              <div style={{ color: '#94a3b8', fontSize: 14, padding: '16px 0' }}>Нет проставленных смен</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
+                <span style={{ color: '#94a3b8', fontSize: 14 }}>Нет проставленных смен</span>
+                <button
+                  onClick={() => setRefreshKey((k) => k + 1)}
+                  disabled={shiftsFetching}
+                  title="Обновить из Google Sheets"
+                  style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
+                >
+                  {shiftsFetching ? '...' : '↻ Обновить'}
+                </button>
+              </div>
             )}
             {shiftsData && shiftsData.activeCols.length > 0 && (
               <>

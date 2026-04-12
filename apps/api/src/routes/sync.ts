@@ -140,7 +140,7 @@ export async function syncRoutes(app: FastifyInstance) {
   })
 
   // GET /sync/logs — история синхронизаций
-  app.get('/logs', { preHandler: requireRole('admin') }, async (request) => {
+  app.get('/logs', { preHandler: requireRole('admin', 'producer') }, async (request) => {
     const query = request.query as { limit?: string; type?: string }
     const limit = Math.min(Number(query.limit ?? 50), 200)
 

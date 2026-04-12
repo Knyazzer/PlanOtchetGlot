@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
+import { Prisma } from '@tv-shifts/db'
 import { prisma } from '@tv-shifts/db'
 import { authenticate, requireRole } from '../plugins/auth'
 
@@ -155,10 +156,12 @@ export async function dealsRoutes(app: FastifyInstance) {
   })
 }
 
-function formatDeal(deal: any) {
+type DealWithIncludes = Prisma.DealGetPayload<{ include: typeof dealInclude }>
+
+function formatDeal(deal: DealWithIncludes) {
   return {
     ...deal,
-    statusRows: deal.statusRows.map((r: any) => r.statusRow),
-    matrices: deal.matrices.map((m: any) => m.matrix),
+    statusRows: deal.statusRows.map((r) => r.statusRow),
+    matrices: deal.matrices.map((m) => m.matrix),
   }
 }

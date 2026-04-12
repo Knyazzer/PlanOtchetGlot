@@ -6,7 +6,6 @@ import { prisma } from '@tv-shifts/db'
 
 let _abortRequested = false
 export function requestSyncAbort() { _abortRequested = true }
-export function isSyncRunning() { return _abortRequested === false && _syncActive }
 let _syncActive = false
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -224,12 +223,6 @@ let upserted = 0
   // A(0)=Статус B(1)=Клиент C(2)=Название D(3)=Исп.продюсер E(4)=Лайн-продюсер
   // F(5)=Аккаунт G(6)=Дата H(7)=Время I(8)=Формат J(9)=Локация K(10)=№ по матрице L(11)=Постпродакшн
 
-
-  // Диагностика первых 15 строк — показываем A, B, C чтобы понять структуру
-  for (let di = 1; di <= Math.min(15, rows.length - 1); di++) {
-    const dc = rows[di].values ?? []
-    console.log(`[sync] Projects row ${di + 1}: A="${cellStr(dc[0])}" B="${cellStr(dc[1])}" C="${cellStr(dc[2])}" I="${cellStr(dc[8])}"`)
-  }
 
   // Row 0 is the header — start from row 1 (1-indexed row 2)
   let skippedEmpty = 0

@@ -93,7 +93,7 @@ JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh
 | `/analytics` | `apps/api/src/routes/analytics.ts` |
 | `/deals` | `apps/api/src/routes/deals.ts` |
 
-Route auth guard lives in `apps/api/src/plugins/auth.ts` — call `request.jwtVerify()` inside route handlers, or use the `authenticate` / `requireRole(role)` preHandlers.
+Route auth guard lives in `apps/api/src/plugins/auth.ts` — call `request.jwtVerify()` inside route handlers, or use the `authenticate` / `requireRole(...roles)` preHandlers. `requireRole` accepts multiple roles (e.g. `requireRole('admin', 'producer')`).
 
 ### Database Models
 `User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`

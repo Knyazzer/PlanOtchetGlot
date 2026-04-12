@@ -128,56 +128,10 @@ export function AppShell() {
 
 // ─── NotificationBell ─────────────────────────────────────────────────────────
 
-interface Notification {
-  id: string
-  type: string
-  message: string
-  isRead: boolean
-  createdAt: string
-  entityType: string | null
-}
-
-const NOTIF_TYPE_LABELS: Record<string, string> = {
-  no_matrix: 'Нет матрицы',
-  unmatched_name: 'Неизвестный сотрудник',
-  data_conflict: 'Конфликт данных',
-  schedule_change: 'Изменение расписания',
-}
-
 function NotificationBell() {
-  const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  const { data: countData } = useQuery<{ count: number }>({
-    queryKey: ['notifications-count'],
-    queryFn: () => api.get('/notifications/count').then((r) => r.data),
-    refetchInterval: 60_000,
-  })
-
-  const { data: notifications = [] } = useQuery<Notification[]>({
-    queryKey: ['notifications'],
-    queryFn: () => api.get('/notifications').then((r) => r.data),
-    enabled: open,
-  })
-
-  const readAll = useMutation({
-    mutationFn: () => api.patch('/notifications/read-all'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] })
-      qc.invalidateQueries({ queryKey: ['notifications-count'] })
-    },
-  })
-
-  const readOne = useMutation({
-    mutationFn: (id: string) => api.patch(`/notifications/${id}/read`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] })
-      qc.invalidateQueries({ queryKey: ['notifications-count'] })
-    },
-  })
-
-  // Закрываем при клике вне
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
@@ -185,10 +139,6 @@ function NotificationBell() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
-
-  const count = countData?.count ?? 0
-  const unread = notifications.filter((n) => !n.isRead)
-  const read = notifications.filter((n) => n.isRead)
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -201,33 +151,12 @@ function NotificationBell() {
           cursor: 'pointer',
           padding: '6px 8px',
           borderRadius: 6,
-          position: 'relative',
           fontSize: 18,
           lineHeight: 1,
         }}
         title="Уведомления"
       >
         🔔
-        {count > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: 2,
-            right: 2,
-            background: '#ef4444',
-            color: '#fff',
-            borderRadius: '50%',
-            width: 16,
-            height: 16,
-            fontSize: 10,
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            lineHeight: 1,
-          }}>
-            {count > 9 ? '9+' : count}
-          </span>
-        )}
       </button>
 
       {open && (
@@ -235,78 +164,21 @@ function NotificationBell() {
           position: 'absolute',
           right: 0,
           top: 'calc(100% + 8px)',
-          width: 420,
+          width: 320,
           background: '#fff',
           borderRadius: 10,
           boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
           border: '1px solid #e2e8f0',
           zIndex: 200,
-          maxHeight: 480,
-          display: 'flex',
-          flexDirection: 'column',
+          padding: 24,
+          textAlign: 'center',
+          color: '#94a3b8',
         }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, fontSize: 16 }}>Уведомления</span>
-            {unread.length > 0 && (
-              <button
-                onClick={() => readAll.mutate()}
-                style={{ background: 'none', border: 'none', fontSize: 14, color: '#2563eb', cursor: 'pointer' }}
-              >
-                Прочитать все
-              </button>
-            )}
-          </div>
-
-          <div style={{ overflowY: 'auto', flex: 1 }}>
-            {notifications.length === 0 ? (
-              <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 15 }}>
-                Нет уведомлений
-              </div>
-            ) : (
-              <>
-                {unread.map((n) => (
-                  <NotifItem key={n.id} notif={n} onRead={() => readOne.mutate(n.id)} />
-                ))}
-                {read.length > 0 && unread.length > 0 && (
-                  <div style={{ padding: '8px 16px', fontSize: 13, color: '#94a3b8', background: '#f8fafc', borderTop: '1px solid #f1f5f9' }}>
-                    Прочитанные
-                  </div>
-                )}
-                {read.map((n) => (
-                  <NotifItem key={n.id} notif={n} />
-                ))}
-              </>
-            )}
-          </div>
+          <div style={{ fontSize: 32, marginBottom: 10 }}>🚧</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Уведомления</div>
+          <div style={{ fontSize: 13 }}>В разработке</div>
         </div>
       )}
-    </div>
-  )
-}
-
-function NotifItem({ notif, onRead }: { notif: Notification; onRead?: () => void }) {
-  return (
-    <div
-      onClick={onRead}
-      style={{
-        padding: '10px 16px',
-        borderBottom: '1px solid #f1f5f9',
-        background: notif.isRead ? '#fff' : '#eff6ff',
-        cursor: onRead ? 'pointer' : 'default',
-        display: 'flex',
-        gap: 10,
-        alignItems: 'flex-start',
-      }}
-    >
-      {!notif.isRead && (
-        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563eb', marginTop: 5, flexShrink: 0 }} />
-      )}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 2 }}>
-          {NOTIF_TYPE_LABELS[notif.type] ?? notif.type}
-        </div>
-        <div style={{ fontSize: 14, color: '#1e293b', lineHeight: 1.5 }}>{notif.message}</div>
-      </div>
     </div>
   )
 }

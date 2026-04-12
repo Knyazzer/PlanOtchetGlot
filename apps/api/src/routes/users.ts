@@ -132,10 +132,10 @@ export async function usersRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const data: any = { ...body.data }
-    if (data.password) {
-      data.passwordHash = await bcrypt.hash(data.password, 10)
-      delete data.password
+    const { password, ...rest } = body.data
+    const data: Record<string, unknown> = { ...rest }
+    if (password) {
+      data.passwordHash = await bcrypt.hash(password, 10)
     }
 
     // Только admin может менять роль и isActive

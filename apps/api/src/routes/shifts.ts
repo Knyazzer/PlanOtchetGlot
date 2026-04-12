@@ -84,8 +84,8 @@ export async function shiftsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const data: any = { ...body.data }
-    if (data.date) data.date = new Date(data.date)
+    const { date, ...rest } = body.data
+    const data = { ...rest, ...(date ? { date: new Date(date) } : {}) }
 
     return prisma.shiftEntry.update({ where: { id }, data })
   })
