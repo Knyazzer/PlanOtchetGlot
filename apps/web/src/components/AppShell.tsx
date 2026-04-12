@@ -55,6 +55,9 @@ export function AppShell() {
         alignItems: 'center',
         justifyContent: 'space-between',
         flexShrink: 0,
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
           <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.3px' }}>TV Shifts</span>
