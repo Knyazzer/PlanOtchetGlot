@@ -158,7 +158,10 @@ export async function copyTemplateToFolder(
 
 /**
  * Appends a row to the internal matrix registry Google Sheet.
- * Columns: ID | Статус | Ссылка на матрицу
+ * Columns: A=Статус | B=Матрица (ссылка) | C=ID
+ *
+ * The sheet has a template row at the bottom with formulas.
+ * Strategy: copy that template row one row below, then write data into it.
  * Uses service account credentials — the sheet must be shared with the SA as editor.
  */
 export async function appendToInternalRegistry(
@@ -169,12 +172,108 @@ export async function appendToInternalRegistry(
   if (!spreadsheetId) throw new Error('Неверная ссылка на реестр матриц')
 
   const sheets = getSheets()
-  await sheets.spreadsheets.values.append({
+
+  // Get sheetId for batchUpdate (need numeric sheet id)
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets.properties(sheetId,title)',
+  })
+  const sheetId = meta.data.sheets?.[0]?.properties?.sheetId ?? 0
+
+  // Find last row to determine where the template row is
+  const valResp = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range: 'A:C',
+    valueRenderOption: 'FORMATTED_VALUE',
+  })
+  const values = valResp.data.values ?? []
+  // values[0] = header row, last entry = template row with formulas
+  const templateRowIndex = Math.max(values.length - 1, 1) // 0-based
+  const templateRowNumber = templateRowIndex + 1          // 1-based
+
+  // Copy template row → one row below (preserving formulas)
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        copyPaste: {
+          source: {
+            sheetId,
+            startRowIndex: templateRowIndex,
+            endRowIndex: templateRowIndex + 1,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          },
+          destination: {
+            sheetId,
+            startRowIndex: templateRowIndex + 1,
+            endRowIndex: templateRowIndex + 2,
+            startColumnIndex: 0,
+            endColumnIndex: 3,
+          },
+          pasteType: 'PASTE_NORMAL',
+        },
+      }],
+    },
+  })
+
+  // Write data into the (now-duplicated) template row
+  // Columns: A=Статус, B=Матрица (HYPERLINK chip), C=ID
+  // USER_ENTERED so the =HYPERLINK() formula gets evaluated by Sheets
+  const linkCell = row.sheetUrl
+    ? `=HYPERLINK("${row.sheetUrl}","${row.matrixId}")`
+    : ''
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `A${templateRowNumber}:C${templateRowNumber}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: {
+      values: [[row.status ?? '', linkCell, row.matrixId]],
+    },
+  })
+}
+
+/**
+ * Writes the 10 project fields into the СВОД sheet of a newly created matrix.
+ * Target: column C, rows C2:C11 (one field per row).
+ * Uses OAuth2 credentials so the user account (owner) performs the write.
+ */
+export async function writeSvodData(
+  spreadsheetUrl: string,
+  data: {
+    client: string | null
+    projectName: string | null
+    format: string | null
+    date: string | null
+    producerMM: string | null
+    salesManager: string | null
+    kpLink: string | null
+    curator: string | null
+    businessUnit: string | null
+    brief: string | null
+  },
+): Promise<void> {
+  const spreadsheetId = extractFileId(spreadsheetUrl)
+  if (!spreadsheetId) throw new Error('Неверный URL матрицы для записи СВОД')
+
+  const sheets = getSheetsOAuth()
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: 'СВОД!C2:C11',
     valueInputOption: 'RAW',
     requestBody: {
-      values: [[row.matrixId, row.status ?? '', row.sheetUrl ?? '']],
+      values: [
+        [data.client ?? ''],
+        [data.projectName ?? ''],
+        [data.format ?? ''],
+        [data.date ?? ''],
+        [data.producerMM ?? ''],
+        [data.salesManager ?? ''],
+        [data.kpLink ?? ''],
+        [data.curator ?? ''],
+        [data.businessUnit ?? ''],
+        [data.brief ?? ''],
+      ],
     },
   })
 }

@@ -38,6 +38,9 @@ interface RegistryEntry {
   producer: string | null
   manager: string | null
   curator: string | null
+  projectName: string | null
+  kpLink: string | null
+  brief: string | null
   projectId: string | null
   googleRowIndex: number | null
   hasShiftsData: boolean | null
@@ -1401,7 +1404,25 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
         <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{label}</div>
         <div style={{ fontSize: 13, color: display ? '#1e293b' : '#cbd5e1', fontFamily: mono ? 'monospace' : undefined }}>
           {link && display
-            ? <a href={display} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline', wordBreak: 'break-all' }}>{display}</a>
+            ? (
+              <a
+                href={display}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 20,
+                  padding: '2px 10px 2px 6px', color: '#15803d', textDecoration: 'none',
+                  fontSize: 12, fontWeight: 500, maxWidth: '100%',
+                }}
+              >
+                <span style={{ fontSize: 14 }}>📊</span>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  Открыть таблицу
+                </span>
+                <span style={{ fontSize: 10, opacity: 0.6 }}>↗</span>
+              </a>
+            )
             : (display ?? '—')}
         </div>
       </div>
@@ -1834,6 +1855,11 @@ function getRegValue(r: RegistryEntry, col: string): string {
 
 // ─── Matrix Form Modal ────────────────────────────────────────────────────────
 
+interface KfpdData {
+  columns: string[]
+  rows: string[][]
+}
+
 function MatrixFormModal({
   matrix,
   onClose,
@@ -1845,22 +1871,43 @@ function MatrixFormModal({
 }) {
   const isEdit = !!matrix
   const [form, setForm] = useState({
-    name:       matrix?.name       ?? '',
-    client:     matrix?.client     ?? '',
-    unit:       matrix?.unit       ?? '',
-    format:     matrix?.format     ?? '',
-    date:       matrix?.date ? matrix.date.slice(0, 10) : '',
-    producer:   matrix?.producer   ?? '',
-    manager:    matrix?.manager    ?? '',
-    curator:    matrix?.curator    ?? '',
-    templateId: matrix?.templateId ?? '',
+    projectName: matrix?.projectName ?? '',
+    client:      matrix?.client     ?? '',
+    unit:        matrix?.unit       ?? '',
+    format:      matrix?.format     ?? '',
+    date:        matrix?.date ? matrix.date.slice(0, 10) : '',
+    producer:    matrix?.producer   ?? '',
+    manager:     matrix?.manager    ?? '',
+    curator:     matrix?.curator    ?? '',
+    kpLink:      matrix?.kpLink     ?? '',
+    brief:       matrix?.brief      ?? '',
+    status:      matrix?.status     ?? '',
+    templateId:  matrix?.templateId ?? '',
   })
   const [error, setError] = useState<string | null>(null)
 
-  const { data: templates = [] } = useQuery<MatrixTemplate[]>({
-    queryKey: ['matrix-templates'],
-    queryFn: () => api.get('/matrix-templates').then((r) => r.data),
+  const { data: kfpdRaw } = useQuery<KfpdData>({
+    queryKey: ['kfpd-preview'],
+    queryFn: () => api.get('/database/preview/kfpd').then((r) => r.data),
   })
+
+  // Extract unique non-empty values from a КФПД column by index
+  const kfpdCol = (colIdx: number): string[] => {
+    if (!kfpdRaw) return []
+    return [...new Set(kfpdRaw.rows.map((r) => r[colIdx] ?? '').filter(Boolean))]
+  }
+
+  const clients    = kfpdCol(0)
+  const formats    = kfpdCol(1)
+  const producers  = kfpdCol(2)
+  const bizUnits   = kfpdCol(5)
+  const statuses   = kfpdCol(8)
+
+  // Auto-generated name preview
+  const datePreview = form.date
+    ? form.date.replace(/-/g, ' ')
+    : new Date().toISOString().slice(0, 10).replace(/-/g, ' ')
+  const namePreview = `Матрица v4.1: ${form.client || '…'}: ${form.projectName || '…'}: ${datePreview}`
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -1869,21 +1916,24 @@ function MatrixFormModal({
     return () => { window.removeEventListener('keydown', handler); document.body.style.overflow = '' }
   }, [onClose])
 
-  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
 
   const save = useMutation({
     mutationFn: () => {
-      const body = {
-        name:       form.name.trim(),
-        client:     form.client.trim()     || null,
-        unit:       form.unit.trim()       || null,
-        format:     form.format.trim()     || null,
-        date:       form.date ? new Date(form.date).toISOString() : null,
-        producer:   form.producer.trim()   || null,
-        manager:    form.manager.trim()    || null,
-        curator:    form.curator.trim()    || null,
-        templateId: form.templateId       || null,
+      const body: Record<string, unknown> = {
+        projectName: form.projectName.trim() || null,
+        client:      form.client.trim()      || null,
+        unit:        form.unit.trim()        || null,
+        format:      form.format.trim()      || null,
+        date:        form.date ? new Date(form.date).toISOString() : null,
+        producer:    form.producer.trim()    || null,
+        manager:     form.manager.trim()     || null,
+        curator:     form.curator.trim()     || null,
+        kpLink:      form.kpLink.trim()      || null,
+        brief:       form.brief.trim()       || null,
+        status:      form.status.trim()      || null,
+        templateId:  form.templateId         || null,
       }
       return isEdit
         ? api.patch(`/internal-matrix/${matrix!.id}`, body).then((r) => r.data)
@@ -1900,7 +1950,11 @@ function MatrixFormModal({
     width: '100%', fontSize: 13, padding: '7px 10px', border: '1px solid #e2e8f0',
     borderRadius: 6, outline: 'none', color: '#1e293b', background: '#f8fafc', boxSizing: 'border-box',
   }
-  const ls: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }
+  const ls: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600, color: '#64748b',
+    textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4,
+  }
+
   const fg = (label: string, key: string, placeholder?: string) => (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={ls}>{label}</div>
@@ -1908,44 +1962,69 @@ function MatrixFormModal({
     </div>
   )
 
+  const fsel = (label: string, key: string, options: string[]) => (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={ls}>{label}</div>
+      <select style={fs} value={(form as any)[key]} onChange={set(key)}>
+        <option value="">— не выбрано —</option>
+        {options.map((o) => <option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  )
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onMouseDown={onClose}>
-      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 520, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onMouseDown={(e) => e.stopPropagation()}>
+      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 580, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать матрицу' : 'Новая матрица'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20 }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {fg('Название *', 'name', 'Название матрицы')}
+
+          {/* Auto-generated name preview */}
+          {!isEdit && (
+            <div style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', padding: '8px 12px', borderRadius: 6, fontStyle: 'italic' }}>
+              {namePreview}
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {fg('Клиент', 'client')}
-            {fg('Юнит', 'unit')}
+            {fsel('Клиент', 'client', clients)}
+            {fg('Название проекта', 'projectName', 'Название проекта')}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {fg('Формат', 'format')}
+            {fsel('Формат', 'format', formats)}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={ls}>Дата</div>
               <input type="date" style={fs} value={form.date} onChange={set('date')} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            {fg('Продюсер', 'producer')}
-            {fg('Менеджер', 'manager')}
-            {fg('Куратор', 'curator')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {fsel('Продюсер от ММ', 'producer', producers)}
+            {fsel('Менеджер по продажам', 'manager', producers)}
+          </div>
+          {fg('Ссылка на КП', 'kpLink', 'https://')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {fg('Куратор от заказчика', 'curator', 'ФИО')}
+            {fsel('Бизнес Юнит', 'unit', bizUnits)}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={ls}>Шаблон матрицы</div>
-            <select style={fs} value={form.templateId} onChange={set('templateId')}>
-              <option value="">— Без шаблона —</option>
-              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}{t.is_active ? ' (активный)' : ''}</option>)}
-            </select>
+            <div style={ls}>Бриф по проекту</div>
+            <textarea
+              style={{ ...fs, resize: 'vertical', minHeight: 60 }}
+              value={form.brief}
+              onChange={set('brief')}
+              placeholder="Краткое описание проекта"
+            />
           </div>
+          {fsel('Статус', 'status', statuses)}
+
           {error && <div style={{ fontSize: 13, color: '#ef4444', background: '#fef2f2', padding: '8px 12px', borderRadius: 6 }}>{error}</div>}
         </div>
         <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
           <button
-            onClick={() => { if (!form.name.trim()) { setError('Название обязательно'); return } save.mutate() }}
+            onClick={() => save.mutate()}
             disabled={save.isPending}
             style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: 'none', background: save.isPending ? '#93c5fd' : '#2563eb', color: '#fff', cursor: save.isPending ? 'default' : 'pointer', fontWeight: 500 }}
           >
@@ -2090,7 +2169,24 @@ function RegistryTable({
       case 'sheetUrl':
         return r.sheetUrl
           ? r.sheetUrl.startsWith('https://')
-            ? <a href={r.sheetUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#3b82f6', textDecoration: 'underline' }}>Матрица</a>
+            ? (
+              <a
+                href={r.sheetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 20,
+                  padding: '1px 8px 1px 5px', color: '#15803d', textDecoration: 'none',
+                  fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap',
+                }}
+              >
+                <span style={{ fontSize: 12 }}>📊</span>
+                Открыть
+                <span style={{ fontSize: 9, opacity: 0.6 }}>↗</span>
+              </a>
+            )
             : r.sheetUrl
           : <span style={{ color: '#94a3b8' }}>—</span>
       case 'matrixId': return (

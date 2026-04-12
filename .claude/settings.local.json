@@ -75,7 +75,8 @@
       "Bash(cmd /c \"cd /d \\\\\"d:\\\\Pet projects\\\\scripts\\\\PlanOtchetGlot\\\\packages\\\\db\\\\\" && set DATABASE_URL=postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts && npx prisma migrate deploy 2>&1\")",
       "Bash(cmd /c \"set DATABASE_URL=postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts && cd /d \\\\\"d:\\\\Pet projects\\\\scripts\\\\PlanOtchetGlot\\\\packages\\\\db\\\\\" && npx prisma migrate deploy --schema=prisma/schema.prisma 2>&1\")",
       "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma migrate deploy --schema=prisma/schema.prisma)",
-      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma migrate resolve --rolled-back 20260412100000_internal_matrices --schema=prisma/schema.prisma)"
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma migrate resolve --rolled-back 20260412100000_internal_matrices --schema=prisma/schema.prisma)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma migrate dev --skip-generate --name matrix_extra_fields)"
     ]
   },
   "enabledPlugins": {

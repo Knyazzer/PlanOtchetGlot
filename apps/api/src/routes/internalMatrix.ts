@@ -3,18 +3,22 @@ import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
 import { findSheetConfig } from '../services/databaseService'
-import { copyTemplateToFolder, setupMatrixPermissions, appendToInternalRegistry, checkSpreadsheetExists } from '../services/driveService'
+import { copyTemplateToFolder, setupMatrixPermissions, appendToInternalRegistry, checkSpreadsheetExists, writeSvodData } from '../services/driveService'
 
 const createMatrixSchema = z.object({
-  name:       z.string().min(1),
-  client:     z.string().nullable().optional(),
-  unit:       z.string().nullable().optional(),
-  format:     z.string().nullable().optional(),
-  date:       z.string().nullable().optional(),
-  producer:   z.string().nullable().optional(),
-  manager:    z.string().nullable().optional(),
-  curator:    z.string().nullable().optional(),
-  templateId: z.string().uuid().nullable().optional(),
+  // projectName is used to auto-generate the matrix name
+  projectName:  z.string().nullable().optional(),
+  client:       z.string().nullable().optional(),
+  unit:         z.string().nullable().optional(),
+  format:       z.string().nullable().optional(),
+  date:         z.string().nullable().optional(),
+  producer:     z.string().nullable().optional(),
+  manager:      z.string().nullable().optional(),
+  curator:      z.string().nullable().optional(),
+  kpLink:       z.string().nullable().optional(),
+  brief:        z.string().nullable().optional(),
+  status:       z.string().nullable().optional(),
+  templateId:   z.string().uuid().nullable().optional(),
 })
 
 interface MatrixRow {
@@ -30,6 +34,9 @@ interface MatrixRow {
   producer: string | null
   manager: string | null
   curator: string | null
+  project_name: string | null
+  kp_link: string | null
+  brief: string | null
   source: string
   template_id: string | null
   created_at: Date
@@ -43,7 +50,14 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     const body = createMatrixSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные', details: body.error.flatten() })
 
-    const { name, client, unit, format, date, producer, manager, curator, templateId } = body.data
+    const { projectName, client, unit, format, date, producer, manager, curator,
+            kpLink, brief, status, templateId } = body.data
+
+    // Auto-generate matrix name
+    const dateStr = date
+      ? new Date(date).toISOString().slice(0, 10).replace(/-/g, ' ')
+      : new Date().toISOString().slice(0, 10).replace(/-/g, ' ')
+    const name = `Матрица v4.1: ${client ?? ''}: ${projectName ?? ''}: ${dateStr}`
 
     // Generate a unique matrix ID
     const matrixId = `INT-${Date.now()}`
@@ -62,12 +76,8 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     const folderId = driveCfg?.sheet_url ?? null // folder ID is stored in the sheet_url column
 
     if (activeTemplate?.sheet_url && folderId) {
-      const dateStr = date
-        ? new Date(date).toISOString().slice(0, 10).replace(/-/g, ' ')
-        : new Date().toISOString().slice(0, 10).replace(/-/g, ' ')
-      const fileName = `Матрица v4.1: ${client ?? ''}: ${name}: ${dateStr}`
       try {
-        sheetUrl = await copyTemplateToFolder(activeTemplate.sheet_url, fileName, folderId)
+        sheetUrl = await copyTemplateToFolder(activeTemplate.sheet_url, name, folderId)
         // Set up sharing and sheet protections (non-fatal if fails)
         const newSpreadsheetId = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1]
         if (newSpreadsheetId) {
@@ -75,6 +85,21 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
             app.log.warn({ err: e }, '[internal-matrix] Permission setup failed (non-fatal)')
           })
         }
+        // Write project fields to СВОД sheet (non-fatal if fails)
+        await writeSvodData(sheetUrl, {
+          client: client ?? null,
+          projectName: projectName ?? null,
+          format: format ?? null,
+          date: dateStr,
+          producerMM: producer ?? null,
+          salesManager: manager ?? null,
+          kpLink: kpLink ?? null,
+          curator: curator ?? null,
+          businessUnit: unit ?? null,
+          brief: brief ?? null,
+        }).catch((e: unknown) => {
+          app.log.warn({ err: e }, '[internal-matrix] СВОД write failed (non-fatal)')
+        })
       } catch (e: any) {
         driveError = e.message
         app.log.error({ err: e }, '[internal-matrix] Drive copy failed')
@@ -86,10 +111,10 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     const rows = await prisma.$queryRawUnsafe<MatrixRow[]>(
       `INSERT INTO matrix_registry
          (id, matrix_id, name, client, unit, format, date, producer, manager, curator,
-          source, template_id, sheet_url, updated_at)
+          project_name, kp_link, brief, status, source, template_id, sheet_url, updated_at)
        VALUES
          (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9,
-          'internal', $10, $11, NOW())
+          $10, $11, $12, $13, 'internal', $14, $15, NOW())
        RETURNING *`,
       matrixId,
       name,
@@ -100,6 +125,10 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
       producer ?? null,
       manager ?? null,
       curator ?? null,
+      projectName ?? null,
+      kpLink ?? null,
+      brief ?? null,
+      status ?? null,
       resolvedTemplateId,
       sheetUrl,
     )
@@ -132,9 +161,10 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     const vals: unknown[] = []
     let i = 1
     const map: Record<string, string> = {
-      name: 'name', client: 'client', unit: 'unit', format: 'format',
-      date: 'date', producer: 'producer', manager: 'manager', curator: 'curator',
-      templateId: 'template_id',
+      client: 'client', unit: 'unit', format: 'format', date: 'date',
+      producer: 'producer', manager: 'manager', curator: 'curator',
+      projectName: 'project_name', kpLink: 'kp_link', brief: 'brief',
+      status: 'status', templateId: 'template_id',
     }
     for (const [key, col] of Object.entries(map)) {
       if ((body.data as any)[key] !== undefined) {

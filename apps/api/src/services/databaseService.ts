@@ -119,7 +119,7 @@ export const TABLE_META: Record<string, { label: string; description: string; ed
   },
   kfpd: {
     label: 'К/Ф/П/Д',
-    description: 'Столбцы A–D. Первая строка — названия столбцов.',
+    description: 'Столбцы A–I. Первая строка — названия столбцов.',
     editable: true,
   },
 }
@@ -167,10 +167,10 @@ export async function refreshSheetData(key: TableKey): Promise<void> {
     await saveCachedData(key, { rows })
 
   } else {
-    // kfpd
+    // kfpd — columns A:I
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'A:D',
+      range: 'A:I',
       valueRenderOption: 'FORMATTED_VALUE',
     })
     const rawRows = resp.data.values ?? []

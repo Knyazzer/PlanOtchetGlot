@@ -95,8 +95,8 @@ export async function syncRoutes(app: FastifyInstance) {
     const { sheet } = request.query as { sheet?: string }
 
     const entry = await prisma.matrixRegistry.findFirst({ where: { matrixId } })
-    if (!entry) return reply.code(404).send({ error: 'Matrix not found' })
-    if (!entry.sheetUrl) return reply.code(400).send({ error: 'No URL for this matrix' })
+    if (!entry) return reply.code(404).send({ error: 'Матрица не найдена' })
+    if (!entry.sheetUrl) return reply.code(400).send({ error: 'URL таблицы не указан' })
 
     try {
       const preview = await fetchMatrixPreview(entry.sheetUrl, sheet)

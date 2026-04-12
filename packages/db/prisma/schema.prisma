@@ -181,6 +181,9 @@ model MatrixRegistry {
   hasShiftsData  Boolean? @map("has_shifts_data")
   shiftsCache    Json?    @map("shifts_cache")
   lastSyncedAt   DateTime? @map("last_synced_at")
+  projectName    String?   @map("project_name")
+  kpLink         String?   @map("kp_link")
+  brief          String?
   source         String    @default("google")
   templateId     String?   @map("template_id")
   createdAt    DateTime  @default(now()) @map("created_at")
@@ -372,13 +375,15 @@ model MatrixTemplate {
 }
 
 model ProjectMember {
-  id        String   @id @default(uuid())
-  projectId String   @map("project_id")
+  id        String    @id @default(uuid())
+  projectId String    @map("project_id")
   name      String
   position  String?
-  shifts    Json     @default("{}")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  shifts    Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  statusRow StatusRow @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_members")
 }

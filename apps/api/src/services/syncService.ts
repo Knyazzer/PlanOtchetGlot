@@ -753,18 +753,107 @@ export interface ShiftEmployee {
   name: string
   role: string | null
   employmentType: string | null
-  shifts: boolean[] // length = 7, indices 0–6 → columns J–P
+  shifts: boolean[] // length = dates.length
 }
 
 export interface MatrixShiftsData {
   sheetTitle: string
-  dates: string[]    // display values for columns J–P (7 items)
-  activeCols: number[] // 0-based indices (0–6) where at least one "1" exists
+  dates: string[]      // display values for day columns
+  activeCols: number[] // 0-based indices into dates[] where at least one "1" exists
   rows: (ShiftRow | ShiftEmployee)[]
 }
 
 // Sheet name patterns to look for (case-insensitive)
 const SHIFTS_SHEET_KEYWORDS = ['₽ смены', '₽ специалист', 'смены', 'специалист', 'сотрудник']
+
+// v4.1 shift columns: O–U (0-based indices 14–20)
+const V41_SHIFT_COLS = [14, 15, 16, 17, 18, 19, 20]
+
+/**
+ * Parse "Матрица v4.1" block-based format.
+ * Structure:
+ *   Row N:   "Блок № (Смена №)" | "<date label>" | ...  | <day names in O–U>
+ *   Row N+1: (empty A/B)        | ...              | ...  | <day numbers in O–U>
+ *   Rows N+2…: employee rows: A=ФИО, B=Функция, O–U = "1" shift markers
+ *   (next block starts with another "Блок" row)
+ */
+function parseV41Shifts(rawRows: string[][], sheetTitle: string): MatrixShiftsData {
+  // Collect block metadata in a first pass
+  const blocks: Array<{
+    label: string
+    dates: string[]
+    employees: Array<{ name: string; role: string | null; shifts: boolean[] }>
+  }> = []
+
+  let bi = -1
+  for (let ri = 0; ri < rawRows.length; ri++) {
+    const row = rawRows[ri] ?? []
+    const cellA = (row[0] ?? '').trim()
+
+    if (cellA.toLowerCase().startsWith('блок')) {
+      // Block header row — collect date label from column B
+      const label = (row[1] ?? '').trim()
+      blocks.push({ label, dates: [], employees: [] })
+      bi = blocks.length - 1
+
+      // Next row has day numbers in O–U
+      const dateRow = rawRows[ri + 1] ?? []
+      blocks[bi].dates = V41_SHIFT_COLS.map((ci) => (dateRow[ci] ?? '').trim())
+      ri++ // skip the date row
+      continue
+    }
+
+    if (bi === -1) continue // rows before first block
+
+    const name = cellA
+    const role = (row[1] ?? '').trim()
+    const shiftVals = V41_SHIFT_COLS.map((ci) => (row[ci] ?? '').trim())
+
+    // Skip rows with no data (name, role, or any "1" shift)
+    const hasData = name || role || shiftVals.some((v) => v === '1')
+    if (!hasData) continue
+
+    blocks[bi].employees.push({
+      name,
+      role: role || null,
+      shifts: shiftVals.map((v) => v === '1'),
+    })
+  }
+
+  // Build flat dates array and rows
+  const dates: string[] = blocks.flatMap((b) => b.dates)
+  const totalCols = dates.length
+  const rows: (ShiftRow | ShiftEmployee)[] = []
+  let colOffset = 0
+
+  for (const block of blocks) {
+    if (block.label) {
+      rows.push({ isSeparator: true, text: block.label })
+    }
+    for (const emp of block.employees) {
+      const fullShifts = new Array(totalCols).fill(false) as boolean[]
+      emp.shifts.forEach((v, i) => { fullShifts[colOffset + i] = v })
+      rows.push({
+        isSeparator: false,
+        name: emp.name,
+        role: emp.role,
+        employmentType: null,
+        shifts: fullShifts,
+      })
+    }
+    colOffset += block.dates.length
+  }
+
+  // Active columns: any column with at least one "1"
+  const activeCols: number[] = []
+  for (let ci = 0; ci < totalCols; ci++) {
+    if (rows.some((r) => !r.isSeparator && (r as ShiftEmployee).shifts[ci])) {
+      activeCols.push(ci)
+    }
+  }
+
+  return { sheetTitle, dates, activeCols, rows }
+}
 
 export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixShiftsData | null> {
   const apiKey = (await findSheetConfig('registry'))?.api_key ?? null
@@ -791,7 +880,7 @@ export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixS
     try {
       res = await sheetsApi.spreadsheets.values.get({
         spreadsheetId,
-        range: `'${safeTitle}'!A1:P200`,
+        range: `'${safeTitle}'!A1:U200`,
         valueRenderOption: 'FORMATTED_VALUE',
       })
       break
@@ -809,6 +898,19 @@ export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixS
 
   const rawRows = (res.data.values ?? []) as string[][]
 
+  // ── Detect format ─────────────────────────────────────────────────────────
+  // v4.1 internal template: block-based, shifts in columns O–U (indices 14–20),
+  // identified by a row where column A starts with "Блок".
+  // Legacy external format: single header at row 3, shifts in columns J–P (9–15).
+  const isV41 = rawRows.slice(0, 10).some(
+    (r) => (r[0] ?? '').trim().toLowerCase().startsWith('блок'),
+  )
+
+  if (isV41) {
+    return parseV41Shifts(rawRows, sheetTitle)
+  }
+
+  // ── Legacy format ─────────────────────────────────────────────────────────
   // Row 3 (index 2) — day numbers in columns J–P (0-based indices 9–15)
   const dateRow = rawRows[2] ?? []
   const dates: string[] = Array.from({ length: 7 }, (_, i) => (dateRow[9 + i] ?? '').trim())
@@ -820,7 +922,7 @@ export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixS
     if (hasShift) activeCols.push(ci)
   }
 
-  // Parse employee rows and separators from row 4+ (index 3+)
+  // Parse employee rows from row 4+ (index 3+)
   const rows: (ShiftRow | ShiftEmployee)[] = []
   for (let ri = 3; ri < rawRows.length; ri++) {
     const row = rawRows[ri]
@@ -830,7 +932,7 @@ export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixS
     const shiftVals      = Array.from({ length: 7 }, (_, ci) => (row[9 + ci] ?? '').trim())
 
     // Skip rows with no meaningful data in C, G, I, J–P
-    // J–P only counts if value is exactly "1" (shift marker); numbers like "13"/"Итог" are totals rows
+    // J–P only counts if value is exactly "1"; numbers like "13"/"Итог" are totals rows
     const hasData = name || role || employmentType || shiftVals.some((v) => v === '1')
     if (!hasData) continue
 
