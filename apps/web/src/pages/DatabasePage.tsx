@@ -26,6 +26,7 @@ interface TableConfig {
 interface DbConfigResponse {
   tables: TableConfig[]
   internalRegistry: { sheetUrl: string | null; apiKey: string | null }
+  driveFolderId: string | null
 }
 
 interface PreviewData {
@@ -290,33 +291,24 @@ function TableCard({ table, onPreview }: { table: TableConfig; onPreview: () => 
 
 // ─── Internal Registry Card ───────────────────────────────────────────────────
 
-function InternalRegistryCard({ sheetUrl, apiKey }: { sheetUrl: string | null; apiKey: string | null }) {
+function InternalRegistryCard({ sheetUrl }: { sheetUrl: string | null }) {
   const qc = useQueryClient()
-  const [urlDraft, setUrlDraft] = useState(sheetUrl ?? '')
-  const [keyDraft, setKeyDraft] = useState(apiKey ?? '')
-  const [urlSaved, setUrlSaved] = useState(false)
-  const [keySaved, setKeySaved] = useState(false)
-  const [showKey, setShowKey] = useState(false)
+  const [draft, setDraft] = useState(sheetUrl ?? '')
+  const [saved, setSaved] = useState(false)
 
-  useEffect(() => { setUrlDraft(sheetUrl ?? '') }, [sheetUrl])
-  useEffect(() => { setKeyDraft(apiKey ?? '') }, [apiKey])
+  useEffect(() => { setDraft(sheetUrl ?? '') }, [sheetUrl])
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['db-config'] })
-
-  const saveUrl = useMutation({
+  const save = useMutation({
     mutationFn: (url: string | null) =>
       api.patch('/database/config/internal_registry', { sheetUrl: url }).then((r) => r.data),
-    onSuccess: () => { invalidate(); setUrlSaved(true); setTimeout(() => setUrlSaved(false), 2000) },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['db-config'] })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    },
   })
 
-  const saveKey = useMutation({
-    mutationFn: (key: string | null) =>
-      api.patch('/database/config/internal_registry', { apiKey: key }).then((r) => r.data),
-    onSuccess: () => { invalidate(); setKeySaved(true); setTimeout(() => setKeySaved(false), 2000) },
-  })
-
-  const urlChanged = urlDraft !== (sheetUrl ?? '')
-  const keyChanged = keyDraft !== (apiKey ?? '')
+  const changed = draft !== (sheetUrl ?? '')
 
   const inputBase: React.CSSProperties = {
     flex: 1, minWidth: 0, fontSize: 12, padding: '6px 10px',
@@ -324,60 +316,34 @@ function InternalRegistryCard({ sheetUrl, apiKey }: { sheetUrl: string | null; a
     fontFamily: 'monospace', color: '#334155', background: '#f8fafc',
   }
 
-  const saveBtn = (changed: boolean, pending: boolean): React.CSSProperties => ({
-    fontSize: 12, padding: '6px 12px', borderRadius: 6, border: 'none',
-    background: changed ? '#3b82f6' : '#f1f5f9',
-    color: changed ? '#fff' : '#94a3b8',
-    cursor: changed && !pending ? 'pointer' : 'default',
-    fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
-  })
-
   return (
     <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
         <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Реестр матриц (выходная таблица)</div>
         <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.4 }}>
-          Google Sheet, куда будут записываться созданные внутренние матрицы
+          Google Sheet, куда записываются строки при создании новых внутренних матриц. Доступ через сервисный аккаунт.
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input
-          value={urlDraft}
-          onChange={(e) => setUrlDraft(e.target.value)}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
           placeholder="https://docs.google.com/spreadsheets/d/..."
           style={inputBase}
         />
         <button
-          onClick={() => saveUrl.mutate(urlDraft.trim() || null)}
-          disabled={!urlChanged || saveUrl.isPending}
-          style={saveBtn(urlChanged, saveUrl.isPending)}
+          onClick={() => save.mutate(draft.trim() || null)}
+          disabled={!changed || save.isPending}
+          style={{
+            fontSize: 12, padding: '6px 12px', borderRadius: 6, border: 'none',
+            background: changed ? '#3b82f6' : '#f1f5f9',
+            color: changed ? '#fff' : '#94a3b8',
+            cursor: changed && !save.isPending ? 'pointer' : 'default',
+            fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
+          }}
         >
-          {saveUrl.isPending ? 'Сохраняю...' : urlSaved ? '✓ Сохранено' : 'Сохранить'}
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <div style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>API ключ:</div>
-        <input
-          type={showKey ? 'text' : 'password'}
-          value={keyDraft}
-          onChange={(e) => setKeyDraft(e.target.value)}
-          placeholder="AIza..."
-          style={inputBase}
-        />
-        <button
-          onClick={() => setShowKey((v) => !v)}
-          style={{ fontSize: 11, padding: '6px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}
-        >
-          {showKey ? '🙈' : '👁'}
-        </button>
-        <button
-          onClick={() => saveKey.mutate(keyDraft.trim() || null)}
-          disabled={!keyChanged || saveKey.isPending}
-          style={saveBtn(keyChanged, saveKey.isPending)}
-        >
-          {saveKey.isPending ? 'Сохраняю...' : keySaved ? '✓' : 'Сохранить'}
+          {save.isPending ? 'Сохраняю...' : saved ? '✓ Сохранено' : 'Сохранить'}
         </button>
       </div>
     </div>
@@ -513,6 +479,80 @@ function MatrixTemplatesSection() {
   )
 }
 
+// ─── Drive Folder Card ────────────────────────────────────────────────────────
+
+function DriveFolderCard({ folderId }: { folderId: string | null }) {
+  const qc = useQueryClient()
+  const [draft, setDraft] = useState(folderId ?? '')
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => { setDraft(folderId ?? '') }, [folderId])
+
+  const save = useMutation({
+    mutationFn: (id: string | null) =>
+      api.patch('/database/config/drive_folder', { sheetUrl: id }).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['db-config'] })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    },
+  })
+
+  const changed = draft !== (folderId ?? '')
+
+  const inputBase: React.CSSProperties = {
+    flex: 1, minWidth: 0, fontSize: 12, padding: '6px 10px',
+    border: '1px solid #e2e8f0', borderRadius: 6, outline: 'none',
+    fontFamily: 'monospace', color: '#334155', background: '#f8fafc',
+  }
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Папка Google Drive</div>
+        <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.4 }}>
+          ID или ссылка на папку Google Drive, куда копируются шаблоны при создании новых матриц. Сервисный аккаунт должен иметь доступ редактора к этой папке.
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="ID папки или ссылка https://drive.google.com/drive/folders/..."
+          style={inputBase}
+        />
+        <button
+          onClick={() => save.mutate(draft.trim() || null)}
+          disabled={!changed || save.isPending}
+          style={{
+            fontSize: 12, padding: '6px 12px', borderRadius: 6, border: 'none',
+            background: changed ? '#3b82f6' : '#f1f5f9',
+            color: changed ? '#fff' : '#94a3b8',
+            cursor: changed && !save.isPending ? 'pointer' : 'default',
+            fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
+          }}
+        >
+          {save.isPending ? 'Сохраняю...' : saved ? '✓ Сохранено' : 'Сохранить'}
+        </button>
+      </div>
+
+      {folderId && (
+        <div style={{ fontSize: 11, color: '#94a3b8' }}>
+          Папка: <a
+            href={`https://drive.google.com/drive/folders/${folderId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#3b82f6', fontFamily: 'monospace' }}
+          >
+            {folderId}
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Section Label ─────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -590,11 +630,11 @@ export function DatabasePage() {
 
       {data && tab === 'internal' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <SectionLabel>Google Drive</SectionLabel>
+          <DriveFolderCard folderId={data.driveFolderId} />
+
           <SectionLabel>Реестр матриц</SectionLabel>
-          <InternalRegistryCard
-            sheetUrl={data.internalRegistry.sheetUrl}
-            apiKey={data.internalRegistry.apiKey}
-          />
+          <InternalRegistryCard sheetUrl={data.internalRegistry.sheetUrl} />
 
           <SectionLabel>Шаблоны матриц</SectionLabel>
           <MatrixTemplatesSection />

@@ -811,7 +811,7 @@ function ProjectTeamSection({ projectId }: { projectId: string }) {
 // ─── Source badge ─────────────────────────────────────────────────────────────
 
 function SourceBadge({ source }: { source: string }) {
-  const isInternal = source === 'manual'
+  const isInternal = source === 'internal' || source === 'manual'
   return (
     <span title={isInternal ? 'Создан внутри системы' : 'Из Google Sheets'} style={{
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -1475,7 +1475,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete 
             </div>
             <div style={{ display: 'flex', gap: 16, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
               <Field label="Строка в гугл таблице" value={entry.googleRowIndex != null ? String(entry.googleRowIndex) : null} />
-              <Field label="Источник" value="registry" />
+              <Field label="Источник" value={entry.source ?? 'google'} />
             </div>
           </div>
         )}
@@ -1879,7 +1879,10 @@ function MatrixFormModal({
         ? api.patch(`/internal-matrix/${matrix!.id}`, body).then((r) => r.data)
         : api.post('/internal-matrix', body).then((r) => r.data)
     },
-    onSuccess: () => { onSaved(); onClose() },
+    onSuccess: (data: any) => {
+      if (data?.driveError) setError(`Матрица создана, но ошибка Drive: ${data.driveError}`)
+      else { onSaved(); onClose() }
+    },
     onError: (e: any) => setError(e?.response?.data?.error ?? e?.message ?? 'Ошибка'),
   })
 
@@ -2046,7 +2049,7 @@ function RegistryTable({
   }, [afterPrimary, colFilters])
 
   const visibleCols = REG_COLS.filter((c) => !hiddenCols.has(c.key))
-  const colSpanCount = visibleCols.length
+  const colSpanCount = visibleCols.length + 1 // +1 for source icon column
   const totalColFilters = Object.values(colFilters).reduce((s, a) => s + a.length, 0)
 
 
@@ -2118,6 +2121,7 @@ function RegistryTable({
           <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
             <thead>
               <tr>
+                <th style={{ ...thBase, width: 28, padding: '6px 4px 6px 8px' }} />
                 {visibleCols.map((col) => {
                   const allVals = (colValues as Record<string, string[]>)[col.key] ?? []
                   const activeSel = colFilters[col.key]
@@ -2176,6 +2180,9 @@ function RegistryTable({
                   onClick={() => openEntry(r)}
                   title={noShifts ? 'Нет данных о сменах' : known ? 'Есть данные о сменах' : 'Нажмите для просмотра деталей'}
                 >
+                  <td style={{ ...tdStyle, width: 28, padding: '4px 4px 4px 8px' }}>
+                    <SourceBadge source={r.source ?? 'google'} />
+                  </td>
                   {visibleCols.map((col) => (
                     <td
                       key={col.key}

@@ -38,6 +38,7 @@ export async function databaseRoutes(app: FastifyInstance) {
     const projectsCfg = configMap.get('projects')
     const registryCfg = configMap.get('registry')
     const internalRegistryCfg = configMap.get('internal_registry')
+    const driveFolderCfg = configMap.get('drive_folder')
 
     const tables = [
       {
@@ -76,6 +77,7 @@ export async function databaseRoutes(app: FastifyInstance) {
         sheetUrl: internalRegistryCfg?.sheet_url ?? null,
         apiKey: internalRegistryCfg?.api_key ?? null,
       },
+      driveFolderId: driveFolderCfg?.sheet_url ?? null,
     }
   })
 
@@ -85,10 +87,11 @@ export async function databaseRoutes(app: FastifyInstance) {
     if (!ALL_CONFIG_KEYS.includes(key as any)) {
       return reply.code(400).send({ error: 'Неизвестный ключ таблицы' })
     }
-    const body = z.object({
-      sheetUrl: z.string().url().nullable().optional(),
-      apiKey: z.string().nullable().optional(),
-    }).safeParse(request.body)
+    // drive_folder stores a plain folder ID, not a URL — skip URL validation for it
+    const bodySchema = key === 'drive_folder'
+      ? z.object({ sheetUrl: z.string().nullable().optional(), apiKey: z.string().nullable().optional() })
+      : z.object({ sheetUrl: z.string().url().nullable().optional(), apiKey: z.string().nullable().optional() })
+    const body = bodySchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверный формат данных' })
 
     const update: { sheetUrl?: string | null; apiKey?: string | null } = {}

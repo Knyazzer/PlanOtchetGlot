@@ -93,7 +93,7 @@ export const TABLE_KEYS = ['employees_buffer', 'freelancers', 'kfpd'] as const
 export type TableKey = (typeof TABLE_KEYS)[number]
 
 // All keys that can be stored/updated in sheet_configs
-export const ALL_CONFIG_KEYS = ['projects', 'registry', 'internal_registry', 'employees_buffer', 'freelancers', 'kfpd'] as const
+export const ALL_CONFIG_KEYS = ['projects', 'registry', 'internal_registry', 'employees_buffer', 'freelancers', 'kfpd', 'drive_folder'] as const
 export type AllConfigKey = (typeof ALL_CONFIG_KEYS)[number]
 
 export const TABLE_META: Record<string, { label: string; description: string; editable: boolean }> = {

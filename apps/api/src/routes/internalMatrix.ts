@@ -2,6 +2,8 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
+import { findSheetConfig } from '../services/databaseService'
+import { copyTemplateToFolder, appendToInternalRegistry } from '../services/driveService'
 
 const createMatrixSchema = z.object({
   name:       z.string().min(1),
@@ -46,13 +48,41 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     // Generate a unique matrix ID
     const matrixId = `INT-${Date.now()}`
 
+    // Try to copy template to Drive folder
+    let sheetUrl: string | null = null
+    let driveError: string | null = null
+
+    const [templateRows, driveCfg] = await Promise.all([
+      prisma.$queryRawUnsafe<{ id: string; sheet_url: string; is_active: boolean }[]>(
+        `SELECT id, sheet_url, is_active FROM matrix_templates WHERE is_active = true LIMIT 1`,
+      ),
+      findSheetConfig('drive_folder'),
+    ])
+    const activeTemplate = templateRows[0]
+    const folderId = driveCfg?.sheet_url ?? null // folder ID is stored in the sheet_url column
+
+    if (activeTemplate?.sheet_url && folderId) {
+      const dateStr = date
+        ? new Date(date).toISOString().slice(0, 10).replace(/-/g, ' ')
+        : new Date().toISOString().slice(0, 10).replace(/-/g, ' ')
+      const fileName = `Матрица v4.1: ${client ?? ''}: ${name}: ${dateStr}`
+      try {
+        sheetUrl = await copyTemplateToFolder(activeTemplate.sheet_url, fileName, folderId)
+      } catch (e: any) {
+        driveError = e.message
+        app.log.error({ err: e }, '[internal-matrix] Drive copy failed')
+      }
+    }
+
+    const resolvedTemplateId = templateId ?? activeTemplate?.id ?? null
+
     const rows = await prisma.$queryRawUnsafe<MatrixRow[]>(
       `INSERT INTO matrix_registry
          (id, matrix_id, name, client, unit, format, date, producer, manager, curator,
           source, template_id, sheet_url, updated_at)
        VALUES
          (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9,
-          'internal', $10, NULL, NOW())
+          'internal', $10, $11, NOW())
        RETURNING *`,
       matrixId,
       name,
@@ -63,10 +93,26 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
       producer ?? null,
       manager ?? null,
       curator ?? null,
-      templateId ?? null,
+      resolvedTemplateId,
+      sheetUrl,
     )
 
-    return reply.code(201).send(rows[0])
+    // Append row to internal registry sheet (fire-and-forget, don't fail the request)
+    const internalRegistryCfg = await findSheetConfig('internal_registry')
+    if (internalRegistryCfg?.sheet_url) {
+      appendToInternalRegistry(internalRegistryCfg.sheet_url, {
+        matrixId,
+        status: rows[0]?.status ?? null,
+        sheetUrl,
+      }).catch((e: unknown) => {
+        app.log.error({ err: e }, '[internal-matrix] Registry append failed')
+      })
+    }
+
+    const result: Record<string, unknown> = { ...rows[0] }
+    if (driveError) result.driveError = driveError
+
+    return reply.code(201).send(result)
   })
 
   // PATCH /internal-matrix/:id — update internal matrix
