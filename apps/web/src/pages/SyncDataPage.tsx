@@ -78,7 +78,7 @@ const FORMAT_CHIP_COLORS: Record<string, string> = {
 
 const LOCATION_CHIP_COLORS: Record<string, string> = {
   'Знаменка крыша':  '#fff2cc',  // жёлтый
-  'Знаменка чёрная': '#000000',  // чёрный
+  'Знаменка чёрная': '#7a7a7a',  // серый
   'Знаменка камин':  '#fce5cd',  // персиковый
   'Романов':         '#d9d2e9',  // лавандовый
   'Выезд':           '#c9daf8',  // голубой
@@ -770,7 +770,7 @@ function ProjectsTable({
         ) : projects.length === 0 ? (
           <div style={emptyMsg}>Данные не загружены — запустите синхронизацию</div>
         ) : (
-          <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
+          <table style={{ borderCollapse: 'separate', borderSpacing: '0 4px', fontSize: 13, width: '100%' }}>
             <thead>
               <tr>
                 {visibleCols.map((col) => {
@@ -817,10 +817,11 @@ function ProjectsTable({
                 }
                 const cellColors = parseUncertainColors(p.uncertainFields ?? [])
                 const rowBg = i % 2 === 0 ? '#fff' : '#f8fafc'
+                const noMatrix = !p.sheetMatrixId
                 return (
                   <tr
                     key={p.id}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: 'pointer', outline: noMatrix ? '2px solid #f87171' : undefined, outlineOffset: '-1px', borderSpacing: 0 }}
                     onClick={() => setSelectedProject(p)}
                     title="Нажмите для просмотра деталей"
                   >
@@ -1466,7 +1467,7 @@ function RegistryTable({
       case 'sheetUrl':
         return r.sheetUrl
           ? r.sheetUrl.startsWith('https://')
-            ? <a href={r.sheetUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>Матрица</a>
+            ? <a href={r.sheetUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: '#3b82f6', textDecoration: 'underline' }}>Матрица</a>
             : r.sheetUrl
           : <span style={{ color: '#94a3b8' }}>—</span>
       case 'matrixId': return (

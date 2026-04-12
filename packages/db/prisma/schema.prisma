@@ -353,6 +353,17 @@ model DealMatrix {
   @@map("deal_matrices")
 }
 
+model SheetConfig {
+  id           String    @id @default(uuid())
+  tableKey     String    @unique @map("table_key")
+  sheetUrl     String?   @map("sheet_url")
+  cachedData   Json?     @map("cached_data")
+  lastSyncedAt DateTime? @map("last_synced_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("sheet_configs")
+}
+
 model SyncLog {
   id           String     @id @default(uuid())
   type         SyncType

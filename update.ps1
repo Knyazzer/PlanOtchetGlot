@@ -31,24 +31,18 @@ if ($lockChanged) {
     Write-Host "      Zavisimosti aktualni" -ForegroundColor DarkGray
 }
 
-# -- 3. Primenit novye migracii esli poyavilis --
-Write-Host "[3/4] Proverka migraciy..." -ForegroundColor Cyan
-$migrationsChanged = git -C $projectRoot diff "HEAD@{1}" --name-only 2>$null | Select-String "prisma/migrations"
-if ($migrationsChanged) {
-    Write-Host "      Obnaruzheny novye migracii, primenyayu..." -ForegroundColor DarkGray
-    $env:DATABASE_URL = $dbUrl
-    Set-Location $dbDir
-    npx prisma migrate deploy
-    if ($LASTEXITCODE -ne 0) {
-        Set-Location $projectRoot
-        Write-Host "      OSHIBKA: migracii ne primeneny (BD nedostupna?)" -ForegroundColor Red
-        exit 1
-    }
+# -- 3. Primenit novye migracii --
+Write-Host "[3/4] Primeneniye migraciy..." -ForegroundColor Cyan
+$env:DATABASE_URL = $dbUrl
+Set-Location $dbDir
+npx prisma migrate deploy
+if ($LASTEXITCODE -ne 0) {
     Set-Location $projectRoot
-    Write-Host "      Migracii primeneny" -ForegroundColor Green
-} else {
-    Write-Host "      Migracii aktualni" -ForegroundColor DarkGray
+    Write-Host "      OSHIBKA: migracii ne primeneny (BD nedostupna?)" -ForegroundColor Red
+    exit 1
 }
+Set-Location $projectRoot
+Write-Host "      Migracii primeneny" -ForegroundColor Green
 
 # -- 4. Zapustit prilozhenie --
 Write-Host "[4/4] Zapusk prilozheniya..." -ForegroundColor Cyan

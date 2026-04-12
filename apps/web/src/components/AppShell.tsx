@@ -12,8 +12,9 @@ import { ProfilePage } from '../pages/ProfilePage'
 import { AnalyticsPage } from '../pages/AnalyticsPage'
 import { SyncDataPage } from '../pages/SyncDataPage'
 import { DealsPage } from '../pages/DealsPage'
+import { DatabasePage } from '../pages/DatabasePage'
 
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -22,7 +23,7 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals']
+    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database']
     return saved && valid.includes(saved) ? saved : 'calendar'
   })
 
@@ -37,6 +38,7 @@ export function AppShell() {
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
     { id: 'users', label: 'Сотрудники', adminOnly: true },
     { id: 'syncdata', label: 'Таблицы', adminOnly: true },
+    { id: 'database', label: 'БД', adminOnly: true },
     { id: 'deals', label: 'Проекты' },
     { id: 'profile', label: 'Профиль' },
   ]
@@ -119,6 +121,7 @@ export function AppShell() {
         {page === 'analytics' && (isAdmin || isProducer) && <AnalyticsPage />}
         {page === 'users' && isAdmin && <UsersPage />}
         {page === 'syncdata' && isAdmin && <SyncDataPage />}
+        {page === 'database' && isAdmin && <DatabasePage />}
         {page === 'deals' && <DealsPage />}
         {page === 'profile' && <ProfilePage />}
       </main>
