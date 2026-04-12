@@ -197,11 +197,14 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     return { ok: true }
   })
 
-  // GET /internal-matrix/by-client/:client — list internal matrices for a client (for project linking)
+  // GET /internal-matrix/by-client/:client — all matrices for a client (for project linking)
   app.get('/by-client/:client', { preHandler: requireRole('admin') }, async (request) => {
     const { client } = request.params as { client: string }
-    return prisma.$queryRawUnsafe<MatrixRow[]>(
-      `SELECT * FROM matrix_registry WHERE source = 'internal' AND client ILIKE $1 ORDER BY created_at DESC`,
+    return prisma.$queryRawUnsafe<Pick<MatrixRow, 'id' | 'matrix_id' | 'name' | 'date' | 'source'>[]>(
+      `SELECT id, matrix_id, name, date, source
+       FROM matrix_registry
+       WHERE client ILIKE $1
+       ORDER BY date DESC NULLS LAST, created_at DESC`,
       client
     )
   })

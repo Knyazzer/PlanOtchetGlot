@@ -24,6 +24,8 @@ const createStatusRowSchema = z.object({
   time: z.string().nullable().optional(),
   format: z.string().nullable().optional(),
   location: z.string().nullable().optional(),
+  postProduction: z.string().nullable().optional(),
+  matrixRegistryId: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
   status: z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   days: z.array(daySchema).optional(),
@@ -37,6 +39,22 @@ const updateStatusRowSchema = createStatusRowSchema.partial().extend({
 })
 
 export async function statusRowsRoutes(app: FastifyInstance) {
+  // GET /status-rows/unique-values — distinct format & location values for dropdowns
+  app.get('/unique-values', { preHandler: requireRole('admin') }, async () => {
+    const [formats, locations] = await Promise.all([
+      prisma.$queryRawUnsafe<{ format: string }[]>(
+        `SELECT DISTINCT format FROM status_rows WHERE format IS NOT NULL AND format <> '' AND source <> 'separator' ORDER BY format`,
+      ),
+      prisma.$queryRawUnsafe<{ location: string }[]>(
+        `SELECT DISTINCT location FROM status_rows WHERE location IS NOT NULL AND location <> '' AND source <> 'separator' ORDER BY location`,
+      ),
+    ])
+    return {
+      formats: formats.map((r) => r.format),
+      locations: locations.map((r) => r.location),
+    }
+  })
+
   // GET /status-rows
   app.get('/', { preHandler: authenticate }, async (request) => {
     const query = request.query as {
@@ -70,6 +88,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       where,
       include: {
         matrixRegistry: true,
+        linkedMatrix: { select: { matrixId: true } },
         assignments: {
           include: { user: { select: { id: true, fullName: true, role: true } } },
         },

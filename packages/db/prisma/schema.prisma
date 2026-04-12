@@ -126,6 +126,7 @@ model StatusRow {
   time            String?
   format          String?
   location        String?
+  postProduction  String?         @map("post_production")
   status          StatusRowStatus @default(request)
   source          StatusRowSource @default(projects_table)
   matrixUrl       String?         @map("matrix_url")

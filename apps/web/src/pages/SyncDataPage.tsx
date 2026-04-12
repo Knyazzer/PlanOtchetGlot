@@ -21,6 +21,9 @@ interface Project {
   time: string | null
   format: string | null
   location: string | null
+  postProduction: string | null
+  matrixRegistryId: string | null
+  linkedMatrix: { matrixId: string } | null
   sheetMatrixId: string | null
   uncertainFields: string[]
 }
@@ -453,7 +456,7 @@ function applyProjColFilters(rows: Project[], colFilters: Record<string, string[
     for (const [col, sel] of Object.entries(colFilters)) {
       if (sel.length === 0) continue
       if (col === 'matrixId') {
-        const hasId = !!p.sheetMatrixId
+        const hasId = !!(p.sheetMatrixId ?? p.linkedMatrix?.matrixId)
         const wantHas = sel.includes('Есть ID')
         const wantNot = sel.includes('Нет ID')
         if (wantHas && !wantNot && !hasId) return false
@@ -671,13 +674,17 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
     }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-link', projectId] })
+      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
       setPicking(false)
     },
   })
 
   const unlink = useMutation({
     mutationFn: () => api.patch(`/status-rows/${projectId}`, { matrixRegistryId: null, blockSlot: null }).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-link', projectId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['project-link', projectId] })
+      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
+    },
   })
 
   const sectionLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }
@@ -853,19 +860,49 @@ function ProjectFormModal({
   const isEdit = !!project
 
   const [form, setForm] = useState({
-    name:           project?.name           ?? '',
-    client:         project?.client         ?? '',
-    execProducer:   project?.execProducer   ?? '',
-    lineProducer:   project?.lineProducer   ?? '',
-    accountManager: project?.accountManager ?? '',
-    date:           project?.date ? project.date.slice(0, 10) : '',
-    time:           project?.time           ?? '',
-    format:         project?.format         ?? '',
-    location:       project?.location       ?? '',
-    status:         project?.status         ?? 'request',
+    name:             project?.name             ?? '',
+    client:           project?.client           ?? '',
+    matrixRegistryId: project?.matrixRegistryId ?? '',
+    execProducer:     project?.execProducer     ?? '',
+    lineProducer:     project?.lineProducer     ?? '',
+    accountManager:   project?.accountManager   ?? '',
+    date:             project?.date ? project.date.slice(0, 10) : '',
+    time:             project?.time             ?? '',
+    format:           project?.format           ?? '',
+    location:         project?.location         ?? '',
+    postProduction:   project?.postProduction   ?? '',
+    status:           project?.status           ?? 'request',
+  })
+  const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
+
+  // КФПД data for dropdowns
+  const { data: kfpdRaw } = useQuery<KfpdData>({
+    queryKey: ['kfpd-preview'],
+    queryFn: () => api.get('/database/preview/kfpd').then((r) => r.data),
+  })
+  const kfpdCol = (idx: number) => kfpdRaw
+    ? [...new Set(kfpdRaw.rows.map((r) => r[idx] ?? '').filter(Boolean))]
+    : []
+  const kfpdClients   = kfpdCol(0)
+  const kfpdProducers = kfpdCol(2)
+  const kfpdStatuses  = kfpdCol(8)
+
+  // Unique format & location from existing projects
+  const { data: uniqueVals } = useQuery<{ formats: string[]; locations: string[] }>({
+    queryKey: ['status-rows-unique-values'],
+    queryFn: () => api.get('/status-rows/unique-values').then((r) => r.data),
   })
 
-  const [error, setError] = useState<string | null>(null)
+  // Matrices for the selected client (all sources)
+  const { data: clientMatrices = [] } = useQuery<{ id: string; matrix_id: string; name: string | null; date: string | null; source: string }[]>({
+    queryKey: ['matrices-by-client', form.client],
+    queryFn: () =>
+      form.client
+        ? api.get(`/internal-matrix/by-client/${encodeURIComponent(form.client)}`).then((r) => r.data)
+        : Promise.resolve([]),
+    enabled: !!form.client,
+  })
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -874,42 +911,77 @@ function ProjectFormModal({
     return () => { window.removeEventListener('keydown', handler); document.body.style.overflow = '' }
   }, [onClose])
 
-  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+  // Reset matrix selection when client changes
+  useEffect(() => {
+    setForm((f) => ({ ...f, matrixRegistryId: '' }))
+  }, [form.client])
+
+  const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
 
   const save = useMutation({
     mutationFn: () => {
-      const body = {
-        name:           form.name.trim(),
-        client:         form.client.trim()         || null,
-        execProducer:   form.execProducer.trim()   || null,
-        lineProducer:   form.lineProducer.trim()   || null,
-        accountManager: form.accountManager.trim() || null,
-        date:           form.date ? new Date(form.date).toISOString() : null,
-        time:           form.time.trim()           || null,
-        format:         form.format.trim()         || null,
-        location:       form.location.trim()       || null,
-        status:         form.status,
+      const body: Record<string, unknown> = {
+        name:             form.name.trim(),
+        client:           form.client.trim()          || null,
+        matrixRegistryId: form.matrixRegistryId       || null,
+        execProducer:     form.execProducer.trim()    || null,
+        lineProducer:     form.lineProducer.trim()    || null,
+        accountManager:   form.accountManager.trim()  || null,
+        date:             form.date ? new Date(form.date).toISOString() : null,
+        time:             form.time.trim()            || null,
+        format:           form.format.trim()          || null,
+        location:         form.location.trim()        || null,
+        postProduction:   form.postProduction.trim()  || null,
+        status:           form.status                 || 'request',
       }
       return isEdit
         ? api.patch(`/status-rows/${project!.id}`, body).then((r) => r.data)
         : api.post('/status-rows', body).then((r) => r.data)
     },
     onSuccess: () => { onSaved(); onClose() },
-    onError: (e: any) => setError(e?.response?.data?.error ?? e?.message ?? 'Ошибка'),
+    onError: (e: any) => {
+      const data = e?.response?.data
+      setError(data?.error ?? e?.message ?? 'Ошибка')
+      setFieldErrors(data?.details?.fieldErrors ?? {})
+    },
   })
 
-  const fieldStyle: React.CSSProperties = {
+  const fs: React.CSSProperties = {
     width: '100%', fontSize: 13, padding: '7px 10px', border: '1px solid #e2e8f0',
     borderRadius: 6, outline: 'none', boxSizing: 'border-box', color: '#1e293b', background: '#f8fafc',
   }
-  const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }
-  const fieldGroup = (label: string, key: string, placeholder?: string) => (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={labelStyle}>{label}</div>
-      <input style={fieldStyle} value={(form as any)[key]} onChange={set(key)} placeholder={placeholder} />
-    </div>
-  )
+  const fsErr: React.CSSProperties = { ...fs, borderColor: '#f87171', background: '#fff5f5' }
+  const ls: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600, color: '#64748b',
+    textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4,
+  }
+  const lsErr: React.CSSProperties = { ...ls, color: '#ef4444' }
+
+  const fg = (label: string, key: string, placeholder?: string) => {
+    const errs = fieldErrors[key]
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={errs ? lsErr : ls}>{label}{errs ? ` — ${errs[0]}` : ''}</div>
+        <input style={errs ? fsErr : fs} value={(form as any)[key]} onChange={set(key)} placeholder={placeholder} />
+      </div>
+    )
+  }
+
+  const fsel = (label: string, key: string, options: string[]) => {
+    const errs = fieldErrors[key]
+    const curVal = (form as any)[key] as string
+    const allOptions = curVal && !options.includes(curVal) ? [curVal, ...options] : options
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div style={errs ? lsErr : ls}>{label}{errs ? ` — ${errs[0]}` : ''}</div>
+        <select style={errs ? fsErr : fs} value={curVal} onChange={set(key)}>
+          <option value="">— не выбрано —</option>
+          {allOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+    )
+  }
 
   return (
     <div
@@ -917,7 +989,7 @@ function ProjectFormModal({
       onMouseDown={onClose}
     >
       <div
-        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 580, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -928,44 +1000,68 @@ function ProjectFormModal({
 
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {fieldGroup('Название *', 'name', 'Название проекта')}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {fieldGroup('Клиент', 'client', 'Клиент')}
+            {fsel('Клиент', 'client', kfpdClients)}
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={labelStyle}>Статус</div>
-              <select style={fieldStyle} value={form.status} onChange={set('status')}>
+              <div style={fieldErrors['status'] ? lsErr : ls}>
+                Статус{fieldErrors['status'] ? ` — ${fieldErrors['status'][0]}` : ''}
+              </div>
+              <select style={fieldErrors['status'] ? fsErr : fs} value={form.status} onChange={set('status')}>
                 {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {fieldGroup('Исп. продюсер', 'execProducer')}
-            {fieldGroup('Лайн-продюсер', 'lineProducer')}
+          {/* Matrix dropdown — depends on selected client */}
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={ls}>Матрица</div>
+            <select style={fs} value={form.matrixRegistryId} onChange={set('matrixRegistryId')}>
+              <option value="">— отсутствует —</option>
+              {clientMatrices.map((m) => {
+                const dateStr = m.date ? m.date.slice(0, 10) : ''
+                const label = [m.matrix_id, m.name, dateStr].filter(Boolean).join(' · ')
+                return <option key={m.id} value={m.id}>{label}</option>
+              })}
+            </select>
           </div>
 
-          {fieldGroup('Аккаунт-менеджер', 'accountManager')}
+          {fg('Название *', 'name', 'Название проекта')}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={labelStyle}>Дата</div>
-              <input type="date" style={fieldStyle} value={form.date} onChange={set('date')} />
-            </div>
-            {fieldGroup('Время', 'time', '10:00')}
-            {fieldGroup('Формат', 'format', 'ТВ / Онлайн')}
+            {fsel('Исп. продюсер', 'execProducer', kfpdProducers)}
+            {fsel('Лайн-продюсер', 'lineProducer', kfpdProducers)}
+            {fsel('Аккаунт-менеджер', 'accountManager', kfpdProducers)}
           </div>
 
-          {fieldGroup('Локация', 'location', 'Адрес или название')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={ls}>Дата</div>
+              <input type="date" style={fs} value={form.date} onChange={set('date')} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={ls}>Время</div>
+              <input type="time" style={fs} value={form.time} onChange={set('time')} />
+            </div>
+          </div>
 
-          {error && <div style={{ fontSize: 13, color: '#ef4444', background: '#fef2f2', padding: '8px 12px', borderRadius: 6 }}>{error}</div>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {fsel('Формат', 'format', uniqueVals?.formats ?? [])}
+            {fsel('Локация', 'location', uniqueVals?.locations ?? [])}
+          </div>
+
+          {fg('Постпродакшн', 'postProduction', 'Студия / подрядчик')}
+
+          {error && Object.keys(fieldErrors).length === 0 && (
+            <div style={{ fontSize: 13, color: '#ef4444', background: '#fef2f2', padding: '8px 12px', borderRadius: 6 }}>{error}</div>
+          )}
         </div>
 
         {/* Footer */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
           <button
-            onClick={() => { if (!form.name.trim()) { setError('Название обязательно'); return } save.mutate() }}
+            onClick={() => { setFieldErrors({}); if (!form.name.trim()) { setError('Название обязательно'); return } save.mutate() }}
             disabled={save.isPending}
             style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: 'none', background: save.isPending ? '#93c5fd' : '#2563eb', color: '#fff', cursor: save.isPending ? 'default' : 'pointer', fontWeight: 500 }}
           >
@@ -1092,7 +1188,7 @@ function ProjectsTable({
           continue
         }
         if (col === 'matrixId') {
-          const hasId = !!p.sheetMatrixId
+          const hasId = !!(p.sheetMatrixId ?? p.linkedMatrix?.matrixId)
           const wantHas = sel.includes('Есть ID')
           const wantNot = sel.includes('Нет ID')
           if (wantHas && !wantNot && !hasId) return false
@@ -1149,7 +1245,10 @@ function ProjectsTable({
       case 'time':           return fmtTime(p.time)
       case 'format':         return p.format ?? '—'
       case 'location':       return p.location ?? '—'
-      case 'matrixId':       return <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{p.sheetMatrixId ?? '—'}</span>
+      case 'matrixId': {
+        const mid = p.sheetMatrixId ?? p.linkedMatrix?.matrixId ?? null
+        return <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{mid ?? '—'}</span>
+      }
       default:               return null
     }
   }
@@ -1246,7 +1345,7 @@ function ProjectsTable({
                 }
                 const cellColors = parseUncertainColors(p.uncertainFields ?? [])
                 const rowBg = i % 2 === 0 ? '#fff' : '#f8fafc'
-                const noMatrix = !p.sheetMatrixId
+                const noMatrix = !p.sheetMatrixId && !p.linkedMatrix?.matrixId
                 return (
                   <tr
                     key={p.id}
@@ -2372,7 +2471,7 @@ export function SyncDataPage() {
 
   const { data: allProjects = [], isLoading: projLoading } = useQuery<Project[]>({
     queryKey: ['status-rows-sync'],
-    queryFn: () => api.get('/status-rows?withSeparators=true&slim=true').then((r) => r.data),
+    queryFn: () => api.get('/status-rows?withSeparators=true').then((r) => r.data),
   })
 
   const { data: sheetUrls } = useQuery<{ projectsSheetUrl: string | null; registrySheetUrl: string | null }>({
