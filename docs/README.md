@@ -11,6 +11,7 @@
 | [05-architecture.md](05-architecture.md) | Архитектура и стек — технологии, структура проекта, парсер матриц |
 | [07-dev-setup.md](07-dev-setup.md) | Развёртывание на новой машине — Git, Docker, миграции |
 | [08-deploy.md](08-deploy.md) | Деплой на сервер — Docker Compose prod, SSL, бэкапы |
+| [09-observability.md](09-observability.md) | Мониторинг — Grafana, Loki, Prometheus, план внедрения |
 | [TODO.md](TODO.md) | Актуальные задачи с приоритетами |
 | [DONE.md](DONE.md) | Всё реализованное |
 

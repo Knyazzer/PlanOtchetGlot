@@ -15,7 +15,7 @@
 - [x] `start.ps1` — запуск API и Web в отдельных окнах PowerShell
 
 ### База данных (`packages/db`)
-- [x] Prisma schema: 15 моделей — `User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`
+- [x] Prisma schema: 18 моделей — `User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`, `MatrixTemplate`, `ProjectMember`, `SheetConfig`
 - [x] Все enum'ы: `Role`, `StatusRowStatus`, `StatusRowSource`, `EmploymentType`, `ShiftType`, `ShiftSource`, `SyncType`, `SyncStatus`, `NotificationType`, `TaskStatus`, `ChangeSource`, `DayType`, `DealStatus`
 - [x] Seed-скрипт: 5 пользователей (admin + 3 employee + producer), тестовые проекты и задачи
 
@@ -91,7 +91,7 @@
 - [x] Abort-механизм: `requestSyncAbort()` устанавливает флаг, матричный цикл проверяет его перед каждой матрицей; сбрасывается в начале `runFullSync()`
 - [x] `POST /sync/trigger` — ручной запуск (async, 202); возвращает `totalMatrices`; доступен admin/producer
 - [x] `POST /sync/stop` — остановить синхронизацию матриц; доступен admin/producer
-- [x] `GET /sync/logs` — история синхронизаций с фильтром по типу (**admin only** — см. TODO)
+- [x] `GET /sync/logs` — история синхронизаций с фильтром по типу (admin + producer)
 - [x] `GET /sync/registry` — все записи реестра матриц (raw SQL для camelCase полей)
 - [x] `GET /sync/matrix-preview/:matrixId` — просмотр содержимого матрицы из Google Sheets
 - [x] `GET /sync/matrix-shifts/:matrixId` — смены из матрицы (из кэша или Google Sheets при `?refresh=true`)
@@ -117,9 +117,9 @@
 
 - [x] `GET /notifications` — список для текущего пользователя + глобальные (userId=null), последние 50
 - [x] `PATCH /notifications/:id/read` — отметить прочитанным
-- [x] `PATCH /notifications/read-all` — отметить всё прочитанным (см. TODO — баг с глобальными)
+- [x] `PATCH /notifications/read-all` — отметить всё прочитанным
 - [x] `GET /notifications/count` — количество непрочитанных (для колокольчика)
-- [x] `NotificationBell` в шапке — бейдж с кол-вом непрочитанных, обновление каждые 60 сек, дроп-даун с прочитанными/непрочитанными
+- [x] `NotificationBell` в шапке — **заглушка** («В разработке»); API готов, UI временно отключён до проработки механики для разных ролей
 
 ---
 
@@ -186,6 +186,56 @@
 
 ---
 
+---
+
+## Этап 10 — Источники данных и внутренние матрицы
+
+### Страница Database (`apps/web/src/pages/DatabasePage.tsx`)
+- [x] Вкладка «Внешние Google Sheets» — настройка URL и API-ключей для `employees_buffer`, `freelancers`, `kfpd`; `projects` и `registry` отображаются read-only
+- [x] Кнопка «Обновить» — принудительная загрузка данных из Google Sheets в кэш (`POST /database/refresh/:key`)
+- [x] Просмотр загруженных данных в модальном окне (`GET /database/preview/:key`)
+- [x] Вкладка «Внутренние» — настройка Drive папки, URL реестра матриц, CRUD шаблонов матриц
+- [x] Страница доступна только admin, nav-метка «БД»
+
+### Конфигурация таблиц — API (`apps/api/src/routes/database.ts`)
+- [x] `GET /database/config` — состояние всех таблиц (URL, ключ, rowCount, lastSyncedAt)
+- [x] `PATCH /database/config/:key` — сохранить URL / API-ключ в `sheet_configs`
+- [x] `POST /database/refresh/:key` — загрузить данные из Google Sheets и закешировать
+- [x] `GET /database/preview/:key` — первые 200 строк из кэша в виде columns/rows
+- [x] Сервис `databaseService.ts`: `TABLE_KEYS = ['employees_buffer', 'freelancers', 'kfpd']`, кэшируется в `SheetConfig.cachedData`
+
+### Шаблоны матриц — API (`apps/api/src/routes/matrixTemplates.ts`)
+- [x] `GET /matrix-templates` — список шаблонов
+- [x] `POST /matrix-templates` — добавить шаблон (name + sheetUrl)
+- [x] `PATCH /matrix-templates/:id` — обновить
+- [x] `POST /matrix-templates/:id/activate` — сделать активным (снимает флаг у всех остальных)
+- [x] `DELETE /matrix-templates/:id` — удалить
+
+### Внутренние матрицы — API (`apps/api/src/routes/internalMatrix.ts`)
+- [x] `POST /internal-matrix` — создать запись в `matrix_registry` (source='internal'), скопировать шаблон в Drive, записать данные в лист СВОД, добавить строку в реестровую таблицу; ID формат `INT-{timestamp}`
+- [x] `PATCH /internal-matrix/:id` — обновить поля
+- [x] `DELETE /internal-matrix/:id` — удалить (только source='internal')
+- [x] `GET /internal-matrix` — список всех внутренних матриц
+- [x] `GET /internal-matrix/by-client/:client` — матрицы по клиенту (для привязки к проекту)
+- [x] `POST /internal-matrix/:id/check` — проверить существование файла в Drive; если не найден — автоудаление записи
+
+### Google Drive — сервис (`apps/api/src/services/driveService.ts`)
+- [x] OAuth2-аутентификация (отдельно от Service Account для Sheets)
+- [x] `copyTemplateToFolder` — скопировать файл в папку Drive
+- [x] `setupMatrixPermissions` — настроить права доступа к новому файлу
+- [x] `writeSvodData` — записать 10 полей проекта в диапазон `СВОД!C2:C11`
+- [x] `appendToInternalRegistry` — добавить строку в реестровую таблицу
+- [x] `checkSpreadsheetExists` — проверить наличие файла в Drive
+
+### Участники проекта — API (`apps/api/src/routes/projectMembers.ts`)
+- [x] `GET /project-members?projectId=` — список участников проекта
+- [x] `POST /project-members` — добавить участника (name, position, shifts JSONB)
+- [x] `PATCH /project-members/:id` — обновить
+- [x] `DELETE /project-members/:id` — удалить
+- [x] UI находится в `SyncDataPage.tsx` — в панели деталей матрицы
+
+---
+
 ## Исправленные баги
 
 - [x] Сепараторы попадали в панель "Без даты" — добавлен фильтр `p.source !== 'separator'`
@@ -193,3 +243,7 @@
 - [x] `POST /sync/reset` падал на `'separator'` — заменено на `$queryRawUnsafe` с прямым SQL
 - [x] Мёртвый импорт `interactionPlugin` в `CalendarPage.tsx` — удалён
 - [x] Нет `onDelete: SetNull` на `ShiftEntry.confirmedBy` — добавлено в схему через `ALTER TABLE`
+- [x] `GET /sync/logs` возвращал 403 для продюсеров — добавлен `'producer'` в `requireRole` на этом роуте
+- [x] Debug `console.log` в `syncService.ts` (строки ~229–231) — удалён; мёртвый экспорт `isSyncRunning()` — удалён
+- [x] `any`-касты в роутах (`deals.ts`, `shifts.ts`, `users.ts`, `tasks.ts`, `statusRows.ts`) — заменены на типизированные варианты
+- [x] `mode: 'insensitive'` в `statusRows.ts` — исправлено на `Prisma.QueryMode.insensitive` (pre-existing TS error)

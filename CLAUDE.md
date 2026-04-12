@@ -34,7 +34,7 @@ pnpm --filter @tv-shifts/web build
 ### TypeScript check
 ```bash
 # Frontend (no emit)
-node_modules/.bin/tsc --noEmit -p apps/web/tsconfig.json
+pnpm --filter @tv-shifts/web exec tsc --noEmit
 
 # API (compiles to dist/)
 pnpm --filter @tv-shifts/api build
@@ -92,11 +92,15 @@ JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh
 | `/change-logs` | `apps/api/src/routes/changeLogs.ts` |
 | `/analytics` | `apps/api/src/routes/analytics.ts` |
 | `/deals` | `apps/api/src/routes/deals.ts` |
+| `/database` | `apps/api/src/routes/database.ts` |
+| `/matrix-templates` | `apps/api/src/routes/matrixTemplates.ts` |
+| `/internal-matrix` | `apps/api/src/routes/internalMatrix.ts` |
+| `/project-members` | `apps/api/src/routes/projectMembers.ts` |
 
 Route auth guard lives in `apps/api/src/plugins/auth.ts` — call `request.jwtVerify()` inside route handlers, or use the `authenticate` / `requireRole(...roles)` preHandlers. `requireRole` accepts multiple roles (e.g. `requireRole('admin', 'producer')`).
 
 ### Database Models
-`User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`
+`User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`, `MatrixTemplate`, `ProjectMember`, `SheetConfig`
 
 Schema: `packages/db/prisma/schema.prisma`
 
@@ -104,11 +108,13 @@ Key enums:
 - `Role` — `employee | admin | producer`
 - `StatusRowStatus` — `request | negotiation | preproduction | production | postproduction | delivered | rejected | cancelled | manual`
 - `StatusRowSource` — `projects_table | manual | separator`
+- `EmploymentType` — `staff | ip_7 | ip_8 | ip_10 | szt`
 - `ShiftType` — `zastroyka | efir | demontazh`
 - `ShiftSource` — `matrix | manual`
 - `DayType` — `zastroyka | efir`
 - `TaskStatus` — `open | in_progress | done`
 - `NotificationType` — `no_matrix | unmatched_name | data_conflict | schedule_change`
+- `DealStatus` — `preliminary | in_progress | completed`
 
 ### Prisma Client Workaround
 The running API process locks the Prisma client DLL, preventing `pnpm db:generate` without stopping the server. If the generated client is outdated (e.g., missing new enum values), use raw SQL via `$queryRawUnsafe` / `$executeRawUnsafe` with explicit PostgreSQL enum casts:
@@ -127,9 +133,24 @@ Sync logic: `apps/api/src/services/syncService.ts`. Reads two sheets:
 
 Cell colors (`userEnteredFormat.backgroundColor`) and merged cells are used for status detection. Authentication uses a Google Service Account (or `GOOGLE_API_KEY` for public sheets).
 
+Additional manually-configured sheets (employees buffer, freelancers, КФПД) are stored in the `sheet_configs` table and managed via `apps/api/src/services/databaseService.ts`. Their URLs and API keys are edited through `DatabasePage` in the UI (`/database` route), which calls `/database/config` and `/database/refresh/:key`.
+
+### Google Drive Integration
+
+`apps/api/src/services/driveService.ts` handles Drive file operations via **OAuth2** (NOT the Service Account used for Sheets). Requires separate credentials: `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`, `GOOGLE_DRIVE_OWNER_EMAIL`.
+
+Used by `/internal-matrix` routes to:
+- Copy a template spreadsheet into a Drive folder (`copyTemplateToFolder`)
+- Set up sharing permissions on the new spreadsheet (`setupMatrixPermissions`)
+- Write initial project data to the `СВОД!C2:C11` sheet range (`writeSvodData`)
+- Append a row to the internal registry sheet (`appendToInternalRegistry`)
+- Check if a spreadsheet still exists in Drive (`checkSpreadsheetExists`)
+
+**Internal matrices** (`source = 'internal'` in `matrix_registry`) are created manually via `POST /internal-matrix`. Their ID format is `INT-{timestamp}`. The Drive folder ID is stored in `sheet_configs` under key `drive_folder` (in the `sheet_url` column — naming convention, not a bug).
+
 **Matrix sync flow**: for each `MatrixRegistry` entry, `fetchMatrixShifts` parses the "₽ СМЕНЫ" (or "₽ СПЕЦИАЛИСТЫ") sheet. A row is kept only if at least one of columns C, G, I, or J–P contains data (only `"1"` counts in J–P; totals rows like "Итог:" are skipped). The parsed result is saved immediately to `shifts_cache` (Json) and `has_shifts_data` (Boolean) on `MatrixRegistry` before employee matching begins — so row highlighting in the UI appears during sync without waiting for the full process. Rate-limit errors (429/503) are retried up to 3 times with 3s/6s delays. There is a 1500ms delay between matrices.
 
-**Sync abort**: `requestSyncAbort()` exported from `syncService.ts` sets `_abortRequested = true`. The matrix loop checks this flag before processing each matrix. `POST /sync/stop` calls it. After abort, `totalMatrices` must be cleared in the frontend to reset `isRunning` state.
+**Sync abort**: `requestSyncAbort()` exported from `syncService.ts` sets `_abortRequested = true`. The matrix loop checks this flag before processing each matrix. `POST /sync/stop` calls it. `_abortRequested` resets to `false` at the start of each new `runFullSync()` call. After abort, `totalMatrices` must be cleared in the frontend to reset `isRunning` state.
 
 ### Separator Rows
 `StatusRow` records with `source = 'separator'` are month dividers injected by sync. They have no real project data. Frontend must filter them out except in `SyncDataPage` (use `?withSeparators=true` query param). Always exclude them in API list endpoints: `NOT: { source: 'separator' as any }`.
@@ -145,6 +166,13 @@ Column dropdowns (`ColDropdown`) render **inside `<th>` via `position: absolute;
 `FilterGroup` component is defined at **module level** (not inside other components) to prevent React from recreating it on each render, which would cause scroll-position resets.
 
 **Sticky table headers**: `thBase` uses `position: sticky; top: 0`. Do not override `position` on individual `<th>` — `sticky` also acts as positioning context for absolutely-positioned dropdown children. The outer panel wrapper uses `overflow: clip` (not `overflow: hidden`) — `hidden` creates a scroll container that breaks sticky.
+
+### SyncDataPage Extended Functionality
+
+In addition to the three-level filter system for the production schedule table, `SyncDataPage.tsx` also contains the full UI for:
+- **Internal matrix management** — create, edit, link to projects, check existence in Drive (`/internal-matrix/*`)
+- **Project members** — manual team members per project with JSONB shift schedules (`/project-members/*`)
+- **Matrix linking** — associating `MatrixRegistry` entries to `StatusRow` records via `blockSlot` and `matrixRegistryId`
 
 ### AppShell Sync Window
 `SyncButton` in `apps/web/src/components/AppShell.tsx` polls `/sync/logs` and shows sync progress.
@@ -163,8 +191,9 @@ Column dropdowns (`ColDropdown`) render **inside `<th>` via `position: absolute;
 - `DATABASE_URL` — PostgreSQL connection string (default: Docker on port 5432)
 - `JWT_SECRET` — random string
 - `WEB_URL` — frontend origin for CORS (default `http://localhost:5173`)
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY` — for Google Sheets sync
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY` — for Google Sheets sync (Service Account)
 - `GOOGLE_PROJECTS_SHEET_ID` + `GOOGLE_REGISTRY_SHEET_ID` — source spreadsheet IDs
+- `GOOGLE_DRIVE_CLIENT_ID` + `GOOGLE_DRIVE_CLIENT_SECRET` + `GOOGLE_DRIVE_REFRESH_TOKEN` + `GOOGLE_DRIVE_OWNER_EMAIL` — for Google Drive file operations (OAuth2, separate from Sheets auth)
 - `VITE_API_URL` — used by Vite at build time for frontend API calls (default `http://localhost:4000`)
 - `PORT` — API server port (default `4000`)
 
@@ -177,6 +206,8 @@ Column dropdowns (`ColDropdown`) render **inside `<th>` via `position: absolute;
 | Sync Data | `SyncDataPage.tsx` | Done |
 | Users | `UsersPage.tsx` | Done |
 | Deals | `DealsPage.tsx` | Done |
+| Database | `DatabasePage.tsx` | Done (admin-only, nav label "БД") |
 | Tasks | `TasksPage.tsx` | Stub (🚧) |
 | Analytics | `AnalyticsPage.tsx` | Stub (🚧) |
 | Profile | `ProfilePage.tsx` | Stub (🚧) |
+| Notifications | `NotificationBell` in `AppShell.tsx` | Stub (🚧) |
