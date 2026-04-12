@@ -112,9 +112,9 @@ const PROJ_COLS: ColDef[] = [
   { key: 'status',         label: 'A Статус',       filterable: true },
   { key: 'client',         label: 'B Клиент',       filterable: true },
   { key: 'name',           label: 'C Название' },
-  { key: 'execProducer',   label: 'D Исп.прод.' },
-  { key: 'lineProducer',   label: 'E Лайн-прод.' },
-  { key: 'accountManager', label: 'F Аккаунт' },
+  { key: 'execProducer',   label: 'D Исп.прод.',   filterable: true },
+  { key: 'lineProducer',   label: 'E Лайн-прод.',  filterable: true },
+  { key: 'accountManager', label: 'F Аккаунт',     filterable: true },
   { key: 'date',           label: 'G Дата',         filterable: true },
   { key: 'time',           label: 'H Время' },
   { key: 'format',         label: 'I Формат',       filterable: true },
@@ -190,7 +190,15 @@ function uniq(values: (string | null | undefined)[]): string[] {
 
 function usePersistedFilters(storageKey: string) {
   const [state, setRaw] = useState<Record<string, string[]>>(() => {
-    try { const s = localStorage.getItem(storageKey); return s ? JSON.parse(s) : {} } catch { return {} }
+    try {
+      const s = localStorage.getItem(storageKey)
+      if (!s) return {}
+      const parsed = JSON.parse(s) as Record<string, string[]>
+      // Удаляем пустые массивы — старые данные до изменения логики фильтрации
+      const clean: Record<string, string[]> = {}
+      for (const [k, v] of Object.entries(parsed)) if (v.length > 0) clean[k] = v
+      return clean
+    } catch { return {} }
   })
   function setState(next: Record<string, string[]> | ((prev: Record<string, string[]>) => Record<string, string[]>)) {
     setRaw((prev) => {
@@ -220,61 +228,57 @@ function usePersistedHidden(storageKey: string) {
 // ─── Inline column filter dropdown (renders inside <th>, no fixed positioning) ─
 
 function ColDropdown({
-  values, selected, onToggle, onClear, onClose,
+  values, selected, onToggle, onClear, onSelectAll, onClose,
 }: {
   values: string[]
   selected: string[]
   onToggle: (v: string) => void
   onClear: () => void
+  onSelectAll: () => void
   onClose: () => void
 }) {
+  const allSelected = values.length > 0 && values.every((v) => selected.includes(v))
   return (
     <>
-      {/* Backdrop: closes dropdown on outside click */}
+      {/* Backdrop */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 50 }} onMouseDown={onClose} />
+      {/* Dropdown panel */}
       <div
-        style={{ position: 'fixed', inset: 0, zIndex: 50 }}
-        onMouseDown={onClose}
-      />
-      {/* Dropdown panel: absolute inside the <th> */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '100%',
-          left: 0,
-          zIndex: 51,
-          background: '#fff',
-          border: '1px solid #e2e8f0',
-          borderRadius: 8,
-          boxShadow: '0 4px 20px rgba(15,23,42,0.14)',
-          padding: '6px 0',
-          minWidth: 190,
-          maxHeight: 280,
-          overflowY: 'auto',
-        }}
+        style={{ position: 'absolute', top: '100%', left: 0, zIndex: 51, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 20px rgba(15,23,42,0.14)', minWidth: 190, maxHeight: 300, display: 'flex', flexDirection: 'column' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {values.length === 0
-          ? <div style={{ padding: '8px 14px', fontSize: 12, color: '#94a3b8' }}>Нет вариантов</div>
-          : values.map((v) => {
-              const checked = selected.includes(v)
-              return (
-                <label key={v} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', cursor: 'pointer', fontSize: 13, color: checked ? '#1d4ed8' : '#374151', background: checked ? '#eff6ff' : 'transparent', userSelect: 'none' }}>
-                  <input type="checkbox" checked={checked} onChange={() => onToggle(v)} style={{ accentColor: '#3b82f6', cursor: 'pointer', flexShrink: 0 }} />
-                  {v}
-                </label>
-              )
-            })
-        }
-        {selected.length > 0 && (
-          <>
-            <div style={{ borderTop: '1px solid #f1f5f9', margin: '4px 0' }} />
-            <div style={{ padding: '2px 14px' }}>
-              <button onClick={onClear} style={{ background: 'none', border: 'none', color: '#64748b', fontSize: 12, cursor: 'pointer', padding: '2px 0' }}>
-                Сбросить ({selected.length})
-              </button>
-            </div>
-          </>
-        )}
+        {/* Sticky header with action buttons */}
+        <div style={{ display: 'flex', gap: 4, padding: '6px 10px', borderBottom: '1px solid #f1f5f9', flexShrink: 0, background: '#fff', borderRadius: '8px 8px 0 0' }}>
+          <button
+            onClick={onSelectAll}
+            disabled={allSelected}
+            style={{ flex: 1, fontSize: 11, padding: '4px 0', borderRadius: 5, border: '1px solid #e2e8f0', background: allSelected ? '#f8fafc' : '#fff', color: allSelected ? '#cbd5e1' : '#475569', cursor: allSelected ? 'default' : 'pointer', fontWeight: 500 }}
+          >
+            Выбрать все
+          </button>
+          <button
+            onClick={onClear}
+            disabled={selected.length === 0}
+            style={{ flex: 1, fontSize: 11, padding: '4px 0', borderRadius: 5, border: '1px solid #e2e8f0', background: selected.length === 0 ? '#f8fafc' : '#fff', color: selected.length === 0 ? '#cbd5e1' : '#475569', cursor: selected.length === 0 ? 'default' : 'pointer', fontWeight: 500 }}
+          >
+            Сбросить
+          </button>
+        </div>
+        {/* Scrollable list */}
+        <div style={{ overflowY: 'auto', padding: '4px 0' }}>
+          {values.length === 0
+            ? <div style={{ padding: '8px 14px', fontSize: 12, color: '#94a3b8' }}>Нет вариантов</div>
+            : values.map((v) => {
+                const checked = selected.includes(v)
+                return (
+                  <label key={v} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 14px', cursor: 'pointer', fontSize: 13, color: checked ? '#1d4ed8' : '#374151', background: checked ? '#eff6ff' : 'transparent', userSelect: 'none' }}>
+                    <input type="checkbox" checked={checked} onChange={() => onToggle(v)} style={{ accentColor: '#3b82f6', cursor: 'pointer', flexShrink: 0 }} />
+                    {v}
+                  </label>
+                )
+              })
+          }
+        </div>
       </div>
     </>
   )
@@ -412,12 +416,15 @@ function buildMonthMap(projects: Project[]): Record<string, string> {
 
 function getProjValue(p: Project, col: string): string {
   switch (col) {
-    case 'status':   return STATUS_LABELS[p.status] ?? p.status
-    case 'client':   return p.client ?? ''
-    case 'date':     return fmtDate(p.date)
-    case 'format':   return p.format ?? ''
-    case 'location': return p.location ?? ''
-    default:         return ''
+    case 'status':         return STATUS_LABELS[p.status] ?? p.status
+    case 'client':         return p.client ?? ''
+    case 'execProducer':   return p.execProducer ?? ''
+    case 'lineProducer':   return p.lineProducer ?? ''
+    case 'accountManager': return p.accountManager ?? ''
+    case 'date':           return fmtDate(p.date)
+    case 'format':         return p.format ?? ''
+    case 'location':       return p.location ?? ''
+    default:               return ''
   }
 }
 
@@ -658,19 +665,22 @@ function ProjectsTable({
     // For date: only show blocks that actually have rows in afterPrimary
     const activeBlocks = new Set(afterPrimary.map((p) => monthMap[p.id]).filter(Boolean))
     return {
-      status:   uniq(afterPrimary.map((p) => STATUS_LABELS[p.status] ?? p.status)),
-      client:   uniq(afterPrimary.map((p) => p.client)),
-      date:     blockOrder.filter((b) => activeBlocks.has(b)),
-      format:   uniq(afterPrimary.map((p) => p.format)),
-      location: uniq(afterPrimary.map((p) => p.location)),
-      matrixId: ['Есть ID', 'Нет ID'] as string[],
+      status:         uniq(afterPrimary.map((p) => STATUS_LABELS[p.status] ?? p.status)),
+      client:         uniq(afterPrimary.map((p) => p.client)),
+      execProducer:   uniq(afterPrimary.map((p) => p.execProducer)),
+      lineProducer:   uniq(afterPrimary.map((p) => p.lineProducer)),
+      accountManager: uniq(afterPrimary.map((p) => p.accountManager)),
+      date:           blockOrder.filter((b) => activeBlocks.has(b)),
+      format:         uniq(afterPrimary.map((p) => p.format)),
+      location:       uniq(afterPrimary.map((p) => p.location)),
+      matrixId:       ['Есть ID', 'Нет ID'] as string[],
     }
   }, [afterPrimary, monthMap, blockOrder])
 
   const afterSecondary = useMemo(() => {
     return afterPrimary.filter((p) => {
       for (const [col, sel] of Object.entries(colFilters)) {
-        if (sel.length === 0) continue
+        if (sel.length === 0) return false
         if (col === 'date') {
           if (!sel.includes(monthMap[p.id] ?? '')) return false
           continue
@@ -710,13 +720,6 @@ function ProjectsTable({
   const colSpanCount = visibleCols.length
   const totalColFilters = Object.values(colFilters).reduce((s, a) => s + a.length, 0)
 
-  function toggleColFilter(colKey: string, val: string) {
-    setColFilters((f) => {
-      const cur = f[colKey] ?? []
-      const next = cur.includes(val) ? cur.filter((v) => v !== val) : [...cur, val]
-      return { ...f, [colKey]: next }
-    })
-  }
 
   function renderProjCell(col: ColDef, p: Project, cc?: CellColor) {
     switch (col.key) {
@@ -774,7 +777,10 @@ function ProjectsTable({
             <thead>
               <tr>
                 {visibleCols.map((col) => {
-                  const hasFilter = (colFilters[col.key] ?? []).length > 0
+                  const allVals = (colValues as Record<string, string[]>)[col.key] ?? []
+                  const activeSel = colFilters[col.key]
+                  const hiddenCount = activeSel != null ? allVals.filter((v) => !activeSel.includes(v)).length : 0
+                  const hasFilter = hiddenCount > 0
                   const isOpen = openDrop === col.key
                   return (
                     <th key={col.key} style={{ ...thBase, overflow: 'visible' }}>
@@ -784,18 +790,26 @@ function ProjectsTable({
                           <button
                             onClick={(e) => { e.stopPropagation(); setOpenDrop(isOpen ? null : col.key) }}
                             style={filterDropBtn(hasFilter)}
-                            title={hasFilter ? `Фильтр: ${(colFilters[col.key] ?? []).length}` : 'Фильтр'}
+                            title={hasFilter ? `Скрыто: ${hiddenCount}` : 'Фильтр'}
                           >
-                            {hasFilter ? `${(colFilters[col.key] ?? []).length}` : '▾'}
+                            {hasFilter ? `-${hiddenCount}` : '▾'}
                           </button>
                         )}
                       </div>
                       {isOpen && (
                         <ColDropdown
                           values={(colValues as Record<string, string[]>)[col.key] ?? []}
-                          selected={colFilters[col.key] ?? []}
-                          onToggle={(v) => toggleColFilter(col.key, v)}
+                          selected={activeSel ?? allVals}
+                          onToggle={(v) => setColFilters((f) => {
+                            const cur = f[col.key] ?? allVals
+                            const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+                            if (next.length >= allVals.length && allVals.every((av) => next.includes(av))) {
+                              const n = { ...f }; delete n[col.key]; return n
+                            }
+                            return { ...f, [col.key]: next }
+                          })}
                           onClear={() => setColFilters((f) => ({ ...f, [col.key]: [] }))}
+                          onSelectAll={() => setColFilters((f) => { const n = { ...f }; delete n[col.key]; return n })}
                           onClose={() => setOpenDrop(null)}
                         />
                       )}
@@ -1439,7 +1453,7 @@ function RegistryTable({
   const afterSecondary = useMemo(() => {
     return afterPrimary.filter((r) => {
       for (const [col, sel] of Object.entries(colFilters)) {
-        if (sel.length === 0) continue
+        if (sel.length === 0) return false
         if (!sel.includes(getRegValue(r, col))) return false
       }
       return true
@@ -1450,13 +1464,6 @@ function RegistryTable({
   const colSpanCount = visibleCols.length
   const totalColFilters = Object.values(colFilters).reduce((s, a) => s + a.length, 0)
 
-  function toggleColFilter(colKey: string, val: string) {
-    setColFilters((f) => {
-      const cur = f[colKey] ?? []
-      const next = cur.includes(val) ? cur.filter((v) => v !== val) : [...cur, val]
-      return { ...f, [colKey]: next }
-    })
-  }
 
   function renderRegCell(col: ColDef, r: RegistryEntry) {
     switch (col.key) {
@@ -1519,7 +1526,10 @@ function RegistryTable({
             <thead>
               <tr>
                 {visibleCols.map((col) => {
-                  const hasFilter = (colFilters[col.key] ?? []).length > 0
+                  const allVals = (colValues as Record<string, string[]>)[col.key] ?? []
+                  const activeSel = colFilters[col.key]
+                  const hiddenCount = activeSel != null ? allVals.filter((v) => !activeSel.includes(v)).length : 0
+                  const hasFilter = hiddenCount > 0
                   const isOpen = openDrop === col.key
                   return (
                     <th key={col.key} style={{ ...thBase, overflow: 'visible' }}>
@@ -1529,18 +1539,26 @@ function RegistryTable({
                           <button
                             onClick={(e) => { e.stopPropagation(); setOpenDrop(isOpen ? null : col.key) }}
                             style={filterDropBtn(hasFilter)}
-                            title={hasFilter ? `Фильтр: ${(colFilters[col.key] ?? []).length}` : 'Фильтр'}
+                            title={hasFilter ? `Скрыто: ${hiddenCount}` : 'Фильтр'}
                           >
-                            {hasFilter ? `${(colFilters[col.key] ?? []).length}` : '▾'}
+                            {hasFilter ? `-${hiddenCount}` : '▾'}
                           </button>
                         )}
                       </div>
                       {isOpen && (
                         <ColDropdown
                           values={(colValues as Record<string, string[]>)[col.key] ?? []}
-                          selected={colFilters[col.key] ?? []}
-                          onToggle={(v) => toggleColFilter(col.key, v)}
+                          selected={activeSel ?? allVals}
+                          onToggle={(v) => setColFilters((f) => {
+                            const cur = f[col.key] ?? allVals
+                            const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
+                            if (next.length >= allVals.length && allVals.every((av) => next.includes(av))) {
+                              const n = { ...f }; delete n[col.key]; return n
+                            }
+                            return { ...f, [col.key]: next }
+                          })}
                           onClear={() => setColFilters((f) => ({ ...f, [col.key]: [] }))}
+                          onSelectAll={() => setColFilters((f) => { const n = { ...f }; delete n[col.key]; return n })}
                           onClose={() => setOpenDrop(null)}
                         />
                       )}
