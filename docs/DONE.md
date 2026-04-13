@@ -119,7 +119,7 @@
 - [x] `PATCH /notifications/:id/read` — отметить прочитанным
 - [x] `PATCH /notifications/read-all` — отметить всё прочитанным
 - [x] `GET /notifications/count` — количество непрочитанных (для колокольчика)
-- [x] `NotificationBell` в шапке — **заглушка** («В разработке»); API готов, UI временно отключён до проработки механики для разных ролей
+- [x] `NotificationBell` в шапке — API готов; UI реализован в Этапе 11 (см. ниже)
 
 ---
 

@@ -31,7 +31,16 @@
 
 ## 🟡 Технический долг
 
-> Нет открытых задач.
+- [ ] **Удалить неиспользуемые зависимости из `apps/web`** — 5 пакетов установлены, но ни разу не импортируются в исходном коде:
+  - `@tanstack/react-router` — навигация реализована через `useState<Page>` в `AppShell.tsx`
+  - `react-hook-form` — все формы на `useState`
+  - `clsx` — нет CSS-классов, только inline styles
+  - `@fullcalendar/interaction` — плагин удалён из `CalendarPage.tsx`, из `package.json` не убрали
+  - `@fullcalendar/timegrid` — не используется, только `daygrid`
+
+  Команда: `pnpm --filter @tv-shifts/web remove @tanstack/react-router react-hook-form clsx @fullcalendar/interaction @fullcalendar/timegrid`
+
+- [ ] **`setTimeout` без cleanup в `DatabasePage.tsx`** — мутации ставят `setTimeout(() => setState(false), 2000)` без очистки при анмаунте. В React 19 не крашит, но при быстром переключении страниц возможны stale-обновления состояния.
 
 ---
 

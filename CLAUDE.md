@@ -72,15 +72,15 @@ pnpm --filter @tv-shifts/web lint
 `apps/api/src/server.ts` waits for PostgreSQL (30 retries, 2s each) before starting. On every startup all `SyncLog` records are deleted — sync history does not persist across server restarts. API port defaults to 4000, overridable via `PORT` env var.
 
 ### Auth
-JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh_token` (7 days, scoped to `/auth/refresh`). `@fastify/jwt` on backend reads the cookie automatically. Zustand auth store on frontend (`apps/web/src/stores/auth.ts`). The axios client in `apps/web/src/lib/api.ts` auto-retries on 401 via `/auth/refresh`.
+JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh_token` (7 days, scoped to `/auth/refresh`). `@fastify/jwt` on backend reads the cookie automatically. Zustand auth store on frontend (`apps/web/src/stores/auth.ts`). The axios client in `apps/web/src/lib/api.ts` auto-retries on 401 via `/auth/refresh` (interceptor skips `/auth/*` routes to prevent loops). `POST /auth/login` has rate limiting (max 10 req/min via `@fastify/rate-limit`; plugin is `global: false` so all other routes are unlimited by default).
 
 ### Frontend State
 - **TanStack Query** — all server state (fetching, caching, invalidation)
-- **Zustand** — auth state only (`stores/auth.ts`)
+- **Zustand** — auth state only (`stores/auth.ts`). Auth helpers live in `apps/web/src/hooks/useAuth.ts`: `useAuthInit()` (fetches `/auth/me` on startup), `useCurrentUser()`, `useIsAdmin()`, `useIsProducer()`.
 - All UI uses **inline styles** (no UI component library — no shadcn/ui, no MUI)
 - **FullCalendar** — used only in `CalendarPage.tsx`
 - Auth-gated routing is handled in `App.tsx`: unauthenticated → `LoginPage`, authenticated → `AppShell`
-- **In-app navigation** uses `useState<Page>` in `AppShell.tsx` (no React Router) — the current page is persisted to `localStorage` under key `app-page`. Some nav items are `adminOnly` and hidden from non-admin users.
+- **In-app navigation** uses `useState<Page>` in `AppShell.tsx` (no React Router) — the current page is persisted to `localStorage` under key `app-page`. Some nav items are `adminOnly` and hidden from non-admin users. Non-admin users also cannot navigate to protected pages by manipulating localStorage (guard enforces this).
 
 ### API Routes (registered at root, no `/api` prefix)
 | Prefix | File |
@@ -103,7 +103,7 @@ JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh
 Route auth guard lives in `apps/api/src/plugins/auth.ts` — call `request.jwtVerify()` inside route handlers, or use the `authenticate` / `requireRole(...roles)` preHandlers. `requireRole` accepts multiple roles (e.g. `requireRole('admin', 'producer')`).
 
 ### Database Models
-`User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`, `MatrixTemplate`, `ProjectMember`, `SheetConfig`
+`User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `UserNotificationRead`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`, `MatrixTemplate`, `ProjectMember`, `SheetConfig`
 
 Schema: `packages/db/prisma/schema.prisma`
 
@@ -118,6 +118,9 @@ Key enums:
 - `TaskStatus` — `open | in_progress | done`
 - `NotificationType` — `no_matrix | unmatched_name | data_conflict | schedule_change`
 - `DealStatus` — `preliminary | in_progress | completed`
+- `SyncType` — `projects | registry | matrix` (used in `SyncLog`)
+- `SyncStatus` — `running | success | error` (used in `SyncLog`)
+- `ChangeSource` — `sync | manual` (used in `ChangeLog`)
 
 ### Prisma Client Workaround
 The running API process locks the Prisma client DLL, preventing `pnpm db:generate` without stopping the server. If the generated client is outdated (e.g., missing new enum values), use raw SQL via `$queryRawUnsafe` / `$executeRawUnsafe` with explicit PostgreSQL enum casts:
@@ -206,6 +209,8 @@ In addition to the three-level filter system for the production schedule table, 
 - `GOOGLE_PROJECTS_SHEET_ID` + `GOOGLE_REGISTRY_SHEET_ID` — source spreadsheet IDs
 - `GOOGLE_DRIVE_CLIENT_ID` + `GOOGLE_DRIVE_CLIENT_SECRET` + `GOOGLE_DRIVE_REFRESH_TOKEN` + `GOOGLE_DRIVE_OWNER_EMAIL` — for Google Drive file operations (OAuth2, separate from Sheets auth)
 - `VITE_API_URL` — used by Vite at build time for frontend API calls (default `http://localhost:4000`)
+- `VITE_GOOGLE_PROJECTS_SHEET_ID` + `VITE_GOOGLE_REGISTRY_SHEET_ID` — frontend-side copies of sheet IDs (for direct Sheets access from browser, if needed)
+- `GOOGLE_API_KEY` — alternative to Service Account for public Google Sheets (no auth required)
 - `PORT` — API server port (default `4000`)
 
 ## Page Implementation Status
@@ -221,4 +226,4 @@ In addition to the three-level filter system for the production schedule table, 
 | Tasks | `TasksPage.tsx` | Stub (🚧) |
 | Analytics | `AnalyticsPage.tsx` | Stub (🚧) |
 | Profile | `ProfilePage.tsx` | Stub (🚧) |
-| Notifications | `NotificationBell` in `AppShell.tsx` | Stub (🚧) |
+| Notifications | `NotificationBell` in `AppShell.tsx` | Done (polls `/notifications/count` every 30s, mark-read/all-read) |

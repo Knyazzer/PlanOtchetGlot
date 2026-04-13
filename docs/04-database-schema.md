@@ -381,6 +381,8 @@ sheet_configs
 | `NotificationType` | `no_matrix`, `unmatched_name`, `data_conflict`, `schedule_change` |
 | `ChangeSource` | `sync`, `manual` |
 | `DealStatus` | `preliminary`, `in_progress`, `completed` |
+| `SyncType` | `projects`, `registry`, `matrix` |
+| `SyncStatus` | `running`, `success`, `error` |
 
 ---
 
