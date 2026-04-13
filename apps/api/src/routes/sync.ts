@@ -1,13 +1,18 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
-import { runFullSync, fetchMatrixPreview, fetchMatrixShifts, requestSyncAbort } from '../services/syncService'
+import { runFullSync, fetchMatrixPreview, fetchMatrixShifts, requestSyncAbort, isSyncActive } from '../services/syncService'
 
 export async function syncRoutes(app: FastifyInstance) {
   // POST /sync/trigger — ручной запуск (admin или producer)
   app.post('/trigger', { preHandler: requireRole('admin', 'producer') }, async (_request, reply) => {
     // Считаем матрицы заранее чтобы вернуть total фронтенду
     const totalMatrices = await prisma.matrixRegistry.count({ where: { sheetUrl: { not: null } } })
+
+    if (isSyncActive()) {
+      // Синхронизация уже выполняется — возвращаем это фронтенду
+      return reply.code(202).send({ message: 'Sync already running', totalMatrices, alreadyRunning: true })
+    }
 
     // Запускаем асинхронно, не ждём завершения
     runFullSync()
@@ -18,7 +23,7 @@ export async function syncRoutes(app: FastifyInstance) {
         app.log.error({ err }, '[sync] Full sync failed')
       })
 
-    return reply.code(202).send({ message: 'Sync started', totalMatrices })
+    return reply.code(202).send({ message: 'Sync started', totalMatrices, alreadyRunning: false })
   })
 
   // POST /sync/stop — остановить синхронизацию матриц

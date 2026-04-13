@@ -221,7 +221,7 @@ export async function appendToInternalRegistry(
   // Columns: A=Статус, B=Матрица (HYPERLINK chip), C=ID
   // USER_ENTERED so the =HYPERLINK() formula gets evaluated by Sheets
   const linkCell = row.sheetUrl
-    ? `=HYPERLINK("${row.sheetUrl}","${row.matrixId}")`
+    ? `=HYPERLINK("${row.sheetUrl}";"${row.matrixId}")`
     : ''
   await sheets.spreadsheets.values.update({
     spreadsheetId,

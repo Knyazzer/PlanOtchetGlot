@@ -8,6 +8,7 @@ import { findSheetConfig } from './databaseService'
 let _abortRequested = false
 export function requestSyncAbort() { _abortRequested = true }
 let _syncActive = false
+export function isSyncActive() { return _syncActive }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -256,7 +256,7 @@ function SyncButton() {
       const start = parseInt(sessionStorage.getItem('sync-session-start') ?? '0', 10)
       const sessionData = start > 0 ? data.filter((l) => new Date(l.startedAt).getTime() >= start - 10_000) : data
       const done = sessionData.filter((l) => l.type === 'matrix' && l.status !== 'running').length
-      return (running || (total > 0 && done < total)) ? 2000 : 30_000
+      return (running || (total > 0 && done < total)) ? 2000 : 5_000
     },
   })
 
@@ -273,6 +273,12 @@ function SyncButton() {
       const total = res.data?.totalMatrices ?? 0
       setTotalMatrices(total)
       sessionStorage.setItem('sync-total-matrices', String(total))
+      // Если синхронизация уже шла (запущена кроном), сбрасываем sessionStartMs
+      // чтобы показать существующие логи без фильтрации по сессии
+      if (res.data?.alreadyRunning) {
+        setSessionStartMs(0)
+        sessionStorage.removeItem('sync-session-start')
+      }
       qc.invalidateQueries({ queryKey: ['sync-logs'] })
     },
   })
@@ -289,9 +295,15 @@ function SyncButton() {
   })
 
   // Логи текущей сессии — только после sessionStartMs (буфер 10с на серверное время)
-  const sessionLogs  = sessionStartMs > 0
+  const anyLogRunning = logs.some((l) => l.status === 'running')
+  const _filteredLogs = sessionStartMs > 0
     ? logs.filter((l) => new Date(l.startedAt).getTime() >= sessionStartMs - 10_000)
     : logs
+  // Если есть running-логи но они за пределами окна сессии (кронзапуск пока шёл ручной запуск)
+  // — показываем все логи чтобы не получить пустую панель
+  const sessionLogs = (anyLogRunning && !_filteredLogs.some((l) => l.status === 'running'))
+    ? logs
+    : _filteredLogs
   const projectsLog  = sessionLogs.find((l) => l.type === 'projects') ?? null
   const registryLog  = sessionLogs.find((l) => l.type === 'registry') ?? null
   const anchorTime   = projectsLog ? new Date(projectsLog.startedAt).getTime() : 0
@@ -305,7 +317,6 @@ function SyncButton() {
   const matrixShifts  = matrixLogs.reduce((s, l) => s + (l.changesCount ?? 0), 0)
   const matrixTotal   = totalMatrices > 0 ? totalMatrices : null
 
-  const anyLogRunning   = logs.some((l) => l.status === 'running')
   const matricesPending = totalMatrices > 0 && matrixDone < totalMatrices
   const isRunning       = trigger.isPending || anyLogRunning || matricesPending
 
@@ -454,6 +465,12 @@ function SyncButton() {
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {!projectsLog && !isRunning && (
               <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 15 }}>История пуста</div>
+            )}
+            {!projectsLog && isRunning && (
+              <div style={{ padding: '12px 16px', color: '#94a3b8', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⟳</span>
+                Инициализация...
+              </div>
             )}
 
             {/* Projects row */}
