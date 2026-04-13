@@ -1,0 +1,63 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`GET /status-rows response structure > response item has expected top-level fields 1`] = `
+{
+  "accountManager": "null",
+  "assignments": [],
+  "blockSlot": "null",
+  "client": "null",
+  "createdAt": "string",
+  "date": "string",
+  "dateApproximate": "null",
+  "dateConfirmed": "boolean",
+  "days": [],
+  "execProducer": "null",
+  "format": "null",
+  "googleRowIndex": "null",
+  "id": "string",
+  "lineProducer": "null",
+  "linkedMatrix": "null",
+  "location": "null",
+  "matrixRegistry": "null",
+  "matrixRegistryId": "null",
+  "matrixUrl": "null",
+  "name": "string",
+  "notes": "null",
+  "postProduction": "null",
+  "sheetMatrixId": "null",
+  "source": "string",
+  "status": "string",
+  "time": "null",
+  "uncertainFields": [],
+  "updatedAt": "string",
+}
+`;
+
+exports[`GET /status-rows response structure > slim=true omits join fields (matrixRegistry, assignments, days) 1`] = `
+{
+  "accountManager": "null",
+  "blockSlot": "null",
+  "client": "null",
+  "createdAt": "string",
+  "date": "string",
+  "dateApproximate": "null",
+  "dateConfirmed": "boolean",
+  "execProducer": "null",
+  "format": "null",
+  "googleRowIndex": "null",
+  "id": "string",
+  "lineProducer": "null",
+  "location": "null",
+  "matrixRegistryId": "null",
+  "matrixUrl": "null",
+  "name": "string",
+  "notes": "null",
+  "postProduction": "null",
+  "sheetMatrixId": "null",
+  "source": "string",
+  "status": "string",
+  "time": "null",
+  "uncertainFields": [],
+  "updatedAt": "string",
+}
+`;

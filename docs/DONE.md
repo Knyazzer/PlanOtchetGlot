@@ -304,3 +304,30 @@
 - [x] `apps/api/src/services/syncService.integration.test.ts` — 7 integration-тестов `runFullSync()`: SyncLog success/error, пропуск матриц без URL, изоляция ошибок, abort до матричного цикла, сброс `_abortRequested`, создание separator-строк; googleapis и `prisma.matrixRegistry.findMany` замокированы для изоляции от реальных данных БД
 
 **Итого: 134 теста, 0 провалов**
+
+---
+
+## Этап 13 — Тесты (P3 + P4)
+
+### Инфраструктура Web-тестов
+
+- [x] Vitest 4 установлен в `apps/web`; `apps/web/vitest.config.ts` — jsdom + `@vitejs/plugin-react` + `resolve.alias` для React (устраняет коллизию двух экземпляров React при pnpm-монорепо: корневой `node_modules/react` vs `apps/web/node_modules/react` → оба указывают на одну копию)
+- [x] `apps/web/src/test/setup.ts` — MSW server lifecycle (`beforeAll` / `afterEach` / `afterAll`)
+- [x] `apps/web/src/test/msw-server.ts` — shared MSW instance через `setupServer()` из `msw/node`
+- [x] Скрипты `"test"`, `"test:watch"`, `"test:coverage"` добавлены в `apps/web/package.json`
+- [x] Корневой скрипт `"test": "pnpm -r test"` добавлен в `package.json` монорепо
+
+### P3 — Краевые случаи и фронтенд (16 тестов)
+
+- [x] `apps/api/src/routes/statusRows.patch.test.ts` — 7 тестов `PATCH /status-rows/:id`: изменение поля → `change_log` с `oldValue`/`newValue`/`changedBy`; то же значение → лог не создаётся; `matrixRegistryId` и `blockSlot` через raw SQL; не-admin → 403; несуществующий id → 404
+- [x] `apps/api/src/routes/users.test.ts` — 8 тестов `POST /users` и `DELETE /users/:id`: bcrypt-хеш хранится, не утекает в ответ; дубль email → 409; пароль < 6 символов → 400; `DELETE` ставит `isActive=false` без физического удаления; деактивированный не виден в `GET /users`; нельзя удалить себя → 400; не-admin → 403
+- [x] `apps/web/src/lib/api.test.ts` — 5 тестов axios 401-перехватчика: 401 → refresh → retry → 200; refresh тоже 401 → ошибка прокидывается; `/auth/*` не ретраятся (защита от петли); параллельные 401 → refresh вызывается дважды (задокументированное ограничение — нет очереди); non-401 ошибки проходят без ретрая
+- [x] `apps/web/src/hooks/useAuth.test.ts` — 4 теста `useAuthInit`: `/auth/me` 200 → `setUser(data)` + `setLoading(false)`; 401/500/network error → `setUser(null)` + `setLoading(false)`
+
+### P4 — Расширенное покрытие (13 тестов + 2 снэпшота)
+
+- [x] `apps/api/src/routes/internalMatrix.test.ts` — 5 тестов `POST /internal-matrix`: Drive не настроен → матрица в БД с `source='internal'` и `sheetUrl=null`; имя генерируется из `client + projectName + date`; Drive настроен → `copyTemplateToFolder` вызывается, URL сохраняется; Drive падает → матрица всё равно создаётся, ответ содержит `driveError`; не-admin → 403
+- [x] `apps/api/src/routes/analytics.test.ts` — 5 тестов `GET /analytics/shifts`: группировка по пользователю (`total`, `confirmed`, `byType`, `projects`); `dateFrom`/`dateTo` отрезает сдвиги вне диапазона; `userId` фильтр; employee → 403; producer → 200
+- [x] `apps/api/src/routes/statusRows.snapshot.test.ts` — 3 теста + 2 снэпшота `GET /status-rows`: snapshot ключей и типов всех 27+ полей полного ответа; `slim=true` — отсутствие join-полей; `withSeparators=true` — параметр принимается без ошибки
+
+**Итого: 172 теста, 0 провалов** (14 тестовых файлов)

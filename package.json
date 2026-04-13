@@ -10,6 +10,7 @@
     "db:generate": "pnpm --filter @tv-shifts/db generate",
     "db:migrate": "pnpm --filter @tv-shifts/db migrate",
     "db:seed": "pnpm --filter @tv-shifts/db seed",
+    "test": "pnpm -r test",
     "db:studio": "prisma studio --schema packages/db/prisma/schema.prisma"
   }
 }
