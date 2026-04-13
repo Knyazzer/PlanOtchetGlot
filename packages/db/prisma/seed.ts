@@ -1,3 +1,7 @@
+import { resolve } from 'path'
+import { config } from 'dotenv'
+config({ path: resolve(__dirname, '../../../.env') })
+
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
@@ -72,41 +76,54 @@ async function main() {
     }),
   ])
 
-  // Тестовые проекты
-  const project1 = await prisma.project.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000001' },
-    update: {},
-    create: {
-      id: '00000000-0000-0000-0000-000000000001',
-      client: 'РУСАЛ',
-      name: 'Прямая линия с ТОП-менеджментом',
-      execProducer: 'Козлова М.Д.',
-      date: new Date('2026-04-15'),
-      dateConfirmed: true,
-      format: 'Видеотрансляция',
-      location: 'Офис РУСАЛ',
-      status: 'negotiation',
-      source: 'manual',
+  // Sheet configs
+  const GOOGLE_API_KEY = 'AIzaSyB9YIdh1skYEYI4QOU7fbG-5VoGX8zB99A'
+  const sheetConfigs: { key: string; url: string; apiKey: string | null }[] = [
+    {
+      key: 'projects',
+      url: 'https://docs.google.com/spreadsheets/d/12u1oE_Y7790rRXEmcVPqv20Ua_-9HyJjFZVqA86RZ2o',
+      apiKey: GOOGLE_API_KEY,
     },
-  })
+    {
+      key: 'registry',
+      url: 'https://docs.google.com/spreadsheets/d/1EHqw4K2XIcf5inzbicsMtG5xj9HEbrZoVI1vRnWSZQ8',
+      apiKey: GOOGLE_API_KEY,
+    },
+    {
+      key: 'employees_buffer',
+      url: 'https://docs.google.com/spreadsheets/d/1cRk7Z5vNaVuoDBRAVxKhjGn54MuXRltbCYeQ-93NcjA/edit?gid=0#gid=0',
+      apiKey: GOOGLE_API_KEY,
+    },
+    {
+      key: 'freelancers',
+      url: 'https://docs.google.com/spreadsheets/d/16uuEhV2FFeMuyl_J8kJ88SB5Axw_gpouXLR6CU36qYU/edit?gid=0#gid=0',
+      apiKey: GOOGLE_API_KEY,
+    },
+    {
+      key: 'kfpd',
+      url: 'https://docs.google.com/spreadsheets/d/1Jmw5LLrquIF3y6I51LOuLqyw7YzJsjSb0RHr-xpNl2M/edit?gid=0#gid=0',
+      apiKey: GOOGLE_API_KEY,
+    },
+    {
+      key: 'internal_registry',
+      url: 'https://docs.google.com/spreadsheets/d/1MFkHJ2KZYjDVDQ_K73HaPJ1gbCeVX1SRfdWfz5CVOMM/edit?gid=0#gid=0',
+      apiKey: null,
+    },
+    {
+      key: 'drive_folder',
+      url: 'https://drive.google.com/drive/folders/1PumLOo6sycivMRLG3wYy4hDQYnfHeB03?usp=drive_link',
+      apiKey: null,
+    },
+  ]
 
-  const project2 = await prisma.project.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000002' },
-    update: {},
-    create: {
-      id: '00000000-0000-0000-0000-000000000002',
-      client: 'INTERCOMM',
-      name: 'Митап НАЭКК',
-      execProducer: 'Козлова М.Д.',
-      date: new Date('2026-04-20'),
-      dateConfirmed: false,
-      format: 'Оффлайн',
-      location: 'Знаменка камин',
-      status: 'request',
-      source: 'projects_table',
-      uncertainFields: ['date'],
-    },
-  })
+  for (const cfg of sheetConfigs) {
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO sheet_configs (id, table_key, sheet_url, api_key, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, NOW())
+       ON CONFLICT (table_key) DO UPDATE SET sheet_url = $2, api_key = $3, updated_at = NOW()`,
+      cfg.key, cfg.url, cfg.apiKey
+    )
+  }
 
   // Тестовые задачи
   await prisma.task.upsert({

@@ -17,11 +17,14 @@ pnpm monorepo with three packages:
 
 ### Development
 ```bash
-# Start both API and Web in parallel
+# Start both API and Web in parallel (cross-platform)
 pnpm dev
 
-# Start DB only (PostgreSQL on port 5432)
-docker compose up -d postgres
+# On Windows, preferred alternative that opens separate terminal windows:
+.\start.ps1
+
+# Start DB only for local dev (PostgreSQL exposed on port 5433)
+docker compose -f docker-compose.dev.yml up -d
 ```
 
 ### Build
@@ -184,6 +187,14 @@ In addition to the three-level filter system for the production schedule table, 
 
 ### Deal Entity
 `Deal` groups `StatusRow` records with `MatrixRegistry` entries. Relations via join tables `DealStatusRow` and `DealMatrix`. Status: `preliminary | in_progress | completed`. The `/deals/potential` endpoint returns unlinked `StatusRow` records that have a matching `sheetMatrixId` in `MatrixRegistry`.
+
+## Test Accounts (after seeding)
+
+| Email | Password | Role |
+|-------|----------|------|
+| admin@tvshifts.ru | admin123 | admin |
+| producer@tvshifts.ru | user123 | producer |
+| ivanov@tvshifts.ru | user123 | employee |
 
 ## Environment Setup
 

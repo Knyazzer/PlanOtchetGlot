@@ -75,7 +75,7 @@ export async function syncRoutes(app: FastifyInstance) {
     // Удаляем в нужном порядке из-за foreign keys
     // source: 'separator' не знает устаревший Prisma-клиент — используем raw SQL
     const shifts   = await prisma.shiftEntry.deleteMany({ where: { source: 'matrix' } })
-    const registry = await prisma.matrixRegistry.deleteMany({})
+    const registry = await prisma.matrixRegistry.deleteMany({ where: { source: 'google' as any } })
     const result   = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `DELETE FROM status_rows WHERE source IN ('projects_table'::"StatusRowSource", 'separator'::"StatusRowSource") RETURNING id`
     )

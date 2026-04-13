@@ -12,3 +12,5 @@ packages/db/node_modules
 _TABLES EXMPL/
 *.xlsx
 .playwright-mcp/
+
+_EXAMPLE/

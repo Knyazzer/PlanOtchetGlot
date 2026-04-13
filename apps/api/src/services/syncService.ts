@@ -246,7 +246,7 @@ let upserted = 0
         )
         if (existing.length > 0) {
           await prisma.$executeRawUnsafe(
-            `UPDATE status_rows SET name = $1, updated_at = NOW() WHERE id = $2`,
+            `UPDATE status_rows SET name = $1, source = 'separator'::"StatusRowSource", updated_at = NOW() WHERE id = $2`,
             separatorText, existing[0].id,
           )
         } else {
@@ -322,7 +322,7 @@ let upserted = 0
     try {
       const existing = await prisma.statusRow.findFirst({ where: { googleRowIndex } })
       if (existing) {
-        await prisma.statusRow.update({ where: { id: existing.id }, data })
+        await prisma.statusRow.update({ where: { id: existing.id }, data: { ...data, source: 'projects_table' as any } })
       } else {
         await prisma.statusRow.create({ data: { ...data, source: 'projects_table', googleRowIndex } })
       }
