@@ -6,6 +6,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
+import rateLimit from '@fastify/rate-limit'
 
 import cron from 'node-cron'
 import { authRoutes } from './routes/auth'
@@ -56,6 +57,9 @@ async function main() {
   })
 
   await app.register(cookie)
+
+  // Rate limiting — применяется только к роутам с явным config.rateLimit
+  await app.register(rateLimit, { global: false })
 
   await app.register(jwt, {
     secret: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',

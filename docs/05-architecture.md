@@ -30,8 +30,8 @@
 | @fastify/cookie | latest | Cookie support |
 | @fastify/cors | latest | CORS |
 | bcryptjs | latest | Хэширование паролей |
-| googleapis | latest | Google Sheets API v4 (read-only) |
-| node-cron | latest | Планировщик синхронизации |
+| googleapis | latest | Google Sheets API v4 + Google Drive API v3 |
+| node-cron | latest | Планировщик синхронизации (каждые 30 мин) |
 | zod | latest | Валидация входящих данных |
 
 ### База данных
@@ -68,7 +68,7 @@ tv-shifts/
 │   └── api/                    # Fastify-сервер
 │       └── src/
 │           ├── routes/         # HTTP-роуты (по одному файлу на ресурс)
-│           ├── services/       # syncService.ts, changeLog.ts
+│           ├── services/       # syncService.ts, driveService.ts, databaseService.ts, changeLog.ts
 │           └── plugins/        # auth.ts — authenticate + requireRole preHandlers
 │
 ├── packages/
@@ -79,10 +79,10 @@ tv-shifts/
 │       │   └── migrations/
 │       └── index.ts            -- экспортирует prisma client и типы
 │
-├── docker-compose.yml          # dev: только PostgreSQL
+├── docker-compose.dev.yml      # dev: только PostgreSQL на порту 5433
 ├── docker-compose.prod.yml     # prod: api + web + nginx + certbot + backup
 ├── nginx/nginx.conf
-├── start.ps1                   # запуск api + web в отдельных PowerShell окнах
+├── start.ps1                   # запуск api + web в отдельных PowerShell окнах (Windows)
 └── package.json
 ```
 
@@ -101,16 +101,17 @@ tv-shifts/
 ## Навигация (фронтенд)
 
 Нет React Router. Навигация реализована через:
-- `useState<Page>` в `AppShell.tsx` — список страниц: `calendar | analytics | users | tasks | profile | syncdata | deals`
+- `useState<Page>` в `AppShell.tsx` — страницы: `calendar | analytics | users | tasks | profile | syncdata | deals | database`
 - Активная страница сохраняется в `localStorage` (ключ `app-page`)
-- Часть вкладок скрыта по роли: `analytics`, `users`, `syncdata` — только admin
+- Часть вкладок скрыта по роли: `users`, `syncdata`, `database` — только admin; `deals` — admin + producer
 
 ---
 
 ## Google Sheets API
 
-- Используется **Google Sheets API v4** (read-only)
-- Аутентификация: **Service Account** (приватные таблицы) или `GOOGLE_API_KEY` (публичные)
+- Используется **Google Sheets API v4** (read-only для синхронизации)
+- Аутентификация: **Service Account** (`GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`) или `GOOGLE_API_KEY` для публичных таблиц
+- Per-table API ключи хранятся в `sheet_configs` и переопределяют глобальные env-переменные
 - Читаем: значения ячеек (`userEnteredValue` / `effectiveValue`) + форматирование (цвет фона) + объединённые ячейки
 - Запрос: `spreadsheets.get` с `includeGridData: true` для получения цветов
 - Google API не возвращает условное форматирование в `effectiveFormat` — оцениваем правила вручную (`evalConditionalColor`)
@@ -120,6 +121,48 @@ tv-shifts/
 - Google Sheets API: 60 запросов/мин на проект
 - Задержка 1500ms между матрицами (~2 запроса каждая → ~80/мин при 50 матрицах)
 - При 429/503: ретрай до 3 раз с задержками 3s / 6s
+
+---
+
+## Google Drive API
+
+Используется отдельно от Sheets API, через **OAuth2** (не Service Account):
+- Credentials: `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`, `GOOGLE_DRIVE_OWNER_EMAIL`
+- Сервис: `apps/api/src/services/driveService.ts`
+
+Операции при создании внутренней матрицы (`POST /internal-matrix`):
+1. `copyTemplateToFolder` — копирует шаблонный Google Sheet в папку Drive
+2. `setupMatrixPermissions` — настраивает права доступа
+3. `writeSvodData` — записывает 10 полей проекта в `СВОД!C2:C11`
+4. `appendToInternalRegistry` — добавляет строку в реестровую таблицу через Service Account
+
+---
+
+## Синхронизация (`syncService.ts`)
+
+Полный цикл запускается по cron (каждые 30 мин) или вручную (`POST /sync/trigger`).
+
+```
+runFullSync():
+  1. syncProjects()  → upsert status_rows из Google Sheets «Таблица проектов»
+     └─ задержка 1s
+  2. syncRegistry()  → upsert matrix_registry из Google Sheets «Реестр матриц»
+     └─ задержка 1s
+  3. for each matrix with sheetUrl:
+       syncMatrix()  → парсит лист «₽ СМЕНЫ», upsert project_assignments + shift_entries
+                     → сохраняет shifts_cache + has_shifts_data сразу (до матчинга имён)
+       └─ задержка 1500ms
+```
+
+Каждый шаг создаёт запись `SyncLog` со статусом `running → success/error`.  
+Abort-механизм: `POST /sync/stop` → `requestSyncAbort()` → флаг проверяется перед каждой матрицей.
+
+### Источники данных (`databaseService.ts`)
+
+Дополнительные таблицы (буфер сотрудников, фрилансеры, КФПД) управляются через `DatabasePage`:
+- Конфигурация хранится в `sheet_configs` (URL + API ключ)
+- `POST /database/refresh/:key` — загружает данные в `cachedData` (JSONB)
+- Данные доступны через `GET /database/preview/:key`
 
 ---
 
@@ -138,7 +181,30 @@ tv-shifts/
 
 Строка включается если есть хотя бы одно непустое поле в C/G/I/J–P.
 Строки «Итог:» пропускаются.
+ShiftEntry создаётся только для type = 'staff'; ИП/СЗТ — только ProjectAssignment.
 ```
+
+---
+
+## Внутренние матрицы
+
+`MatrixRegistry` записи с `source = 'internal'` создаются через `POST /internal-matrix`. ID формат: `INT-{timestamp}`. Процесс:
+1. Создаётся запись в `matrix_registry`
+2. Копируется шаблон (активный `MatrixTemplate`) в папку Drive
+3. Записываются данные проекта в лист `СВОД`
+4. Добавляется строка в внутренний реестр (Google Sheet)
+
+Привязка к проекту (`StatusRow`) через поле `matrix_registry_id` + `block_slot` в `status_rows`.
+
+---
+
+## Уведомления
+
+`Notification` записи с `userId = null` — глобальные (видны всем). Читаемость глобальных уведомлений per-user отслеживается через `user_notification_reads` (join-таблица). Личные уведомления используют `notifications.is_read`.
+
+Создаются синхронизацией:
+- `unmatched_name` — ФИО из матрицы не найден в `users`
+- `no_matrix` — проект без привязанной матрицы
 
 ---
 
@@ -153,5 +219,8 @@ tv-shifts/
                                     │
                              [postgres :5432]
                                     │
-                           [Google Sheets API]
+                    ┌───────────────┴──────────────┐
+                    ▼                              ▼
+          [Google Sheets API]           [Google Drive API]
+          (Service Account)                  (OAuth2)
 ```

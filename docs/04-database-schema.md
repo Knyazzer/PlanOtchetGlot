@@ -42,6 +42,7 @@ status_rows
 ├── time                TEXT, NULLABLE
 ├── format              TEXT, NULLABLE
 ├── location            TEXT, NULLABLE
+├── post_production     TEXT, NULLABLE          -- постпродакшн-информация
 ├── notes               TEXT, NULLABLE
 ├── status              ENUM(request, negotiation, preproduction, production,
 │                            postproduction, delivered, rejected, cancelled, manual)
@@ -50,6 +51,8 @@ status_rows
 ├── sheet_matrix_id     TEXT, NULLABLE          -- ID матрицы из реестра (напр. ТВ2632550)
 ├── uncertain_fields    TEXT[], DEFAULT '{}'    -- ['date', 'client', ...] — подсвеченные поля
 ├── google_row_index    INT, NULLABLE           -- Номер строки в Google Sheets
+├── matrix_registry_id  UUID, FK → matrix_registry(id), NULLABLE  -- ручная привязка к матрице
+├── block_slot          INT, NULLABLE           -- позиция в блоке для сортировки
 ├── created_at          TIMESTAMP
 └── updated_at          TIMESTAMP
 
@@ -76,12 +79,14 @@ project_days
 
 ### matrix_registry — Реестр матриц
 
+Содержит как внешние матрицы (импортированные из Google Sheets, `source = 'google'`), так и внутренние (`source = 'internal'`), созданные через интерфейс.
+
 ```sql
 matrix_registry
 ├── id              UUID, PK
-├── matrix_id       TEXT, UNIQUE, NOT NULL  -- ID из реестра (напр. ТВ2632550)
+├── matrix_id       TEXT, UNIQUE, NOT NULL  -- ID из реестра (напр. ТВ2632550) или INT-{timestamp}
 ├── sheet_url       TEXT, NULLABLE          -- Ссылка на Google Sheets матрицы
-├── status          TEXT, NULLABLE          -- Производство / Сдан / пусто
+├── status          TEXT, NULLABLE
 ├── unit            TEXT, NULLABLE          -- Бизнес-юнит
 ├── client          TEXT, NULLABLE
 ├── name            TEXT, NULLABLE
@@ -90,13 +95,18 @@ matrix_registry
 ├── producer        TEXT, NULLABLE
 ├── manager         TEXT, NULLABLE
 ├── curator         TEXT, NULLABLE
-├── project_id      UUID, UNIQUE, FK → status_rows(id), NULLABLE  -- связь 1:1 с проектом
+├── project_id      UUID, UNIQUE, FK → status_rows(id), NULLABLE  -- связь 1:1 (auto-detect по sheetMatrixId)
 ├── google_row_index INT, NULLABLE
 ├── has_shifts_data  BOOLEAN, NULLABLE       -- true если в матрице есть лист со сменами
 ├── shifts_cache     JSONB, NULLABLE         -- кэш последнего парсинга смен
 ├── last_synced_at   TIMESTAMP, NULLABLE
-├── created_at      TIMESTAMP
-└── updated_at      TIMESTAMP
+├── project_name     TEXT, NULLABLE          -- название проекта (для внутренних матриц)
+├── kp_link          TEXT, NULLABLE          -- ссылка на КП
+├── brief            TEXT, NULLABLE
+├── source           TEXT, DEFAULT 'google'  -- 'google' | 'internal'
+├── template_id      UUID, NULLABLE          -- ID использованного шаблона MatrixTemplate
+├── created_at       TIMESTAMP
+└── updated_at       TIMESTAMP
 ```
 
 ---
@@ -199,6 +209,8 @@ task_assignments
 
 ### notifications — Уведомления
 
+`userId = null` означает глобальное уведомление (видно всем). Читаемость глобальных уведомлений отслеживается per-user через `user_notification_reads`.
+
 ```sql
 notifications
 ├── id          UUID, PK
@@ -207,11 +219,28 @@ notifications
 ├── entity_id   UUID, NULLABLE
 ├── message     TEXT
 ├── user_id     UUID, FK → users(id), NULLABLE  -- null = глобальное (всем)
-├── is_read     BOOLEAN, DEFAULT false
+├── is_read     BOOLEAN, DEFAULT false           -- используется только для личных (user_id IS NOT NULL)
 ├── created_at  TIMESTAMP
 └── updated_at  TIMESTAMP
 
 INDEX: notifications(user_id, is_read)
+```
+
+---
+
+### user_notification_reads — Прочитанные глобальные уведомления
+
+Per-user read tracking для уведомлений с `user_id = null`. Личные уведомления используют `notifications.is_read`.
+
+```sql
+user_notification_reads
+├── id              UUID, PK
+├── user_id         UUID, FK → users(id), CASCADE DELETE
+├── notification_id UUID, FK → notifications(id), CASCADE DELETE
+└── read_at         TIMESTAMP
+
+UNIQUE(user_id, notification_id)
+INDEX: user_notification_reads(user_id)
 ```
 
 ---
@@ -285,6 +314,76 @@ PK(deal_id, matrix_id)
 
 ---
 
+### matrix_templates — Шаблоны матриц
+
+Шаблоны Google Sheets для создания внутренних матриц через Drive API. Только один шаблон может быть активным одновременно.
+
+```sql
+matrix_templates
+├── id         UUID, PK
+├── name       TEXT, NOT NULL
+├── sheet_url  TEXT, NOT NULL  -- URL шаблонного Google Sheet
+├── is_active  BOOLEAN, DEFAULT false
+├── created_at TIMESTAMP
+└── updated_at TIMESTAMP
+```
+
+---
+
+### project_members — Ручной состав команды
+
+Участники проекта, добавленные вручную (в отличие от `project_assignments`, которые заполняются из матриц). Смены хранятся как JSONB `{ "2024-03-15": "1", "2024-03-16": "8-18" }`.
+
+```sql
+project_members
+├── id         UUID, PK
+├── project_id UUID, FK → status_rows(id), CASCADE DELETE
+├── name       TEXT, NOT NULL
+├── position   TEXT, NULLABLE
+├── shifts     JSONB, DEFAULT '{}'
+├── created_at TIMESTAMP
+└── updated_at TIMESTAMP
+```
+
+---
+
+### sheet_configs — Конфигурация внешних источников данных
+
+Хранит URL и API-ключи для всех внешних источников. Ключи (`table_key`): `projects`, `registry`, `employees_buffer`, `freelancers`, `kfpd`, `internal_registry`, `drive_folder`.
+
+> Примечание: для ключа `drive_folder` поле `sheet_url` содержит URL папки Google Drive (не таблицы) — используется как универсальное поле конфигурационного URL.
+
+```sql
+sheet_configs
+├── id            UUID, PK
+├── table_key     TEXT, UNIQUE, NOT NULL
+├── sheet_url     TEXT, NULLABLE   -- URL источника; для drive_folder — URL папки Drive
+├── api_key       TEXT, NULLABLE   -- Google API Key (для публичных таблиц)
+├── cached_data   JSONB, NULLABLE  -- кэш последнего импорта
+├── last_synced_at TIMESTAMP, NULLABLE
+└── updated_at    TIMESTAMP
+```
+
+---
+
+## Enum'ы
+
+| Enum | Значения |
+|------|---------|
+| `Role` | `employee`, `admin`, `producer` |
+| `StatusRowStatus` | `request`, `negotiation`, `preproduction`, `production`, `postproduction`, `delivered`, `rejected`, `cancelled`, `manual` |
+| `StatusRowSource` | `projects_table`, `manual`, `separator` |
+| `EmploymentType` | `staff`, `ip_7`, `ip_8`, `ip_10`, `szt` |
+| `ShiftType` | `zastroyka`, `efir`, `demontazh` |
+| `ShiftSource` | `matrix`, `manual` |
+| `DayType` | `zastroyka`, `efir` |
+| `TaskStatus` | `open`, `in_progress`, `done` |
+| `NotificationType` | `no_matrix`, `unmatched_name`, `data_conflict`, `schedule_change` |
+| `ChangeSource` | `sync`, `manual` |
+| `DealStatus` | `preliminary`, `in_progress`, `completed` |
+
+---
+
 ## Связи (ERD кратко)
 
 ```
@@ -292,10 +391,11 @@ users ──────────────────── shift_entries
   │                              │
   │                        project_assignments (user_id)
   │                              │
-  └── monthly_summaries     status_rows ──── matrix_registry
-  │                              │      └──── project_days
-  └── task_assignments ──── tasks│
-  │                              └──── deal_status_rows ──── deals ──── deal_matrices ──── matrix_registry
-  └── notifications
+  ├── monthly_summaries     status_rows ──── matrix_registry ──── matrix_templates (template_id)
+  │                         │    │  └──── project_days
+  ├── task_assignments ─── tasks │
+  │                              ├── project_members
+  ├── notifications               ├── deal_status_rows ──── deals ──── deal_matrices ──── matrix_registry
+  │    └── user_notification_reads
   └── change_logs
 ```

@@ -77,7 +77,10 @@ export async function projectMembersRoutes(app: FastifyInstance) {
   // DELETE /project-members/:id
   app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    await prisma.$executeRawUnsafe(`DELETE FROM project_members WHERE id = $1`, id)
+    const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+      `DELETE FROM project_members WHERE id = $1 RETURNING id`, id
+    )
+    if (!rows[0]) return reply.code(404).send({ error: 'Участник не найден' })
     return { ok: true }
   })
 }

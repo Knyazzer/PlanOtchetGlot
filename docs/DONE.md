@@ -247,6 +247,15 @@
 
 ---
 
+## Технический долг (закрыт)
+
+- [x] `docs/04-database-schema.md` — обновлён: добавлены `MatrixTemplate`, `ProjectMember`, `SheetConfig`, `UserNotificationRead`, новые поля `status_rows` и `matrix_registry`, таблица enum'ов, актуальный ERD
+- [x] `docs/05-architecture.md` — обновлён: добавлены Google Drive интеграция, `databaseService`, внутренние матрицы, механика уведомлений, порт 5433 в dev, обновлена сетевая схема
+- [x] `DELETE /project-members/:id` возвращал `{ ok: true }` при несуществующем ID — исправлено через `RETURNING id` + 404
+- [x] Нейминг `sheet_url` для `drive_folder` — добавлен поясняющий комментарий в `schema.prisma`; переименование колонки нецелесообразно (8 файлов)
+
+---
+
 ## Исправленные баги
 
 - [x] Сепараторы попадали в панель "Без даты" — добавлен фильтр `p.source !== 'separator'`
@@ -264,3 +273,5 @@
 - [x] Формула HYPERLINK во внутреннем реестре — исправлено на `=ГИПЕРССЫЛКА(...;...)` (русская локаль, разделитель `;`)
 - [x] `pnpm db:studio` не находил `DATABASE_URL` — команда перенесена в корень монорепо: `prisma studio --schema packages/db/prisma/schema.prisma`
 - [x] Фильтры "Внешние / Внутренние" в таблицах Проекты и Реестр матриц — кнопки рядом с заголовком, персистентность в localStorage
+- [x] `GET /status-rows?dateNull=true` — серверный фильтр "без даты"; CalendarPage больше не загружает все проекты для фильтрации на фронте
+- [x] Rate limiting на `POST /auth/login` — защита от брутфорса: max 10 попыток/мин с одного IP через `@fastify/rate-limit` (`global: false`)

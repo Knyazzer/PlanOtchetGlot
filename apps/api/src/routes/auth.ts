@@ -9,8 +9,18 @@ const loginSchema = z.object({
 })
 
 export async function authRoutes(app: FastifyInstance) {
-  // POST /auth/login
-  app.post('/login', async (request, reply) => {
+  // POST /auth/login — max 10 попыток/мин с одного IP (защита от брутфорса)
+  app.post('/login', {
+    config: {
+      rateLimit: {
+        max: 10,
+        timeWindow: '1 minute',
+        errorResponseBuilder: () => ({
+          error: 'Слишком много попыток входа. Подождите минуту и попробуйте снова.',
+        }),
+      },
+    },
+  }, async (request, reply) => {
     const body = loginSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })

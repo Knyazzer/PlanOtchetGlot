@@ -83,9 +83,7 @@ export function CalendarPage() {
   const { data: unconfirmedProjects = [] } = useQuery<Project[]>({
     queryKey: ['status-rows-unconfirmed'],
     queryFn: () =>
-      api.get('/status-rows').then((r) =>
-        (r.data as Project[]).filter((p) => !p.date && p.source !== 'separator')
-      ),
+      api.get('/status-rows', { params: { dateNull: 'true', slim: 'true' } }).then((r) => r.data),
   })
 
   // Форматирование даты без потери дня из-за UTC offset

@@ -60,6 +60,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     const query = request.query as {
       dateFrom?: string
       dateTo?: string
+      dateNull?: string
       status?: string
       search?: string
       withSeparators?: string
@@ -68,6 +69,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
 
     const where = {
       ...(query.withSeparators !== 'true' && { NOT: { source: 'separator' as any } }),
+      ...(query.dateNull === 'true' && { date: null }),
       ...(query.dateFrom && { date: { gte: new Date(query.dateFrom) } }),
       ...(query.dateTo && { date: { lte: new Date(query.dateTo) } }),
       ...(query.status && { status: query.status as any }),
