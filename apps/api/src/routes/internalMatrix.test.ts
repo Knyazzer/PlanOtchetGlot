@@ -58,8 +58,13 @@ describe('POST /internal-matrix', () => {
     mockFindSheetConfig.mockResolvedValue(null)
   })
 
+  afterEach(async () => {
+    // Guard: remove any INT-* rows not tracked in createdIds (e.g., if test crashed before push)
+    await prisma.$executeRawUnsafe(`DELETE FROM matrix_registry WHERE matrix_id LIKE 'INT-%'`).catch(() => {})
+  })
+
   afterAll(async () => {
-    // Clean up created matrix_registry rows
+    // Belt-and-suspenders: also clean tracked IDs (in case afterEach didn't run)
     for (const id of createdIds) {
       await prisma.$executeRawUnsafe(`DELETE FROM matrix_registry WHERE id = $1`, id).catch(() => {})
     }

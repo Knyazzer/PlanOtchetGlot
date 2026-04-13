@@ -91,6 +91,15 @@ beforeEach(() => {
 afterEach(async () => {
   vi.restoreAllMocks()
   await prisma.syncLog.deleteMany().catch(() => {})
+  // Guard: remove any matrix_registry rows accidentally created by the sync
+  // (shouldn't happen when mocks are correct, but protects dev DB from test pollution)
+  await prisma.$executeRawUnsafe(`
+    DELETE FROM matrix_registry
+    WHERE matrix_id LIKE 'int-test%'
+       OR matrix_id LIKE 'test-integration%'
+       OR matrix_id LIKE 'test-err-%'
+       OR matrix_id LIKE 'INT-%'
+  `).catch(() => {})
 })
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
