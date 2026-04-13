@@ -274,4 +274,33 @@
 - [x] `pnpm db:studio` не находил `DATABASE_URL` — команда перенесена в корень монорепо: `prisma studio --schema packages/db/prisma/schema.prisma`
 - [x] Фильтры "Внешние / Внутренние" в таблицах Проекты и Реестр матриц — кнопки рядом с заголовком, персистентность в localStorage
 - [x] `GET /status-rows?dateNull=true` — серверный фильтр "без даты"; CalendarPage больше не загружает все проекты для фильтрации на фронте
-- [x] Rate limiting на `POST /auth/login` — защита от брутфорса: max 10 попыток/мин с одного IP через `@fastify/rate-limit` (`global: false`)
+- [x] Rate limiting на `POST /auth/login` — защита от брутфорса: max 10 попыток/мин с одного IP через `@fastify/rate-limit` (`global: false`); даунгрейд до v9 (v10 требует Fastify v5, в проекте v4)
+
+
+---
+
+## Этап 12 — Тесты (P1 + P2)
+
+### Инфраструктура тестирования
+
+- [x] Vitest 4 установлен в `apps/api` (`vitest@4.1.4`, `@vitest/coverage-v8`)
+- [x] `apps/api/vitest.config.ts` — `globals: true`, `singleThread: true`, загрузка `.env` через `dotenv` до старта воркеров; `include: ['src/**/*.test.ts']` исключает `dist/`
+- [x] `apps/api/src/test/helpers.ts` — `buildApp()` (Fastify с полным набором плагинов/роутов), `getAccessToken(app, email, password)`
+- [x] `apps/api/src/test/factories.ts` — `createTestUser`, `createTestStatusRow`, `createTestAssignment`, `createTestShiftEntry`, `createTestMonthlySummary` + cleanup-функции; изоляция через UUID-email и `afterAll`-очистку
+- [x] `@fastify/rate-limit` даунгрейд `^10` → `^9` — v10 требует Fastify v5, `buildApp()` падал с проверкой версии
+
+### P1 — Чистые функции и Auth (105 тестов)
+
+- [x] `apps/api/src/services/syncHelpers.ts` — все 13 функций из `syncService.ts` вынесены в отдельный модуль с `import type { sheets_v4 }` (нет runtime-зависимости от googleapis)
+- [x] `apps/api/src/services/syncHelpers.test.ts` — 82 unit-теста: `bgHexOrNull`, `evalConditionalColor`, `parseSheetDate`, `parseProjectStatus`, `parseEmploymentType`, `cellStr`, `extractSpreadsheetId`, `serialToDate`, `isColored`
+- [x] `apps/api/src/routes/auth.test.ts` — 12 integration-тестов: login/refresh/logout/me, bcrypt, cookie mechanics
+- [x] `apps/api/src/plugins/auth.test.ts` — 11 integration-тестов: `authenticate` и `requireRole` с проверкой всех ролей
+
+### P2 — Бизнес-логика (29 тестов)
+
+- [x] `apps/api/src/routes/statusRows.test.ts` — 5 тестов `GET /status-rows/conflicts`: конфликт при одинаковой дате, нет конфликта при разных датах, фильтры `dateFrom`/`dateTo`, 401 без токена
+- [x] `apps/api/src/routes/shifts.test.ts` — 5 тестов `GET /shifts/monthly-summary`: on-the-fly расчёт, overtime, доступ employee к чужому → 403, admin видит любой
+- [x] `apps/api/src/services/syncService.test.ts` — 12 unit-тестов `fetchMatrixShifts` (legacy формат): колонки J/M/N-P, числа-тоталы не производят смен, пустые строки пропускаются, `employmentType`/`dates`/`activeCols` корректны; googleapis замокирован через `vi.mock`
+- [x] `apps/api/src/services/syncService.integration.test.ts` — 7 integration-тестов `runFullSync()`: SyncLog success/error, пропуск матриц без URL, изоляция ошибок, abort до матричного цикла, сброс `_abortRequested`, создание separator-строк; googleapis и `prisma.matrixRegistry.findMany` замокированы для изоляции от реальных данных БД
+
+**Итого: 134 теста, 0 провалов**

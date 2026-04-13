@@ -102,7 +102,12 @@
       "Bash(curl -s \"http://localhost:4000/status-rows?withSeparators=true\" -b /tmp/tv5.txt)",
       "Bash(grep -v \"^[0-9]*:\\\\s*//\")",
       "Bash(grep -E \"^d|^-.*\\\\.ts$\")",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(pnpm --filter @tv-shifts/api add -D vitest @vitest/coverage-v8)",
+      "Bash(pnpm --filter @tv-shifts/api test -- --reporter=verbose --testPathPattern=\"syncHelpers\")",
+      "Bash(pnpm --filter @tv-shifts/api list @fastify/rate-limit fastify)",
+      "Bash(pnpm --filter @tv-shifts/api add @fastify/rate-limit@^9.0.0)",
+      "Bash(pnpm --filter @tv-shifts/api test -- --reporter=verbose)"
     ]
   },
   "enabledPlugins": {

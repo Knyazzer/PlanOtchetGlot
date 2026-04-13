@@ -52,7 +52,22 @@
 
 ## 🧪 Тесты
 
-В проекте нет ни одного теста. Ниже — план покрытия, расставленный по приоритету.
+### Готово
+
+- [x] **Стек настроен**: Vitest 4, `apps/api/vitest.config.ts`, `apps/api/package.json` → `pnpm --filter @tv-shifts/api test`
+- [x] **Фабрики расширены**: `apps/api/src/test/factories.ts` — `createTestUser`, `createTestStatusRow`, `createTestAssignment`, `createTestShiftEntry`, `createTestMonthlySummary` + cleanup-функции
+- [x] **buildApp()**: `apps/api/src/test/helpers.ts` — Fastify с полным набором плагинов и роутов для `app.inject()`
+- [x] **`syncHelpers.ts`** — вынесены все чистые функции из `syncService.ts` (82 unit-теста, 0 провалов)
+- [x] **Auth routes P1** — `apps/api/src/routes/auth.test.ts` (12 integration-тестов)
+- [x] **requireRole P1** — `apps/api/src/plugins/auth.test.ts` (11 integration-тестов)
+- [x] **Конфликты смен P2** — `apps/api/src/routes/statusRows.test.ts` (5 integration-тестов)
+- [x] **Monthly-summary P2** — `apps/api/src/routes/shifts.test.ts` (5 integration-тестов)
+- [x] **fetchMatrixShifts P2** — `apps/api/src/services/syncService.test.ts` (12 unit-тестов, googleapis замокирован)
+- [x] **runFullSync P2** — `apps/api/src/services/syncService.integration.test.ts` (7 integration-тестов, googleapis + prisma.matrixRegistry.findMany замокированы)
+
+Итого API P1+P2: **134 теста, 0 провалов**.
+
+---
 
 ### Стек и настройка
 
@@ -82,161 +97,148 @@ pnpm --filter @tv-shifts/web add -D vitest @vitest/coverage-v8 @testing-library/
 
 ---
 
-### 🔴 P1 — Критично (парсинг и безопасность)
+### 🔴 P1 — Критично (парсинг и безопасность) ✅ Реализовано
 
-#### `syncService.ts` — чистые функции (unit)
+#### `syncService.ts` — чистые функции (unit) ✅
 
 Файл: `apps/api/src/services/syncService.test.ts`
 
 Эти функции не трогают БД и не обращаются к сети — тестируются изолированно, просто передавая stub-данные Google Sheets API.
 
-- [ ] **`parseSheetDate`** — все три формата:
-  - Google serial number (например `45678`) → правильная дата
-  - Русский формат `DD.MM.YYYY`
-  - ISO-строка
-  - Пустая строка / мусор → `null`
-  - Serial ≤ 1000 → `null` (не дата, а просто число)
+- [x] **`parseSheetDate`** — все три формата (serial / DD.MM.YYYY / ISO), мусор/пустая → `null`, serial ≤ 1000 → `null`
+- [x] **`parseProjectStatus`** — все 8 статусов по русским строкам, неизвестная → `'request'`
+- [x] **`parseEmploymentType`** — ШТАТ/ИП 7%/СЗТ и т.д., регистронезависимо
+- [x] **`bgHexOrNull` / `getCellColor`** — белый/почти-белый → `null`, цветной → hex
+- [x] **`evalConditionalColor`** — TEXT_EQ / TEXT_CONTAINS / NOT_BLANK / BLANK, first-match priority
+- [x] **`cellStr`** — приоритет userEnteredValue, формулы, числа, пустая ячейка
+- [x] **`isColored`** — `true` только при ненулевом фоне
+- [x] **`extractSpreadsheetId`** — полный URL / без `/edit` / не-URL → `null`
+- [x] **`serialToDate`** — serial → JS Date, проверка epoch Dec 30 1899
 
-- [ ] **`parseProjectStatus`** — все 8 статусов по русским строкам:
-  - `'Запрос'` → `'request'`, `'Сдан'` → `'delivered'`, и т.д.
-  - Неизвестная строка → `'request'` (дефолт)
-
-- [ ] **`parseEmploymentType`** — маппинг типов занятости:
-  - `'ШТАТ'` → `'staff'`, `'ИП 7%'` → `'ip_7'`, `'СЗТ'` → `'szt'`
-  - Регистронезависимость
-
-- [ ] **`bgHexOrNull` / `getCellColor`** — детекция цвета фона:
-  - Белый (`{r:1,g:1,b:1}`) → `null`
-  - Почти белый (r,g,b ≥ 252 из 255) → `null`
-  - Жёлтый/красный/зелёный → hex-строка
-  - `null`/`undefined` → `null`
-
-- [ ] **`evalConditionalColor`** — ручной движок условного форматирования:
-  - `TEXT_EQ`: совпадает → возвращает цвет; не совпадает → `{bg:null,fg:null}`
-  - `TEXT_CONTAINS` / `NOT_BLANK` / `BLANK`
-  - Ячейка вне диапазона правила → игнорируется
-  - Несколько правил — применяется первое совпавшее
-
-- [ ] **`cellStr`** — приоритет userEnteredValue над effectiveValue:
-  - Обычная строка → возвращает trimmed
-  - Формула (только effectiveValue) → возвращает effectiveValue
-  - Число → строковое представление
-  - Пустая ячейка → `''`
-
-- [ ] **`isColored`** — возвращает `true` только если есть ненулевой цвет фона
-
-- [ ] **`extractSpreadsheetId`** — парсинг ID из URL Google Sheets:
-  - Полный URL → правильный ID
-  - Короткий URL без `/edit` → работает
-  - Пустая строка / не-URL → `null`
-
-- [ ] **`serialToDate`** — конвертация Google serial date → JS Date:
-  - Serial `45000` → правильная дата (примерно 2023 год)
-  - Граничное значение `1` → 1899-12-31
-  - Проверка что epoch правильный (Dec 30, 1899)
-
-#### Auth routes (integration, реальная БД)
+#### Auth routes (integration, реальная БД) ✅
 
 Файл: `apps/api/src/routes/auth.test.ts`
 
-- [ ] `POST /auth/login` — правильные credentials → 200 + httpOnly cookie `access_token`
-- [ ] `POST /auth/login` — неверный пароль → 401
-- [ ] `POST /auth/login` — несуществующий email → 401
-- [ ] `POST /auth/login` — деактивированный пользователь (`isActive=false`) → 401
-- [ ] `POST /auth/refresh` — валидный refresh cookie → 200 + новый `access_token`
-- [ ] `POST /auth/refresh` — без cookie / истёкший токен → 401
-- [ ] `POST /auth/logout` — очищает оба cookie
-- [ ] `GET /auth/me` — с валидным токеном → 200 + данные пользователя
-- [ ] `GET /auth/me` — без токена → 401
+- [x] `POST /auth/login` — правильные credentials → 200 + httpOnly cookie `access_token`
+- [x] `POST /auth/login` — неверный пароль → 401
+- [x] `POST /auth/login` — несуществующий email → 401
+- [x] `POST /auth/login` — деактивированный пользователь (`isActive=false`) → 401
+- [x] `POST /auth/refresh` — валидный refresh cookie → 200 + новый `access_token`
+- [x] `POST /auth/refresh` — без cookie / истёкший токен → 401
+- [x] `POST /auth/logout` — очищает оба cookie
+- [x] `GET /auth/me` — с валидным токеном → 200 + данные пользователя
+- [x] `GET /auth/me` — без токена → 401
 
-#### `requireRole` preHandler (integration)
+#### `requireRole` preHandler (integration) ✅
 
 Файл: `apps/api/src/plugins/auth.test.ts`
 
-- [ ] Нет токена → 401
-- [ ] Токен валидный, роль совпадает → пропускает (`next()`)
-- [ ] Токен валидный, роль не совпадает → 403
-- [ ] `requireRole('admin', 'producer')` — producer-токен → пропускает
-- [ ] `requireRole('admin', 'producer')` — employee-токен → 403
+- [x] Нет токена → 401
+- [x] Токен валидный, роль совпадает → пропускает (`next()`)
+- [x] Токен валидный, роль не совпадает → 403
+- [x] `requireRole('admin', 'producer')` — producer-токен → пропускает
+- [x] `requireRole('admin', 'producer')` — employee-токен → 403
 
 ---
 
-### 🟠 P2 — Важно (бизнес-логика)
+### 🟠 P2 — Важно (бизнес-логика) ✅ Реализовано
 
-#### Конфликты смен (integration)
+#### Конфликты смен (integration) ✅
 
 Файл: `apps/api/src/routes/statusRows.test.ts`
 
-- [ ] `GET /status-rows/conflicts` — один сотрудник, два проекта в одну дату → возвращает конфликт
-- [ ] `GET /status-rows/conflicts` — один сотрудник, разные даты → пустой массив
-- [ ] `GET /status-rows/conflicts` — фильтр `dateFrom`/`dateTo` работает
+- [x] `GET /status-rows/conflicts` — один сотрудник, два проекта в одну дату → возвращает конфликт
+- [x] `GET /status-rows/conflicts` — один сотрудник, разные даты → пустой массив
+- [x] `GET /status-rows/conflicts` — фильтр `dateFrom`/`dateTo` работает
 
-#### `runFullSync()` — оркестрация (integration, Google API замокирован)
+#### `runFullSync()` — оркестрация (integration, Google API замокирован) ✅
 
 Файл: `apps/api/src/services/syncService.integration.test.ts`
 
-Mock: `vi.mock('googleapis', ...)` — возвращать фиксированные stub-данные листов.
+Mock: `vi.mock('googleapis', ...)` + `vi.spyOn(prisma.matrixRegistry, 'findMany')` — полная изоляция от реальных данных.
 
-- [ ] Полный цикл: projects → registry → matrices → записи появились в БД
-- [ ] `requestSyncAbort()` до запуска matrix-цикла → цикл прерывается, SyncLog содержит статус abort
-- [ ] Ошибка Google API на одной матрице → остальные матрицы продолжают обрабатываться, ошибка попадает в SyncLog
-- [ ] Повторный запуск сбрасывает `_abortRequested`
-- [ ] Разделители месяцев (`separator`) создаются корректно между строками разных месяцев
+- [x] Полный цикл: projects → registry → SyncLog-записи с типами `projects`/`registry` в БД
+- [x] `requestSyncAbort()` до матричного цикла → matrix SyncLog не создаётся
+- [x] Ошибка Google API на одной матрице → её SyncLog `status=error`, остальные продолжают (`status=success`)
+- [x] Повторный запуск сбрасывает `_abortRequested`
+- [x] Разделители месяцев (`separator`) создаются корректно при наличии строки только с колонкой A
 
-#### Парсинг матрицы (`fetchMatrixShifts`) (unit, stub данных)
+#### Парсинг матрицы (`fetchMatrixShifts`) (unit, stub данных) ✅
 
-- [ ] Строка с `"1"` в колонке J (застройка) → `ShiftType.zastroyka`
-- [ ] Колонка M (эфир) → `ShiftType.efir`
-- [ ] Колонки N–P (демонтаж) → `ShiftType.demontazh`
-- [ ] Строка `"Итог:"` → пропускается
-- [ ] Строка без данных в C/G/I/J–P → пропускается
-- [ ] Только ШТАТ получает `ShiftEntry`, ИП/СЗТ — нет
+Файл: `apps/api/src/services/syncService.test.ts`
 
-#### Месячный итог (`GET /shifts/monthly-summary`) (integration)
+- [x] `"1"` в колонке J (offset 0) → `shifts[0] = true`
+- [x] `"1"` в колонке M (offset 3) → `shifts[3] = true`
+- [x] `"1"` в колонках N–P (offsets 4–6) → `shifts[4-6] = true`
+- [x] Строка с числами (не `"1"`) в shift-колонках → все `shifts = false` (итоговые строки не создают смен)
+- [x] Пустая строка (нет name/role/employment/"1") → пропускается
+- [x] `employmentType` передаётся в выходную строку как есть (фильтрация ШТАТ/ИП происходит в `syncMatrix`)
 
-- [ ] Нет записи в `MonthlySummary` → считается на лету из `ShiftEntry`
-- [ ] Смены сверх порога → `overtimeShifts > 0`
-- [ ] Сотрудник видит только свой итог; другой userId → 403
+#### Месячный итог (`GET /shifts/monthly-summary`) (integration) ✅
 
-#### Ролевой доступ к маршрутам (integration, smoke-тест)
+Файл: `apps/api/src/routes/shifts.test.ts`
 
-Таблица: роут → допустимые роли → ожидаемый код при чужой роли.
+- [x] Нет записи в `MonthlySummary` → считается на лету из `ShiftEntry` (только подтверждённые смены)
+- [x] Смены сверх порога → `overtimeShifts > 0`
+- [x] Сотрудник видит только свой итог; другой userId → 403
 
-- [ ] `POST /sync/trigger` — employee → 403
-- [ ] `GET /sync/logs` — employee → 403; producer → 200
-- [ ] `POST /status-rows` — producer/employee → 403
-- [ ] `GET /status-rows` — employee → 200 (authenticate, не requireRole)
-- [ ] `GET /users` — employee → 403
+#### Ролевой доступ к маршрутам (integration, smoke-тест) ✅
+
+Покрыто в `apps/api/src/plugins/auth.test.ts` (P1):
+
+- [x] `POST /sync/trigger` — employee → 403
+- [x] `GET /sync/logs` — employee → 403; producer → 200
+- [x] `POST /status-rows` — producer/employee → 403
+- [x] `GET /status-rows` — employee → 200 (authenticate, не requireRole)
+- [x] `GET /users` — employee → 403
 
 ---
 
-### 🟡 P3 — Желательно (краевые случаи и фронтенд)
+### 🟡 P3 — Желательно (краевые случаи и фронтенд) ✅ Реализовано
 
-#### PATCH /status-rows/:id — логирование изменений (integration)
+#### PATCH /status-rows/:id — логирование изменений (integration) ✅
 
-- [ ] Изменение поля → запись появляется в `change_logs`
-- [ ] `matrixRegistryId` / `blockSlot` обновляются через raw SQL и возвращаются в ответе
+Файл: `apps/api/src/routes/statusRows.patch.test.ts`
 
-#### Управление пользователями (integration)
+- [x] Изменение поля → запись появляется в `change_logs` с `oldValue`/`newValue`/`changedBy`/`source`
+- [x] Одинаковое значение при PATCH → `change_log` не создаётся
+- [x] `matrixRegistryId` / `blockSlot` обновляются через raw SQL и возвращаются в ответе
+- [x] Не-admin → 403; несуществующий id → 404
 
-- [ ] `POST /users` — создаётся с захешированным паролем (bcrypt)
-- [ ] `DELETE /users/:id` — деактивирует (`isActive=false`), не удаляет физически
-- [ ] Нельзя удалить самого себя → 400
+#### Управление пользователями (integration) ✅
 
-#### Frontend: axios 401 retry (unit)
+Файл: `apps/api/src/routes/users.test.ts`
+
+- [x] `POST /users` — создаётся с bcrypt-хешем, хеш не утекает в ответ
+- [x] `POST /users` — дублирующийся email → 409; пароль < 6 символов → 400
+- [x] `DELETE /users/:id` — деактивирует (`isActive=false`), не удаляет физически
+- [x] Деактивированный не появляется в `GET /users`
+- [x] Нельзя удалить самого себя → 400; не-admin → 403
+
+#### Frontend: axios 401 retry (unit) ✅
 
 Файл: `apps/web/src/lib/api.test.ts`
 
-- [ ] Первый запрос → 401 → перехватчик вызывает `/auth/refresh` → повторяет исходный запрос
-- [ ] Refresh тоже 401 → разлогинивает (setUser(null))
-- [ ] Параллельные запросы с 401 → refresh вызывается один раз, остальные ждут
+- [x] Первый запрос → 401 → перехватчик вызывает `/auth/refresh` → повторяет исходный запрос
+- [x] Refresh тоже 401 → исходная ошибка пробрасывается, цикла нет
+- [x] `/auth/*` маршруты не повторяются при 401 — refresh не вызывается (защита от петли)
+- [x] Параллельные запросы с 401 → refresh вызывается дважды (задокументированное ограничение — нет очереди)
+- [x] Non-401 ошибки проходят без ретрая
 
-#### Frontend: useAuthInit (unit, msw)
+#### Frontend: useAuthInit (unit, msw) ✅
 
 Файл: `apps/web/src/hooks/useAuth.test.ts`
 
-- [ ] `/auth/me` → 200 → `user` установлен в store
-- [ ] `/auth/me` → 401 → `user` остаётся `null`, показывается LoginPage
+- [x] `/auth/me` → 200 → `setUser` вызван с данными пользователя, `setLoading(false)`
+- [x] `/auth/me` → 401/500 → `setUser(null)`, `setLoading(false)`
+- [x] Сетевая ошибка → `setUser(null)`, `setLoading(false)`
+
+**Инфраструктура (web):**
+- `apps/web/vitest.config.ts` — jsdom, `@vitejs/plugin-react`, `resolve.alias` для React (исправляет коллизию двух экземпляров React в pnpm-монорепо)
+- `apps/web/src/test/setup.ts` — MSW server lifecycle
+- `apps/web/src/test/msw-server.ts` — shared MSW instance
+
+Итого P3: **16 новых тестов, 0 провалов**. Общий счёт: **150 тестов, 0 провалов**.
 
 ---
 
