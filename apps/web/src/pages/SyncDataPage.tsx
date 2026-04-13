@@ -1086,6 +1086,9 @@ function ProjectsTable({
 }) {
   const qc = useQueryClient()
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-proj')
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'external' | 'internal'>(() => {
+    return (localStorage.getItem('sync-proj-source-filter') as 'all' | 'external' | 'internal') ?? 'all'
+  })
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [formProject, setFormProject] = useState<Project | 'new' | null>(null)
@@ -1138,6 +1141,13 @@ function ProjectsTable({
   }, [openDrop])
 
   const allNonSep = useMemo(() => projects.filter((p) => p.source !== 'separator'), [projects])
+
+  const allNonSepFiltered = useMemo(() => {
+    if (sourceFilter === 'external') return allNonSep.filter((p) => p.source === 'projects_table')
+    if (sourceFilter === 'internal') return allNonSep.filter((p) => p.source === 'manual')
+    return allNonSep
+  }, [allNonSep, sourceFilter])
+
   const monthMap = useMemo(() => buildMonthMap(projects), [projects])
 
   // Ordered list of block names (separator names) as they appear in the table
@@ -1154,14 +1164,14 @@ function ProjectsTable({
   }, [projects])
 
   const afterPrimary = useMemo(() => {
-    return allNonSep.filter((p) => {
+    return allNonSepFiltered.filter((p) => {
       for (const [col, sel] of Object.entries(primaryFilters)) {
         if (sel.length === 0) continue
         if (!sel.includes(getProjValue(p, col))) return false
       }
       return true
     })
-  }, [allNonSep, primaryFilters])
+  }, [allNonSepFiltered, primaryFilters])
 
   const colValues = useMemo(() => {
     // For date: only show blocks that actually have rows in afterPrimary
@@ -1306,14 +1316,32 @@ function ProjectsTable({
     <>
     <div ref={containerRef} style={panelStyle}>
       <div style={panelHeader}>
-        <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
-          <a href={sheetUrl ?? '#'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}>
-            Проекты из таблицы
-          </a>
-          <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
-            {afterSecondary.length} / {allNonSep.length}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b', whiteSpace: 'nowrap' }}>
+            <a href={sheetUrl ?? '#'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}>
+              Проекты из таблицы
+            </a>
+            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
+              {afterSecondary.length} / {allNonSep.length}
+            </span>
           </span>
-        </span>
+          <div style={{ display: 'flex', gap: 3 }}>
+            {(['all', 'external', 'internal'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => { setSourceFilter(v); localStorage.setItem('sync-proj-source-filter', v) }}
+                style={{
+                  fontSize: 11, padding: '3px 9px', borderRadius: 5, border: `1px solid ${sourceFilter === v ? '#3b82f6' : '#e2e8f0'}`,
+                  background: sourceFilter === v ? '#eff6ff' : '#f8fafc',
+                  color: sourceFilter === v ? '#2563eb' : '#94a3b8',
+                  cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap',
+                }}
+              >
+                {v === 'all' ? 'Все' : v === 'external' ? 'Внешние' : 'Внутренние'}
+              </button>
+            ))}
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {totalColFilters > 0 && (
             <button onClick={() => setColFilters({})} style={resetBtn}>
@@ -2197,6 +2225,9 @@ function RegistryTable({
 }) {
   const queryClient = useQueryClient()
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-reg')
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'external' | 'internal'>(() => {
+    return (localStorage.getItem('sync-reg-source-filter') as 'all' | 'external' | 'internal') ?? 'all'
+  })
   const [openDrop, setOpenDrop] = useState<string | null>(null)
   const [selectedMatrix, setSelectedMatrix] = useState<string | null>(null)
   const [selectedEntry, setSelectedEntry] = useState<RegistryEntry | null>(null)
@@ -2269,9 +2300,15 @@ function RegistryTable({
     }
   }, [openDrop])
 
+  const registryFiltered = useMemo(() => {
+    if (sourceFilter === 'external') return registry.filter((r) => r.source === 'google')
+    if (sourceFilter === 'internal') return registry.filter((r) => r.source === 'internal')
+    return registry
+  }, [registry, sourceFilter])
+
   // Primary filter
   const afterPrimary = useMemo(() => {
-    return registry.filter((r) => {
+    return registryFiltered.filter((r) => {
       for (const [col, sel] of Object.entries(primaryFilters)) {
         if (sel.length === 0) continue
         let val: string
@@ -2283,7 +2320,7 @@ function RegistryTable({
       }
       return true
     })
-  }, [registry, primaryFilters])
+  }, [registryFiltered, primaryFilters])
 
   // Column dropdown values
   const colValues = useMemo(() => ({
@@ -2368,14 +2405,32 @@ function RegistryTable({
     <>
     <div ref={containerRef} style={panelStyle}>
       <div style={panelHeader}>
-        <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
-          <a href={sheetUrl ?? '#'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}>
-            Реестр матриц
-          </a>
-          <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
-            {afterSecondary.length} / {registry.length}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b', whiteSpace: 'nowrap' }}>
+            <a href={sheetUrl ?? '#'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}>
+              Реестр матриц
+            </a>
+            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
+              {afterSecondary.length} / {registry.length}
+            </span>
           </span>
-        </span>
+          <div style={{ display: 'flex', gap: 3 }}>
+            {(['all', 'external', 'internal'] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => { setSourceFilter(v); localStorage.setItem('sync-reg-source-filter', v) }}
+                style={{
+                  fontSize: 11, padding: '3px 9px', borderRadius: 5, border: `1px solid ${sourceFilter === v ? '#3b82f6' : '#e2e8f0'}`,
+                  background: sourceFilter === v ? '#eff6ff' : '#f8fafc',
+                  color: sourceFilter === v ? '#2563eb' : '#94a3b8',
+                  cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap',
+                }}
+              >
+                {v === 'all' ? 'Все' : v === 'external' ? 'Внешние' : 'Внутренние'}
+              </button>
+            ))}
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {totalColFilters > 0 && (
             <button onClick={() => setColFilters({})} style={resetBtn}>
