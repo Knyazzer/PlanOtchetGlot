@@ -134,9 +134,59 @@ export function AppShell() {
 
 // ─── NotificationBell ─────────────────────────────────────────────────────────
 
+type Notification = {
+  id: string
+  type: 'no_matrix' | 'unmatched_name' | 'data_conflict' | 'schedule_change'
+  entityType: string | null
+  entityId: string | null
+  message: string
+  userId: string | null
+  isRead: boolean
+  isReadByMe: boolean
+  createdAt: string
+}
+
+const NOTIF_ICON: Record<string, string> = {
+  no_matrix:       '📋',
+  unmatched_name:  '👤',
+  data_conflict:   '⚠️',
+  schedule_change: '📅',
+}
+
 function NotificationBell() {
+  const qc = useQueryClient()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+
+  // Счётчик непрочитанных — опрашиваем каждые 30 секунд
+  const { data: countData } = useQuery<{ count: number }>({
+    queryKey: ['notifications-count'],
+    queryFn: () => api.get('/notifications/count').then((r) => r.data),
+    refetchInterval: 30_000,
+  })
+
+  // Список уведомлений — загружаем только когда панель открыта
+  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
+    queryKey: ['notifications'],
+    queryFn: () => api.get('/notifications').then((r) => r.data),
+    enabled: open,
+  })
+
+  const markRead = useMutation({
+    mutationFn: (id: string) => api.patch(`/notifications/${id}/read`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['notifications-count'] })
+    },
+  })
+
+  const markAllRead = useMutation({
+    mutationFn: () => api.patch('/notifications/read-all'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['notifications-count'] })
+    },
+  })
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -145,6 +195,9 @@ function NotificationBell() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  const unreadCount = countData?.count ?? 0
+  const hasUnread = unreadCount > 0
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -159,30 +212,92 @@ function NotificationBell() {
           borderRadius: 6,
           fontSize: 18,
           lineHeight: 1,
+          position: 'relative',
         }}
         title="Уведомления"
       >
         🔔
+        {hasUnread && (
+          <span style={{
+            position: 'absolute', top: 2, right: 2,
+            background: '#ef4444', color: '#fff',
+            fontSize: 10, fontWeight: 700, lineHeight: 1,
+            borderRadius: 8, padding: '2px 4px',
+            minWidth: 14, textAlign: 'center',
+          }}>
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
       </button>
 
       {open && (
         <div style={{
-          position: 'absolute',
-          right: 0,
-          top: 'calc(100% + 8px)',
-          width: 320,
-          background: '#fff',
-          borderRadius: 10,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-          border: '1px solid #e2e8f0',
-          zIndex: 200,
-          padding: 24,
-          textAlign: 'center',
-          color: '#94a3b8',
+          position: 'absolute', right: 0, top: 'calc(100% + 8px)',
+          width: 360, background: '#fff', borderRadius: 10,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.15)', border: '1px solid #e2e8f0',
+          zIndex: 200, display: 'flex', flexDirection: 'column', maxHeight: 480,
         }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>🚧</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#64748b', marginBottom: 4 }}>Уведомления</div>
-          <div style={{ fontSize: 13 }}>В разработке</div>
+          {/* Header */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>
+              Уведомления
+              {hasUnread && (
+                <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, background: '#fee2e2', color: '#dc2626', borderRadius: 8, padding: '2px 7px' }}>
+                  {unreadCount}
+                </span>
+              )}
+            </span>
+            {hasUnread && (
+              <button
+                onClick={() => markAllRead.mutate()}
+                disabled={markAllRead.isPending}
+                style={{ fontSize: 12, color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              >
+                Прочитать все
+              </button>
+            )}
+          </div>
+
+          {/* List */}
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            {isLoading ? (
+              <div style={{ padding: 24, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Загрузка...</div>
+            ) : notifications.length === 0 ? (
+              <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>🔕</div>
+                <div style={{ fontSize: 13 }}>Нет уведомлений</div>
+              </div>
+            ) : (
+              notifications.map((n) => (
+                <div
+                  key={n.id}
+                  onClick={() => { if (!n.isReadByMe) markRead.mutate(n.id) }}
+                  style={{
+                    padding: '10px 16px', borderBottom: '1px solid #f1f5f9',
+                    display: 'flex', gap: 10, alignItems: 'flex-start',
+                    cursor: n.isReadByMe ? 'default' : 'pointer',
+                    background: n.isReadByMe ? 'transparent' : '#fafbff',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <span style={{ fontSize: 18, flexShrink: 0, marginTop: 1 }}>
+                    {NOTIF_ICON[n.type] ?? '🔔'}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: n.isReadByMe ? '#64748b' : '#1e293b', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                      {n.message}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>
+                      {format(new Date(n.createdAt), 'd MMM HH:mm', { locale: ru })}
+                      {!n.isReadByMe && (
+                        <span style={{ marginLeft: 6, color: '#3b82f6', fontWeight: 600 }}>• новое</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
     </div>

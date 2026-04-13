@@ -236,6 +236,17 @@
 
 ---
 
+## Этап 11 — Уведомления (полная реализация)
+
+- [x] Миграция `user_notification_reads` — per-user read tracking для глобальных уведомлений (`userId = null`); `unique(userId, notificationId)`
+- [x] `GET /notifications` — возвращает поле `isReadByMe` для каждого уведомления (SQL CASE по типу: личные → `is_read`, глобальные → EXISTS в `user_notification_reads`)
+- [x] `GET /notifications/count` — считает непрочитанные только для текущего пользователя, не затрагивая других
+- [x] `PATCH /notifications/:id/read` — для личных пишет `is_read = true`, для глобальных вставляет запись в `user_notification_reads`
+- [x] `PATCH /notifications/read-all` — для личных batch-update, для глобальных INSERT...SELECT без дублей; больше не сбрасывает счётчик у других пользователей
+- [x] `NotificationBell` UI — красный бейдж с числом, дропдаун со списком, иконки по типу уведомления, подсветка непрочитанных, клик → read, "Прочитать все", опрос `/count` каждые 30 сек
+
+---
+
 ## Исправленные баги
 
 - [x] Сепараторы попадали в панель "Без даты" — добавлен фильтр `p.source !== 'separator'`
@@ -247,3 +258,9 @@
 - [x] Debug `console.log` в `syncService.ts` (строки ~229–231) — удалён; мёртвый экспорт `isSyncRunning()` — удалён
 - [x] `any`-касты в роутах (`deals.ts`, `shifts.ts`, `users.ts`, `tasks.ts`, `statusRows.ts`) — заменены на типизированные варианты
 - [x] `mode: 'insensitive'` в `statusRows.ts` — исправлено на `Prisma.QueryMode.insensitive` (pre-existing TS error)
+- [x] Синхронизация: панель прогресса показывала пустое тело при кроне или двойном запуске — добавлен fallback `sessionLogs` → `logs`, placeholder "Инициализация...", idle refetch 30s→5s, сервер возвращает `alreadyRunning: true`
+- [x] `POST /sync/reset` удалял внутренние матрицы — добавлен фильтр `source = 'google'`
+- [x] Разделители теряли `source = 'separator'` после сдвига строк в Google Sheets — явное указание `source` в UPDATE
+- [x] Формула HYPERLINK во внутреннем реестре — исправлено на `=ГИПЕРССЫЛКА(...;...)` (русская локаль, разделитель `;`)
+- [x] `pnpm db:studio` не находил `DATABASE_URL` — команда перенесена в корень монорепо: `prisma studio --schema packages/db/prisma/schema.prisma`
+- [x] Фильтры "Внешние / Внутренние" в таблицах Проекты и Реестр матриц — кнопки рядом с заголовком, персистентность в localStorage
