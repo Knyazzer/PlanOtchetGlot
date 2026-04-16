@@ -648,7 +648,6 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
   const qc = useQueryClient()
   const [picking, setPicking] = useState(false)
   const [pickedMatrixId, setPickedMatrixId] = useState<string>('')
-  const [pickedSlot, setPickedSlot] = useState<string>('1')
 
   const { data: linkInfo, isLoading } = useQuery<{
     matrixRegistryId: string | null
@@ -667,13 +666,10 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
     staleTime: 30_000,
   })
 
-  const parsedSlot = parseInt(pickedSlot)
-  const slotValid  = pickedMatrixId ? (Number.isInteger(parsedSlot) && parsedSlot >= 1) : true
-
+  // Block slot is auto-assigned on the server — frontend only sends matrixRegistryId
   const link = useMutation({
     mutationFn: () => api.patch(`/status-rows/${projectId}`, {
       matrixRegistryId: pickedMatrixId || null,
-      blockSlot: pickedMatrixId ? parsedSlot : null,
     }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-link', projectId] })
@@ -683,7 +679,7 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
   })
 
   const unlink = useMutation({
-    mutationFn: () => api.patch(`/status-rows/${projectId}`, { matrixRegistryId: null, blockSlot: null }).then((r) => r.data),
+    mutationFn: () => api.patch(`/status-rows/${projectId}`, { matrixRegistryId: null }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-link', projectId] })
       qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
@@ -709,15 +705,14 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4', borderRadius: 8, padding: '8px 12px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#15803d' }}>{linkInfo.linkedMatrix.name ?? linkInfo.linkedMatrix.matrixId}</div>
-                <div style={{ fontSize: 12, color: linkInfo.blockSlot ? '#64748b' : '#dc2626' }}>
+                <div style={{ fontSize: 12, color: '#64748b' }}>
                   {linkInfo.linkedMatrix.client && `${linkInfo.linkedMatrix.client} · `}Блок {linkInfo.blockSlot ?? '—'}
-                  {!linkInfo.blockSlot && ' (не задан)'}
                 </div>
               </div>
               <button onClick={() => unlink.mutate()} disabled={unlink.isPending} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #bbf7d0', background: 'none', color: '#16a34a', cursor: 'pointer' }}>
                 Отвязать
               </button>
-              <button onClick={() => { setPicking(true); setPickedMatrixId(linkInfo.linkedMatrix!.id); setPickedSlot(String(linkInfo.blockSlot ?? 1)) }} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
+              <button onClick={() => { setPicking(true); setPickedMatrixId(linkInfo.linkedMatrix!.id) }} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
                 Изменить
               </button>
             </div>
@@ -741,7 +736,7 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
           )}
 
           {!picking && (
-            <button onClick={() => setPicking(true)} style={{ marginTop: 8, fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
+            <button onClick={() => { setPicking(true); setPickedMatrixId('') }} style={{ marginTop: 8, fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
               {linkInfo.linkedMatrix ? 'Изменить привязку' : '+ Привязать матрицу'}
             </button>
           )}
@@ -759,16 +754,10 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
                 ))}
               </select>
               {matrices.length === 0 && <div style={{ fontSize: 12, color: '#94a3b8' }}>Нет созданных матриц</div>}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>Блок №</span>
-                <input type="number" min="1" max="20" value={pickedSlot}
-                  onChange={(e) => setPickedSlot(e.target.value)}
-                  style={{ width: 60, fontSize: 13, padding: '5px 8px', border: `1px solid ${slotValid ? '#e2e8f0' : '#fca5a5'}`, borderRadius: 6, color: '#1e293b', background: '#fff' }} />
-                {!slotValid && <span style={{ fontSize: 11, color: '#dc2626' }}>от 1 до 20</span>}
-              </div>
+              <div style={{ fontSize: 11, color: '#94a3b8' }}>Блок будет назначен автоматически</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => link.mutate()} disabled={!pickedMatrixId || !slotValid || link.isPending}
-                  style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: pickedMatrixId && slotValid ? '#2563eb' : '#94a3b8', color: '#fff', cursor: pickedMatrixId && slotValid ? 'pointer' : 'default', fontWeight: 500 }}>
+                <button onClick={() => link.mutate()} disabled={!pickedMatrixId || link.isPending}
+                  style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: pickedMatrixId ? '#2563eb' : '#94a3b8', color: '#fff', cursor: pickedMatrixId ? 'pointer' : 'default', fontWeight: 500 }}>
                   {link.isPending ? 'Сохраняю...' : 'Привязать'}
                 </button>
                 <button onClick={() => setPicking(false)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>

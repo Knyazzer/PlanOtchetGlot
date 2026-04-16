@@ -372,14 +372,6 @@ function findBlockHeaders(colO: string[]): number[] {
   }, [])
 }
 
-// Find the last 0-based row index that has any data in col A.
-function lastDataRow(colA: string[]): number {
-  for (let i = colA.length - 1; i >= 0; i--) {
-    if (colA[i] !== '') return i
-  }
-  return 0
-}
-
 /**
  * Clear the shifts sheet down to exactly 1 block with 1 employee row.
  * Called once after copying a new matrix from template.
@@ -406,10 +398,9 @@ export async function clearMatrixShiftsSheet(spreadsheetUrl: string): Promise<vo
   const sheets = getSheetsOAuth()
   const requests: object[] = []
 
-  // 1. Delete all rows from block[1] onwards
+  // 1. Delete all rows from block[1] onwards (use colA.length — includes rows with formulas but empty col A)
   if (headers.length > 1) {
-    const totalRows = lastDataRow(colA) + 1
-    requests.push({ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: headers[1], endIndex: totalRows } } })
+    requests.push({ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: headers[1], endIndex: colA.length } } })
   }
 
   // 2. Keep only 1 employee row in block 0
@@ -433,6 +424,44 @@ export async function clearMatrixShiftsSheet(spreadsheetUrl: string): Promise<vo
 }
 
 /**
+ * Delete a specific block (by 1-indexed blockSlot) from the shifts sheet.
+ * All rows belonging to that block are deleted; blocks below it shift up.
+ */
+export async function deleteMatrixBlock(spreadsheetUrl: string, blockSlot: number): Promise<void> {
+  const spreadsheetId = extractFileId(spreadsheetUrl)
+  if (!spreadsheetId) return
+
+  const title = await findShiftsSheet(spreadsheetId)
+  if (!title) return
+
+  const sheetId = await getNumericSheetId(spreadsheetId, title)
+  const { colA, colO } = await readSheetAO(spreadsheetId, title)
+  const headers = findBlockHeaders(colO)
+
+  // Block 0 = permanent template. blockSlot 1 → sheet block index 1.
+  const blockIndex = blockSlot
+  if (blockIndex <= 0 || blockIndex >= headers.length) {
+    console.log(`[matrix-block] deleteMatrixBlock: blockSlot=${blockSlot} not found (${headers.length} blocks)`)
+    return
+  }
+
+  const blockHeaderRow = headers[blockIndex]
+  const nextHeader     = headers[blockIndex + 1] ?? null
+  const blockEnd       = nextHeader ?? colA.length
+
+  if (blockEnd <= blockHeaderRow) return
+
+  const sheets = getSheetsOAuth()
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: blockHeaderRow, endIndex: blockEnd } } }],
+    },
+  })
+  console.log(`[matrix-block] deleteMatrixBlock done: blockSlot=${blockSlot}, rows ${blockHeaderRow}-${blockEnd - 1}`)
+}
+
+/**
  * Write project name/date and team members into a specific block.
  * blockSlot is 1-indexed. Creates new blocks by copying block 0 if needed.
  * Employee rows are inserted/deleted dynamically, preserving formulas via PASTE_NORMAL.
@@ -453,7 +482,9 @@ export async function syncMatrixBlock(
   const sheetId = await getNumericSheetId(spreadsheetId, title)
   const sheets  = getSheetsOAuth()
   const safe    = title.replace(/'/g, "\\'")
-  const blockIndex = blockSlot - 1  // 0-based
+  // Block 0 = permanent template (never touched by project sync).
+  // blockSlot 1 → sheet block index 1, blockSlot 2 → index 2, etc.
+  const blockIndex = blockSlot  // 1-based slot maps directly to 1-based block index
 
   // ── Step 1: ensure enough blocks exist ──────────────────────────────────────
   let { colA, colO } = await readSheetAO(spreadsheetId, title)

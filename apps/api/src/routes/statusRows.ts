@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Prisma, prisma } from '@tv-shifts/db'
 import { authenticate, requireRole } from '../plugins/auth'
 import { logChanges } from '../services/changeLog'
-import { syncProjectBlock } from '../services/matrixBlockSync'
+import { syncProjectBlock, nextBlockSlot, unlinkAndShiftBlocks } from '../services/matrixBlockSync'
 
 const daySchema = z.object({
   id: z.string().optional(),
@@ -152,7 +152,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const { days, efirDate, zastroykDate, status: bodyStatus, ...rowData } = body.data
+    const { days, efirDate, zastroykDate, status: bodyStatus, matrixRegistryId, ...rowData } = body.data
 
     const autoDays: { date: Date; type: 'efir' | 'zastroyka' }[] = []
     if (zastroykDate) autoDays.push({ date: new Date(zastroykDate), type: 'zastroyka' })
@@ -163,18 +163,31 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       ? allDays.reduce((min, d) => d.date < min ? d.date : min, allDays[0].date)
       : rowData.date ? new Date(rowData.date) : undefined
 
+    // Auto-assign block slot if matrix is provided
+    let blockSlotForCreate: number | null = null
+    if (matrixRegistryId) {
+      blockSlotForCreate = Number(await nextBlockSlot(matrixRegistryId))
+    }
+
     const row = await prisma.statusRow.create({
       data: {
         ...rowData,
         date: earliestDate ?? undefined,
         status: (bodyStatus ?? 'request') as any,
         source: 'manual',
+        matrixRegistryId: matrixRegistryId ?? undefined,
+        blockSlot: blockSlotForCreate ?? undefined,
         days: allDays.length > 0
           ? { create: allDays.map((d) => ({ date: d.date, type: d.type, startTime: null })) }
           : undefined,
       },
       include: { days: { orderBy: { date: 'asc' } } },
     })
+
+    // Trigger matrix block sync if linked
+    if (matrixRegistryId && blockSlotForCreate != null) {
+      syncProjectBlock(row.id).catch((e) => console.error('[matrix-block] POST sync failed:', e?.message ?? e))
+    }
 
     return reply.code(201).send(row)
   })
@@ -209,33 +222,65 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       }
     }
 
-    // matrixRegistryId / blockSlot — new fields unknown to the Prisma client, use raw SQL
-    if (matrixRegistryId !== undefined || blockSlot !== undefined) {
-      const sets: string[] = []
-      const vals: unknown[] = []
-      let i = 1
-      if (matrixRegistryId !== undefined) { sets.push(`matrix_registry_id = $${i++}`); vals.push(matrixRegistryId) }
-      if (blockSlot !== undefined)         { sets.push(`block_slot = $${i++}`);         vals.push(blockSlot) }
-      sets.push(`updated_at = NOW()`)
-      vals.push(id)
-      await prisma.$executeRawUnsafe(
-        `UPDATE status_rows SET ${sets.join(', ')} WHERE id = $${i}`,
-        ...vals
+    // matrixRegistryId change — auto block-slot management
+    if (matrixRegistryId !== undefined) {
+      // Read current state
+      const cur = await prisma.$queryRawUnsafe<{ matrixRegistryId: string | null; blockSlot: number | null }[]>(
+        `SELECT matrix_registry_id AS "matrixRegistryId", block_slot AS "blockSlot" FROM status_rows WHERE id = $1`,
+        id,
       )
+      const oldMatrixId  = cur[0]?.matrixRegistryId ?? null
+      const oldBlockSlot = cur[0]?.blockSlot ?? null
+
+      const isChangingMatrix = matrixRegistryId !== oldMatrixId
+      const isUnlinking      = isChangingMatrix && (matrixRegistryId === null || oldMatrixId !== null)
+
+      // Unlink from old matrix: delete its block + shift remaining projects
+      if (isUnlinking && oldMatrixId && oldBlockSlot != null) {
+        await unlinkAndShiftBlocks(id, oldMatrixId, oldBlockSlot)
+      }
+
+      // Assign block slot for new matrix
+      let resolvedSlot: number | null = null
+      if (matrixRegistryId !== null) {
+        // Auto-assign next slot (ignore any manually provided blockSlot since we auto-manage)
+        const raw = await nextBlockSlot(matrixRegistryId, id)
+        resolvedSlot = Number(raw)
+        console.log('[matrix-block] nextBlockSlot raw=', raw, 'typeof=', typeof raw, 'resolvedSlot=', resolvedSlot)
+      }
+
+      console.log('[matrix-block] PATCH id=', id, 'matrixRegistryId=', matrixRegistryId, 'resolvedSlot=', resolvedSlot)
+      const affected = await prisma.$executeRawUnsafe(
+        `UPDATE status_rows SET matrix_registry_id = $1, block_slot = $2, updated_at = NOW() WHERE id = $3`,
+        matrixRegistryId, resolvedSlot, id,
+      )
+      console.log('[matrix-block] UPDATE affected=', affected)
+
       delete data.matrixRegistryId
       delete data.blockSlot
-      // Sync block to Google Sheet (fire-and-forget)
+
+      // Sync new block (fire-and-forget)
+      if (matrixRegistryId !== null && resolvedSlot != null) {
+        syncProjectBlock(id).catch((e) => console.error('[matrix-block] statusRow sync failed:', e?.message ?? e))
+      }
+    } else if (blockSlot !== undefined) {
+      // blockSlot-only update (no matrix change) — keep legacy behaviour
+      await prisma.$executeRawUnsafe(
+        `UPDATE status_rows SET block_slot = $1, updated_at = NOW() WHERE id = $2`,
+        blockSlot, id,
+      )
+      delete data.blockSlot
       syncProjectBlock(id).catch((e) => console.error('[matrix-block] statusRow sync failed:', e?.message ?? e))
     }
 
-    const row = await prisma.statusRow.update({
-      where: { id },
-      data,
-      include: { days: { orderBy: { date: 'asc' } } },
-    })
+    const include = { days: { orderBy: { date: 'asc' as const } } }
+    const row = Object.keys(data).length > 0
+      ? await prisma.statusRow.update({ where: { id }, data, include })
+      : await prisma.statusRow.findUnique({ where: { id }, include })
 
     await logChanges('status_row', id, before as any, rowFields as any, me.id)
 
+    if (!row) return reply.code(404).send({ error: 'StatusRow not found' })
     return row
   })
 
@@ -253,6 +298,17 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   // DELETE /status-rows/:id
   app.delete('/:id', { preHandler: requireRole('admin') }, async (request) => {
     const { id } = request.params as { id: string }
+
+    // If project had a linked matrix block — delete it and shift remaining projects
+    const cur = await prisma.$queryRawUnsafe<{ matrixRegistryId: string | null; blockSlot: number | null }[]>(
+      `SELECT matrix_registry_id AS "matrixRegistryId", block_slot AS "blockSlot" FROM status_rows WHERE id = $1`,
+      id,
+    )
+    const { matrixRegistryId: mId, blockSlot: bSlot } = cur[0] ?? {}
+    if (mId && bSlot != null) {
+      await unlinkAndShiftBlocks(id, mId, bSlot)
+    }
+
     await prisma.statusRow.delete({ where: { id } })
     return { ok: true }
   })
