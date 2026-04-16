@@ -61,6 +61,24 @@ cd packages/db && DATABASE_URL="..." npx prisma migrate dev --skip-generate
 pnpm --filter @tv-shifts/web lint
 ```
 
+### Tests
+```bash
+pnpm test                                # Run all tests (API + Web)
+pnpm --filter @tv-shifts/api test        # API integration tests only
+pnpm --filter @tv-shifts/web test        # Web unit/component tests only
+pnpm --filter @tv-shifts/api test:watch  # API watch mode
+pnpm --filter @tv-shifts/web test:watch  # Web watch mode
+
+# Run a single test file (API)
+pnpm --filter @tv-shifts/api exec vitest run src/routes/users.test.ts
+# Run a single test file (Web)
+pnpm --filter @tv-shifts/web exec vitest run src/components/MyComponent.test.tsx
+```
+
+**API tests** are integration tests — they use `buildApp()` from `apps/api/src/test/helpers.ts` which builds the full Fastify app and calls it via `app.inject()` against a real PostgreSQL database. The DB must be running (`docker compose -f docker-compose.dev.yml up -d`) and `.env` must be configured before running. Tests run in `singleThread` mode to share one DB connection.
+
+**Web tests** use Vitest + `@testing-library/react` + MSW for API mocking. The MSW server is configured in `apps/web/src/test/msw-server.ts` and started globally in `apps/web/src/test/setup.ts`.
+
 ## Architecture
 
 ### Data Flow

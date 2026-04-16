@@ -66,7 +66,7 @@ let upserted = 0
 
   // Колонки (0-indexed):
   // A(0)=Статус B(1)=Клиент C(2)=Название D(3)=Исп.продюсер E(4)=Лайн-продюсер
-  // F(5)=Аккаунт G(6)=Дата H(7)=Время I(8)=Формат J(9)=Локация K(10)=№ по матрице L(11)=Постпродакшн
+  // F(5)=Аккаунт G(6)=Дата H(7)=Время I(8)=Формат J(9)=Локация K(10)=не используется L(11)=ID матрицы
 
 
   // Row 0 is the header — start from row 1 (1-indexed row 2)
@@ -75,14 +75,14 @@ let upserted = 0
     const cells = rows[i].values ?? []
 
     // Пропускаем полностью пустые строки
-    const hasAnyData = [0,1,2,3,4,5,6,7,8,9,10].some((col) => cellStr(cells[col]) !== '')
+    const hasAnyData = [0,1,2,3,4,5,6,7,8,9,11].some((col) => cellStr(cells[col]) !== '')
     if (!hasAnyData) { skippedEmpty++; continue }
 
     const googleRowIndex = i + 1
 
-    // Разделители месяцев: только колонка A заполнена, B–K пусты
+    // Разделители месяцев: только колонка A заполнена, B–J и L пусты
     // Сохраняем через raw SQL, чтобы обойти устаревший Prisma-клиент (не знает 'separator')
-    const hasDataBeyondA = [1,2,3,4,5,6,7,8,9,10].some((col) => cellStr(cells[col]) !== '')
+    const hasDataBeyondA = [1,2,3,4,5,6,7,8,9,11].some((col) => cellStr(cells[col]) !== '')
     if (!hasDataBeyondA) {
       const separatorText = cellStr(cells[0])
       if (separatorText) {
@@ -118,10 +118,10 @@ let upserted = 0
 
     // Цвета ячеек → uncertainFields (формат "fieldName:#bgColor" или "fieldName:#bgColor|#fgColor" или "fieldName:|#fgColor")
     // Колонки 0 (status), 8 (format), 9 (location) — цвета задаются фронтом через маппинг, не читаем из таблицы
-    const fieldNames = ['status', 'client', 'name', 'execProducer', 'lineProducer', 'accountManager', 'date', 'time', 'format', 'location', 'sheetMatrixId']
-    const skipColorCols = new Set([0, 8, 9])
+    const fieldNames = ['status', 'client', 'name', 'execProducer', 'lineProducer', 'accountManager', 'date', 'time', 'format', 'location', '', 'sheetMatrixId']
+    const skipColorCols = new Set([0, 8, 9, 10])
     const uncertainFields: string[] = []
-    for (let col = 0; col < 11; col++) {
+    for (let col = 0; col < 12; col++) {
       if (skipColorCols.has(col)) continue
       const cell = cells[col]
       let bg = getCellColor(cell)
@@ -146,8 +146,8 @@ let upserted = 0
       else dateApproximate = dateRaw
     }
 
-    // ID матрицы — колонка K (индекс 10)
-    const sheetMatrixId = cellStr(cells[10]) || null
+    // ID матрицы — колонка L (индекс 11)
+    const sheetMatrixId = cellStr(cells[11]) || null
 
     const data = {
       name,

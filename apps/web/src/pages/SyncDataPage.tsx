@@ -1221,61 +1221,42 @@ function ProjectsTable({
       return new Date(a.date).getTime() - new Date(b.date).getTime()
     }
 
-    const monthKey = (dateStr: string) => dateStr.slice(0, 7) // "YYYY-MM"
-
-    // Determine the month each separator represents by inspecting its original slice
     const separators = projects.filter((p) => p.source === 'separator')
-    const sepMonths = new Map<string, string>() // sepId → "YYYY-MM"
-    for (let i = 0; i < projects.length; i++) {
-      const p = projects[i]
-      if (p.source !== 'separator') continue
-      const nextSepIdx = projects.findIndex((q, j) => j > i && q.source === 'separator')
-      const slice = projects.slice(i + 1, nextSepIdx === -1 ? undefined : nextSepIdx)
-      const firstDated = slice.find((q) => q.source !== 'separator' && q.date)
-      if (firstDated?.date) sepMonths.set(p.id, monthKey(firstDated.date))
-    }
 
-    // Group all visible non-separator projects by month
-    const byMonth = new Map<string, Project[]>()
-    const noMonth: Project[] = []
+    // Group visible non-separator projects by their sheet block (monthMap), not by parsed date
+    const byBlock = new Map<string, Project[]>()
+    const noBlock: Project[] = []
     for (const p of projects) {
       if (p.source === 'separator' || !visibleIds.has(p.id)) continue
-      if (p.date) {
-        const mk = monthKey(p.date)
-        if (!byMonth.has(mk)) byMonth.set(mk, [])
-        byMonth.get(mk)!.push(p)
+      const block = monthMap[p.id]
+      if (block) {
+        if (!byBlock.has(block)) byBlock.set(block, [])
+        byBlock.get(block)!.push(p)
       } else {
-        noMonth.push(p)
+        noBlock.push(p)
       }
     }
-    // Sort each month bucket by date
-    for (const arr of byMonth.values()) arr.sort(byDate)
+    // Sort within each block by date
+    for (const arr of byBlock.values()) arr.sort(byDate)
 
     const result: Project[] = []
-    const usedMonths = new Set<string>()
+    const seenBlocks = new Set<string>()
 
     for (const sep of separators) {
-      const mk = sepMonths.get(sep.id)
-      const bucket = mk ? (byMonth.get(mk) ?? []) : []
-      if (bucket.length > 0 || noMonth.length === 0) {
-        if (bucket.length > 0) {
-          result.push(sep)
-          result.push(...bucket)
-          if (mk) usedMonths.add(mk)
-        }
+      if (!sep.name || seenBlocks.has(sep.name)) continue
+      seenBlocks.add(sep.name)
+      const bucket = byBlock.get(sep.name) ?? []
+      if (bucket.length > 0) {
+        result.push(sep)
+        result.push(...bucket)
       }
     }
 
-    // Months without a matching separator (e.g. manual project in a new month)
-    for (const [mk, bucket] of byMonth.entries()) {
-      if (!usedMonths.has(mk)) result.push(...bucket)
-    }
-
-    // Projects with no date at all — at the end
-    result.push(...noMonth)
+    // Projects with no block (manual, no preceding separator) — at the end
+    if (noBlock.length > 0) result.push(...noBlock)
 
     return result
-  }, [projects, visibleIds])
+  }, [projects, visibleIds, monthMap])
 
   const visibleCols = PROJ_COLS.filter((c) => !hiddenCols.has(c.key))
   const colSpanCount = visibleCols.length + 1 // +1 for source icon column
