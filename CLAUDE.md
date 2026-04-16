@@ -117,6 +117,7 @@ JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh
 | `/matrix-templates` | `apps/api/src/routes/matrixTemplates.ts` |
 | `/internal-matrix` | `apps/api/src/routes/internalMatrix.ts` |
 | `/project-members` | `apps/api/src/routes/projectMembers.ts` |
+| `/shift-expenses`, `/matrix-gantt`, `/matrix-notes`, `/matrix-documents` | `apps/api/src/routes/matrixExtras.ts` |
 
 Route auth guard lives in `apps/api/src/plugins/auth.ts` — call `request.jwtVerify()` inside route handlers, or use the `authenticate` / `requireRole(...roles)` preHandlers. `requireRole` accepts multiple roles (e.g. `requireRole('admin', 'producer')`).
 
@@ -172,9 +173,30 @@ Used by `/internal-matrix` routes to:
 
 **Internal matrices** (`source = 'internal'` in `matrix_registry`) are created manually via `POST /internal-matrix`. Their ID format is `INT-{timestamp}`. The Drive folder ID is stored in `sheet_configs` under key `drive_folder` (in the `sheet_url` column — naming convention, not a bug).
 
+`apps/api/src/services/matrixBlockSync.ts` — when a project (`StatusRow`) has both `matrixRegistryId` and `blockSlot` set (i.e. it's linked to an internal matrix at a specific slot), `syncProjectBlock(projectId)` reads the project data + team members from DB and writes them back into that block of the linked Drive spreadsheet. Called from `/internal-matrix` routes after linking changes.
+
 **Matrix sync flow**: for each `MatrixRegistry` entry, `fetchMatrixShifts` parses the "₽ СМЕНЫ" (or "₽ СПЕЦИАЛИСТЫ") sheet. A row is kept only if at least one of columns C, G, I, or J–P contains data (only `"1"` counts in J–P; totals rows like "Итог:" are skipped). The parsed result is saved immediately to `shifts_cache` (Json) and `has_shifts_data` (Boolean) on `MatrixRegistry` before employee matching begins — so row highlighting in the UI appears during sync without waiting for the full process. Rate-limit errors (429/503) are retried up to 3 times with 3s/6s delays. There is a 1500ms delay between matrices.
 
 **Sync abort**: `requestSyncAbort()` exported from `syncService.ts` sets `_abortRequested = true`. The matrix loop checks this flag before processing each matrix. `POST /sync/stop` calls it. `_abortRequested` resets to `false` at the start of each new `runFullSync()` call. After abort, `totalMatrices` must be cleared in the frontend to reset `isRunning` state.
+
+### Matrix Extras
+`apps/api/src/routes/matrixExtras.ts` — four lightweight CRUD resource groups, all using `$queryRawUnsafe` (tables are **not** Prisma models):
+
+| Route prefix | Table | Scoped by |
+|---|---|---|
+| `/shift-expenses` | `shift_expenses` | `project_id` (StatusRow UUID) |
+| `/matrix-gantt` | `gantt_tasks` | `matrix_id` (MatrixRegistry UUID) |
+| `/matrix-notes` | `matrix_notes` | `matrix_id` |
+| `/matrix-documents` | `matrix_documents` | `matrix_id` |
+
+`/matrix-notes` JOIN-fetches `users.full_name` as `author_name`. All four follow the same pattern: GET with query param, POST (201), PATCH/:id, DELETE/:id. Writes require `admin | producer` except notes (any authenticated user can write/read).
+
+Frontend components that consume these routes:
+- `apps/web/src/pages/MatrixTabs.tsx` — `GanttTab`, `NotesTab`, `DocumentsTab` rendered inside the matrix detail modal in `SyncDataPage`
+- `apps/web/src/pages/InternalShiftsPanel.tsx` — `InternalShiftsPanel` rendered inside the same modal for internal matrices; shows sub-tabs per linked `StatusRow` ("micro-project"), each with a `TeamTable` (dates × members grid, shift confirmed/pending toggles) and an `ExpensesTab` (calls `/shift-expenses`). The "Свод смен" tab aggregates all members across all linked projects via `useQueries`.
+
+### Change Logging
+`apps/api/src/services/changeLog.ts` exports `logChanges(entityType, entityId, oldData, newData, changedBy, source)`. It diffs `oldData` vs `newData` key-by-key and writes each changed field as a row to `change_logs`. Route handlers call this after any manual edit; sync uses `source = 'sync'`. The `/change-logs` route exposes these records for audit.
 
 ### Separator Rows
 `StatusRow` records with `source = 'separator'` are month dividers injected by sync. They have no real project data. Frontend must filter them out except in `SyncDataPage` (use `?withSeparators=true` query param). Always exclude them in API list endpoints: `NOT: { source: 'separator' as any }`.

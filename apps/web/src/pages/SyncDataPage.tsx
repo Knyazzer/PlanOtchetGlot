@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
+import { InternalShiftsPanel } from './InternalShiftsPanel'
+import { GanttTab, NotesTab, DocumentsTab } from './MatrixTabs'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1465,7 +1467,7 @@ interface ShiftEmployee { isSeparator: false; name: string; role: string | null;
 interface MatrixShiftsData { sheetTitle: string; dates: string[]; activeCols: number[]; rows: (ShiftRow | ShiftEmployee)[] }
 
 function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, onCheck, checking }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; onCheck?: () => void; checking?: boolean }) {
-  const [tab, setTab] = useState<'info' | 'shifts'>('info')
+  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs'>('info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
   const [customSeps, setCustomSeps] = useState<Map<number, { name: string; date: string }>>(() => {
@@ -1515,7 +1517,14 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
     queryKey: ['matrix-shifts', entry.matrixId, refreshKey],
     queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}${refreshKey > 0 ? '?refresh=true' : ''}`).then((r) => r.data),
     enabled: tab === 'shifts' && !isInternal,
-    staleTime: 10 * 60 * 1000, // 10 минут — не перезапрашиваем если данные свежие
+    staleTime: 10 * 60 * 1000,
+  })
+
+  interface GanttTaskInfo { id: string; done: boolean }
+  const { data: ganttTasks } = useQuery<GanttTaskInfo[]>({
+    queryKey: ['matrix-gantt', entry.id],
+    queryFn: () => api.get(`/matrix-gantt?matrixId=${entry.id}`).then((r) => r.data),
+    staleTime: 30_000,
   })
 
   useEffect(() => {
@@ -1583,7 +1592,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
       onMouseDown={onClose}
     >
       <div
-        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '94vw', maxWidth: 900, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1628,14 +1637,21 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
-          {(['info', 'shifts'] as const).map((t) => (
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flexShrink: 0, overflowX: 'auto' }}>
+          {([
+            ['info',   'Инфо'],
+            ['shifts', 'Смены'],
+            ['gantt',  'Ганта'],
+            ['notes',  'Заметки'],
+            ['docs',   'Документы'],
+          ] as const).map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)} style={{
-              padding: '8px 20px', fontSize: 13, border: 'none', cursor: 'pointer', background: 'none',
+              padding: '8px 18px', fontSize: 13, border: 'none', cursor: 'pointer', background: 'none',
               borderBottom: tab === t ? '2px solid #3b82f6' : '2px solid transparent',
               color: tab === t ? '#3b82f6' : '#64748b', fontWeight: tab === t ? 600 : 400,
+              whiteSpace: 'nowrap', flexShrink: 0,
             }}>
-              {t === 'info' ? 'Инфо' : 'Смены'}
+              {label}
             </button>
           ))}
         </div>
@@ -1649,6 +1665,36 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {rightCol.map((f) => <Field key={f.label} {...f} />)}
+                {ganttTasks && ganttTasks.length > 0 && (() => {
+                  const total = ganttTasks.length
+                  const done = ganttTasks.filter((t) => t.done).length
+                  const pct = Math.round((done / total) * 100)
+                  const r = 28
+                  const circ = 2 * Math.PI * r
+                  const dashFilled = (done / total) * circ
+                  return (
+                    <div style={{ paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
+                      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Ганта</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <svg width={70} height={70} viewBox="0 0 70 70">
+                          <circle cx={35} cy={35} r={r} fill="none" stroke="#e2e8f0" strokeWidth={8} />
+                          <circle cx={35} cy={35} r={r} fill="none"
+                            stroke={pct === 100 ? '#22c55e' : '#3b82f6'}
+                            strokeWidth={8}
+                            strokeDasharray={`${dashFilled} ${circ - dashFilled}`}
+                            strokeDashoffset={circ / 4}
+                            strokeLinecap="round"
+                          />
+                          <text x={35} y={39} textAnchor="middle" fontSize={13} fontWeight={700} fill="#1e293b">{pct}%</text>
+                        </svg>
+                        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+                          <div><span style={{ fontWeight: 600, color: '#1e293b' }}>{done}</span> / {total}</div>
+                          <div>задач выполнено</div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 16, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
@@ -1660,8 +1706,8 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
 
         {/* Tab: Shifts */}
         {tab === 'shifts' && isInternal && (
-          <div style={{ padding: '24px 20px', color: '#64748b', fontSize: 14 }}>
-            Управляется вручную — смены вводятся через строки таблицы проектов.
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <InternalShiftsPanel matrixRegistryId={entry.id} />
           </div>
         )}
         {tab === 'shifts' && !isInternal && (
@@ -1769,6 +1815,26 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
             </div>
           </div>
         )}
+      {/* Tab: Gantt */}
+      {tab === 'gantt' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <GanttTab matrixId={entry.id} />
+        </div>
+      )}
+
+      {/* Tab: Notes */}
+      {tab === 'notes' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <NotesTab matrixId={entry.id} />
+        </div>
+      )}
+
+      {/* Tab: Docs */}
+      {tab === 'docs' && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <DocumentsTab matrixId={entry.id} />
+        </div>
+      )}
       </div>
     </div>
 

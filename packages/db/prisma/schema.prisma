@@ -110,6 +110,7 @@ model User {
   notifications          Notification[]
   notificationReads      UserNotificationRead[]
   changeLogs             ChangeLog[]
+  matrixNotes            MatrixNote[]
 
   @@map("users")
 }
@@ -191,9 +192,12 @@ model MatrixRegistry {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  statusRow    StatusRow?      @relation(fields: [projectId], references: [id])
-  dealMatrices DealMatrix[]
-  linkedProjects StatusRow[]   @relation("ProjectMatrixLink")
+  statusRow      StatusRow?      @relation(fields: [projectId], references: [id])
+  dealMatrices   DealMatrix[]
+  linkedProjects StatusRow[]     @relation("ProjectMatrixLink")
+  ganttTasks     GanttTask[]
+  notes          MatrixNote[]
+  documents      MatrixDocument[]
 
   @@map("matrix_registry")
 }
@@ -422,6 +426,47 @@ model SheetConfig {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@map("sheet_configs")
+}
+
+model GanttTask {
+  id             String    @id @default(uuid())
+  matrixId       String    @map("matrix_id")
+  name           String
+  startDate      DateTime? @map("start_date")
+  deadline       DateTime? @map("deadline")
+  done           Boolean   @default(false)
+  order          Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+
+  @@map("gantt_tasks")
+}
+
+model MatrixNote {
+  id        String   @id @default(uuid())
+  matrixId  String   @map("matrix_id")
+  userId    String   @map("user_id")
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("matrix_notes")
+}
+
+model MatrixDocument {
+  id        String   @id @default(uuid())
+  matrixId  String   @map("matrix_id")
+  name      String
+  url       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+
+  @@map("matrix_documents")
 }
 
 model SyncLog {

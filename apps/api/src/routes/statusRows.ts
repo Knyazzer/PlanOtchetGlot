@@ -66,6 +66,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       search?: string
       withSeparators?: string
       slim?: string
+      matrixRegistryId?: string
     }
 
     const where = {
@@ -74,6 +75,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       ...(query.dateFrom && { date: { gte: new Date(query.dateFrom) } }),
       ...(query.dateTo && { date: { lte: new Date(query.dateTo) } }),
       ...(query.status && { status: query.status as any }),
+      ...(query.matrixRegistryId && { matrixRegistryId: query.matrixRegistryId }),
       ...(query.search && {
         OR: [
           { name: { contains: query.search, mode: Prisma.QueryMode.insensitive } },

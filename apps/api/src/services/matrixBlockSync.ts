@@ -1,12 +1,34 @@
 import { prisma } from '@tv-shifts/db'
 import { syncMatrixBlock, deleteMatrixBlock } from './driveService'
 
+// Debounce map: projectId → pending timeout handle.
+// Prevents burst of Sheets API reads when members are edited rapidly (e.g. clicking
+// multiple checkboxes). Waits DEBOUNCE_MS after the last change before syncing.
+const _pendingSyncs = new Map<string, ReturnType<typeof setTimeout>>()
+const DEBOUNCE_MS = 3_000
+
 /**
  * Reads project data + team members from DB and writes them into the
  * corresponding block of the linked internal matrix sheet.
  * No-op if the project has no internal matrix linked, or blockSlot is not set.
+ * Calls are debounced per projectId to avoid Google Sheets quota exhaustion.
  */
 export async function syncProjectBlock(projectId: string): Promise<void> {
+  // Cancel any already-pending sync for this project and reschedule
+  const existing = _pendingSyncs.get(projectId)
+  if (existing) clearTimeout(existing)
+  _pendingSyncs.set(
+    projectId,
+    setTimeout(() => {
+      _pendingSyncs.delete(projectId)
+      _doSyncProjectBlock(projectId).catch((e: unknown) =>
+        console.error('[matrix-block] POST sync failed:', (e as any)?.message ?? e),
+      )
+    }, DEBOUNCE_MS),
+  )
+}
+
+async function _doSyncProjectBlock(projectId: string): Promise<void> {
   const rows = await prisma.$queryRawUnsafe<{
     name: string
     date: Date | null
@@ -46,6 +68,7 @@ export async function syncProjectBlock(projectId: string): Promise<void> {
     members.map((m) => ({ name: m.name, position: m.position })),
   )
 }
+
 
 /**
  * Returns the next available blockSlot for a given matrix.

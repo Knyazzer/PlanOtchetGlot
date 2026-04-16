@@ -4,19 +4,32 @@ import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
 import { syncProjectBlock } from '../services/matrixBlockSync'
 
+// shifts value: строка (legacy) или объект { type, confirmed, timeStart, timeEnd }
+const shiftValueSchema = z.union([
+  z.string(),
+  z.object({
+    type:      z.string().optional(),
+    confirmed: z.enum(['yes', 'pending']).nullable().optional(),
+    timeStart: z.string().nullable().optional(),
+    timeEnd:   z.string().nullable().optional(),
+  }),
+])
+
 const memberSchema = z.object({
   projectId: z.string().uuid(),
   name:      z.string().min(1),
   position:  z.string().nullable().optional(),
-  shifts:    z.record(z.string()).optional(), // { "2024-03-15": "1", "2024-03-16": "8-18" }
+  shifts:    z.record(shiftValueSchema).optional(),
 })
+
+export type ShiftValue = z.infer<typeof shiftValueSchema>
 
 interface MemberRow {
   id: string
   project_id: string
   name: string
   position: string | null
-  shifts: Record<string, string>
+  shifts: Record<string, ShiftValue>
   created_at: Date
   updated_at: Date
 }

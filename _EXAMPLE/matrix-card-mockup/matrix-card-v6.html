@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Мокап v6</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui,-apple-system,sans-serif; background:#0f172a; display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+.modal { background:#fff; border-radius:14px; box-shadow:0 24px 80px rgba(0,0,0,.5); width:97vw; max-width:1280px; height:92vh; display:flex; flex-direction:column; overflow:hidden; }
+
+/* HEADER */
+.modal-header { padding:16px 24px; border-bottom:1px solid #e2e8f0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-shrink:0; background:linear-gradient(135deg,#f8fafc,#eff6ff); }
+.header-title { font-size:17px; font-weight:700; color:#0f172a; line-height:1.4; }
+.header-client { font-size:13px; color:#94a3b8; margin-top:3px; }
+.header-badges { display:flex; gap:6px; margin-top:9px; }
+.badge-status { background:#dbeafe; color:#2563eb; font-size:11px; font-weight:700; padding:3px 11px; border-radius:20px; letter-spacing:.04em; }
+.header-right { display:flex; align-items:center; gap:8px; flex-shrink:0; margin-top:4px; }
+.btn { font-size:13px; padding:6px 14px; border-radius:7px; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#475569; }
+.btn:hover { background:#f8fafc; }
+.btn-del { border-color:#fecaca; color:#ef4444; }
+.btn-close { background:none; border:none; color:#94a3b8; cursor:pointer; font-size:24px; line-height:1; padding:2px 6px; border-radius:6px; }
+
+/* TABS */
+.tabs { display:flex; border-bottom:1px solid #e2e8f0; flex-shrink:0; background:#fff; }
+.tab-btn { padding:11px 22px; font-size:14px; border:none; cursor:pointer; background:none; border-bottom:2px solid transparent; color:#64748b; font-weight:400; white-space:nowrap; }
+.tab-btn.active { border-bottom-color:#3b82f6; color:#3b82f6; font-weight:600; }
+.tab-btn:hover:not(.active) { color:#334155; background:#f8fafc; }
+
+.tab-wrapper { flex:1; overflow:hidden; display:none; flex-direction:column; }
+.tab-wrapper.active { display:flex; }
+
+/* FOOTER */
+.global-footer { padding:7px 24px; border-top:1px solid #f1f5f9; display:flex; align-items:center; gap:16px; flex-shrink:0; background:#f8fafc; }
+.footer-lbl { font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+.footer-src { font-size:11px; color:#15803d; background:#dcfce7; padding:2px 7px; border-radius:5px; font-weight:600; }
+
+/* ═══ INFO ═══ */
+.info-scroll { flex:1; overflow-y:auto; padding:22px 26px; }
+.info-row { display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:18px; }
+.info-card { border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; }
+.info-card-header { padding:11px 18px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:8px; }
+.card-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.card-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b; }
+.field-row { display:grid; grid-template-columns:110px 1fr; align-items:center; padding:9px 18px; border-bottom:1px solid #f8fafc; }
+.field-row:last-child { border-bottom:none; }
+.field-lbl { font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+.field-val { font-size:14px; color:#1e293b; font-weight:500; }
+.field-val-bold { font-size:14px; color:#0f172a; font-weight:700; }
+.field-val-mono { font-size:11px; color:#94a3b8; font-family:monospace; }
+.field-val-link { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:20px; padding:4px 12px 4px 8px; color:#15803d; text-decoration:none; font-size:13px; font-weight:600; }
+.progress-body { padding:20px 12px; display:flex; gap:0; align-items:flex-start; justify-content:space-around; }
+.progress-dial { display:flex; flex-direction:column; align-items:center; gap:10px; flex:1; }
+.dial-divider { width:1px; background:#f1f5f9; align-self:stretch; flex-shrink:0; }
+.dial-label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; text-align:center; }
+.dial-counter { font-size:24px; font-weight:700; color:#0f172a; text-align:center; }
+.dial-counter-sub { font-size:13px; color:#64748b; text-align:center; }
+
+/* ═══ SHIFTS SUB-TABS ═══ */
+.sub-tabs-bar { display:flex; border-bottom:1px solid #e2e8f0; flex-shrink:0; background:#f8fafc; padding:0 16px; overflow-x:auto; align-items:stretch; }
+.sub-tab-btn { padding:8px 16px; font-size:13px; border:none; cursor:pointer; background:none; border-bottom:2px solid transparent; color:#64748b; white-space:nowrap; user-select:none; }
+.sub-tab-btn.active { border-bottom-color:#3b82f6; color:#3b82f6; font-weight:600; }
+.sub-tab-btn:hover:not(.active) { color:#334155; background:#f1f5f9; }
+.sub-tab-btn.dragging { opacity:.4; }
+.sub-tab-btn.drag-over-right { border-right:3px solid #3b82f6; }
+/* Свод — locked */
+.sub-tab-svod { cursor:default !important; }
+.sub-tab-svod:hover { background:none !important; color:#3b82f6 !important; }
+.sub-tab-add { padding:8px 10px; font-size:18px; color:#94a3b8; border:none; background:none; cursor:pointer; line-height:1; }
+
+/* ═══ СВОД TABLE ═══ */
+.svod-scroll { flex:1; overflow:auto; }
+.svod-table { border-collapse:collapse; min-width:100%; font-size:13px; }
+
+/* Global date header */
+.svod-table thead th { padding:9px 14px; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.04em; border-bottom:2px solid #e2e8f0; background:#f8fafc; white-space:nowrap; position:sticky; top:0; z-index:3; }
+.svod-table thead th.info-col-th { min-width:200px; width:200px; z-index:4; }
+.svod-table thead th.date-col { text-align:center; min-width:68px; }
+
+/* Section spacer */
+tr.section-gap td { height:12px; background:#f8fafc; border-top:2px solid #e2e8f0; }
+
+/* Info cell (rowspan) */
+.info-td {
+  width:200px; min-width:200px;
+  vertical-align:top;
+  padding:0;
+  border-right:1px solid #e2e8f0;
+  border-top:2px solid #e2e8f0;
+  background:#fafafa;
+}
+.info-card-svod {
+  height:100%;
+  display:flex; flex-direction:column;
+  padding:12px 14px;
+  gap:8px;
+}
+.svod-card-name { font-size:13px; font-weight:700; color:#0f172a; line-height:1.3; }
+.svod-card-date { font-size:12px; color:#3b82f6; font-weight:600; }
+.svod-card-field { }
+.svod-card-lbl { font-size:9px; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
+.svod-card-val { font-size:12px; color:#1e293b; font-weight:500; margin-top:1px; }
+.status-badge-sm { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; }
+
+/* Date label row (sub-header within section) */
+tr.date-label-row td {
+  padding:5px 14px;
+  font-size:10px; font-weight:700;
+  background:#f8fafc;
+  border-top:2px solid #e2e8f0;
+  border-bottom:1px solid #f1f5f9;
+}
+tr.date-label-row td.date-label-cell {
+  text-align:center;
+  white-space:nowrap;
+}
+.dlabel { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; }
+.dlabel.dl-empty { color:#e2e8f0; font-weight:400; }
+.dlabel.dl-zastroyka { background:#fef3c7; color:#92400e; }
+.dlabel.dl-efir { background:#dbeafe; color:#1d4ed8; }
+.dlabel.dl-deadline { background:#fee2e2; color:#991b1b; }
+.dlabel.dl-semka { background:#d1fae5; color:#065f46; }
+.dlabel.dl-other { background:#f3e8ff; color:#7e22ce; }
+
+/* People rows within section */
+tr.person-row td { padding:9px 14px; border-bottom:1px solid #f8fafc; vertical-align:middle; }
+tr.person-row td.date-dot { text-align:center; }
+tr.person-row:hover td { background:#f8faff; }
+.shift-dot { display:inline-block; width:18px; height:18px; border-radius:5px; background:#3b82f6; }
+.empty-dot { display:inline-block; width:18px; height:4px; border-radius:2px; background:#f1f5f9; }
+
+/* ═══ INDIVIDUAL SHIFT ═══ */
+.shifts-body { display:grid; grid-template-columns:220px 1fr; flex:1; overflow:hidden; }
+.shift-info-panel { border-right:1px solid #e2e8f0; overflow-y:auto; background:#fafafa; padding:14px; }
+.shift-info-block { background:#fff; border:1px solid #f1f5f9; border-radius:10px; overflow:hidden; }
+.shift-field { padding:9px 14px; border-bottom:1px solid #f8fafc; }
+.shift-field:last-child { border-bottom:none; }
+.shift-field-lbl { font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em; font-weight:600; margin-bottom:3px; }
+.shift-field-val { font-size:13px; color:#1e293b; font-weight:500; }
+.shift-status-badge { display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; background:#dbeafe; color:#2563eb; }
+.shifts-table-area { display:flex; flex-direction:column; overflow:hidden; }
+.shifts-meta-bar { display:flex; justify-content:space-between; align-items:center; padding:8px 16px; border-bottom:1px solid #f1f5f9; flex-shrink:0; gap:8px; }
+.view-toggle { display:flex; border:1px solid #e2e8f0; border-radius:7px; overflow:hidden; }
+.view-toggle button { font-size:12px; padding:5px 14px; border:none; cursor:pointer; background:#fff; color:#64748b; }
+.view-toggle button.active { background:#2563eb; color:#fff; }
+.shifts-table-wrap { flex:1; overflow:auto; padding:0 16px 16px; }
+.sh-table { border-collapse:collapse; font-size:14px; width:100%; }
+.sh-table th { padding:9px 12px; font-size:11px; font-weight:700; color:#64748b; text-align:left; border-bottom:2px solid #e2e8f0; background:#f8fafc; white-space:nowrap; position:sticky; top:0; z-index:1; cursor:pointer; }
+.sh-table th:hover { background:#eff6ff; }
+.sh-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.sh-table tr:hover td { background:#f8faff; }
+
+.date-type-badge { font-size:9px; font-weight:700; padding:1px 6px; border-radius:10px; display:block; margin-top:2px; }
+.type-zastroyka { background:#fef3c7; color:#92400e; }
+.type-efir { background:#dbeafe; color:#1d4ed8; }
+.type-deadline { background:#fee2e2; color:#991b1b; }
+.type-semka { background:#d1fae5; color:#065f46; }
+
+.date-dropdown { position:absolute; top:100%; left:0; z-index:20; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.12); min-width:150px; overflow:hidden; display:none; }
+.date-dropdown.open { display:block; }
+.date-dropdown-item { padding:8px 12px; font-size:13px; cursor:pointer; color:#334155; }
+.date-dropdown-item:hover { background:#f8fafc; }
+.date-dropdown-input { width:100%; padding:7px 12px; border:none; border-top:1px solid #f1f5f9; font-size:13px; outline:none; }
+
+.exp-table { border-collapse:collapse; font-size:14px; width:100%; }
+.exp-table th { padding:9px 12px; font-size:11px; font-weight:700; color:#64748b; text-align:left; border-bottom:2px solid #e2e8f0; background:#f8fafc; position:sticky; top:0; }
+.exp-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; }
+.exp-table tr:hover td { background:#f8faff; }
+
+/* ═══ GANTT ═══ */
+.gantt-split { display:flex; flex:1; overflow:hidden; }
+.gantt-left { width:460px; flex-shrink:0; border-right:1px solid #e2e8f0; display:flex; flex-direction:column; overflow:hidden; }
+.gantt-left-head { flex-shrink:0; }
+.gantt-list-scroll { flex:1; overflow-y:auto; overflow-x:hidden; }
+.gantt-right { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.gantt-right-head { flex-shrink:0; overflow:hidden; }
+.gantt-bars-scroll { flex:1; overflow:auto; }
+.g-table { border-collapse:collapse; width:100%; table-layout:fixed; font-size:14px; }
+.g-table th { padding:9px 14px; font-size:11px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid #e2e8f0; background:#f8fafc; white-space:nowrap; }
+.g-table td { padding:9px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; height:38px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.g-table tr.g-done td { opacity:.55; }
+.gantt-footer-bar { padding:10px 16px; border-top:1px solid #f1f5f9; flex-shrink:0; }
+.add-btn { font-size:13px; padding:8px 18px; border-radius:7px; border:1px dashed #cbd5e1; background:none; color:#64748b; cursor:pointer; }
+.g-days-header { display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc; min-width:1300px; }
+.g-month { font-size:10px; color:#64748b; font-weight:700; padding:7px 8px; white-space:nowrap; background:#f8fafc; border-right:1px solid #e2e8f0; }
+.g-day { width:32px; flex-shrink:0; text-align:center; font-size:11px; color:#94a3b8; padding:7px 0; border-left:1px solid #f1f5f9; }
+.g-day.wknd { background:#f1f5f9; color:#cbd5e1; }
+.g-rows-wrap { min-width:1300px; position:relative; }
+.g-row { display:flex; height:38px; align-items:center; border-bottom:1px solid #f1f5f9; position:relative; }
+.g-bar { position:absolute; height:22px; border-radius:6px; background:#bfdbfe; border:1px solid #3b82f6; cursor:ew-resize; user-select:none; }
+.g-bar:hover { background:#93c5fd; }
+.g-bar.done { background:#bbf7d0; border-color:#22c55e; }
+.g-bar-ghost { position:absolute; height:22px; border-radius:6px; background:#3b82f633; border:2px dashed #3b82f6; pointer-events:none; display:none; top:8px; }
+
+/* ═══ CHANGES ═══ */
+.changes-list { flex:1; overflow-y:auto; padding:18px 24px; display:flex; flex-direction:column; gap:1px; }
+.change-item { display:flex; align-items:flex-start; gap:12px; padding:12px 14px; border-bottom:1px solid #f8fafc; border-radius:8px; }
+.change-item:hover { background:#f8fafc; }
+.change-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+.change-who { font-size:13px; font-weight:600; color:#1e293b; }
+.change-what { font-size:13px; color:#475569; margin-top:2px; line-height:1.5; }
+.change-what strong { color:#1e293b; }
+.change-old { text-decoration:line-through; color:#ef4444; font-size:12px; }
+.change-new { color:#16a34a; font-size:12px; font-weight:600; }
+.change-time { font-size:11px; color:#94a3b8; flex-shrink:0; padding-top:2px; }
+.change-tag { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; margin-right:6px; }
+.tag-create { background:#dcfce7; color:#15803d; }
+.tag-edit { background:#dbeafe; color:#2563eb; }
+.tag-delete { background:#fee2e2; color:#991b1b; }
+
+/* NOTES / DOCS */
+.notes-list { flex:1; overflow-y:auto; padding:18px 22px; display:flex; flex-direction:column; gap:14px; }
+.note-item { display:flex; gap:12px; }
+.note-avatar { width:36px; height:36px; border-radius:50%; background:#dbeafe; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; color:#2563eb; flex-shrink:0; }
+.note-meta { display:flex; align-items:baseline; gap:8px; margin-bottom:4px; }
+.note-author { font-size:13px; font-weight:600; color:#1e293b; }
+.note-time { font-size:12px; color:#94a3b8; }
+.note-text { font-size:14px; color:#334155; line-height:1.55; }
+.notes-input { padding:12px 22px; border-top:1px solid #e2e8f0; display:flex; gap:10px; flex-shrink:0; }
+.notes-textarea { flex:1; font-size:14px; padding:9px 13px; border:1px solid #e2e8f0; border-radius:8px; resize:none; font-family:inherit; color:#1e293b; }
+.notes-send { font-size:13px; padding:0 18px; border-radius:8px; border:none; background:#2563eb; color:#fff; cursor:pointer; font-weight:600; }
+.docs-wrap { flex:1; padding:22px; display:flex; flex-direction:column; gap:10px; overflow-y:auto; }
+.doc-item { display:flex; align-items:center; gap:12px; padding:13px 16px; border:1px solid #e2e8f0; border-radius:10px; }
+.doc-item:hover { border-color:#bfdbfe; background:#f8faff; }
+.doc-name { flex:1; font-size:14px; color:#2563eb; font-weight:500; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.doc-date { font-size:12px; color:#94a3b8; }
+.doc-del { font-size:16px; color:#e2e8f0; border:none; background:none; cursor:pointer; }
+
+input[type=date] { font-size:12px; border:1px solid #e2e8f0; border-radius:5px; padding:3px 7px; color:#1e293b; font-family:inherit; width:100%; }
+input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b82f6; }
+</style>
+</head>
+<body>
+<div class="modal">
+
+  <div class="modal-header">
+    <div>
+      <div class="header-title">Матрица v4.1: АЛЬФА БАНК: AEWGegserg: 2026 04 18</div>
+      <div class="header-client">АЛЬФА БАНК</div>
+      <div class="header-badges"><span class="badge-status">ЗАПРОС</span></div>
+    </div>
+    <div class="header-right">
+      <button class="btn">↻ Проверить</button>
+      <button class="btn">Изменить</button>
+      <button class="btn btn-del">Удалить</button>
+      <button class="btn-close">×</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('info',this)">Инфо</button>
+    <button class="tab-btn" onclick="showTab('shifts',this)">Смены</button>
+    <button class="tab-btn" onclick="showTab('gantt',this)">Ганта</button>
+    <button class="tab-btn" onclick="showTab('notes',this)">Заметки</button>
+    <button class="tab-btn" onclick="showTab('docs',this)">Документы</button>
+    <button class="tab-btn" onclick="showTab('changes',this)">Изменения</button>
+  </div>
+
+  <!-- ═══ INFO ═══ -->
+  <div id="tab-info" class="tab-wrapper active">
+    <div class="info-scroll">
+      <div class="info-row">
+        <div class="info-card">
+          <div class="info-card-header"><div class="card-dot" style="background:#3b82f6"></div><div class="card-title">О проекте</div></div>
+          <div class="field-row"><span class="field-lbl">ID матрицы</span><span class="field-val-mono">INT-1776369300716</span></div>
+          <div class="field-row"><span class="field-lbl">Ссылка</span><a class="field-val-link" href="#" onclick="return false"><span style="font-size:15px">📊</span> Открыть таблицу <span style="opacity:.6;font-size:11px">↗</span></a></div>
+          <div class="field-row"><span class="field-lbl">Юнит</span><span class="field-val">Корп Медиа</span></div>
+          <div class="field-row"><span class="field-lbl">Формат</span><span class="field-val">Радиотрансляция</span></div>
+          <div class="field-row"><span class="field-lbl">Дата</span><span class="field-val-bold">18 апр. 2026</span></div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-header"><div class="card-dot" style="background:#8b5cf6"></div><div class="card-title">Команда</div></div>
+          <div class="field-row"><span class="field-lbl">Продюсер</span><span class="field-val">Ксения Гуманникова</span></div>
+          <div class="field-row"><span class="field-lbl">Менеджер</span><span class="field-val">Ксения Гуманникова</span></div>
+          <div class="field-row"><span class="field-lbl">Куратор</span><span class="field-val">segseg</span></div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-header"><div class="card-dot" style="background:#f59e0b"></div><div class="card-title">Прогресс</div></div>
+          <div class="progress-body">
+            <div class="progress-dial">
+              <div class="dial-label">Ганта</div>
+              <svg width="150" height="150" viewBox="0 0 100 100">
+                <path d="M50,50 L50,5 A45,45 0 0,1 88.97,72.5 Z" fill="#22c55e" stroke="#fff" stroke-width="2"/>
+                <path d="M50,50 L88.97,72.5 A45,45 0 0,1 11.03,72.5 Z" fill="#e2e8f0" stroke="#fff" stroke-width="2"/>
+                <path d="M50,50 L11.03,72.5 A45,45 0 0,1 50,5 Z" fill="#e2e8f0" stroke="#fff" stroke-width="2"/>
+                <circle cx="50" cy="50" r="26" fill="#fff"/>
+                <text x="50" y="47" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">33%</text>
+              </svg>
+              <div class="dial-counter">1/3</div>
+              <div class="dial-counter-sub">задач выполнено</div>
+            </div>
+            <div class="dial-divider"></div>
+            <div class="progress-dial">
+              <div class="dial-label">Подтверждено</div>
+              <svg width="150" height="150" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="2" stroke-dasharray="6 4"/>
+                <circle cx="50" cy="50" r="26" fill="#f8fafc"/>
+                <text x="50" y="47" text-anchor="middle" font-size="11" fill="#cbd5e1">скоро</text>
+              </svg>
+              <div class="dial-counter" style="color:#cbd5e1">—/—</div>
+              <div class="dial-counter-sub" style="color:#cbd5e1">данных</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="global-footer">
+      <div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Строка</span><span style="font-size:11px;color:#64748b;font-family:monospace;background:#f1f5f9;padding:2px 7px;border-radius:5px">—</span></div>
+      <div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Источник</span><span class="footer-src">internal</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ SHIFTS ═══ -->
+  <div id="tab-shifts" class="tab-wrapper">
+    <div class="sub-tabs-bar" id="subTabsBar">
+      <!-- Свод: not draggable, always first -->
+      <div class="sub-tab-btn sub-tab-svod active" onclick="switchShift(this,'shift-svod')">Свод</div>
+      <!-- Draggable shifts -->
+      <div class="sub-tab-btn" draggable="true" onclick="switchShift(this,'shift-s1')">Эфир 18 апр</div>
+      <div class="sub-tab-btn" draggable="true" onclick="switchShift(this,'shift-s2')">Трансляция 19 апр</div>
+      <div class="sub-tab-btn" draggable="true" onclick="switchShift(this,'shift-s3')">Застройка 20 апр</div>
+      <button class="sub-tab-add">+</button>
+    </div>
+
+    <!-- ── СВОД ── -->
+    <div id="shift-svod" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+      <div class="svod-scroll">
+        <!--
+          Смены и их даты:
+          Shift 1 "Эфир 18 апр":      17 апр→Застройка, 18 апр→Эфир
+          Shift 2 "Трансляция 19 апр": 18 апр→Съёмка,    19 апр→Трансляция
+          Shift 3 "Застройка 20 апр":  20 апр→Застройка
+
+          Глобальные даты: 17 апр | 18 апр | 19 апр | 20 апр
+        -->
+        <table class="svod-table">
+          <thead>
+            <tr>
+              <th class="info-col-th">Смена</th>
+              <th style="min-width:160px">ФИО</th>
+              <th style="min-width:130px">Должность</th>
+              <th class="date-col">17 апр.</th>
+              <th class="date-col">18 апр.</th>
+              <th class="date-col">19 апр.</th>
+              <th class="date-col">20 апр.</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- ══ SHIFT 1: Эфир 18 апр — 3 человека → rowspan = 3 persons + 1 label row = 4 ══ -->
+            <tr class="date-label-row">
+              <td rowspan="4" class="info-td">
+                <div class="info-card-svod">
+                  <div class="svod-card-name">Эфир 18 апр</div>
+                  <div class="svod-card-date">18 апр. 2026</div>
+                  <div class="svod-card-field">
+                    <div class="svod-card-lbl">Статус</div>
+                    <div class="svod-card-val"><span class="status-badge-sm" style="background:#dbeafe;color:#2563eb">Запрос</span></div>
+                  </div>
+                  <div class="svod-card-field">
+                    <div class="svod-card-lbl">Исп. продюсер</div>
+                    <div class="svod-card-val">К. Гуманникова</div>
+                  </div>
+                </div>
+              </td>
+              <!-- Date labels for shift 1 -->
+              <td colspan="2" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
+              <td class="date-label-cell"><span class="dlabel dl-zastroyka">Застройка</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-efir">Эфир</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
+            </tr>
+            <tr class="person-row">
+              <td style="font-weight:600;color:#1e293b">Иванов Иван</td><td style="color:#64748b">Режиссёр</td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+            </tr>
+            <tr class="person-row" style="background:#f8fafc">
+              <td style="font-weight:600;color:#1e293b">Петрова Анна</td><td style="color:#64748b">Оператор</td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+            </tr>
+            <tr class="person-row">
+              <td style="font-weight:600;color:#1e293b">Морозов Дмитрий</td><td style="color:#64748b">Осветитель</td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+            </tr>
+
+            <tr class="section-gap"><td colspan="7"></td></tr>
+
+            <!-- ══ SHIFT 2: Трансляция 19 апр — 2 человека → rowspan = 2+1 = 3 ══ -->
+            <tr class="date-label-row">
+              <td rowspan="3" class="info-td">
+                <div class="info-card-svod">
+                  <div class="svod-card-name">Трансляция 19 апр</div>
+                  <div class="svod-card-date">19 апр. 2026</div>
+                  <div class="svod-card-field">
+                    <div class="svod-card-lbl">Статус</div>
+                    <div class="svod-card-val"><span class="status-badge-sm" style="background:#dcfce7;color:#15803d">Продакшн</span></div>
+                  </div>
+                  <div class="svod-card-field">
+                    <div class="svod-card-lbl">Исп. продюсер</div>
+                    <div class="svod-card-val">К. Гуманникова</div>
+                  </div>
+                </div>
+              </td>
+              <td colspan="2" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
+              <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-semka">Съёмка</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-efir">Трансляция</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
+            </tr>
+            <tr class="person-row">
+              <td style="font-weight:600;color:#1e293b">Сидоров Кирилл</td><td style="color:#64748b">Звукорежиссёр</td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+            </tr>
+            <tr class="person-row" style="background:#f8fafc">
+              <td style="font-weight:600;color:#1e293b">Смирнова Ольга</td><td style="color:#64748b">Ассистент режиссёра</td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+            </tr>
+
+            <tr class="section-gap"><td colspan="7"></td></tr>
+
+            <!-- ══ SHIFT 3: Застройка 20 апр — 1 человек → rowspan = 1+1 = 2 ══ -->
+            <tr class="date-label-row">
+              <td rowspan="2" class="info-td">
+                <div class="info-card-svod">
+                  <div class="svod-card-name">Застройка 20 апр</div>
+                  <div class="svod-card-date">20 апр. 2026</div>
+                  <div class="svod-card-field">
+                    <div class="svod-card-lbl">Статус</div>
+                    <div class="svod-card-val"><span class="status-badge-sm" style="background:#fef9c3;color:#854d0e">Препрод.</span></div>
+                  </div>
+                  <div class="svod-card-field">
+                    <div class="svod-card-lbl">Исп. продюсер</div>
+                    <div class="svod-card-val">К. Гуманникова</div>
+                  </div>
+                </div>
+              </td>
+              <td colspan="2" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
+              <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
+              <td class="date-label-cell"><span class="dlabel dl-zastroyka">Застройка</span></td>
+            </tr>
+            <tr class="person-row">
+              <td style="font-weight:600;color:#1e293b">Козлов Антон</td><td style="color:#64748b">Монтажник</td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="empty-dot"></span></td>
+              <td class="date-dot"><span class="shift-dot"></span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── SHIFT S1: Эфир 18 апр ── -->
+    <div id="shift-s1" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+      <div class="shifts-body" style="flex:1;overflow:hidden;">
+        <div class="shift-info-panel">
+          <div class="shift-info-block">
+            <div class="shift-field"><div class="shift-field-lbl">Статус</div><div class="shift-field-val"><span class="shift-status-badge">Запрос</span></div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Время</div><div class="shift-field-val" style="font-weight:700">10:00</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Дата</div><div class="shift-field-val" style="font-weight:700;color:#0f172a">18 апр. 2026</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Локация</div><div class="shift-field-val">Москва, студия B</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Исп. продюсер</div><div class="shift-field-val">К. Гуманникова</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Лайн-продюсер</div><div class="shift-field-val" style="color:#cbd5e1">—</div></div>
+          </div>
+        </div>
+        <div class="shifts-table-area">
+          <div class="shifts-meta-bar">
+            <div class="view-toggle">
+              <button class="active" onclick="toggleView(this,'team-s1')">Команда</button>
+              <button onclick="toggleView(this,'exp-s1')">Расходы</button>
+            </div>
+            <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
+          </div>
+          <div class="shifts-table-wrap">
+            <div id="team-s1">
+              <table class="sh-table">
+                <thead><tr>
+                  <th style="min-width:160px">ФИО</th>
+                  <th style="min-width:120px">Должность</th>
+                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">
+                    17 апр.<br><span class="date-type-badge type-zastroyka">Застройка</span>
+                    <div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div>
+                  </th>
+                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">
+                    18 апр.<br><span class="date-type-badge type-efir">Эфир</span>
+                    <div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div>
+                  </th>
+                  <th style="width:36px"></th>
+                </tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:600">Иванов Иван</td><td style="color:#64748b">Режиссёр</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Петрова Анна</td><td style="color:#64748b">Оператор</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Морозов Дмитрий</td><td style="color:#64748b">Осветитель</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="exp-s1" style="display:none;">
+              <table class="exp-table">
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <tbody>
+                  <tr><td>Аренда оборудования</td><td style="color:#64748b">ООО «Свет»</td><td style="font-weight:600">45 000 ₽</td><td style="color:#64748b">Безнал</td><td style="color:#94a3b8">Счёт оплачен</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td>Монтажник</td><td style="color:#64748b">Фрилансер</td><td style="font-weight:600">8 000 ₽</td><td style="color:#64748b">Наличные</td><td style="color:#94a3b8">—</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="shift-s2" style="flex:1;display:none;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;">Трансляция 19 апр</div>
+    <div id="shift-s3" style="flex:1;display:none;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;">Застройка 20 апр</div>
+
+    <div class="global-footer">
+      <div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Источник</span><span class="footer-src">internal</span></div>
+    </div>
+  </div>
+
+  <!-- ═══ GANTT ═══ -->
+  <div id="tab-gantt" class="tab-wrapper">
+    <div class="gantt-split" style="flex:1;overflow:hidden;">
+      <div class="gantt-left">
+        <div class="gantt-left-head">
+          <table class="g-table"><thead><tr><th style="width:30px"></th><th>Задача</th><th style="width:110px">Начало</th><th style="width:110px">Дедлайн</th><th style="width:26px"></th></tr></thead></table>
+        </div>
+        <div class="gantt-list-scroll" id="ganttListScroll" onscroll="syncScrollV(this)">
+          <table class="g-table"><colgroup><col style="width:30px"><col><col style="width:110px"><col style="width:110px"><col style="width:26px"></colgroup>
+            <tbody>
+              <tr class="g-done"><td><input type="checkbox" checked></td><td style="text-decoration:line-through;color:#94a3b8">Согласовать смету</td><td><input type="date" value="2026-04-01"></td><td><input type="date" value="2026-04-05"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox"></td><td>Подготовить оборудование</td><td><input type="date" value="2026-04-10"></td><td><input type="date" value="2026-04-16"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox"></td><td>Финальный монтаж и сдача</td><td><input type="date" value="2026-04-18"></td><td><input type="date" value="2026-04-30"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox"></td><td>Согласование с клиентом</td><td><input type="date" value="2026-04-20"></td><td><input type="date" value="2026-05-05"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox"></td><td>Публикация</td><td><input type="date" value="2026-05-06"></td><td><input type="date" value="2026-05-10"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="gantt-footer-bar"><button class="add-btn">+ Добавить задачу</button></div>
+      </div>
+      <div class="gantt-right">
+        <div class="gantt-right-head">
+          <div class="g-days-header" id="ganttDaysHead" style="overflow:hidden;">
+            <div class="g-month">Апр 2026</div>
+            <div class="g-day">1</div><div class="g-day">2</div><div class="g-day wknd">3</div><div class="g-day wknd">4</div><div class="g-day">5</div><div class="g-day">6</div><div class="g-day">7</div><div class="g-day">8</div><div class="g-day">9</div><div class="g-day wknd">10</div><div class="g-day wknd">11</div><div class="g-day">12</div><div class="g-day">13</div><div class="g-day">14</div><div class="g-day">15</div><div class="g-day">16</div><div class="g-day">17</div><div class="g-day">18</div><div class="g-day">19</div><div class="g-day">20</div><div class="g-day wknd">21</div><div class="g-day wknd">22</div><div class="g-day">23</div><div class="g-day">24</div><div class="g-day">25</div><div class="g-day">26</div><div class="g-day wknd">27</div><div class="g-day wknd">28</div><div class="g-day">29</div><div class="g-day">30</div>
+            <div class="g-month">Май 2026</div>
+            <div class="g-day">1</div><div class="g-day">2</div><div class="g-day wknd">3</div><div class="g-day wknd">4</div><div class="g-day">5</div><div class="g-day">6</div><div class="g-day">7</div><div class="g-day">8</div><div class="g-day">9</div><div class="g-day">10</div>
+          </div>
+        </div>
+        <div class="gantt-bars-scroll" id="ganttBarsScroll" onscroll="syncScrollBars(this)">
+          <div class="g-rows-wrap" id="ganttRows">
+            <div class="g-bar-ghost" id="barGhost"></div>
+            <div class="g-row" style="height:38px" data-row="0"><div class="g-bar done" style="left:70px;width:128px" title="1–5 апр"></div></div>
+            <div class="g-row" style="height:38px" data-row="1"><div class="g-bar" style="left:358px;width:192px" title="10–16 апр"></div></div>
+            <div class="g-row" style="height:38px" data-row="2"><div class="g-bar" style="left:614px;width:390px" title="18–30 апр"></div></div>
+            <div class="g-row" style="height:38px" data-row="3"><div class="g-bar" style="left:678px;width:482px" title="20 апр–5 мая"></div></div>
+            <div class="g-row" style="height:38px" data-row="4"><div class="g-bar" style="left:1198px;width:128px" title="6–10 мая"></div></div>
+          </div>
+          <div style="padding:8px 14px;font-size:11px;color:#94a3b8;background:#f8fafc;border-top:1px solid #f1f5f9;">
+            💡 Тяните мышью по пустой строке — задаёте сроки. Тяните за бар — перемещаете.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="global-footer"><div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Источник</span><span class="footer-src">internal</span></div></div>
+  </div>
+
+  <!-- ═══ NOTES ═══ -->
+  <div id="tab-notes" class="tab-wrapper">
+    <div class="notes-list">
+      <div class="note-item"><div class="note-avatar">К</div><div><div class="note-meta"><span class="note-author">Ксения Гуманникова</span><span class="note-time">14 апр., 10:32</span></div><div class="note-text">Клиент подтвердил дату эфира, ждём финальное ТЗ по оборудованию.</div></div></div>
+      <div class="note-item"><div class="note-avatar">С</div><div><div class="note-meta"><span class="note-author">segseg</span><span class="note-time">15 апр., 16:05</span></div><div class="note-text">Зал забронирован. Технический райдер отправлен подрядчику.</div></div></div>
+    </div>
+    <div class="notes-input"><textarea class="notes-textarea" rows="2" placeholder="Написать заметку… (Ctrl+Enter)"></textarea><button class="notes-send">Отправить</button></div>
+    <div class="global-footer"><div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Источник</span><span class="footer-src">internal</span></div></div>
+  </div>
+
+  <!-- ═══ DOCS ═══ -->
+  <div id="tab-docs" class="tab-wrapper">
+    <div class="docs-wrap">
+      <div class="doc-item"><span style="font-size:22px">📊</span><a class="doc-name" href="#" onclick="return false">Смета АЛЬФА БАНК апрель 2026</a><span class="doc-date">12 апр. 2026</span><button class="doc-del">×</button></div>
+      <div class="doc-item"><span style="font-size:22px">📝</span><a class="doc-name" href="#" onclick="return false">Технический райдер</a><span class="doc-date">13 апр. 2026</span><button class="doc-del">×</button></div>
+      <button class="add-btn">+ Прикрепить документ</button>
+    </div>
+    <div class="global-footer"><div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Источник</span><span class="footer-src">internal</span></div></div>
+  </div>
+
+  <!-- ═══ ИЗМЕНЕНИЯ ═══ -->
+  <div id="tab-changes" class="tab-wrapper">
+    <div class="changes-list">
+      <div class="change-item"><div class="change-avatar" style="background:#3b82f6">К</div><div class="change-body"><span class="change-tag tag-edit">Изменено</span><span class="change-who">Ксения Гуманникова</span><div class="change-what">изменила поле <strong>Статус</strong>: <span class="change-old">Preprod</span> → <span class="change-new">Запрос</span></div></div><div class="change-time">17 апр., 14:22</div></div>
+      <div class="change-item"><div class="change-avatar" style="background:#8b5cf6">С</div><div class="change-body"><span class="change-tag tag-create">Создано</span><span class="change-who">segseg</span><div class="change-what">создал задачу в Ганта: <strong>«Финальный монтаж»</strong></div></div><div class="change-time">16 апр., 11:05</div></div>
+      <div class="change-item"><div class="change-avatar" style="background:#10b981">К</div><div class="change-body"><span class="change-tag tag-edit">Изменено</span><span class="change-who">Ксения Гуманникова</span><div class="change-what">добавила участника в смену «Эфир 18 апр»: <strong>Сидоров Кирилл (Звукорежиссёр)</strong></div></div><div class="change-time">15 апр., 09:48</div></div>
+      <div class="change-item"><div class="change-avatar" style="background:#f59e0b">К</div><div class="change-body"><span class="change-tag tag-edit">Изменено</span><span class="change-who">Ксения Гуманникова</span><div class="change-what">изменила поле <strong>Дата</strong>: <span class="change-old">15 апр. 2026</span> → <span class="change-new">18 апр. 2026</span></div></div><div class="change-time">14 апр., 17:33</div></div>
+      <div class="change-item"><div class="change-avatar" style="background:#64748b">А</div><div class="change-body"><span class="change-tag tag-create">Создано</span><span class="change-who">Система</span><div class="change-what">матрица создана из синка с Google Sheets</div></div><div class="change-time">10 апр., 00:00</div></div>
+    </div>
+    <div class="global-footer"><div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Источник</span><span class="footer-src">internal</span></div></div>
+  </div>
+
+</div>
+
+<script>
+// Main tabs
+function showTab(name,btn){
+  document.querySelectorAll('.tab-wrapper').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.tabs .tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// Shift sub-tabs
+var shiftIds=['shift-svod','shift-s1','shift-s2','shift-s3'];
+function switchShift(btn,id){
+  document.querySelectorAll('.sub-tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  shiftIds.forEach(s=>{
+    var el=document.getElementById(s);
+    if(!el)return;
+    el.style.display='none';
+  });
+  var t=document.getElementById(id);
+  if(t){t.style.display='flex';t.style.flexDirection='column';}
+}
+
+// Team/expense toggle
+function toggleView(btn,showId){
+  btn.closest('.view-toggle').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  var area=btn.closest('.shifts-table-area');
+  area.querySelectorAll('[id^="team-"],[id^="exp-"]').forEach(el=>el.style.display='none');
+  var el=document.getElementById(showId);
+  if(el)el.style.display='block';
+}
+
+// Date dropdown
+function toggleDateDrop(th){
+  var dd=th.querySelector('.date-dropdown');
+  document.querySelectorAll('.date-dropdown.open').forEach(d=>{if(d!==dd)d.classList.remove('open');});
+  dd.classList.toggle('open');
+  event.stopPropagation();
+}
+function setDT(e,item,cls,label){
+  e.stopPropagation();
+  var th=item.closest('th');
+  var badge=th.querySelector('.date-type-badge');
+  badge.className='date-type-badge '+cls;
+  badge.textContent=label;
+  th.querySelector('.date-dropdown').classList.remove('open');
+}
+document.addEventListener('click',()=>document.querySelectorAll('.date-dropdown.open').forEach(d=>d.classList.remove('open')));
+
+// Draggable shift tabs (not Свод)
+var dragSrcTab=null;
+document.querySelectorAll('.sub-tab-btn[draggable]').forEach(btn=>{
+  btn.addEventListener('dragstart',e=>{dragSrcTab=btn;btn.classList.add('dragging');});
+  btn.addEventListener('dragend',()=>{btn.classList.remove('dragging');document.querySelectorAll('.sub-tab-btn').forEach(b=>b.classList.remove('drag-over-right'));});
+  btn.addEventListener('dragover',e=>{e.preventDefault();if(btn!==dragSrcTab&&!btn.classList.contains('sub-tab-svod'))btn.classList.add('drag-over-right');});
+  btn.addEventListener('dragleave',()=>btn.classList.remove('drag-over-right'));
+  btn.addEventListener('drop',e=>{
+    e.preventDefault();
+    if(dragSrcTab&&btn!==dragSrcTab&&!btn.classList.contains('sub-tab-svod')){
+      var bar=document.getElementById('subTabsBar');
+      var si=[...bar.children].indexOf(dragSrcTab),ti=[...bar.children].indexOf(btn);
+      if(si<ti)bar.insertBefore(dragSrcTab,btn.nextSibling);
+      else bar.insertBefore(dragSrcTab,btn);
+    }
+    btn.classList.remove('drag-over-right');
+  });
+});
+
+// Gantt synced scroll
+var _lockV=false,_lockH=false;
+function syncScrollV(src){
+  if(_lockV)return;_lockH=true;
+  var bs=document.getElementById('ganttBarsScroll');
+  if(bs)bs.scrollTop=src.scrollTop;
+  _lockH=false;
+}
+function syncScrollBars(src){
+  if(_lockH)return;_lockV=true;
+  var ls=document.getElementById('ganttListScroll');
+  var dh=document.getElementById('ganttDaysHead');
+  if(ls)ls.scrollTop=src.scrollTop;
+  if(dh)dh.scrollLeft=src.scrollLeft;
+  _lockV=false;
+}
+
+// Gantt drag-to-draw / move
+(function(){
+  var rows=document.getElementById('ganttRows');
+  var ghost=document.getElementById('barGhost');
+  var DAY=32,MOFF=64;
+  var mode=null,dragging=null,startX=0,initLeft=0;
+
+  rows.addEventListener('mousedown',function(e){
+    var bar=e.target.closest('.g-bar');
+    if(bar){mode='move';dragging=bar;startX=e.clientX;initLeft=parseInt(bar.style.left);e.preventDefault();return;}
+    var row=e.target.closest('.g-row');
+    if(!row)return;
+    mode='create';
+    var rect=rows.getBoundingClientRect();
+    var x=e.clientX-rect.left+rows.parentElement.scrollLeft-MOFF;
+    var d=Math.floor(x/DAY);
+    ghost.style.left=(d*DAY+MOFF)+'px';ghost.style.width='0px';
+    ghost.style.top=(row.offsetTop+8)+'px';ghost.style.display='block';
+    startX=e.clientX;initLeft=d*DAY+MOFF;e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!mode)return;
+    var dx=e.clientX-startX;
+    if(mode==='move'&&dragging){dragging.style.left=Math.max(MOFF,initLeft+dx)+'px';}
+    else if(mode==='create'){
+      var w=Math.max(DAY,Math.round(Math.abs(dx)/DAY)*DAY);
+      ghost.style.width=w+'px';
+      if(dx<0)ghost.style.left=(initLeft+dx)+'px';
+    }
+  });
+  document.addEventListener('mouseup',function(){
+    if(mode==='create'&&parseInt(ghost.style.width)>0){
+      var nb=document.createElement('div');
+      nb.className='g-bar';
+      nb.style.cssText='position:absolute;height:22px;border-radius:6px;cursor:ew-resize;left:'+ghost.style.left+';width:'+ghost.style.width+';top:'+ghost.style.top+';background:#bfdbfe;border:1px solid #3b82f6;';
+      rows.appendChild(nb);
+    }
+    mode=null;dragging=null;ghost.style.display='none';
+  });
+})();
+</script>
+</body>
+</html>
