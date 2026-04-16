@@ -666,11 +666,8 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
     staleTime: 30_000,
   })
 
-  // Block slot is auto-assigned on the server — frontend only sends matrixRegistryId
   const link = useMutation({
-    mutationFn: () => api.patch(`/status-rows/${projectId}`, {
-      matrixRegistryId: pickedMatrixId || null,
-    }).then((r) => r.data),
+    mutationFn: () => api.patch(`/status-rows/${projectId}`, { matrixRegistryId: pickedMatrixId || null }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-link', projectId] })
       qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
@@ -684,13 +681,6 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
       qc.invalidateQueries({ queryKey: ['project-link', projectId] })
       qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
     },
-  })
-
-  const [syncError, setSyncError] = useState<string | null>(null)
-  const syncBlock = useMutation({
-    mutationFn: () => api.post(`/status-rows/${projectId}/sync-block`).then((r) => r.data),
-    onSuccess: () => setSyncError(null),
-    onError: (e: any) => setSyncError(e?.response?.data?.error ?? e?.message ?? 'Неизвестная ошибка'),
   })
 
   const sectionLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }
@@ -712,33 +702,16 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
               <button onClick={() => unlink.mutate()} disabled={unlink.isPending} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #bbf7d0', background: 'none', color: '#16a34a', cursor: 'pointer' }}>
                 Отвязать
               </button>
-              <button onClick={() => { setPicking(true); setPickedMatrixId(linkInfo.linkedMatrix!.id) }} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
-                Изменить
-              </button>
             </div>
           ) : (
-            <div style={{ fontSize: 13, color: '#94a3b8' }}>Не привязана</div>
-          )}
-
-          {!picking && linkInfo.linkedMatrix && linkInfo.blockSlot && (
-            <div style={{ marginTop: 8 }}>
-              <button
-                onClick={() => syncBlock.mutate()}
-                disabled={syncBlock.isPending}
-                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: syncBlock.isError ? '#dc2626' : '#475569', cursor: 'pointer' }}
-              >
-                {syncBlock.isPending ? 'Синхронизирую...' : syncBlock.isError ? 'Ошибка — повторить' : 'Синхронизировать блок'}
-              </button>
-              {syncError && (
-                <div style={{ marginTop: 4, fontSize: 11, color: '#dc2626', maxWidth: 280, wordBreak: 'break-word' }}>{syncError}</div>
+            <>
+              <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 8 }}>Не привязана</div>
+              {!picking && (
+                <button onClick={() => { setPicking(true); setPickedMatrixId('') }} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
+                  + Привязать матрицу
+                </button>
               )}
-            </div>
-          )}
-
-          {!picking && (
-            <button onClick={() => { setPicking(true); setPickedMatrixId('') }} style={{ marginTop: 8, fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
-              {linkInfo.linkedMatrix ? 'Изменить привязку' : '+ Привязать матрицу'}
-            </button>
+            </>
           )}
 
           {picking && (
@@ -754,7 +727,6 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
                 ))}
               </select>
               {matrices.length === 0 && <div style={{ fontSize: 12, color: '#94a3b8' }}>Нет созданных матриц</div>}
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>Блок будет назначен автоматически</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => link.mutate()} disabled={!pickedMatrixId || link.isPending}
                   style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: pickedMatrixId ? '#2563eb' : '#94a3b8', color: '#fff', cursor: pickedMatrixId ? 'pointer' : 'default', fontWeight: 500 }}>
