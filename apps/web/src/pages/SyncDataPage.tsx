@@ -667,10 +667,13 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
     staleTime: 30_000,
   })
 
+  const parsedSlot = parseInt(pickedSlot)
+  const slotValid  = pickedMatrixId ? (Number.isInteger(parsedSlot) && parsedSlot >= 1) : true
+
   const link = useMutation({
     mutationFn: () => api.patch(`/status-rows/${projectId}`, {
       matrixRegistryId: pickedMatrixId || null,
-      blockSlot: pickedMatrixId ? parseInt(pickedSlot) : null,
+      blockSlot: pickedMatrixId ? parsedSlot : null,
     }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-link', projectId] })
@@ -687,6 +690,13 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
     },
   })
 
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const syncBlock = useMutation({
+    mutationFn: () => api.post(`/status-rows/${projectId}/sync-block`).then((r) => r.data),
+    onSuccess: () => setSyncError(null),
+    onError: (e: any) => setSyncError(e?.response?.data?.error ?? e?.message ?? 'Неизвестная ошибка'),
+  })
+
   const sectionLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }
 
   return (
@@ -699,8 +709,9 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4', borderRadius: 8, padding: '8px 12px' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#15803d' }}>{linkInfo.linkedMatrix.name ?? linkInfo.linkedMatrix.matrixId}</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>
+                <div style={{ fontSize: 12, color: linkInfo.blockSlot ? '#64748b' : '#dc2626' }}>
                   {linkInfo.linkedMatrix.client && `${linkInfo.linkedMatrix.client} · `}Блок {linkInfo.blockSlot ?? '—'}
+                  {!linkInfo.blockSlot && ' (не задан)'}
                 </div>
               </div>
               <button onClick={() => unlink.mutate()} disabled={unlink.isPending} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #bbf7d0', background: 'none', color: '#16a34a', cursor: 'pointer' }}>
@@ -712,6 +723,21 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
             </div>
           ) : (
             <div style={{ fontSize: 13, color: '#94a3b8' }}>Не привязана</div>
+          )}
+
+          {!picking && linkInfo.linkedMatrix && linkInfo.blockSlot && (
+            <div style={{ marginTop: 8 }}>
+              <button
+                onClick={() => syncBlock.mutate()}
+                disabled={syncBlock.isPending}
+                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: syncBlock.isError ? '#dc2626' : '#475569', cursor: 'pointer' }}
+              >
+                {syncBlock.isPending ? 'Синхронизирую...' : syncBlock.isError ? 'Ошибка — повторить' : 'Синхронизировать блок'}
+              </button>
+              {syncError && (
+                <div style={{ marginTop: 4, fontSize: 11, color: '#dc2626', maxWidth: 280, wordBreak: 'break-word' }}>{syncError}</div>
+              )}
+            </div>
           )}
 
           {!picking && (
@@ -735,12 +761,14 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
               {matrices.length === 0 && <div style={{ fontSize: 12, color: '#94a3b8' }}>Нет созданных матриц</div>}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>Блок №</span>
-                <input type="number" min="1" max="20" value={pickedSlot} onChange={(e) => setPickedSlot(e.target.value)}
-                  style={{ width: 60, fontSize: 13, padding: '5px 8px', border: '1px solid #e2e8f0', borderRadius: 6, color: '#1e293b', background: '#fff' }} />
+                <input type="number" min="1" max="20" value={pickedSlot}
+                  onChange={(e) => setPickedSlot(e.target.value)}
+                  style={{ width: 60, fontSize: 13, padding: '5px 8px', border: `1px solid ${slotValid ? '#e2e8f0' : '#fca5a5'}`, borderRadius: 6, color: '#1e293b', background: '#fff' }} />
+                {!slotValid && <span style={{ fontSize: 11, color: '#dc2626' }}>от 1 до 20</span>}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => link.mutate()} disabled={!pickedMatrixId || link.isPending}
-                  style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: pickedMatrixId ? 'pointer' : 'default', fontWeight: 500 }}>
+                <button onClick={() => link.mutate()} disabled={!pickedMatrixId || !slotValid || link.isPending}
+                  style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: pickedMatrixId && slotValid ? '#2563eb' : '#94a3b8', color: '#fff', cursor: pickedMatrixId && slotValid ? 'pointer' : 'default', fontWeight: 500 }}>
                   {link.isPending ? 'Сохраняю...' : 'Привязать'}
                 </button>
                 <button onClick={() => setPicking(false)} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
@@ -1521,10 +1549,11 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
 
   const qc = useQueryClient()
   const [refreshKey, setRefreshKey] = useState(0)
+  const isInternal = entry.source === 'internal'
   const { data: shiftsData, isLoading: shiftsLoading, error: shiftsError, isFetching: shiftsFetching } = useQuery<MatrixShiftsData>({
     queryKey: ['matrix-shifts', entry.matrixId, refreshKey],
     queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}${refreshKey > 0 ? '?refresh=true' : ''}`).then((r) => r.data),
-    enabled: tab === 'shifts',
+    enabled: tab === 'shifts' && !isInternal,
     staleTime: 10 * 60 * 1000, // 10 минут — не перезапрашиваем если данные свежие
   })
 
@@ -1669,7 +1698,12 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
         )}
 
         {/* Tab: Shifts */}
-        {tab === 'shifts' && (
+        {tab === 'shifts' && isInternal && (
+          <div style={{ padding: '24px 20px', color: '#64748b', fontSize: 14 }}>
+            Управляется вручную — смены вводятся через строки таблицы проектов.
+          </div>
+        )}
+        {tab === 'shifts' && !isInternal && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Meta row — outside scroll so it stays fixed */}
             {shiftsData && shiftsData.activeCols.length > 0 && (

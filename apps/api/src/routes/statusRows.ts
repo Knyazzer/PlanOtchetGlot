@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { Prisma, prisma } from '@tv-shifts/db'
 import { authenticate, requireRole } from '../plugins/auth'
 import { logChanges } from '../services/changeLog'
+import { syncProjectBlock } from '../services/matrixBlockSync'
 
 const daySchema = z.object({
   id: z.string().optional(),
@@ -223,6 +224,8 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       )
       delete data.matrixRegistryId
       delete data.blockSlot
+      // Sync block to Google Sheet (fire-and-forget)
+      syncProjectBlock(id).catch((e) => console.error('[matrix-block] statusRow sync failed:', e?.message ?? e))
     }
 
     const row = await prisma.statusRow.update({
@@ -236,8 +239,19 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     return row
   })
 
+  // POST /status-rows/:id/sync-block — manual trigger of matrix block sync
+  app.post('/:id/sync-block', { preHandler: requireRole('admin') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    try {
+      await syncProjectBlock(id)
+      return { ok: true }
+    } catch (e: any) {
+      return reply.code(500).send({ error: e?.message ?? 'Sync failed' })
+    }
+  })
+
   // DELETE /status-rows/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requireRole('admin') }, async (request) => {
     const { id } = request.params as { id: string }
     await prisma.statusRow.delete({ where: { id } })
     return { ok: true }

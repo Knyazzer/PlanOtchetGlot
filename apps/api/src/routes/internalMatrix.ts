@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
 import { findSheetConfig } from '../services/databaseService'
-import { copyTemplateToFolder, setupMatrixPermissions, appendToInternalRegistry, checkSpreadsheetExists, writeSvodData } from '../services/driveService'
+import { copyTemplateToFolder, setupMatrixPermissions, appendToInternalRegistry, checkSpreadsheetExists, writeSvodData, clearMatrixShiftsSheet } from '../services/driveService'
 
 const createMatrixSchema = z.object({
   // projectName is used to auto-generate the matrix name
@@ -99,6 +99,10 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
           brief: brief ?? null,
         }).catch((e: unknown) => {
           app.log.warn({ err: e }, '[internal-matrix] СВОД write failed (non-fatal)')
+        })
+        // Clear all block data in the shifts sheet (non-fatal)
+        await clearMatrixShiftsSheet(sheetUrl).catch((e: unknown) => {
+          app.log.warn({ err: e }, '[internal-matrix] Shifts sheet clear failed (non-fatal)')
         })
       } catch (e: any) {
         driveError = e.message

@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
+import { syncProjectBlock } from '../services/matrixBlockSync'
 
 const memberSchema = z.object({
   projectId: z.string().uuid(),
@@ -47,6 +48,7 @@ export async function projectMembersRoutes(app: FastifyInstance) {
       position ?? null,
       JSON.stringify(shifts ?? {}),
     )
+    syncProjectBlock(rows[0].project_id).catch((e: unknown) => app.log.warn({ err: e }, '[matrix-block] Sync failed'))
     return reply.code(201).send(rows[0])
   })
 
@@ -71,16 +73,18 @@ export async function projectMembersRoutes(app: FastifyInstance) {
       ...vals
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Участник не найден' })
+    syncProjectBlock(rows[0].project_id).catch((e: unknown) => app.log.warn({ err: e }, '[matrix-block] Sync failed'))
     return rows[0]
   })
 
   // DELETE /project-members/:id
   app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
-      `DELETE FROM project_members WHERE id = $1 RETURNING id`, id
+    const rows = await prisma.$queryRawUnsafe<{ id: string; project_id: string }[]>(
+      `DELETE FROM project_members WHERE id = $1 RETURNING id, project_id`, id
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Участник не найден' })
+    syncProjectBlock(rows[0].project_id).catch((e: unknown) => app.log.warn({ err: e }, '[matrix-block] Sync failed'))
     return { ok: true }
   })
 }

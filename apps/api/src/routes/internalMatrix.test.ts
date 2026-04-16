@@ -8,7 +8,7 @@
  *   1. No Drive config (no active template or no folder) → matrix created with sheetUrl=null
  *   2. Drive configured → copyTemplateToFolder is called, sheetUrl is set on the row
  */
-import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi, beforeEach } from 'vitest'
 import { prisma } from '@tv-shifts/db'
 import { buildApp, getAccessToken } from '../test/helpers'
 import { createTestUser, cleanupTestUser } from '../test/factories'
