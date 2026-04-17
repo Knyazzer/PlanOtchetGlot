@@ -17,6 +17,9 @@ pnpm monorepo with three packages:
 
 ### Development
 ```bash
+# First-time setup on a new machine (installs deps, runs migrations, seeds DB, starts app):
+.\setup.ps1
+
 # Start both API and Web in parallel (cross-platform)
 pnpm dev
 
@@ -75,7 +78,7 @@ pnpm --filter @tv-shifts/api exec vitest run src/routes/users.test.ts
 pnpm --filter @tv-shifts/web exec vitest run src/components/MyComponent.test.tsx
 ```
 
-**API tests** are integration tests — they use `buildApp()` from `apps/api/src/test/helpers.ts` which builds the full Fastify app and calls it via `app.inject()` against a real PostgreSQL database. The DB must be running (`docker compose -f docker-compose.dev.yml up -d`) and `.env` must be configured before running. Tests run in `singleThread` mode to share one DB connection.
+**API tests** are integration tests — they use `buildApp()` from `apps/api/src/test/helpers.ts` which builds the full Fastify app and calls it via `app.inject()` against a real PostgreSQL database. The DB must be running (`docker compose -f docker-compose.dev.yml up -d`) and `.env` must be configured before running. Tests run in `singleThread` mode to share one DB connection. Use the factory functions in `apps/api/src/test/factories.ts` to create real DB records in tests (each factory returns the created record; clean up in `afterEach`/`afterAll`).
 
 **Web tests** use Vitest + `@testing-library/react` + MSW for API mocking. The MSW server is configured in `apps/web/src/test/msw-server.ts` and started globally in `apps/web/src/test/setup.ts`.
 
@@ -252,6 +255,20 @@ In addition to the three-level filter system for the production schedule table, 
 - `VITE_GOOGLE_PROJECTS_SHEET_ID` + `VITE_GOOGLE_REGISTRY_SHEET_ID` — frontend-side copies of sheet IDs (for direct Sheets access from browser, if needed)
 - `GOOGLE_API_KEY` — alternative to Service Account for public Google Sheets (no auth required)
 - `PORT` — API server port (default `4000`)
+
+## Production Deployment
+
+```bash
+docker compose -f docker-compose.prod.yml up -d
+```
+
+Nginx config is in `nginx/`. The `migrate:deploy` script in `packages/db` runs migrations without regenerating the client (safe for production).
+
+## Additional Reference Files
+
+- `docs/` — in-depth documentation: `05-architecture.md`, `07-dev-setup.md`, `08-deploy.md`, etc. Read these before making changes to sync, auth, or deployment.
+- `PROJECT_PLAN.md` — feature roadmap and planned work.
+- `_EXAMPLE/` — static HTML mockups and UI snapshots used as design references (not part of the app).
 
 ## Page Implementation Status
 

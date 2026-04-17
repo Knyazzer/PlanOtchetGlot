@@ -107,7 +107,8 @@
       "Bash(pnpm --filter @tv-shifts/api test -- --reporter=verbose --testPathPattern=\"syncHelpers\")",
       "Bash(pnpm --filter @tv-shifts/api list @fastify/rate-limit fastify)",
       "Bash(pnpm --filter @tv-shifts/api add @fastify/rate-limit@^9.0.0)",
-      "Bash(pnpm --filter @tv-shifts/api test -- --reporter=verbose)"
+      "Bash(pnpm --filter @tv-shifts/api test -- --reporter=verbose)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3333/matrix-card-v6.html)"
     ]
   },
   "enabledPlugins": {

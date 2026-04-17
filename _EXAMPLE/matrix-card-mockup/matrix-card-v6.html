@@ -48,12 +48,12 @@ body { font-family: system-ui,-apple-system,sans-serif; background:#0f172a; disp
 .field-val-bold { font-size:14px; color:#0f172a; font-weight:700; }
 .field-val-mono { font-size:11px; color:#94a3b8; font-family:monospace; }
 .field-val-link { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:20px; padding:4px 12px 4px 8px; color:#15803d; text-decoration:none; font-size:13px; font-weight:600; }
-.progress-body { padding:20px 12px; display:flex; gap:0; align-items:flex-start; justify-content:space-around; }
-.progress-dial { display:flex; flex-direction:column; align-items:center; gap:10px; flex:1; }
+.progress-body { padding:12px; display:flex; gap:0; align-items:flex-start; justify-content:space-around; }
+.progress-dial { display:flex; flex-direction:column; align-items:center; gap:5px; flex:1; }
 .dial-divider { width:1px; background:#f1f5f9; align-self:stretch; flex-shrink:0; }
 .dial-label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; text-align:center; }
-.dial-counter { font-size:24px; font-weight:700; color:#0f172a; text-align:center; }
-.dial-counter-sub { font-size:13px; color:#64748b; text-align:center; }
+.dial-counter { font-size:18px; font-weight:700; color:#0f172a; text-align:center; }
+.dial-counter-sub { font-size:11px; color:#64748b; text-align:center; }
 
 /* ═══ SHIFTS SUB-TABS ═══ */
 .sub-tabs-bar { display:flex; border-bottom:1px solid #e2e8f0; flex-shrink:0; background:#f8fafc; padding:0 16px; overflow-x:auto; align-items:stretch; }
@@ -227,6 +227,10 @@ tr.person-row:hover td { background:#f8faff; }
 
 input[type=date] { font-size:12px; border:1px solid #e2e8f0; border-radius:5px; padding:3px 7px; color:#1e293b; font-family:inherit; width:100%; }
 input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b82f6; }
+.confirm-on { background:#dcfce7; color:#15803d; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; cursor:pointer; border:none; white-space:nowrap; }
+.confirm-off { background:#f1f5f9; color:#94a3b8; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; cursor:pointer; border:none; white-space:nowrap; }
+.confirm-on:hover { background:#bbf7d0; }
+.confirm-off:hover { background:#e2e8f0; color:#475569; }
 </style>
 </head>
 <body>
@@ -278,20 +282,19 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
           <div class="progress-body">
             <div class="progress-dial">
               <div class="dial-label">Ганта</div>
-              <svg width="150" height="150" viewBox="0 0 100 100">
-                <path d="M50,50 L50,5 A45,45 0 0,1 88.97,72.5 Z" fill="#22c55e" stroke="#fff" stroke-width="2"/>
-                <path d="M50,50 L88.97,72.5 A45,45 0 0,1 11.03,72.5 Z" fill="#e2e8f0" stroke="#fff" stroke-width="2"/>
-                <path d="M50,50 L11.03,72.5 A45,45 0 0,1 50,5 Z" fill="#e2e8f0" stroke="#fff" stroke-width="2"/>
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <path id="pie-todo" d="" fill="#e2e8f0"/>
+                <path id="pie-done" d="" fill="#22c55e"/>
                 <circle cx="50" cy="50" r="26" fill="#fff"/>
-                <text x="50" y="47" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">33%</text>
+                <text x="50" y="47" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a" id="pie-pct">0%</text>
               </svg>
-              <div class="dial-counter">1/3</div>
+              <div class="dial-counter" id="gantt-counter">0/0</div>
               <div class="dial-counter-sub">задач выполнено</div>
             </div>
             <div class="dial-divider"></div>
             <div class="progress-dial">
               <div class="dial-label">Подтверждено</div>
-              <svg width="150" height="150" viewBox="0 0 100 100">
+              <svg width="100" height="100" viewBox="0 0 100 100">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="#f1f5f9" stroke-width="2" stroke-dasharray="6 4"/>
                 <circle cx="50" cy="50" r="26" fill="#f8fafc"/>
                 <text x="50" y="47" text-anchor="middle" font-size="11" fill="#cbd5e1">скоро</text>
@@ -302,6 +305,209 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
           </div>
         </div>
       </div>
+
+      <!-- ═══ ФИНАНСОВЫЕ ПОКАЗАТЕЛИ ═══ -->
+      <div style="margin-top:18px;">
+        <div class="info-card">
+          <div class="info-card-header"><div class="card-dot" style="background:#10b981"></div><div class="card-title">Финансовые показатели</div></div>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 640px;">
+          <div style="padding:0 18px 4px;overflow-x:auto;">
+            <table style="border-collapse:collapse;font-size:13px;width:100%;">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding:9px 12px;background:#f8fafc;border-bottom:2px solid #e2e8f0;min-width:200px;"></th>
+                  <th style="padding:9px 20px;font-size:12px;font-weight:700;color:#fff;background:#94a3b8;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">План</th>
+                  <th style="padding:9px 20px;font-size:12px;font-weight:700;color:#fff;background:#3b82f6;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">Факт</th>
+                  <th style="padding:9px 16px;font-size:11px;font-weight:700;color:#64748b;background:#f8fafc;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">% откл.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background:#f0fdf4;">
+                  <td style="padding:9px 12px;font-weight:700;color:#0f172a;border-bottom:2px solid #e2e8f0;">Доход</td>
+                  <td style="padding:9px 20px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap;">32 635 ₽</td>
+                  <td style="padding:9px 20px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap;">32 635 ₽</td>
+                  <td style="padding:9px 16px;text-align:right;color:#64748b;border-bottom:2px solid #e2e8f0;">0,00%</td>
+                </tr>
+                <tr><td colspan="4" style="padding:6px 12px 2px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;background:#f8fafc;border-bottom:1px solid #f1f5f9;">Статья расходов</td></tr>
+                <tr>
+                  <td style="padding:7px 12px 7px 22px;color:#475569;border-bottom:1px solid #f8fafc;">Специалисты</td>
+                  <td style="padding:7px 20px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
+                  <td style="padding:7px 20px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
+                  <td style="padding:7px 16px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">—</td>
+                </tr>
+                <tr style="background:#f8fafc;">
+                  <td style="padding:7px 12px 7px 22px;color:#475569;border-bottom:1px solid #f1f5f9;">Услуги</td>
+                  <td style="padding:7px 20px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">22 722 ₽</td>
+                  <td style="padding:7px 20px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">22 722 ₽</td>
+                  <td style="padding:7px 16px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
+                </tr>
+                <tr>
+                  <td style="padding:7px 12px 7px 22px;color:#475569;border-bottom:1px solid #f8fafc;">Иные расходы</td>
+                  <td style="padding:7px 20px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
+                  <td style="padding:7px 20px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
+                  <td style="padding:7px 16px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">—</td>
+                </tr>
+                <tr style="background:#f8fafc;">
+                  <td style="padding:7px 12px 7px 22px;color:#475569;border-bottom:1px solid #f1f5f9;">Налог 13% (УСН+НДС)</td>
+                  <td style="padding:7px 20px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">4 242 ₽</td>
+                  <td style="padding:7px 20px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">4 242 ₽</td>
+                  <td style="padding:7px 16px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
+                </tr>
+                <tr>
+                  <td style="padding:9px 12px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;">Общая сумма расходов</td>
+                  <td style="padding:9px 20px;text-align:right;font-weight:700;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;white-space:nowrap;">26 965 ₽</td>
+                  <td style="padding:9px 20px;text-align:right;font-weight:700;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;white-space:nowrap;">26 965 ₽</td>
+                  <td style="padding:9px 16px;text-align:right;color:#64748b;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;">0,00%</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 12px;font-weight:700;color:#0f172a;border-bottom:1px solid #f1f5f9;">Прибыль</td>
+                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#15803d;border-bottom:1px solid #f1f5f9;white-space:nowrap;">5 670 ₽</td>
+                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#15803d;border-bottom:1px solid #f1f5f9;white-space:nowrap;">5 670 ₽</td>
+                  <td style="padding:8px 16px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 12px;font-weight:700;color:#0f172a;border-bottom:1px solid #f1f5f9;">Маржинальность</td>
+                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#fff;background:#ef4444;border-bottom:1px solid #f1f5f9;">0,17</td>
+                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#fff;background:#ef4444;border-bottom:1px solid #f1f5f9;">0,17</td>
+                  <td style="padding:8px 16px;text-align:right;color:#94a3b8;border-bottom:1px solid #f1f5f9;">—</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 12px;font-weight:700;color:#0f172a;">Рентабельность</td>
+                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#ef4444;white-space:nowrap;">17,38%</td>
+                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#ef4444;white-space:nowrap;">17,38%</td>
+                  <td style="padding:8px 16px;text-align:right;color:#94a3b8;">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Donuts: 3 charts side by side — SVG fills remaining height via flex chain -->
+          <div style="display:flex;align-items:stretch;height:100%;border-left:2px solid #e2e8f0;">
+
+            <!-- ① Доход -->
+            <div style="flex:1;min-width:180px;display:flex;flex-direction:column;align-items:center;padding:14px 10px;gap:8px;border-right:1px solid #e2e8f0;">
+              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">Доход</div>
+              <div style="flex:1;min-height:220px;align-self:stretch;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                <svg viewBox="0 0 200 200" style="height:100%;width:auto;max-width:100%;display:block;">
+                  <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
+                  <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#3b82f6" stroke="#fff" stroke-width="3"/>
+                  <circle cx="100" cy="100" r="44" fill="#fff"/>
+                  <text x="100" y="94" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">32 635 ₽</text>
+                  <text x="100" y="111" text-anchor="middle" font-size="9" fill="#94a3b8">ДОХОД</text>
+                </svg>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px;width:100%;flex-shrink:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
+                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span>
+                  <span style="font-weight:700;color:#1e293b;">32 635 ₽</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
+                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:2px;flex-shrink:0;"></span>Факт</span>
+                  <span style="font-weight:700;color:#1e293b;">32 635 ₽</span>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;">
+                  <span style="color:#94a3b8;">Выполнение</span>
+                  <span style="font-weight:700;color:#15803d;background:#dcfce7;padding:1px 7px;border-radius:20px;">100%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ② Прибыль -->
+            <div style="flex:1;min-width:180px;display:flex;flex-direction:column;align-items:center;padding:14px 10px;gap:8px;border-right:1px solid #e2e8f0;">
+              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">Прибыль</div>
+              <div style="flex:1;min-height:220px;align-self:stretch;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                <svg viewBox="0 0 200 200" style="height:100%;width:auto;max-width:100%;display:block;">
+                  <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
+                  <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#3b82f6" stroke="#fff" stroke-width="3"/>
+                  <circle cx="100" cy="100" r="44" fill="#fff"/>
+                  <text x="100" y="94" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">5 670 ₽</text>
+                  <text x="100" y="111" text-anchor="middle" font-size="9" fill="#94a3b8">ПРИБЫЛЬ</text>
+                </svg>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px;width:100%;flex-shrink:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
+                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span>
+                  <span style="font-weight:700;color:#1e293b;">5 670 ₽</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
+                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:2px;flex-shrink:0;"></span>Факт</span>
+                  <span style="font-weight:700;color:#1e293b;">5 670 ₽</span>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;">
+                  <span style="color:#94a3b8;">Выполнение</span>
+                  <span style="font-weight:700;color:#15803d;background:#dcfce7;padding:1px 7px;border-radius:20px;">100%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ③ Маржинальность -->
+            <div style="flex:1;min-width:180px;display:flex;flex-direction:column;align-items:center;padding:14px 10px;gap:8px;">
+              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">Маржинальность</div>
+              <div style="flex:1;min-height:220px;align-self:stretch;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+                <svg viewBox="0 0 200 200" style="height:100%;width:auto;max-width:100%;display:block;">
+                  <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
+                  <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#ef4444" stroke="#fff" stroke-width="3"/>
+                  <circle cx="100" cy="100" r="44" fill="#fff"/>
+                  <text x="100" y="94" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">0,17</text>
+                  <text x="100" y="111" text-anchor="middle" font-size="9" fill="#94a3b8">МАРЖА</text>
+                </svg>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px;width:100%;flex-shrink:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
+                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span>
+                  <span style="font-weight:700;color:#1e293b;">0,17</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
+                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:2px;flex-shrink:0;"></span>Факт</span>
+                  <span style="font-weight:700;color:#1e293b;">0,17</span>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;">
+                  <span style="color:#94a3b8;">Рентабельность</span>
+                  <span style="font-weight:700;color:#ef4444;background:#fee2e2;padding:1px 7px;border-radius:20px;">17,38%</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+          </div><!-- /grid -->
+          <!-- Bar chart: Расходы план vs факт -->
+          <div style="border-top:1px solid #f1f5f9;padding:14px 18px 18px;">
+            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Расходы: план vs факт</div>
+            <div style="display:flex;gap:14px;margin-bottom:10px;">
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#64748b;"><span style="display:inline-block;width:10px;height:10px;background:#94a3b8;border-radius:2px;"></span>План</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#64748b;"><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;"></span>Факт</span>
+            </div>
+            <svg viewBox="0 0 900 200" style="width:100%;display:block;">
+              <!-- Gridlines (y=165 baseline, chart height 150px, max=27000) -->
+              <line x1="46" y1="15"  x2="880" y2="15"  stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="46" y1="65"  x2="880" y2="65"  stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="46" y1="115" x2="880" y2="115" stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="46" y1="165" x2="880" y2="165" stroke="#e2e8f0" stroke-width="1.5"/>
+              <!-- Y labels -->
+              <text x="42" y="169" text-anchor="end" font-size="9" fill="#94a3b8">0</text>
+              <text x="42" y="119" text-anchor="end" font-size="9" fill="#94a3b8">9k</text>
+              <text x="42" y="69"  text-anchor="end" font-size="9" fill="#94a3b8">18k</text>
+              <text x="42" y="19"  text-anchor="end" font-size="9" fill="#94a3b8">27k</text>
+              <!-- Специалисты (0 ₽) — group center x=154 -->
+              <rect x="107" y="163" width="42" height="2"   fill="#cbd5e1" rx="2"/>
+              <rect x="159" y="163" width="42" height="2"   fill="#bfdbfe" rx="2"/>
+              <text x="154" y="182" text-anchor="middle" font-size="9" fill="#94a3b8">Специалисты</text>
+              <!-- Услуги (22 722 ₽ → 126px) — group center x=361 -->
+              <rect x="314" y="39"  width="42" height="126" fill="#94a3b8" rx="3"/>
+              <rect x="366" y="39"  width="42" height="126" fill="#3b82f6" rx="3"/>
+              <text x="361" y="182" text-anchor="middle" font-size="9" fill="#64748b">Услуги</text>
+              <!-- Налог (4 242 ₽ → 24px) — group center x=569 -->
+              <rect x="522" y="141" width="42" height="24"  fill="#94a3b8" rx="3"/>
+              <rect x="574" y="141" width="42" height="24"  fill="#3b82f6" rx="3"/>
+              <text x="569" y="182" text-anchor="middle" font-size="9" fill="#64748b">Налог</text>
+              <!-- Общая сумма расходов (26 965 ₽ → 150px) — group center x=776 -->
+              <rect x="729" y="15"  width="42" height="150" fill="#94a3b8" rx="3"/>
+              <rect x="781" y="15"  width="42" height="150" fill="#3b82f6" rx="3"/>
+              <text x="776" y="182" text-anchor="middle" font-size="9" fill="#64748b">Общ. расходы</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
     </div>
     <div class="global-footer">
       <div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Строка</span><span style="font-size:11px;color:#64748b;font-family:monospace;background:#f1f5f9;padding:2px 7px;border-radius:5px">—</span></div>
@@ -500,12 +706,13 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
                     18 апр.<br><span class="date-type-badge type-efir">Эфир</span>
                     <div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div>
                   </th>
+                  <th style="width:120px">Подтверждено</th>
                   <th style="width:36px"></th>
                 </tr></thead>
                 <tbody>
-                  <tr><td style="font-weight:600">Иванов Иван</td><td style="color:#64748b">Режиссёр</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr style="background:#f8fafc"><td style="font-weight:600">Петрова Анна</td><td style="color:#64748b">Оператор</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr><td style="font-weight:600">Морозов Дмитрий</td><td style="color:#64748b">Осветитель</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Иванов Иван</td><td style="color:#64748b">Режиссёр</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-on" onclick="toggleConfirm(this)">Подтв.</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Петрова Анна</td><td style="color:#64748b">Оператор</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-off" onclick="toggleConfirm(this)">Ожидание</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Морозов Дмитрий</td><td style="color:#64748b">Осветитель</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-off" onclick="toggleConfirm(this)">Ожидание</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                 </tbody>
               </table>
             </div>
@@ -523,8 +730,105 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
       </div>
     </div>
 
-    <div id="shift-s2" style="flex:1;display:none;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;">Трансляция 19 апр</div>
-    <div id="shift-s3" style="flex:1;display:none;align-items:center;justify-content:center;color:#94a3b8;font-size:14px;">Застройка 20 апр</div>
+    <!-- ── SHIFT S2: Трансляция 19 апр ── -->
+    <div id="shift-s2" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+      <div class="shifts-body" style="flex:1;overflow:hidden;">
+        <div class="shift-info-panel">
+          <div class="shift-info-block">
+            <div class="shift-field"><div class="shift-field-lbl">Статус</div><div class="shift-field-val"><span class="shift-status-badge" style="background:#dcfce7;color:#15803d">Продакшн</span></div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Время</div><div class="shift-field-val" style="font-weight:700">12:00</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Дата</div><div class="shift-field-val" style="font-weight:700;color:#0f172a">19 апр. 2026</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Локация</div><div class="shift-field-val">Москва, зал А</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Исп. продюсер</div><div class="shift-field-val">К. Гуманникова</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Лайн-продюсер</div><div class="shift-field-val" style="color:#cbd5e1">—</div></div>
+          </div>
+        </div>
+        <div class="shifts-table-area">
+          <div class="shifts-meta-bar">
+            <div class="view-toggle">
+              <button class="active" onclick="toggleView(this,'team-s2')">Команда</button>
+              <button onclick="toggleView(this,'exp-s2')">Расходы</button>
+            </div>
+            <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
+          </div>
+          <div class="shifts-table-wrap">
+            <div id="team-s2">
+              <table class="sh-table">
+                <thead><tr>
+                  <th style="min-width:160px">ФИО</th>
+                  <th style="min-width:120px">Должность</th>
+                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">18 апр.<br><span class="date-type-badge type-semka">Съёмка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
+                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">19 апр.<br><span class="date-type-badge type-efir">Эфир</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
+                  <th style="width:120px">Подтверждено</th>
+                  <th style="width:36px"></th>
+                </tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:600">Сидоров Кирилл</td><td style="color:#64748b">Звукорежиссёр</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-on" onclick="toggleConfirm(this)">Подтв.</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Смирнова Ольга</td><td style="color:#64748b">Ассистент режиссёра</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-off" onclick="toggleConfirm(this)">Ожидание</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="exp-s2" style="display:none;">
+              <table class="exp-table">
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <tbody>
+                  <tr><td>Трансляция онлайн</td><td style="color:#64748b">ООО «Стрим»</td><td style="font-weight:600">25 000 ₽</td><td style="color:#64748b">Безнал</td><td style="color:#94a3b8">—</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SHIFT S3: Застройка 20 апр ── -->
+    <div id="shift-s3" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
+      <div class="shifts-body" style="flex:1;overflow:hidden;">
+        <div class="shift-info-panel">
+          <div class="shift-info-block">
+            <div class="shift-field"><div class="shift-field-lbl">Статус</div><div class="shift-field-val"><span class="shift-status-badge" style="background:#fef9c3;color:#854d0e">Препродакшн</span></div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Время</div><div class="shift-field-val" style="font-weight:700">09:00</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Дата</div><div class="shift-field-val" style="font-weight:700;color:#0f172a">20 апр. 2026</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Локация</div><div class="shift-field-val">Склад, выезд</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Исп. продюсер</div><div class="shift-field-val">К. Гуманникова</div></div>
+            <div class="shift-field"><div class="shift-field-lbl">Лайн-продюсер</div><div class="shift-field-val" style="color:#cbd5e1">—</div></div>
+          </div>
+        </div>
+        <div class="shifts-table-area">
+          <div class="shifts-meta-bar">
+            <div class="view-toggle">
+              <button class="active" onclick="toggleView(this,'team-s3')">Команда</button>
+              <button onclick="toggleView(this,'exp-s3')">Расходы</button>
+            </div>
+            <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
+          </div>
+          <div class="shifts-table-wrap">
+            <div id="team-s3">
+              <table class="sh-table">
+                <thead><tr>
+                  <th style="min-width:160px">ФИО</th>
+                  <th style="min-width:120px">Должность</th>
+                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">20 апр.<br><span class="date-type-badge type-zastroyka">Застройка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
+                  <th style="width:120px">Подтверждено</th>
+                  <th style="width:36px"></th>
+                </tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:600">Козлов Антон</td><td style="color:#64748b">Монтажник</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-off" onclick="toggleConfirm(this)">Ожидание</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="exp-s3" style="display:none;">
+              <table class="exp-table">
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <tbody>
+                  <tr><td>Транспортировка</td><td style="color:#64748b">ГАЗель</td><td style="font-weight:600">6 000 ₽</td><td style="color:#64748b">Наличные</td><td style="color:#94a3b8">Туда и обратно</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="global-footer">
       <div style="display:flex;align-items:center;gap:7px;"><span class="footer-lbl">Источник</span><span class="footer-src">internal</span></div>
@@ -541,11 +845,11 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
         <div class="gantt-list-scroll" id="ganttListScroll" onscroll="syncScrollV(this)">
           <table class="g-table"><colgroup><col style="width:30px"><col><col style="width:110px"><col style="width:110px"><col style="width:26px"></colgroup>
             <tbody>
-              <tr class="g-done"><td><input type="checkbox" checked></td><td style="text-decoration:line-through;color:#94a3b8">Согласовать смету</td><td><input type="date" value="2026-04-01"></td><td><input type="date" value="2026-04-05"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
-              <tr><td><input type="checkbox"></td><td>Подготовить оборудование</td><td><input type="date" value="2026-04-10"></td><td><input type="date" value="2026-04-16"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
-              <tr><td><input type="checkbox"></td><td>Финальный монтаж и сдача</td><td><input type="date" value="2026-04-18"></td><td><input type="date" value="2026-04-30"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
-              <tr><td><input type="checkbox"></td><td>Согласование с клиентом</td><td><input type="date" value="2026-04-20"></td><td><input type="date" value="2026-05-05"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
-              <tr><td><input type="checkbox"></td><td>Публикация</td><td><input type="date" value="2026-05-06"></td><td><input type="date" value="2026-05-10"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox" checked onchange="updateGanttProgress()"></td><td>Согласовать смету</td><td><input type="date" value="2026-04-01"></td><td><input type="date" value="2026-04-05"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox" onchange="updateGanttProgress()"></td><td>Подготовить оборудование</td><td><input type="date" value="2026-04-10"></td><td><input type="date" value="2026-04-16"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox" onchange="updateGanttProgress()"></td><td>Финальный монтаж и сдача</td><td><input type="date" value="2026-04-18"></td><td><input type="date" value="2026-04-30"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox" onchange="updateGanttProgress()"></td><td>Согласование с клиентом</td><td><input type="date" value="2026-04-20"></td><td><input type="date" value="2026-05-05"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
+              <tr><td><input type="checkbox" onchange="updateGanttProgress()"></td><td>Публикация</td><td><input type="date" value="2026-05-06"></td><td><input type="date" value="2026-05-10"></td><td style="color:#e2e8f0;text-align:center">×</td></tr>
             </tbody>
           </table>
         </div>
@@ -697,6 +1001,38 @@ function syncScrollBars(src){
   if(dh)dh.scrollLeft=src.scrollLeft;
   _lockV=false;
 }
+
+// Confirm toggle
+function toggleConfirm(btn){
+  var on=btn.classList.contains('confirm-on');
+  btn.className=on?'confirm-off':'confirm-on';
+  btn.textContent=on?'Ожидание':'Подтв.';
+}
+
+// Gantt progress pie (dynamic)
+function _polarPt(cx,cy,r,deg){var rad=(deg-90)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)};}
+function _arcPath(cx,cy,r,d1,d2){
+  if(Math.abs(d2-d1)>=360)d2=d1+359.99;
+  var s=_polarPt(cx,cy,r,d1),e=_polarPt(cx,cy,r,d2),lg=d2-d1>180?1:0;
+  return 'M'+cx+','+cy+' L'+s.x.toFixed(2)+','+s.y.toFixed(2)+' A'+r+','+r+' 0 '+lg+',1 '+e.x.toFixed(2)+','+e.y.toFixed(2)+' Z';
+}
+function updateGanttProgress(){
+  var cbs=[...document.querySelectorAll('#ganttListScroll input[type=checkbox]')];
+  var total=cbs.length,done=cbs.filter(c=>c.checked).length;
+  var pct=total>0?Math.round(done/total*100):0,deg=pct/100*360;
+  var pd=document.getElementById('pie-done'),pt=document.getElementById('pie-todo');
+  var ptx=document.getElementById('pie-pct'),cnt=document.getElementById('gantt-counter');
+  if(done===0){pd.setAttribute('d','');pt.setAttribute('d',_arcPath(50,50,45,0,360));}
+  else if(done===total){pd.setAttribute('d',_arcPath(50,50,45,0,360));pt.setAttribute('d','');}
+  else{pd.setAttribute('d',_arcPath(50,50,45,0,deg));pt.setAttribute('d',_arcPath(50,50,45,deg,360));}
+  if(ptx)ptx.textContent=pct+'%';
+  if(cnt)cnt.textContent=done+'/'+total;
+  cbs.forEach(function(cb,i){
+    var rows=document.querySelectorAll('#ganttListScroll .g-table tbody tr');
+    if(rows[i])rows[i].classList.toggle('g-done',cb.checked);
+  });
+}
+updateGanttProgress(); // init on load
 
 // Gantt drag-to-draw / move
 (function(){
