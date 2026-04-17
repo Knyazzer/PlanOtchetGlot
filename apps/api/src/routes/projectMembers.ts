@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
-import { syncProjectBlock } from '../services/matrixBlockSync'
+// syncProjectBlock removed — sync is now manual via POST /internal-matrix/sync-to-drive
 
 // shifts value: строка (legacy) или объект { type, confirmed, timeStart, timeEnd }
 const shiftValueSchema = z.union([
@@ -61,7 +61,6 @@ export async function projectMembersRoutes(app: FastifyInstance) {
       position ?? null,
       JSON.stringify(shifts ?? {}),
     )
-    syncProjectBlock(rows[0].project_id).catch((e: unknown) => app.log.warn({ err: e }, '[matrix-block] Sync failed'))
     return reply.code(201).send(rows[0])
   })
 
@@ -86,7 +85,6 @@ export async function projectMembersRoutes(app: FastifyInstance) {
       ...vals
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Участник не найден' })
-    syncProjectBlock(rows[0].project_id).catch((e: unknown) => app.log.warn({ err: e }, '[matrix-block] Sync failed'))
     return rows[0]
   })
 
@@ -97,7 +95,6 @@ export async function projectMembersRoutes(app: FastifyInstance) {
       `DELETE FROM project_members WHERE id = $1 RETURNING id, project_id`, id
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Участник не найден' })
-    syncProjectBlock(rows[0].project_id).catch((e: unknown) => app.log.warn({ err: e }, '[matrix-block] Sync failed'))
     return { ok: true }
   })
 }

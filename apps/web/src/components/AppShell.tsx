@@ -88,6 +88,7 @@ export function AppShell() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {(isAdmin || isProducer) && <SyncButton />}
+          {isAdmin && <DriveExportButton />}
           <NotificationBell />
           <span style={{ fontSize: 14, color: '#94a3b8' }}>{user?.fullName}</span>
           <span style={{
@@ -626,6 +627,99 @@ function SyncButton() {
                     </span>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── DriveExportButton ────────────────────────────────────────────────────────
+
+function DriveExportButton() {
+  const [result, setResult] = useState<{ matricesSynced: number; blocksSynced: number; errors: { matrixId: string; error: string }[] } | null>(null)
+  const [showPopup, setShowPopup] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const exportMutation = useMutation({
+    mutationFn: () => api.post('/internal-matrix/sync-to-drive').then((r) => r.data),
+    onSuccess: (data) => {
+      setResult(data)
+      setShowPopup(true)
+    },
+  })
+
+  useEffect(() => {
+    if (!showPopup) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setShowPopup(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showPopup])
+
+  const isPending = exportMutation.isPending
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => { if (!isPending) exportMutation.mutate() }}
+        disabled={isPending}
+        title="Отгрузить внутренние матрицы в Google Drive"
+        style={{
+          background: isPending ? 'rgba(255,255,255,0.08)' : 'transparent',
+          border: '1px solid rgba(255,255,255,0.2)',
+          color: isPending ? 'rgba(255,255,255,0.45)' : '#fff',
+          padding: '5px 10px',
+          borderRadius: 6,
+          cursor: isPending ? 'default' : 'pointer',
+          fontSize: 13,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span style={{ fontSize: 15, display: 'inline-block', animation: isPending ? 'spin 1s linear infinite' : 'none' }}>
+          {isPending ? '⟳' : '☁'}
+        </span>
+        {isPending ? 'Отгрузка...' : 'Отгрузить в Drive'}
+      </button>
+
+      {showPopup && result && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 1000,
+          background: '#fff', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          width: 300, overflow: 'hidden',
+        }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>Отгрузка в Drive</span>
+            <button onClick={() => setShowPopup(false)} style={{ background: 'none', border: 'none', fontSize: 18, color: '#94a3b8', cursor: 'pointer', lineHeight: 1 }}>×</button>
+          </div>
+          <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+              <span style={{ color: '#64748b' }}>Матриц синхронизировано</span>
+              <span style={{ fontWeight: 700, color: '#0f172a' }}>{result.matricesSynced}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+              <span style={{ color: '#64748b' }}>Блоков проектов</span>
+              <span style={{ fontWeight: 700, color: '#0f172a' }}>{result.blocksSynced}</span>
+            </div>
+            {result.errors.length > 0 && (
+              <div style={{ marginTop: 4, borderTop: '1px solid #fee2e2', paddingTop: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#ef4444', marginBottom: 4 }}>Ошибки ({result.errors.length})</div>
+                {result.errors.map((e, i) => (
+                  <div key={i} style={{ fontSize: 11, color: '#ef4444', marginBottom: 2 }}>
+                    <span style={{ fontWeight: 600 }}>{e.matrixId}:</span> {e.error}
+                  </div>
+                ))}
+              </div>
+            )}
+            {result.errors.length === 0 && (
+              <div style={{ marginTop: 4, fontSize: 12, color: '#15803d', background: '#dcfce7', borderRadius: 6, padding: '4px 10px', textAlign: 'center' }}>
+                Всё успешно ✓
               </div>
             )}
           </div>

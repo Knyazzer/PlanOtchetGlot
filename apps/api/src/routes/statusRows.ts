@@ -186,11 +186,6 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       include: { days: { orderBy: { date: 'asc' } } },
     })
 
-    // Trigger matrix block sync if linked
-    if (matrixRegistryId && blockSlotForCreate != null) {
-      syncProjectBlock(row.id).catch((e) => console.error('[matrix-block] POST sync failed:', e?.message ?? e))
-    }
-
     return reply.code(201).send(row)
   })
 
@@ -261,18 +256,13 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       delete data.matrixRegistryId
       delete data.blockSlot
 
-      // Sync new block (fire-and-forget)
-      if (matrixRegistryId !== null && resolvedSlot != null) {
-        syncProjectBlock(id).catch((e) => console.error('[matrix-block] statusRow sync failed:', e?.message ?? e))
-      }
     } else if (blockSlot !== undefined) {
-      // blockSlot-only update (no matrix change) — keep legacy behaviour
+      // blockSlot-only update (no matrix change)
       await prisma.$executeRawUnsafe(
         `UPDATE status_rows SET block_slot = $1, updated_at = NOW() WHERE id = $2`,
         blockSlot, id,
       )
       delete data.blockSlot
-      syncProjectBlock(id).catch((e) => console.error('[matrix-block] statusRow sync failed:', e?.message ?? e))
     }
 
     const include = { days: { orderBy: { date: 'asc' as const } } }

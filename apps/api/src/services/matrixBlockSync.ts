@@ -28,6 +28,11 @@ export async function syncProjectBlock(projectId: string): Promise<void> {
   )
 }
 
+/** Synchronous version — no debounce. Use for manual/batch sync. */
+export async function syncProjectBlockNow(projectId: string): Promise<void> {
+  return _doSyncProjectBlock(projectId)
+}
+
 async function _doSyncProjectBlock(projectId: string): Promise<void> {
   const rows = await prisma.$queryRawUnsafe<{
     name: string

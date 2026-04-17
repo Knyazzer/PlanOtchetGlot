@@ -4,6 +4,7 @@ import { prisma } from '@tv-shifts/db'
 import { requireRole } from '../plugins/auth'
 import { findSheetConfig } from '../services/databaseService'
 import { copyTemplateToFolder, setupMatrixPermissions, appendToInternalRegistry, checkSpreadsheetExists, writeSvodData, clearMatrixShiftsSheet } from '../services/driveService'
+import { syncProjectBlockNow } from '../services/matrixBlockSync'
 
 const createMatrixSchema = z.object({
   // projectName is used to auto-generate the matrix name
@@ -45,7 +46,7 @@ interface MatrixRow {
 
 export async function internalMatrixRoutes(app: FastifyInstance) {
 
-  // POST /internal-matrix — create internal matrix record
+  // POST /internal-matrix — create internal matrix record (SQL only, no Drive)
   app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
     const body = createMatrixSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные', details: body.error.flatten() })
@@ -53,64 +54,16 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     const { projectName, client, unit, format, date, producer, manager, curator,
             kpLink, brief, status, templateId } = body.data
 
-    // Auto-generate matrix name
     const dateStr = date
       ? new Date(date).toISOString().slice(0, 10).replace(/-/g, ' ')
       : new Date().toISOString().slice(0, 10).replace(/-/g, ' ')
     const name = `Матрица v4.1: ${client ?? ''}: ${projectName ?? ''}: ${dateStr}`
-
-    // Generate a unique matrix ID
     const matrixId = `INT-${Date.now()}`
 
-    // Try to copy template to Drive folder
-    let sheetUrl: string | null = null
-    let driveError: string | null = null
-
-    const [templateRows, driveCfg] = await Promise.all([
-      prisma.$queryRawUnsafe<{ id: string; sheet_url: string; is_active: boolean }[]>(
-        `SELECT id, sheet_url, is_active FROM matrix_templates WHERE is_active = true LIMIT 1`,
-      ),
-      findSheetConfig('drive_folder'),
-    ])
-    const activeTemplate = templateRows[0]
-    const folderId = driveCfg?.sheet_url ?? null // folder ID is stored in the sheet_url column
-
-    if (activeTemplate?.sheet_url && folderId) {
-      try {
-        sheetUrl = await copyTemplateToFolder(activeTemplate.sheet_url, name, folderId)
-        // Set up sharing and sheet protections (non-fatal if fails)
-        const newSpreadsheetId = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1]
-        if (newSpreadsheetId) {
-          await setupMatrixPermissions(newSpreadsheetId).catch((e: unknown) => {
-            app.log.warn({ err: e }, '[internal-matrix] Permission setup failed (non-fatal)')
-          })
-        }
-        // Write project fields to СВОД sheet (non-fatal if fails)
-        await writeSvodData(sheetUrl, {
-          client: client ?? null,
-          projectName: projectName ?? null,
-          format: format ?? null,
-          date: dateStr,
-          producerMM: producer ?? null,
-          salesManager: manager ?? null,
-          kpLink: kpLink ?? null,
-          curator: curator ?? null,
-          businessUnit: unit ?? null,
-          brief: brief ?? null,
-        }).catch((e: unknown) => {
-          app.log.warn({ err: e }, '[internal-matrix] СВОД write failed (non-fatal)')
-        })
-        // Clear all block data in the shifts sheet (non-fatal)
-        await clearMatrixShiftsSheet(sheetUrl).catch((e: unknown) => {
-          app.log.warn({ err: e }, '[internal-matrix] Shifts sheet clear failed (non-fatal)')
-        })
-      } catch (e: any) {
-        driveError = e.message
-        app.log.error({ err: e }, '[internal-matrix] Drive copy failed')
-      }
-    }
-
-    const resolvedTemplateId = templateId ?? activeTemplate?.id ?? null
+    const templateRows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+      `SELECT id FROM matrix_templates WHERE is_active = true LIMIT 1`
+    )
+    const resolvedTemplateId = templateId ?? templateRows[0]?.id ?? null
 
     const rows = await prisma.$queryRawUnsafe<MatrixRow[]>(
       `INSERT INTO matrix_registry
@@ -118,41 +71,17 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
           project_name, kp_link, brief, status, source, template_id, sheet_url, updated_at)
        VALUES
          (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9,
-          $10, $11, $12, $13, 'internal', $14, $15, NOW())
+          $10, $11, $12, $13, 'internal', $14, NULL, NOW())
        RETURNING *`,
-      matrixId,
-      name,
-      client ?? null,
-      unit ?? null,
-      format ?? null,
+      matrixId, name,
+      client ?? null, unit ?? null, format ?? null,
       date ? new Date(date) : null,
-      producer ?? null,
-      manager ?? null,
-      curator ?? null,
-      projectName ?? null,
-      kpLink ?? null,
-      brief ?? null,
-      status ?? null,
-      resolvedTemplateId,
-      sheetUrl,
+      producer ?? null, manager ?? null, curator ?? null,
+      projectName ?? null, kpLink ?? null, brief ?? null,
+      status ?? null, resolvedTemplateId,
     )
 
-    // Append row to internal registry sheet (fire-and-forget, don't fail the request)
-    const internalRegistryCfg = await findSheetConfig('internal_registry')
-    if (internalRegistryCfg?.sheet_url) {
-      appendToInternalRegistry(internalRegistryCfg.sheet_url, {
-        matrixId,
-        status: rows[0]?.status ?? null,
-        sheetUrl,
-      }).catch((e: unknown) => {
-        app.log.error({ err: e }, '[internal-matrix] Registry append failed')
-      })
-    }
-
-    const result: Record<string, unknown> = { ...rows[0] }
-    if (driveError) result.driveError = driveError
-
-    return reply.code(201).send(result)
+    return reply.code(201).send(rows[0])
   })
 
   // PATCH /internal-matrix/:id — update internal matrix
@@ -245,5 +174,102 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     return prisma.$queryRawUnsafe<MatrixRow[]>(
       `SELECT * FROM matrix_registry WHERE source = 'internal' ORDER BY created_at DESC`
     )
+  })
+
+  // POST /internal-matrix/sync-to-drive — полная ручная синхронизация всех внутренних матриц в Drive
+  app.post('/sync-to-drive', { preHandler: requireRole('admin') }, async (_request, reply) => {
+    const errors: { matrixId: string; error: string }[] = []
+    let matricesSynced = 0
+    let blocksSynced = 0
+
+    const [matrices, templateRows, driveCfg, internalRegistryCfg] = await Promise.all([
+      prisma.$queryRawUnsafe<MatrixRow[]>(
+        `SELECT * FROM matrix_registry WHERE source = 'internal' ORDER BY created_at ASC`
+      ),
+      prisma.$queryRawUnsafe<{ id: string; sheet_url: string }[]>(
+        `SELECT id, sheet_url FROM matrix_templates WHERE is_active = true LIMIT 1`
+      ),
+      findSheetConfig('drive_folder'),
+      findSheetConfig('internal_registry'),
+    ])
+
+    const activeTemplate = templateRows[0]
+    const folderId = driveCfg?.sheet_url ?? null
+
+    for (const matrix of matrices) {
+      try {
+        let sheetUrl = matrix.sheet_url
+
+        // ── Шаг 1: нет Drive-файла — создаём ──────────────────────────────
+        if (!sheetUrl) {
+          if (!activeTemplate?.sheet_url || !folderId) {
+            errors.push({ matrixId: matrix.matrix_id, error: 'Не настроен шаблон или папка Drive' })
+            continue
+          }
+          sheetUrl = await copyTemplateToFolder(activeTemplate.sheet_url, matrix.name ?? matrix.matrix_id, folderId)
+
+          const newId = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1]
+          if (newId) {
+            await setupMatrixPermissions(newId).catch((e: unknown) =>
+              app.log.warn({ err: e }, '[sync-to-drive] Permission setup failed (non-fatal)'))
+          }
+
+          await clearMatrixShiftsSheet(sheetUrl).catch((e: unknown) =>
+            app.log.warn({ err: e }, '[sync-to-drive] Shifts sheet clear failed (non-fatal)'))
+
+          await prisma.$executeRawUnsafe(
+            `UPDATE matrix_registry SET sheet_url = $1, updated_at = NOW() WHERE id = $2`,
+            sheetUrl, matrix.id
+          )
+
+          if (internalRegistryCfg?.sheet_url) {
+            appendToInternalRegistry(internalRegistryCfg.sheet_url, {
+              matrixId: matrix.matrix_id,
+              status: matrix.status ?? null,
+              sheetUrl,
+            }).catch((e: unknown) => app.log.warn({ err: e }, '[sync-to-drive] Registry append failed (non-fatal)'))
+          }
+        }
+
+        // ── Шаг 2: записываем СВОД ─────────────────────────────────────────
+        const dateStr = matrix.date
+          ? new Date(matrix.date).toISOString().slice(0, 10).replace(/-/g, ' ')
+          : ''
+        await writeSvodData(sheetUrl, {
+          client:        matrix.client ?? null,
+          projectName:   matrix.project_name ?? null,
+          format:        matrix.format ?? null,
+          date:          dateStr,
+          producerMM:    matrix.producer ?? null,
+          salesManager:  matrix.manager ?? null,
+          kpLink:        matrix.kp_link ?? null,
+          curator:       matrix.curator ?? null,
+          businessUnit:  matrix.unit ?? null,
+          brief:         matrix.brief ?? null,
+        }).catch((e: unknown) => app.log.warn({ err: e }, '[sync-to-drive] СВОД write failed (non-fatal)'))
+
+        matricesSynced++
+
+        // ── Шаг 3: синхронизируем блоки всех привязанных проектов ──────────
+        const projects = await prisma.$queryRawUnsafe<{ id: string }[]>(
+          `SELECT id FROM status_rows
+           WHERE matrix_registry_id = $1 AND block_slot IS NOT NULL`,
+          matrix.id
+        )
+
+        for (const project of projects) {
+          try {
+            await syncProjectBlockNow(project.id)
+            blocksSynced++
+          } catch (e: any) {
+            errors.push({ matrixId: matrix.matrix_id, error: `block ${project.id}: ${e?.message ?? e}` })
+          }
+        }
+      } catch (e: any) {
+        errors.push({ matrixId: matrix.matrix_id, error: e?.message ?? String(e) })
+      }
+    }
+
+    return reply.send({ ok: true, matricesSynced, blocksSynced, errors })
   })
 }
