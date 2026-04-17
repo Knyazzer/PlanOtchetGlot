@@ -143,10 +143,19 @@ tr.person-row:hover td { background:#f8faff; }
 .view-toggle button { font-size:12px; padding:5px 14px; border:none; cursor:pointer; background:#fff; color:#64748b; }
 .view-toggle button.active { background:#2563eb; color:#fff; }
 .shifts-table-wrap { flex:1; overflow:auto; padding:0 16px 16px; }
-.sh-table { border-collapse:collapse; font-size:14px; width:100%; }
-.sh-table th { padding:9px 12px; font-size:11px; font-weight:700; color:#64748b; text-align:left; border-bottom:2px solid #e2e8f0; background:#f8fafc; white-space:nowrap; position:sticky; top:0; z-index:1; cursor:pointer; }
+.sh-table { border-collapse:collapse; font-size:13px; width:100%; }
+.sh-table th { padding:7px 6px; font-size:11px; font-weight:700; color:#64748b; text-align:left; border-bottom:2px solid #e2e8f0; background:#f8fafc; white-space:nowrap; position:sticky; top:0; z-index:1; cursor:pointer; }
 .sh-table th:hover { background:#eff6ff; }
-.sh-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.sh-table th.no-hover:hover { background:#f8fafc; }
+.sh-table td { padding:7px 6px; border-bottom:1px solid #f1f5f9; vertical-align:middle; white-space:nowrap; }
+.sh-table .add-date-th { width:28px; text-align:center; cursor:pointer; padding:4px; }
+.sh-table .add-date-th:hover { background:#eff6ff; }
+.add-date-btn { background:none; border:1px dashed #cbd5e1; border-radius:4px; color:#94a3b8; font-size:14px; line-height:1; width:22px; height:22px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.add-date-btn:hover { border-color:#3b82f6; color:#3b82f6; background:#eff6ff; }
+.fmt-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px; letter-spacing:.04em; white-space:nowrap; }
+.fmt-shtat { background:#dbeafe; color:#1d4ed8; }
+.fmt-sz    { background:#fef3c7; color:#92400e; }
+.fmt-ip    { background:#ede9fe; color:#6d28d9; }
 .sh-table tr:hover td { background:#f8faff; }
 
 .date-type-badge { font-size:9px; font-weight:700; padding:1px 6px; border-radius:10px; display:block; margin-top:2px; }
@@ -688,7 +697,8 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
           <div class="shifts-meta-bar">
             <div class="view-toggle">
               <button class="active" onclick="toggleView(this,'team-s1')">Команда</button>
-              <button onclick="toggleView(this,'exp-s1')">Расходы</button>
+              <button onclick="toggleView(this,'usl-s1')">Услуги</button>
+              <button onclick="toggleView(this,'prod-s1')">Производственные расходы</button>
             </div>
             <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
           </div>
@@ -696,32 +706,44 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
             <div id="team-s1">
               <table class="sh-table">
                 <thead><tr>
-                  <th style="min-width:160px">ФИО</th>
-                  <th style="min-width:120px">Должность</th>
-                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">
+                  <th style="white-space:nowrap">ФИО</th>
+                  <th style="white-space:nowrap">Формат</th>
+                  <th style="white-space:nowrap">Должность</th>
+                  <th style="white-space:nowrap;text-align:right;">Цена смены</th>
+                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма<br><span style="font-weight:400;color:#94a3b8;text-transform:none;letter-spacing:0;">факт</span></th>
+                  <th class="add-date-th" title="Добавить дату слева"><button class="add-date-btn">+</button></th>
+                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">
                     17 апр.<br><span class="date-type-badge type-zastroyka">Застройка</span>
                     <div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div>
                   </th>
-                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">
+                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">
                     18 апр.<br><span class="date-type-badge type-efir">Эфир</span>
                     <div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div>
                   </th>
-                  <th style="width:120px">Подтверждено</th>
-                  <th style="width:36px"></th>
+                  <th class="add-date-th" title="Добавить дату справа"><button class="add-date-btn">+</button></th>
+                  <th style="width:100%;cursor:default;" class="no-hover"></th>
                 </tr></thead>
                 <tbody>
-                  <tr><td style="font-weight:600">Иванов Иван</td><td style="color:#64748b">Режиссёр</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-on" onclick="toggleConfirm(this)">Подтв.</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr style="background:#f8fafc"><td style="font-weight:600">Петрова Анна</td><td style="color:#64748b">Оператор</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-off" onclick="toggleConfirm(this)">Ожидание</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr><td style="font-weight:600">Морозов Дмитрий</td><td style="color:#64748b">Осветитель</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-off" onclick="toggleConfirm(this)">Ожидание</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Иванов Иван</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Режиссёр</td><td style="text-align:right;font-weight:600;white-space:nowrap;">15 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">30 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Петрова Анна</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Оператор</td><td style="text-align:right;font-weight:600;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">12 000 ₽</td><td></td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Морозов Дмитрий</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Осветитель</td><td style="text-align:right;font-weight:600;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">16 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                 </tbody>
               </table>
             </div>
-            <div id="exp-s1" style="display:none;">
+            <div id="usl-s1" style="display:none;">
               <table class="exp-table">
                 <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
                 <tbody>
                   <tr><td>Аренда оборудования</td><td style="color:#64748b">ООО «Свет»</td><td style="font-weight:600">45 000 ₽</td><td style="color:#64748b">Безнал</td><td style="color:#94a3b8">Счёт оплачен</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                   <tr style="background:#f8fafc"><td>Монтажник</td><td style="color:#64748b">Фрилансер</td><td style="font-weight:600">8 000 ₽</td><td style="color:#64748b">Наличные</td><td style="color:#94a3b8">—</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="prod-s1" style="display:none;">
+              <table class="exp-table">
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <tbody>
+                  <tr><td style="color:#94a3b8;font-style:italic;" colspan="6">Нет записей</td></tr>
                 </tbody>
               </table>
             </div>
@@ -747,7 +769,8 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
           <div class="shifts-meta-bar">
             <div class="view-toggle">
               <button class="active" onclick="toggleView(this,'team-s2')">Команда</button>
-              <button onclick="toggleView(this,'exp-s2')">Расходы</button>
+              <button onclick="toggleView(this,'usl-s2')">Услуги</button>
+              <button onclick="toggleView(this,'prod-s2')">Производственные расходы</button>
             </div>
             <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
           </div>
@@ -755,24 +778,36 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
             <div id="team-s2">
               <table class="sh-table">
                 <thead><tr>
-                  <th style="min-width:160px">ФИО</th>
-                  <th style="min-width:120px">Должность</th>
-                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">18 апр.<br><span class="date-type-badge type-semka">Съёмка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
-                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">19 апр.<br><span class="date-type-badge type-efir">Эфир</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
-                  <th style="width:120px">Подтверждено</th>
-                  <th style="width:36px"></th>
+                  <th style="white-space:nowrap">ФИО</th>
+                  <th style="white-space:nowrap">Формат</th>
+                  <th style="white-space:nowrap">Должность</th>
+                  <th style="white-space:nowrap;text-align:right;">Цена смены</th>
+                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма<br><span style="font-weight:400;color:#94a3b8;text-transform:none;letter-spacing:0;">факт</span></th>
+                  <th class="add-date-th" title="Добавить дату слева"><button class="add-date-btn">+</button></th>
+                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">18 апр.<br><span class="date-type-badge type-semka">Съёмка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
+                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">19 апр.<br><span class="date-type-badge type-efir">Эфир</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
+                  <th class="add-date-th" title="Добавить дату справа"><button class="add-date-btn">+</button></th>
+                  <th style="width:100%;cursor:default;" class="no-hover"></th>
                 </tr></thead>
                 <tbody>
-                  <tr><td style="font-weight:600">Сидоров Кирилл</td><td style="color:#64748b">Звукорежиссёр</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-on" onclick="toggleConfirm(this)">Подтв.</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr style="background:#f8fafc"><td style="font-weight:600">Смирнова Ольга</td><td style="color:#64748b">Ассистент режиссёра</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-off" onclick="toggleConfirm(this)">Ожидание</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Сидоров Кирилл</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Звукорежиссёр</td><td style="text-align:right;font-weight:600;white-space:nowrap;">18 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">36 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Смирнова Ольга</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Ассистент режиссёра</td><td style="text-align:right;font-weight:600;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">14 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                 </tbody>
               </table>
             </div>
-            <div id="exp-s2" style="display:none;">
+            <div id="usl-s2" style="display:none;">
               <table class="exp-table">
                 <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
                 <tbody>
                   <tr><td>Трансляция онлайн</td><td style="color:#64748b">ООО «Стрим»</td><td style="font-weight:600">25 000 ₽</td><td style="color:#64748b">Безнал</td><td style="color:#94a3b8">—</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="prod-s2" style="display:none;">
+              <table class="exp-table">
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <tbody>
+                  <tr><td style="color:#94a3b8;font-style:italic;" colspan="6">Нет записей</td></tr>
                 </tbody>
               </table>
             </div>
@@ -798,7 +833,8 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
           <div class="shifts-meta-bar">
             <div class="view-toggle">
               <button class="active" onclick="toggleView(this,'team-s3')">Команда</button>
-              <button onclick="toggleView(this,'exp-s3')">Расходы</button>
+              <button onclick="toggleView(this,'usl-s3')">Услуги</button>
+              <button onclick="toggleView(this,'prod-s3')">Производственные расходы</button>
             </div>
             <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
           </div>
@@ -806,22 +842,34 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
             <div id="team-s3">
               <table class="sh-table">
                 <thead><tr>
-                  <th style="min-width:160px">ФИО</th>
-                  <th style="min-width:120px">Должность</th>
-                  <th style="text-align:center;min-width:80px;position:relative;" onclick="toggleDateDrop(this)">20 апр.<br><span class="date-type-badge type-zastroyka">Застройка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
-                  <th style="width:120px">Подтверждено</th>
-                  <th style="width:36px"></th>
+                  <th style="white-space:nowrap">ФИО</th>
+                  <th style="white-space:nowrap">Формат</th>
+                  <th style="white-space:nowrap">Должность</th>
+                  <th style="white-space:nowrap;text-align:right;">Цена смены</th>
+                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма<br><span style="font-weight:400;color:#94a3b8;text-transform:none;letter-spacing:0;">факт</span></th>
+                  <th class="add-date-th" title="Добавить дату слева"><button class="add-date-btn">+</button></th>
+                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">20 апр.<br><span class="date-type-badge type-zastroyka">Застройка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
+                  <th class="add-date-th" title="Добавить дату справа"><button class="add-date-btn">+</button></th>
+                  <th style="width:100%;cursor:default;" class="no-hover"></th>
                 </tr></thead>
                 <tbody>
-                  <tr><td style="font-weight:600">Козлов Антон</td><td style="color:#64748b">Монтажник</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><button class="confirm-off" onclick="toggleConfirm(this)">Ожидание</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Козлов Антон</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Монтажник</td><td style="text-align:right;font-weight:600;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">9 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                 </tbody>
               </table>
             </div>
-            <div id="exp-s3" style="display:none;">
+            <div id="usl-s3" style="display:none;">
               <table class="exp-table">
                 <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
                 <tbody>
                   <tr><td>Транспортировка</td><td style="color:#64748b">ГАЗель</td><td style="font-weight:600">6 000 ₽</td><td style="color:#64748b">Наличные</td><td style="color:#94a3b8">Туда и обратно</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div id="prod-s3" style="display:none;">
+              <table class="exp-table">
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <tbody>
+                  <tr><td style="color:#94a3b8;font-style:italic;" colspan="6">Нет записей</td></tr>
                 </tbody>
               </table>
             </div>
@@ -944,7 +992,7 @@ function toggleView(btn,showId){
   btn.closest('.view-toggle').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   var area=btn.closest('.shifts-table-area');
-  area.querySelectorAll('[id^="team-"],[id^="exp-"]').forEach(el=>el.style.display='none');
+  area.querySelectorAll('[id^="team-"],[id^="usl-"],[id^="prod-"]').forEach(el=>el.style.display='none');
   var el=document.getElementById(showId);
   if(el)el.style.display='block';
 }
