@@ -33,6 +33,10 @@ interface ProjectDay {
   date: string
   type: string
   startTime: string | null
+  timeFrom: string | null
+  timeTo: string | null
+  allDay: boolean
+  firstMotor: string | null
 }
 
 interface MicroProject {
@@ -179,6 +183,20 @@ export function InternalShiftsPanel({ matrixRegistryId }: { matrixRegistryId: st
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'summary' | string>('summary')
   const [creating, setCreating] = useState(false)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+
+  const renameProject = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      api.patch(`/status-rows/${id}`, { name }).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] }),
+  })
+
+  const commitRename = (id: string) => {
+    const name = renameDraft.trim()
+    if (name) renameProject.mutate({ id, name })
+    setRenamingId(null)
+  }
 
   const { data: projects = [], isLoading } = useQuery<MicroProject[]>({
     queryKey: ['micro-projects', matrixRegistryId],
@@ -222,14 +240,30 @@ export function InternalShiftsPanel({ matrixRegistryId }: { matrixRegistryId: st
         </button>
 
         {projects.map((p) => (
-          <button
-            key={p.id}
-            style={{ ...tabBtn(activeTab === p.id), maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
-            title={p.name}
-            onClick={() => { setActiveTab(p.id); setCreating(false) }}
-          >
-            {p.name || '(без названия)'}
-          </button>
+          renamingId === p.id ? (
+            <input
+              key={p.id}
+              autoFocus
+              value={renameDraft}
+              onChange={(e) => setRenameDraft(e.target.value)}
+              onBlur={() => commitRename(p.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') commitRename(p.id)
+                if (e.key === 'Escape') setRenamingId(null)
+              }}
+              style={{ fontSize: 12, padding: '4px 8px', border: '1px solid #3b82f6', borderRadius: 4, outline: 'none', maxWidth: 160, fontFamily: 'inherit' }}
+            />
+          ) : (
+            <button
+              key={p.id}
+              style={{ ...tabBtn(activeTab === p.id), maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
+              title={p.name + ' (двойной клик — переименовать)'}
+              onClick={() => { setActiveTab(p.id); setCreating(false) }}
+              onDoubleClick={(e) => { e.preventDefault(); setRenameDraft(p.name); setRenamingId(p.id) }}
+            >
+              {p.name || '(без названия)'}
+            </button>
+          )
         ))}
 
         <button
@@ -292,104 +326,174 @@ function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId: st
 
   const allLoaded = memberQueries.every((q) => !q.isLoading)
 
-  // All unique dates across all projects, sorted
-  const allDates = useMemo(() => {
-    const set = new Set<string>()
-    projects.forEach((p) => {
-      if (p.date) set.add(toIsoDate(p.date))
-      p.days.forEach((d) => set.add(toIsoDate(d.date)))
-    })
-    memberQueries.forEach((q) => {
-      (q.data ?? []).forEach((m: ProjectMember) => {
-        Object.keys(m.shifts).forEach((rawDate) => set.add(toIsoDate(rawDate)))
+  const DLABEL_COLORS: Record<string, { bg: string; color: string }> = {
+    zastroyka: { bg: '#fef3c7', color: '#92400e' },
+    efir:      { bg: '#dbeafe', color: '#1d4ed8' },
+    deadline:  { bg: '#fee2e2', color: '#991b1b' },
+    semka:     { bg: '#d1fae5', color: '#065f46' },
+  }
+  const TYPE_LABELS: Record<string, string> = {
+    zastroyka: 'Застройка', efir: 'Эфир', deadline: 'Дедлайн', semka: 'Съёмка',
+  }
+
+  const rows = useMemo(() => {
+    return projects.map((p, idx) => {
+      const dateTypeMap: Record<string, string> = {}
+      if (p.date) {
+        const mainDay = p.days.find((d) => toIsoDate(d.date) === toIsoDate(p.date!))
+        dateTypeMap[toIsoDate(p.date)] = mainDay?.type ?? 'efir'
+      }
+      p.days.forEach((d) => {
+        const iso = toIsoDate(d.date)
+        if (!dateTypeMap[iso]) dateTypeMap[iso] = d.type
       })
+      return {
+        project: p,
+        members: memberQueries[idx]?.data ?? [] as ProjectMember[],
+        dateTypeMap,
+        dates: Object.keys(dateTypeMap).sort(),
+      }
     })
-    return [...set].sort()
   }, [projects, memberQueries])
 
-  // Build rows grouped by project
-  const rows = useMemo(() => {
-    return projects.map((p, idx) => ({
-      project: p,
-      members: memberQueries[idx]?.data ?? [] as ProjectMember[],
-    }))
-  }, [projects, memberQueries])
+  const globalDates = useMemo(() => {
+    const all = new Set<string>()
+    rows.forEach((r) => r.dates.forEach((d) => all.add(d)))
+    return [...all].sort()
+  }, [rows])
 
   if (!allLoaded) return <div style={{ padding: 24, color: '#94a3b8', fontSize: 14 }}>Загрузка...</div>
 
-  const hasAny = rows.some((r) => r.members.length > 0)
-  if (!hasAny) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>Нет участников.</div>
+  const visibleRows = rows.filter((r) => r.members.length > 0)
+  if (visibleRows.length === 0) {
+    return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>Нет участников.</div>
+  }
 
-  const thS: React.CSSProperties = { padding: '7px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1, textTransform: 'uppercase', letterSpacing: '0.03em' }
-  const tdS: React.CSSProperties = { padding: '7px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle' }
+  const thS: React.CSSProperties = {
+    padding: '7px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left',
+    borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', position: 'sticky', top: 0,
+    background: '#f8fafc', zIndex: 2, textTransform: 'uppercase', letterSpacing: '0.03em',
+  }
+  const tdS: React.CSSProperties = { padding: '6px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle' }
 
   return (
     <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
-            <th style={{ ...thS, minWidth: 160 }}>Смена</th>
+            <th style={{ ...thS, minWidth: 170 }}>Смена</th>
             <th style={{ ...thS, minWidth: 160 }}>ФИО</th>
-            <th style={{ ...thS, minWidth: 90 }}>Формат</th>
-            <th style={{ ...thS, minWidth: 120 }}>Должность</th>
+            <th style={{ ...thS, minWidth: 80 }}>Формат</th>
+            <th style={{ ...thS, minWidth: 130 }}>Должность</th>
             <th style={{ ...thS, minWidth: 90, textAlign: 'right' }}>Сумма план</th>
             <th style={{ ...thS, minWidth: 90, textAlign: 'right' }}>Сумма факт</th>
-            {allDates.map((d) => (
-              <th key={d} style={{ ...thS, textAlign: 'center', minWidth: 64 }}>{fmtDateShort(d)}</th>
+            {globalDates.map((d) => (
+              <th key={d} style={{ ...thS, minWidth: 60, textAlign: 'center' }}>{fmtDateShort(d)}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ project, members }) => {
-            if (members.length === 0) return null
-            const projDates = new Set<string>()
-            if (project.date) projDates.add(toIsoDate(project.date))
-            project.days.forEach((d) => projDates.add(toIsoDate(d.date)))
-            const projDateCols = [...projDates].sort()
-
-            return members.map((m, mi) => (
-              <tr key={m.id} style={{ background: mi % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                {mi === 0 && (
-                  <td rowSpan={members.length} style={{ ...tdS, verticalAlign: 'top', borderRight: '1px solid #e2e8f0', background: '#f8fafc', minWidth: 160, maxWidth: 200 }}>
-                    <div style={{ fontWeight: 600, fontSize: 12, color: '#1e293b', marginBottom: 4, lineHeight: 1.3 }}>{project.name}</div>
+          {visibleRows.map(({ project, members, dateTypeMap, dates }, vIdx) => {
+            const rowCount = members.length + 1
+            return (
+              <>
+                {/* date-label-row */}
+                <tr key={`${project.id}-lbl`} style={{ background: '#f8fafc' }}>
+                  <td rowSpan={rowCount} style={{
+                    ...tdS, verticalAlign: 'top', borderRight: '1px solid #e2e8f0',
+                    background: '#f8fafc', minWidth: 170, maxWidth: 200, padding: '10px 12px',
+                    borderTop: '2px solid #e2e8f0',
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: '#0f172a', lineHeight: 1.3, marginBottom: 4 }}>
+                      {project.name || '(без названия)'}
+                    </div>
                     {project.date && (
-                      <div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>{fmtDateFull(project.date)}</div>
+                      <div style={{ fontSize: 11, color: '#3b82f6', marginBottom: 5, fontWeight: 500 }}>
+                        {fmtDateShort(project.date)}
+                      </div>
                     )}
-                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: (STATUS_COLORS[project.status] ?? '#94a3b8') + '22', color: STATUS_COLORS[project.status] ?? '#94a3b8', fontWeight: 600 }}>
-                      {STATUS_LABELS[project.status] ?? project.status}
-                    </span>
+                    <div style={{ marginBottom: project.execProducer ? 5 : 0 }}>
+                      <span style={{
+                        fontSize: 10, padding: '2px 7px', borderRadius: 10,
+                        background: (STATUS_COLORS[project.status] ?? '#94a3b8') + '22',
+                        color: STATUS_COLORS[project.status] ?? '#94a3b8', fontWeight: 700,
+                      }}>
+                        {STATUS_LABELS[project.status] ?? project.status}
+                      </span>
+                    </div>
                     {project.execProducer && (
-                      <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>исп.пр.: {project.execProducer}</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>
+                        Исп. пр.: {project.execProducer}
+                      </div>
                     )}
                   </td>
-                )}
-                <td style={{ ...tdS, fontWeight: 500, color: '#1e293b' }}>{m.name}</td>
-                <td style={{ ...tdS }}><EmpBadge type={m.employment_type} /></td>
-                <td style={{ ...tdS, color: '#64748b' }}>{m.position ?? <span style={{ color: '#cbd5e1' }}>—</span>}</td>
-                <td style={{ ...tdS, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1e293b' }}>
-                  {calcSum(m.rate_plan, m.shifts, projDateCols)} {m.rate_plan ? '₽' : ''}
-                </td>
-                <td style={{ ...tdS, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1e293b' }}>
-                  {calcSum(m.rate_fact, m.shifts, projDateCols)} {m.rate_fact ? '₽' : ''}
-                </td>
-                {allDates.map((d) => {
-                  const v = normalise(m.shifts[d])
-                  const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
-                  const inProj = projDates.has(d)
-                  return (
-                    <td key={d} style={{ ...tdS, textAlign: 'center', background: !inProj ? '#f8fafc' : undefined }}>
-                      {confirmed && (
-                        <span title={confirmed === 'yes' ? 'Подтверждён' : 'Не подтверждён'} style={{
-                          display: 'inline-block', width: 20, height: 20, borderRadius: 5,
-                          background: confirmed === 'yes' ? '#bbf7d0' : '#fef08a',
-                          border: confirmed === 'yes' ? '1px solid #22c55e' : '1px solid #f59e0b',
-                        }} />
-                      )}
+                  <td style={{ ...tdS, borderTop: '2px solid #e2e8f0' }} />
+                  <td style={{ ...tdS, borderTop: '2px solid #e2e8f0' }} />
+                  <td style={{ ...tdS, borderTop: '2px solid #e2e8f0' }} />
+                  <td style={{ ...tdS, borderTop: '2px solid #e2e8f0' }} />
+                  <td style={{ ...tdS, borderTop: '2px solid #e2e8f0' }} />
+                  {globalDates.map((d) => {
+                    const type = dateTypeMap[d]
+                    const tColor = type ? (DLABEL_COLORS[type] ?? { bg: '#f3e8ff', color: '#7e22ce' }) : null
+                    return (
+                      <td key={d} style={{ ...tdS, textAlign: 'center', borderTop: '2px solid #e2e8f0' }}>
+                        {type && tColor ? (
+                          <span style={{
+                            fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 10,
+                            background: tColor.bg, color: tColor.color, whiteSpace: 'nowrap',
+                          }}>
+                            {TYPE_LABELS[type] ?? type}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#e2e8f0', fontSize: 11 }}>—</span>
+                        )}
+                      </td>
+                    )
+                  })}
+                </tr>
+
+                {/* member rows */}
+                {members.map((m, mi) => (
+                  <tr key={m.id} style={{ background: mi % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                    <td style={{ ...tdS, fontWeight: 600, color: '#1e293b' }}>{m.name}</td>
+                    <td style={tdS}><EmpBadge type={m.employment_type} /></td>
+                    <td style={{ ...tdS, color: '#64748b' }}>{m.position ?? <span style={{ color: '#cbd5e1' }}>—</span>}</td>
+                    <td style={{ ...tdS, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1e293b' }}>
+                      {calcSum(m.rate_plan, m.shifts, dates)}{m.rate_plan ? ' ₽' : ''}
                     </td>
-                  )
-                })}
-              </tr>
-            ))
+                    <td style={{ ...tdS, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1e293b' }}>
+                      {calcSum(m.rate_fact, m.shifts, dates)}{m.rate_fact ? ' ₽' : ''}
+                    </td>
+                    {globalDates.map((d) => {
+                      if (!dateTypeMap[d]) {
+                        return <td key={d} style={{ ...tdS, background: '#f3f4f6' }} />
+                      }
+                      const v = normalise(m.shifts[d])
+                      const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
+                      return (
+                        <td key={d} style={{ ...tdS, textAlign: 'center' }}>
+                          {confirmed ? (
+                            <span title={confirmed === 'yes' ? 'Подтверждён' : 'Не подтверждён'} style={{
+                              display: 'inline-block', width: 18, height: 18, borderRadius: 5,
+                              background: confirmed === 'yes' ? '#22c55e' : '#f59e0b',
+                            }} />
+                          ) : (
+                            <span style={{ display: 'inline-block', width: 18, height: 4, borderRadius: 2, background: '#f1f5f9' }} />
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+
+                {/* section-gap */}
+                {vIdx < visibleRows.length - 1 && (
+                  <tr key={`${project.id}-gap`}>
+                    <td colSpan={6 + globalDates.length} style={{ height: 12, background: '#f8fafc', borderTop: '2px solid #e2e8f0', padding: 0 }} />
+                  </tr>
+                )}
+              </>
+            )
           })}
         </tbody>
       </table>
@@ -504,7 +608,30 @@ function InfoField({ label, fieldKey, value, onSave }: {
   )
 }
 
-// ─── ProjectInfoPanel ─────────────────────────────────────────────────────────
+// ─── ProjectInfoPanel ──────────────────────────────────────────────────────
+
+type DatePopup = {
+  mode: 'add' | 'edit'
+  origDate: string        // original ISO date (key for edit)
+  date: string            // date input value (YYYY-MM-DD)
+  type: string
+  isMain?: boolean
+  timeFrom: string
+  timeTo: string
+  startTime: string       // начало эфира (efir) — reused for съёмка first motor display
+  allDay: boolean
+  firstMotor: string
+}
+
+function TimeField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{ flex: 1 }}>
+      <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 3 }}>{label}</label>
+      <input type="time" value={value} onChange={(e) => onChange(e.target.value)}
+        style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', fontSize: 12, color: '#1e293b', fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' as const }} />
+    </div>
+  )
+}
 
 function ProjectInfoPanel({ project, onSave, onUpdated }: {
   project: MicroProject
@@ -512,9 +639,7 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
   onUpdated: () => void
 }) {
   const [editingStatus, setEditingStatus] = useState(false)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [newDate, setNewDate] = useState('')
-  const [newType, setNewType] = useState('efir')
+  const [datePopup, setDatePopup] = useState<DatePopup | null>(null)
 
   const TYPE_LABELS: Record<string, string> = {
     zastroyka: 'Застройка', efir: 'Эфир', deadline: 'Дедлайн', semka: 'Съёмка',
@@ -541,23 +666,64 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
     return entries.sort((a, b) => a.date.localeCompare(b.date))
   }, [project.date, project.days])
 
+  const buildDaysPayload = (days: ProjectDay[]) =>
+    days.map((d) => ({
+      id: d.id, date: d.date, type: d.type,
+      startTime: d.startTime ?? null,
+      timeFrom: d.timeFrom ?? null,
+      timeTo: d.timeTo ?? null,
+      allDay: d.allDay ?? false,
+      firstMotor: d.firstMotor ?? null,
+    }))
+
   const addDate = useMutation({
-    mutationFn: () => {
-      const iso = toIsoDate(new Date(newDate).toISOString())
-      const existingDays = project.days.map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime }))
+    mutationFn: (p: DatePopup) => {
+      const iso = p.date
+      const existingDays = project.days
       if (existingDays.some((d) => toIsoDate(d.date) === iso)) return Promise.resolve(null)
       return api.patch(`/status-rows/${project.id}`, {
-        days: [...existingDays, { date: new Date(newDate).toISOString(), type: newType, startTime: null }],
+        days: [
+          ...buildDaysPayload(existingDays),
+          {
+            date: new Date(iso).toISOString(), type: p.type,
+            startTime: p.startTime || null,
+            timeFrom: p.timeFrom || null,
+            timeTo: p.timeTo || null,
+            allDay: p.allDay,
+            firstMotor: p.firstMotor || null,
+          },
+        ],
       }).then((r) => r.data)
     },
-    onSuccess: () => { onUpdated(); setShowAddForm(false); setNewDate('') },
+    onSuccess: () => { onUpdated(); setDatePopup(null) },
+  })
+
+  const updateDay = useMutation({
+    mutationFn: (p: DatePopup) => {
+      const updated = project.days.map((d) =>
+        toIsoDate(d.date) === p.origDate
+          ? {
+              id: d.id,
+              date: p.date ? new Date(p.date).toISOString() : d.date,
+              type: p.type,
+              startTime: p.startTime || null,
+              timeFrom: p.timeFrom || null,
+              timeTo: p.timeTo || null,
+              allDay: p.allDay,
+              firstMotor: p.firstMotor || null,
+            }
+          : { id: d.id, date: d.date, type: d.type, startTime: d.startTime ?? null, timeFrom: d.timeFrom ?? null, timeTo: d.timeTo ?? null, allDay: d.allDay ?? false, firstMotor: d.firstMotor ?? null }
+      )
+      return api.patch(`/status-rows/${project.id}`, { days: updated }).then((r) => r.data)
+    },
+    onSuccess: () => { onUpdated(); setDatePopup(null) },
   })
 
   const removeDate = useMutation({
     mutationFn: (date: string) => {
       const remaining = project.days
         .filter((d) => toIsoDate(d.date) !== date)
-        .map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime }))
+        .map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime ?? null, timeFrom: d.timeFrom ?? null, timeTo: d.timeTo ?? null, allDay: d.allDay ?? false, firstMotor: d.firstMotor ?? null }))
       return api.patch(`/status-rows/${project.id}`, { days: remaining }).then((r) => r.data)
     },
     onSuccess: onUpdated,
@@ -568,6 +734,33 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
     fontSize: 12, color: '#1e293b', fontFamily: 'inherit', outline: 'none',
     background: '#fff', boxSizing: 'border-box',
   }
+
+  const openAdd = () => setDatePopup({ mode: 'add', origDate: '', date: '', type: 'efir', timeFrom: '', timeTo: '', startTime: '', allDay: false, firstMotor: '' })
+  const openEdit = (entry: { date: string; type: string; isMain?: boolean }) => {
+    const day = project.days.find((d) => toIsoDate(d.date) === entry.date)
+    setDatePopup({
+      mode: 'edit', origDate: entry.date, date: entry.date, type: entry.type,
+      isMain: entry.isMain,
+      timeFrom: day?.timeFrom ?? '',
+      timeTo: day?.timeTo ?? '',
+      startTime: day?.startTime ?? '',
+      allDay: day?.allDay ?? false,
+      firstMotor: day?.firstMotor ?? '',
+    })
+  }
+  const closePopup = () => setDatePopup(null)
+
+  const submitPopup = () => {
+    if (!datePopup) return
+    if (datePopup.mode === 'add') {
+      if (!datePopup.date) return
+      addDate.mutate(datePopup)
+    } else {
+      updateDay.mutate(datePopup)
+    }
+  }
+
+  const isPending = addDate.isPending || updateDay.isPending
 
   return (
     <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid #e2e8f0', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 10, padding: 14, overflowY: 'auto' }}>
@@ -606,7 +799,7 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
       <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px 8px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Даты и время</span>
-          <button onClick={() => setShowAddForm((v) => !v)}
+          <button onClick={openAdd}
             style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: '1px solid #3b82f6', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             + Дата
           </button>
@@ -616,7 +809,12 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
           {dateCols.map((entry) => {
             const tColor = TYPE_COLORS[entry.type] ?? { bg: '#f3e8ff', color: '#7e22ce' }
             return (
-              <div key={entry.date} style={{ padding: '7px 12px', borderBottom: '1px solid #f8fafc', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+              <div key={entry.date}
+                onClick={() => openEdit(entry)}
+                style={{ padding: '7px 12px', borderBottom: '1px solid #f8fafc', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, cursor: 'pointer' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{fmtDateShort(entry.date)}</span>
@@ -626,14 +824,7 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
                   </div>
                   {entry.isMain && <span style={{ fontSize: 10, color: '#94a3b8' }}>основная</span>}
                 </div>
-                {!entry.isMain && (
-                  <button onClick={() => removeDate.mutate(entry.date)}
-                    style={{ flexShrink: 0, background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '1px 3px' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = '#cbd5e1')}>
-                    ×
-                  </button>
-                )}
+                <span style={{ fontSize: 10, color: '#cbd5e1', flexShrink: 0, marginTop: 3 }}>✎</span>
               </div>
             )
           })}
@@ -641,35 +832,108 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
             <div style={{ padding: 12, fontSize: 12, color: '#cbd5e1', textAlign: 'center' }}>Нет дат</div>
           )}
         </div>
+      </div>
 
-        {showAddForm && (
-          <div style={{ padding: '10px 12px', borderTop: '2px solid #e2e8f0', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 2 }}>Дата</label>
-              <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputS} />
+      {/* Date popup */}
+      {datePopup && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onMouseDown={closePopup}>
+          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', padding: 20, width: 300, display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '90vh', overflowY: 'auto' }}
+            onMouseDown={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+              {datePopup.mode === 'add' ? 'Добавить дату' : 'Редактировать дату'}
             </div>
+
+            {/* Date field */}
             <div>
-              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 2 }}>Тип</label>
-              <select value={newType} onChange={(e) => setNewType(e.target.value)} style={inputS}>
+              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 4 }}>Дата</label>
+              <input type="date" value={datePopup.date}
+                onChange={(e) => setDatePopup((p) => p ? { ...p, date: e.target.value } : null)}
+                style={inputS} />
+            </div>
+
+            {/* Type selector */}
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 4 }}>Тип</label>
+              <select value={datePopup.type} onChange={(e) => setDatePopup((p) => p ? { ...p, type: e.target.value } : null)} style={inputS}>
                 <option value="zastroyka">Застройка</option>
                 <option value="efir">Эфир</option>
                 <option value="deadline">Дедлайн</option>
                 <option value="semka">Съёмка</option>
               </select>
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button onClick={() => { if (newDate) addDate.mutate() }} disabled={!newDate || addDate.isPending}
-                style={{ flex: 1, fontSize: 12, padding: '6px', borderRadius: 6, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
-                {addDate.isPending ? '...' : 'Добавить'}
+
+            {/* Эфир: диапазон + начало эфира */}
+            {datePopup.type === 'efir' && (
+              <>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <TimeField label="Начало" value={datePopup.timeFrom}
+                    onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
+                  <TimeField label="Конец" value={datePopup.timeTo}
+                    onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
+                </div>
+                <TimeField label="Начало эфира" value={datePopup.startTime}
+                  onChange={(v) => setDatePopup((p) => p ? { ...p, startTime: v } : null)} />
+              </>
+            )}
+
+            {/* Застройка: диапазон */}
+            {datePopup.type === 'zastroyka' && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <TimeField label="Начало" value={datePopup.timeFrom}
+                  onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
+                <TimeField label="Конец" value={datePopup.timeTo}
+                  onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
+              </div>
+            )}
+
+            {/* Дедлайн: allDay checkbox */}
+            {datePopup.type === 'deadline' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="checkbox" id="allday-chk" checked={datePopup.allDay}
+                  onChange={(e) => setDatePopup((p) => p ? { ...p, allDay: e.target.checked } : null)}
+                  style={{ width: 16, height: 16 }} />
+                <label htmlFor="allday-chk" style={{ fontSize: 12, color: '#1e293b', cursor: 'pointer' }}>Весь день</label>
+              </div>
+            )}
+
+            {/* Съёмка: диапазон + первый мотор */}
+            {datePopup.type === 'semka' && (
+              <>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <TimeField label="Начало" value={datePopup.timeFrom}
+                    onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
+                  <TimeField label="Конец" value={datePopup.timeTo}
+                    onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
+                </div>
+                <TimeField label="Первый мотор" value={datePopup.firstMotor}
+                  onChange={(v) => setDatePopup((p) => p ? { ...p, firstMotor: v } : null)} />
+              </>
+            )}
+
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: 6, paddingTop: 4 }}>
+              <button
+                onClick={submitPopup}
+                disabled={(!datePopup.date) || isPending}
+                style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 6, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: (!datePopup.date || isPending) ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: (!datePopup.date || isPending) ? 0.6 : 1 }}>
+                {isPending ? '...' : datePopup.mode === 'add' ? 'Добавить' : 'Сохранить'}
               </button>
-              <button onClick={() => { setShowAddForm(false); setNewDate('') }}
-                style={{ flex: 1, fontSize: 12, padding: '6px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
+              {datePopup.mode === 'edit' && !datePopup.isMain && (
+                <button
+                  onClick={() => { removeDate.mutate(datePopup.origDate); closePopup() }}
+                  style={{ fontSize: 12, padding: '7px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff', color: '#ef4444', cursor: 'pointer' }}>
+                  Удалить
+                </button>
+              )}
+              <button onClick={closePopup}
+                style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
                 Отмена
               </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

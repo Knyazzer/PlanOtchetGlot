@@ -59,6 +59,8 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
   const qc = useQueryClient()
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
+  const [leftWidth, setLeftWidth] = useState(380)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const { data: tasks = [], isLoading } = useQuery<GanttTask[]>({
     queryKey: ['gantt-tasks', matrixId],
@@ -92,12 +94,12 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
   )
   const minDate = taskDates.length > 0 ? startOfDay(new Date(Math.min(...taskDates.map((d) => d.getTime())))) : startOfDay(new Date())
   const maxDate = taskDates.length > 0 ? startOfDay(new Date(Math.max(...taskDates.map((d) => d.getTime())))) : startOfDay(new Date())
-  const totalDays = Math.max(differenceInDays(maxDate, minDate) + 1, 14)
+  const totalDays = Math.max(differenceInDays(maxDate, minDate) + 1, 30)
 
-  const inputS: React.CSSProperties = {
-    fontSize: 12, padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 5,
-    color: '#1e293b', background: '#fff',
-  }
+  const startAdding = () => { setAdding(true); setTimeout(() => inputRef.current?.focus(), 0) }
+  const commitAdd = () => { if (newName.trim()) createTask.mutate() }
+  const cancelAdd = () => { setAdding(false); setNewName('') }
+
   const thS: React.CSSProperties = {
     padding: '6px 10px', fontSize: 11, fontWeight: 600, color: '#94a3b8',
     textAlign: 'left', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap',
@@ -106,11 +108,31 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
   const tdS: React.CSSProperties = {
     padding: '5px 10px', fontSize: 13, borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle',
   }
+  const inputS: React.CSSProperties = {
+    fontSize: 12, padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 5,
+    color: '#1e293b', background: '#fff',
+  }
+
+  // Resizable divider handler
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const startX = e.clientX
+    const startW = leftWidth
+    const onMove = (ev: MouseEvent) => {
+      setLeftWidth(Math.max(200, Math.min(700, startW + ev.clientX - startX)))
+    }
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', userSelect: 'none' }}>
       {/* Left: task table */}
-      <div style={{ width: 420, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div style={{ width: leftWidth, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {isLoading && <div style={{ padding: 20, color: '#94a3b8', fontSize: 13 }}>Загрузка...</div>}
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
@@ -169,52 +191,48 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
                 </tr>
               ))}
 
-              {adding && (
+              {adding ? (
                 <tr>
                   <td style={tdS} />
                   <td style={tdS} colSpan={3}>
                     <input
-                      autoFocus
+                      ref={inputRef}
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newName.trim()) createTask.mutate()
-                        if (e.key === 'Escape') { setAdding(false); setNewName('') }
+                        if (e.key === 'Enter' && newName.trim()) commitAdd()
+                        if (e.key === 'Escape') cancelAdd()
                       }}
-                      placeholder="Название задачи"
+                      placeholder="Название задачи…"
                       style={{ ...inputS, width: '100%' }}
                     />
                   </td>
                   <td style={tdS}>
-                    <div style={{ display: 'flex', gap: 3 }}>
-                      <button
-                        onClick={() => { if (newName.trim()) createTask.mutate() }}
-                        disabled={!newName.trim() || createTask.isPending}
-                        style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}
-                      >OK</button>
-                      <button
-                        onClick={() => { setAdding(false); setNewName('') }}
-                        style={{ fontSize: 10, padding: '2px 4px', borderRadius: 4, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#64748b' }}
-                      >×</button>
-                    </div>
+                    <button onClick={cancelAdd} style={{ fontSize: 12, color: '#94a3b8', border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
                   </td>
+                </tr>
+              ) : (
+                <tr
+                  onClick={startAdding}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  <td colSpan={5} style={{ ...tdS, textAlign: 'center', color: '#cbd5e1', fontSize: 18, padding: '4px' }}>+</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
-        {!adding && (
-          <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9' }}>
-            <button
-              onClick={() => setAdding(true)}
-              style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px dashed #cbd5e1', background: 'none', color: '#64748b', cursor: 'pointer' }}
-            >
-              + Добавить задачу
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* Resizable divider */}
+      <div
+        onMouseDown={startResize}
+        style={{ width: 5, flexShrink: 0, cursor: 'col-resize', background: '#e2e8f0', transition: 'background 0.15s', borderLeft: '1px solid #e2e8f0' }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = '#bfdbfe')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = '#e2e8f0')}
+      />
 
       {/* Right: Gantt chart */}
       <div style={{ flex: 1, overflowX: 'auto', overflowY: 'auto' }}>
@@ -223,25 +241,78 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
             Добавьте задачи и укажите даты, чтобы увидеть диаграмму.
           </div>
         ) : (
-          <GanttChart tasks={tasks} minDate={minDate} totalDays={totalDays} />
+          <GanttChart
+            tasks={tasks}
+            minDate={minDate}
+            totalDays={totalDays}
+            onUpdate={(id, startDate, deadline) => updateTask.mutate({ id, startDate, deadline })}
+          />
         )}
       </div>
     </div>
   )
 }
 
-function GanttChart({ tasks, minDate, totalDays }: { tasks: GanttTask[]; minDate: Date; totalDays: number }) {
+function GanttChart({
+  tasks, minDate, totalDays, onUpdate,
+}: {
+  tasks: GanttTask[]; minDate: Date; totalDays: number
+  onUpdate: (id: string, startDate: string | null, deadline: string | null) => void
+}) {
   const DAY_W = 28
   const ROW_H = 33
   const MONTH_H = 20
 
+  type DragType = 'move' | 'resize-left' | 'resize-right' | 'create'
+  const [drag, setDrag] = useState<{
+    type: DragType; taskId: string; startX: number
+    origStart: number | null; origEnd: number | null
+    curStart: number | null; curEnd: number | null
+  } | null>(null)
+
+  useEffect(() => {
+    if (!drag) return
+    const onMove = (e: MouseEvent) => {
+      const delta = Math.round((e.clientX - drag.startX) / DAY_W)
+      setDrag((prev) => {
+        if (!prev) return null
+        let s = prev.origStart, en = prev.origEnd
+        if (prev.type === 'move') {
+          s = prev.origStart != null ? prev.origStart + delta : null
+          en = prev.origEnd != null ? prev.origEnd + delta : null
+        } else if (prev.type === 'resize-left') {
+          s = prev.origStart != null ? Math.min(prev.origStart + delta, prev.origEnd ?? prev.origStart) : null
+        } else if (prev.type === 'resize-right') {
+          en = prev.origEnd != null ? Math.max(prev.origEnd + delta, prev.origStart ?? prev.origEnd) : null
+        } else if (prev.type === 'create') {
+          const raw = (prev.origStart ?? 0) + delta
+          s = Math.min(prev.origStart ?? 0, raw)
+          en = Math.max(prev.origStart ?? 0, raw)
+        }
+        return { ...prev, curStart: s, curEnd: en }
+      })
+    }
+    const onUp = () => {
+      setDrag((prev) => {
+        if (prev) {
+          const toISO = (days: number | null) => {
+            if (days == null) return null
+            const d = new Date(minDate); d.setDate(d.getDate() + days); return d.toISOString()
+          }
+          onUpdate(prev.taskId, toISO(prev.curStart), toISO(prev.curEnd))
+        }
+        return null
+      })
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  }, [drag?.taskId, drag?.type, drag?.startX])
+
   const days = Array.from({ length: totalDays }, (_, i) => {
-    const d = new Date(minDate)
-    d.setDate(d.getDate() + i)
-    return d
+    const d = new Date(minDate); d.setDate(d.getDate() + i); return d
   })
 
-  // Group days into month spans for the month header row
   const monthGroups: { label: string; count: number }[] = []
   for (const d of days) {
     const label = format(d, 'LLL yyyy', { locale: ru })
@@ -254,6 +325,8 @@ function GanttChart({ tasks, minDate, totalDays }: { tasks: GanttTask[]; minDate
 
   const todayOffset = differenceInDays(startOfDay(new Date()), minDate)
   const showToday = todayOffset >= 0 && todayOffset < totalDays
+
+  const HANDLE_W = 7
 
   return (
     <div style={{ minWidth: totalDays * DAY_W + 1, position: 'relative' }}>
@@ -289,7 +362,7 @@ function GanttChart({ tasks, minDate, totalDays }: { tasks: GanttTask[]; minDate
         })}
       </div>
 
-      {/* Task rows + today line */}
+      {/* Task rows */}
       <div style={{ position: 'relative' }}>
         {showToday && (
           <div style={{
@@ -300,28 +373,85 @@ function GanttChart({ tasks, minDate, totalDays }: { tasks: GanttTask[]; minDate
         {tasks.map((t) => {
           const start = t.start_date ? differenceInDays(startOfDay(parseISO(t.start_date)), minDate) : null
           const end   = t.deadline   ? differenceInDays(startOfDay(parseISO(t.deadline)),   minDate) : null
-          const left  = start != null ? Math.max(0, start) * DAY_W : null
-          const width = start != null && end != null ? Math.max(1, end - start + 1) * DAY_W : null
+
+          const isDragging = drag?.taskId === t.id
+          const dStart = isDragging ? drag.curStart : start
+          const dEnd   = isDragging ? drag.curEnd   : end
+
+          const left  = dStart != null ? Math.max(0, dStart) * DAY_W : null
+          const width = dStart != null && dEnd != null ? Math.max(DAY_W, (dEnd - dStart + 1) * DAY_W) : null
+          const hasBar = left != null && width != null
 
           return (
             <div key={t.id} style={{ height: ROW_H, position: 'relative', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
-              {days.map((d, i) => (
-                (d.getDay() === 0 || d.getDay() === 6) && (
-                  <div key={i} style={{ position: 'absolute', left: i * DAY_W, width: DAY_W, height: '100%', background: '#f8fafc' }} />
-                )
-              ))}
-              {left != null && width != null && (
+              {/* Weekend shading */}
+              {days.map((d, i) =>
+                (d.getDay() === 0 || d.getDay() === 6) ? (
+                  <div key={i} style={{ position: 'absolute', left: i * DAY_W, width: DAY_W, height: '100%', background: '#f8fafc', pointerEvents: 'none' }} />
+                ) : null
+              )}
+
+              {/* Drag-to-create zone (only when no bar) */}
+              {!hasBar && (
+                <div
+                  style={{ position: 'absolute', inset: 0, zIndex: 0, cursor: 'crosshair' }}
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    const clickDay = Math.floor((e.clientX - rect.left) / DAY_W)
+                    setDrag({ type: 'create', taskId: t.id, startX: e.clientX, origStart: clickDay, origEnd: clickDay, curStart: clickDay, curEnd: clickDay })
+                  }}
+                />
+              )}
+
+              {/* Bar */}
+              {hasBar && (
                 <div
                   title={`${t.name}: ${fmtDate(t.start_date)} – ${fmtDate(t.deadline)}`}
                   style={{
-                    position: 'absolute', left: left + 2, width: width - 4,
-                    height: 18, borderRadius: 4,
-                    background: t.done ? '#bbf7d0' : '#bfdbfe',
-                    border: `1px solid ${t.done ? '#22c55e' : '#3b82f6'}`,
+                    position: 'absolute', left: left! + 2, width: width! - 4,
+                    height: 20, borderRadius: 4,
+                    background: isDragging ? '#93c5fd' : (t.done ? '#bbf7d0' : '#bfdbfe'),
+                    border: `1px solid ${isDragging ? '#3b82f6' : (t.done ? '#22c55e' : '#3b82f6')}`,
                     opacity: t.done ? 0.7 : 1,
-                    zIndex: 1,
+                    zIndex: 2, display: 'flex', alignItems: 'stretch', cursor: 'grab',
+                    boxShadow: isDragging ? '0 2px 8px rgba(59,130,246,0.3)' : undefined,
                   }}
-                />
+                  onMouseDown={(e) => {
+                    e.preventDefault()
+                    setDrag({ type: 'move', taskId: t.id, startX: e.clientX, origStart: start, origEnd: end, curStart: start, curEnd: end })
+                  }}
+                >
+                  {/* Left resize handle */}
+                  <div
+                    style={{ width: HANDLE_W, cursor: 'ew-resize', flexShrink: 0, borderRadius: '4px 0 0 4px' }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      setDrag({ type: 'resize-left', taskId: t.id, startX: e.clientX, origStart: start, origEnd: end, curStart: start, curEnd: end })
+                    }}
+                  />
+                  {/* Center - label */}
+                  <div style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', fontSize: 10, color: '#1e40af', display: 'flex', alignItems: 'center', padding: '0 2px' }} />
+                  {/* Right resize handle */}
+                  <div
+                    style={{ width: HANDLE_W, cursor: 'ew-resize', flexShrink: 0, borderRadius: '0 4px 4px 0' }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation(); e.preventDefault()
+                      setDrag({ type: 'resize-right', taskId: t.id, startX: e.clientX, origStart: start, origEnd: end, curStart: start, curEnd: end })
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Drag-create ghost bar */}
+              {isDragging && drag.type === 'create' && drag.curStart != null && drag.curEnd != null && (
+                <div style={{
+                  position: 'absolute',
+                  left: drag.curStart * DAY_W + 2,
+                  width: (drag.curEnd - drag.curStart + 1) * DAY_W - 4,
+                  height: 20, borderRadius: 4,
+                  background: '#bfdbfe', border: '1px dashed #3b82f6', opacity: 0.8, zIndex: 2, pointerEvents: 'none',
+                }} />
               )}
             </div>
           )

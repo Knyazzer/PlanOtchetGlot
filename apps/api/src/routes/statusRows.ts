@@ -8,8 +8,12 @@ import { syncProjectBlock, nextBlockSlot, unlinkAndShiftBlocks } from '../servic
 const daySchema = z.object({
   id: z.string().optional(),
   date: z.string(),
-  type: z.enum(['zastroyka', 'efir']),
+  type: z.enum(['zastroyka', 'efir', 'deadline', 'semka']),
   startTime: z.string().nullable().optional(),
+  timeFrom: z.string().nullable().optional(),
+  timeTo: z.string().nullable().optional(),
+  allDay: z.boolean().optional(),
+  firstMotor: z.string().nullable().optional(),
 })
 
 const createStatusRowSchema = z.object({
@@ -207,15 +211,19 @@ export async function statusRowsRoutes(app: FastifyInstance) {
 
     if (days !== undefined) {
       await prisma.projectDay.deleteMany({ where: { projectId: id } })
-      if (days.length > 0) {
-        await prisma.projectDay.createMany({
-          data: days.map((d) => ({
-            projectId: id,
-            date: new Date(d.date),
-            type: d.type,
-            startTime: d.startTime ?? null,
-          })),
-        })
+      for (const d of days) {
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO "project_days" (id, project_id, date, type, start_time, time_from, time_to, all_day, first_motor, created_at)
+           VALUES (gen_random_uuid(), $1, $2, $3::"DayType", $4, $5, $6, $7, $8, NOW())`,
+          id,
+          new Date(d.date),
+          d.type,
+          d.startTime ?? null,
+          (d as any).timeFrom ?? null,
+          (d as any).timeTo ?? null,
+          (d as any).allDay ?? false,
+          (d as any).firstMotor ?? null,
+        )
       }
     }
 

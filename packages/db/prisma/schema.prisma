@@ -85,6 +85,8 @@ enum ChangeSource {
 enum DayType {
   zastroyka
   efir
+  deadline
+  semka
 }
 
 // ─── Models ───────────────────────────────────────────────────────────────────
@@ -154,12 +156,16 @@ model StatusRow {
 }
 
 model ProjectDay {
-  id        String   @id @default(uuid())
-  projectId String   @map("project_id")
-  date      DateTime
-  type      DayType
-  startTime String?  @map("start_time")
-  createdAt DateTime @default(now()) @map("created_at")
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  date       DateTime
+  type       DayType
+  startTime  String?  @map("start_time")
+  timeFrom   String?  @map("time_from")
+  timeTo     String?  @map("time_to")
+  allDay     Boolean  @default(false) @map("all_day")
+  firstMotor String?  @map("first_motor")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   statusRow StatusRow @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
