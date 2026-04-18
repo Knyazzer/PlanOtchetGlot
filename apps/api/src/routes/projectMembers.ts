@@ -16,10 +16,13 @@ const shiftValueSchema = z.union([
 ])
 
 const memberSchema = z.object({
-  projectId: z.string().uuid(),
-  name:      z.string().min(1),
-  position:  z.string().nullable().optional(),
-  shifts:    z.record(shiftValueSchema).optional(),
+  projectId:      z.string().uuid(),
+  name:           z.string().min(1),
+  position:       z.string().nullable().optional(),
+  shifts:         z.record(shiftValueSchema).optional(),
+  employmentType: z.string().nullable().optional(),
+  ratePlan:       z.number().nullable().optional(),
+  rateFact:       z.number().nullable().optional(),
 })
 
 export type ShiftValue = z.infer<typeof shiftValueSchema>
@@ -29,6 +32,9 @@ interface MemberRow {
   project_id: string
   name: string
   position: string | null
+  employment_type: string | null
+  rate_plan: string | null
+  rate_fact: string | null
   shifts: Record<string, ShiftValue>
   created_at: Date
   updated_at: Date
@@ -51,14 +57,17 @@ export async function projectMembersRoutes(app: FastifyInstance) {
     const body = memberSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные', details: body.error.flatten() })
 
-    const { projectId, name, position, shifts } = body.data
+    const { projectId, name, position, shifts, employmentType, ratePlan, rateFact } = body.data
     const rows = await prisma.$queryRawUnsafe<MemberRow[]>(
-      `INSERT INTO project_members (id, project_id, name, position, shifts, updated_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4::jsonb, NOW())
+      `INSERT INTO project_members (id, project_id, name, position, employment_type, rate_plan, rate_fact, shifts, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7::jsonb, NOW())
        RETURNING *`,
       projectId,
       name,
       position ?? null,
+      employmentType ?? null,
+      ratePlan ?? null,
+      rateFact ?? null,
       JSON.stringify(shifts ?? {}),
     )
     return reply.code(201).send(rows[0])
@@ -73,9 +82,12 @@ export async function projectMembersRoutes(app: FastifyInstance) {
     const sets: string[] = []
     const vals: unknown[] = []
     let i = 1
-    if (body.data.name     !== undefined) { sets.push(`name = $${i++}`);              vals.push(body.data.name) }
-    if (body.data.position !== undefined) { sets.push(`position = $${i++}`);          vals.push(body.data.position ?? null) }
-    if (body.data.shifts   !== undefined) { sets.push(`shifts = $${i++}::jsonb`);     vals.push(JSON.stringify(body.data.shifts)) }
+    if (body.data.name           !== undefined) { sets.push(`name = $${i++}`);                vals.push(body.data.name) }
+    if (body.data.position       !== undefined) { sets.push(`position = $${i++}`);            vals.push(body.data.position ?? null) }
+    if (body.data.employmentType !== undefined) { sets.push(`employment_type = $${i++}`);     vals.push(body.data.employmentType ?? null) }
+    if (body.data.ratePlan       !== undefined) { sets.push(`rate_plan = $${i++}`);           vals.push(body.data.ratePlan ?? null) }
+    if (body.data.rateFact       !== undefined) { sets.push(`rate_fact = $${i++}`);           vals.push(body.data.rateFact ?? null) }
+    if (body.data.shifts         !== undefined) { sets.push(`shifts = $${i++}::jsonb`);       vals.push(JSON.stringify(body.data.shifts)) }
     if (sets.length === 0) return reply.code(400).send({ error: 'Нечего обновлять' })
     sets.push(`updated_at = NOW()`)
     vals.push(id)

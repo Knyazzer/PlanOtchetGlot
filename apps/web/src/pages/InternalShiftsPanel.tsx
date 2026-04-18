@@ -22,6 +22,9 @@ export interface ProjectMember {
   project_id: string
   name: string
   position: string | null
+  employment_type: string | null
+  rate_plan: string | null
+  rate_fact: string | null
   shifts: Record<string, RawShiftValue>
 }
 
@@ -95,6 +98,68 @@ function nextConfirmed(v: ShiftConfirmed): ShiftConfirmed {
   if (v === null)  return 'yes'
   if (v === 'yes') return 'pending'
   return null
+}
+
+const EMP_LABELS: Record<string, string> = {
+  staff: 'ШТАТ', ip_7: 'ИП 7%', ip_8: 'ИП 8%', ip_10: 'ИП 10%', szt: 'СЗТ',
+}
+const EMP_COLORS: Record<string, string> = {
+  staff: '#6366f1', ip_7: '#0ea5e9', ip_8: '#0ea5e9', ip_10: '#0ea5e9', szt: '#f59e0b',
+}
+
+function EmpBadge({ type }: { type: string | null }) {
+  if (!type) return <span style={{ color: '#cbd5e1' }}>—</span>
+  const label = EMP_LABELS[type] ?? type
+  const color = EMP_COLORS[type] ?? '#94a3b8'
+  return (
+    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: color + '1a', color, fontWeight: 700, letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
+      {label}
+    </span>
+  )
+}
+
+function fmtMoney(v: string | null | undefined): string {
+  if (!v) return '—'
+  const n = parseFloat(v)
+  if (isNaN(n)) return '—'
+  return n.toLocaleString('ru-RU')
+}
+
+function countConfirmedDays(shifts: Record<string, RawShiftValue>, dateCols: string[]): number {
+  return dateCols.filter((d) => normalise(shifts[d])?.confirmed === 'yes').length
+}
+
+function calcSum(rateStr: string | null, shifts: Record<string, RawShiftValue>, dateCols: string[]): string {
+  if (!rateStr) return '—'
+  const rate = parseFloat(rateStr)
+  if (isNaN(rate)) return '—'
+  const days = countConfirmedDays(shifts, dateCols)
+  if (days === 0) return '—'
+  return (rate * days).toLocaleString('ru-RU')
+}
+
+function RateCell({ memberId, field, value, onSave }: { memberId: string; field: string; value: string | null; onSave: (v: string | null) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const commit = () => {
+    const v = draft.trim() || null
+    if (v !== (value || null)) onSave(v)
+    setEditing(false)
+  }
+  if (editing) {
+    return (
+      <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false) } }}
+        style={{ width: 72, fontSize: 12, padding: '2px 5px', border: '1px solid #3b82f6', borderRadius: 4, textAlign: 'right', outline: 'none', fontFamily: 'inherit' }} />
+    )
+  }
+  return (
+    <span onClick={() => { setDraft(value ?? ''); setEditing(true) }} title="Нажмите для редактирования"
+      style={{ cursor: 'text', color: value ? '#1e293b' : '#cbd5e1', fontSize: 12, display: 'inline-block', minWidth: 40, textAlign: 'right' }}>
+      {value ? Number(value).toLocaleString('ru-RU') : '—'}
+    </span>
+  )
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -227,70 +292,105 @@ function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId: st
 
   const allLoaded = memberQueries.every((q) => !q.isLoading)
 
-  const summary = useMemo(() => {
-    const map = new Map<string, Map<string, string[]>>()
-    memberQueries.forEach((q, idx) => {
-      const members: ProjectMember[] = q.data ?? []
-      const proj = projects[idx]
-      members.forEach((m) => {
-        Object.entries(m.shifts).forEach(([rawDate, rawVal]) => {
-          const v = normalise(rawVal)
-          if (!v || v.confirmed === null) return
-          const date = toIsoDate(rawDate)
-          if (!map.has(date)) map.set(date, new Map())
-          const names = map.get(date)!
-          if (!names.has(m.name)) names.set(m.name, [])
-          names.get(m.name)!.push(proj?.name || '?')
-        })
+  // All unique dates across all projects, sorted
+  const allDates = useMemo(() => {
+    const set = new Set<string>()
+    projects.forEach((p) => {
+      if (p.date) set.add(toIsoDate(p.date))
+      p.days.forEach((d) => set.add(toIsoDate(d.date)))
+    })
+    memberQueries.forEach((q) => {
+      (q.data ?? []).forEach((m: ProjectMember) => {
+        Object.keys(m.shifts).forEach((rawDate) => set.add(toIsoDate(rawDate)))
       })
     })
-    return { dates: [...map.keys()].sort(), map }
-  }, [memberQueries, projects])
-
-  const allNames = useMemo(() => {
-    const set = new Set<string>()
-    memberQueries.forEach((q) => (q.data ?? []).forEach((m: ProjectMember) => set.add(m.name)))
     return [...set].sort()
-  }, [memberQueries])
+  }, [projects, memberQueries])
+
+  // Build rows grouped by project
+  const rows = useMemo(() => {
+    return projects.map((p, idx) => ({
+      project: p,
+      members: memberQueries[idx]?.data ?? [] as ProjectMember[],
+    }))
+  }, [projects, memberQueries])
 
   if (!allLoaded) return <div style={{ padding: 24, color: '#94a3b8', fontSize: 14 }}>Загрузка...</div>
-  if (allNames.length === 0) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>Нет участников.</div>
 
-  const thS: React.CSSProperties = { padding: '7px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1, textTransform: 'uppercase', letterSpacing: '0.03em' }
-  const tdS: React.CSSProperties = { padding: '7px 12px', fontSize: 13, borderBottom: '1px solid #f1f5f9' }
+  const hasAny = rows.some((r) => r.members.length > 0)
+  if (!hasAny) return <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>Нет участников.</div>
+
+  const thS: React.CSSProperties = { padding: '7px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1, textTransform: 'uppercase', letterSpacing: '0.03em' }
+  const tdS: React.CSSProperties = { padding: '7px 10px', fontSize: 12, borderBottom: '1px solid #f1f5f9', verticalAlign: 'middle' }
 
   return (
     <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
-            <th style={{ ...thS, minWidth: 180 }}>ФИО</th>
-            {summary.dates.map((d) => (
-              <th key={d} style={{ ...thS, textAlign: 'center', minWidth: 72 }}>{fmtDateShort(d)}</th>
+            <th style={{ ...thS, minWidth: 160 }}>Смена</th>
+            <th style={{ ...thS, minWidth: 160 }}>ФИО</th>
+            <th style={{ ...thS, minWidth: 90 }}>Формат</th>
+            <th style={{ ...thS, minWidth: 120 }}>Должность</th>
+            <th style={{ ...thS, minWidth: 90, textAlign: 'right' }}>Сумма план</th>
+            <th style={{ ...thS, minWidth: 90, textAlign: 'right' }}>Сумма факт</th>
+            {allDates.map((d) => (
+              <th key={d} style={{ ...thS, textAlign: 'center', minWidth: 64 }}>{fmtDateShort(d)}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {allNames.map((name, ri) => (
-            <tr key={name} style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc' }}>
-              <td style={{ ...tdS, fontWeight: 500, color: '#1e293b' }}>{name}</td>
-              {summary.dates.map((d) => {
-                const projs = summary.map.get(d)?.get(name) ?? []
-                const conflict = projs.length > 1
-                return (
-                  <td key={d} style={{ ...tdS, textAlign: 'center' }}>
-                    {projs.length > 0 && (
-                      <span title={projs.join(', ')} style={{
-                        display: 'inline-block', width: 22, height: 22, borderRadius: 5,
-                        background: conflict ? '#fef08a' : '#bbf7d0',
-                        border: conflict ? '1px solid #ca8a04' : '1px solid #22c55e',
-                      }} />
+          {rows.map(({ project, members }) => {
+            if (members.length === 0) return null
+            const projDates = new Set<string>()
+            if (project.date) projDates.add(toIsoDate(project.date))
+            project.days.forEach((d) => projDates.add(toIsoDate(d.date)))
+            const projDateCols = [...projDates].sort()
+
+            return members.map((m, mi) => (
+              <tr key={m.id} style={{ background: mi % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                {mi === 0 && (
+                  <td rowSpan={members.length} style={{ ...tdS, verticalAlign: 'top', borderRight: '1px solid #e2e8f0', background: '#f8fafc', minWidth: 160, maxWidth: 200 }}>
+                    <div style={{ fontWeight: 600, fontSize: 12, color: '#1e293b', marginBottom: 4, lineHeight: 1.3 }}>{project.name}</div>
+                    {project.date && (
+                      <div style={{ fontSize: 11, color: '#64748b', marginBottom: 3 }}>{fmtDateFull(project.date)}</div>
+                    )}
+                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 10, background: (STATUS_COLORS[project.status] ?? '#94a3b8') + '22', color: STATUS_COLORS[project.status] ?? '#94a3b8', fontWeight: 600 }}>
+                      {STATUS_LABELS[project.status] ?? project.status}
+                    </span>
+                    {project.execProducer && (
+                      <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>исп.пр.: {project.execProducer}</div>
                     )}
                   </td>
-                )
-              })}
-            </tr>
-          ))}
+                )}
+                <td style={{ ...tdS, fontWeight: 500, color: '#1e293b' }}>{m.name}</td>
+                <td style={{ ...tdS }}><EmpBadge type={m.employment_type} /></td>
+                <td style={{ ...tdS, color: '#64748b' }}>{m.position ?? <span style={{ color: '#cbd5e1' }}>—</span>}</td>
+                <td style={{ ...tdS, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1e293b' }}>
+                  {calcSum(m.rate_plan, m.shifts, projDateCols)} {m.rate_plan ? '₽' : ''}
+                </td>
+                <td style={{ ...tdS, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#1e293b' }}>
+                  {calcSum(m.rate_fact, m.shifts, projDateCols)} {m.rate_fact ? '₽' : ''}
+                </td>
+                {allDates.map((d) => {
+                  const v = normalise(m.shifts[d])
+                  const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
+                  const inProj = projDates.has(d)
+                  return (
+                    <td key={d} style={{ ...tdS, textAlign: 'center', background: !inProj ? '#f8fafc' : undefined }}>
+                      {confirmed && (
+                        <span title={confirmed === 'yes' ? 'Подтверждён' : 'Не подтверждён'} style={{
+                          display: 'inline-block', width: 20, height: 20, borderRadius: 5,
+                          background: confirmed === 'yes' ? '#bbf7d0' : '#fef08a',
+                          border: confirmed === 'yes' ? '1px solid #22c55e' : '1px solid #f59e0b',
+                        }} />
+                      )}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))
+          })}
         </tbody>
       </table>
     </div>
@@ -308,10 +408,6 @@ function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
   const qc = useQueryClient()
   const [microTab, setMicroTab] = useState<'team' | 'expenses'>('team')
 
-  // Editable fields state — initialised from project, updated optimistically
-  const [editName, setEditName] = useState(project.name)
-  const [nameEditing, setNameEditing] = useState(false)
-
   const updateProject = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       api.patch(`/status-rows/${project.id}`, data).then((r) => r.data),
@@ -320,12 +416,6 @@ function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
 
   const saveField = (key: string, value: unknown) => {
     updateProject.mutate({ [key]: value })
-  }
-
-  const saveName = () => {
-    const trimmed = editName.trim()
-    if (trimmed && trimmed !== project.name) saveField('name', trimmed)
-    setNameEditing(false)
   }
 
   const deleteProject = useMutation({
@@ -361,67 +451,54 @@ function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
     onSuccess: (d) => onCopied(d.id),
   })
 
-  const microTabBtn = (t: 'team' | 'expenses'): React.CSSProperties => ({
-    padding: '5px 14px', fontSize: 12, border: 'none', cursor: 'pointer', background: 'none',
-    borderBottom: microTab === t ? '2px solid #3b82f6' : '2px solid transparent',
-    color: microTab === t ? '#3b82f6' : '#64748b', fontWeight: microTab === t ? 600 : 400,
-  })
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ padding: '8px 14px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, background: '#fafafa', flexWrap: 'wrap' }}>
-        {nameEditing ? (
-          <input
-            autoFocus
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onBlur={saveName}
-            onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') { setEditName(project.name); setNameEditing(false) } }}
-            style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', border: '1px solid #3b82f6', borderRadius: 5, padding: '3px 8px', flex: 1, minWidth: 180, outline: 'none' }}
-          />
-        ) : (
-          <span
-            onClick={() => setNameEditing(true)}
-            title="Нажмите, чтобы переименовать"
-            style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', cursor: 'text', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', borderBottom: '1px dashed #cbd5e1', paddingBottom: 1 }}
-          >
-            {project.name || '(без названия)'}
-          </span>
-        )}
-        {project.date && (
-          <span style={{ fontSize: 12, color: '#64748b', flexShrink: 0 }}>{fmtDateFull(project.date)}</span>
-        )}
-        <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 10, background: STATUS_COLORS[project.status] + '22', color: STATUS_COLORS[project.status], fontWeight: 600, flexShrink: 0 }}>
-          {STATUS_LABELS[project.status] ?? project.status}
-        </span>
-        <div style={{ display: 'flex', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
-          <button onClick={() => { if (!copyProject.isPending) copyProject.mutate() }} disabled={copyProject.isPending}
-            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>
-            {copyProject.isPending ? '...' : 'Копировать'}
-          </button>
-          <button onClick={() => { if (confirm(`Удалить «${project.name}»?`)) deleteProject.mutate() }} disabled={deleteProject.isPending}
-            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #fecaca', background: 'none', color: '#ef4444', cursor: 'pointer' }}>
-            {deleteProject.isPending ? '...' : 'Удалить'}
-          </button>
-        </div>
+      {/* Content — left info panel always visible */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <ProjectInfoPanel project={project} onSave={saveField} onUpdated={onUpdated} />
+        <TeamTable
+          project={project}
+          members={members}
+          loading={membersLoading}
+          onUpdated={onUpdated}
+          microTab={microTab}
+          setMicroTab={setMicroTab}
+          onCopy={() => { if (!copyProject.isPending) copyProject.mutate() }}
+          onDelete={() => { if (confirm(`Удалить «${project.name}»?`)) deleteProject.mutate() }}
+          copyPending={copyProject.isPending}
+          deletePending={deleteProject.isPending}
+        />
       </div>
+    </div>
+  )
+}
 
-      {/* Micro-tabs: Команда | Расходы */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flexShrink: 0, paddingLeft: 4 }}>
-        <button style={microTabBtn('team')} onClick={() => setMicroTab('team')}>Команда</button>
-        <button style={microTabBtn('expenses')} onClick={() => setMicroTab('expenses')}>Расходы</button>
-      </div>
+// ─── InfoField (helper for ProjectInfoPanel) ──────────────────────────────────
 
-      {/* Content */}
-      {microTab === 'team' && (
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          <ProjectInfoPanel project={project} onSave={saveField} />
-          <TeamTable project={project} members={members} loading={membersLoading} onUpdated={onUpdated} />
+function InfoField({ label, fieldKey, value, onSave }: {
+  label: string; fieldKey: string; value: string | null
+  onSave: (k: string, v: unknown) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value ?? '')
+  const commit = () => {
+    if ((draft.trim() || null) !== (value || null)) onSave(fieldKey, draft.trim() || null)
+    setEditing(false)
+  }
+  return (
+    <div style={{ padding: '9px 14px', borderBottom: '1px solid #f8fafc' }}>
+      <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 3 }}>{label}</div>
+      {editing ? (
+        <input autoFocus value={draft} onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false) } }}
+          style={{ fontSize: 13, padding: '2px 6px', border: '1px solid #3b82f6', borderRadius: 5, width: '100%', boxSizing: 'border-box' as const, outline: 'none', color: '#1e293b', fontFamily: 'inherit' }} />
+      ) : (
+        <div onClick={() => { setDraft(value ?? ''); setEditing(true) }}
+          title="Нажмите для редактирования"
+          style={{ fontSize: 13, color: value ? '#1e293b' : '#cbd5e1', cursor: 'text', minHeight: 18, fontWeight: value ? 500 : 400 }}>
+          {value || '—'}
         </div>
-      )}
-      {microTab === 'expenses' && (
-        <ExpensesTab projectId={project.id} />
       )}
     </div>
   )
@@ -429,77 +506,90 @@ function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
 
 // ─── ProjectInfoPanel ─────────────────────────────────────────────────────────
 
-function ProjectInfoPanel({ project, onSave }: {
+function ProjectInfoPanel({ project, onSave, onUpdated }: {
   project: MicroProject
   onSave: (key: string, value: unknown) => void
+  onUpdated: () => void
 }) {
-  const Row = ({ label, fieldKey, value, type = 'text' }: {
-    label: string; fieldKey: string; value: string | null; type?: string
-  }) => {
-    const [editing, setEditing] = useState(false)
-    const [draft, setDraft] = useState(value ?? '')
+  const [editingStatus, setEditingStatus] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newDate, setNewDate] = useState('')
+  const [newType, setNewType] = useState('efir')
 
-    const commit = () => {
-      const trimmed = type === 'date'
-        ? (draft ? new Date(draft).toISOString() : null)
-        : (draft.trim() || null)
-      if (trimmed !== value) onSave(fieldKey, trimmed)
-      setEditing(false)
-    }
-
-    const displayVal = type === 'date' ? fmtDateFull(value) : (value || '—')
-
-    return (
-      <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: 8, marginBottom: 8 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>{label}</div>
-        {editing ? (
-          <input
-            autoFocus
-            type={type}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setDraft(value ?? ''); setEditing(false) } }}
-            style={{ fontSize: 12, padding: '3px 7px', border: '1px solid #3b82f6', borderRadius: 5, width: '100%', boxSizing: 'border-box', outline: 'none', color: '#1e293b' }}
-          />
-        ) : (
-          <div
-            onClick={() => { setDraft(type === 'date' ? isoToInput(value) : (value ?? '')); setEditing(true) }}
-            title="Нажмите для редактирования"
-            style={{ fontSize: 12, color: value ? '#1e293b' : '#cbd5e1', cursor: 'text', minHeight: 18, borderBottom: '1px dashed transparent' }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderBottomColor = '#cbd5e1')}
-            onMouseLeave={(e) => (e.currentTarget.style.borderBottomColor = 'transparent')}
-          >
-            {displayVal}
-          </div>
-        )}
-      </div>
-    )
+  const TYPE_LABELS: Record<string, string> = {
+    zastroyka: 'Застройка', efir: 'Эфир', deadline: 'Дедлайн', semka: 'Съёмка',
+  }
+  const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
+    zastroyka: { bg: '#fef3c7', color: '#92400e' },
+    efir:      { bg: '#dbeafe', color: '#1d4ed8' },
+    deadline:  { bg: '#fee2e2', color: '#991b1b' },
+    semka:     { bg: '#d1fae5', color: '#065f46' },
   }
 
-  const StatusRow = () => {
-    const [open, setOpen] = useState(false)
-    return (
-      <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: 8, marginBottom: 8 }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 3 }}>A Статус</div>
-        <div style={{ position: 'relative' }}>
-          <div
-            onClick={() => setOpen((v) => !v)}
-            style={{ fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
-          >
+  const dateCols = useMemo(() => {
+    const entries: { date: string; type: string; isMain: boolean }[] = []
+    if (project.date) {
+      const mainDay = project.days.find((d) => toIsoDate(d.date) === toIsoDate(project.date!))
+      entries.push({ date: toIsoDate(project.date), type: mainDay?.type ?? 'efir', isMain: true })
+    }
+    project.days.forEach((d) => {
+      const iso = toIsoDate(d.date)
+      if (!entries.some((e) => e.date === iso)) {
+        entries.push({ date: iso, type: d.type, isMain: false })
+      }
+    })
+    return entries.sort((a, b) => a.date.localeCompare(b.date))
+  }, [project.date, project.days])
+
+  const addDate = useMutation({
+    mutationFn: () => {
+      const iso = toIsoDate(new Date(newDate).toISOString())
+      const existingDays = project.days.map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime }))
+      if (existingDays.some((d) => toIsoDate(d.date) === iso)) return Promise.resolve(null)
+      return api.patch(`/status-rows/${project.id}`, {
+        days: [...existingDays, { date: new Date(newDate).toISOString(), type: newType, startTime: null }],
+      }).then((r) => r.data)
+    },
+    onSuccess: () => { onUpdated(); setShowAddForm(false); setNewDate('') },
+  })
+
+  const removeDate = useMutation({
+    mutationFn: (date: string) => {
+      const remaining = project.days
+        .filter((d) => toIsoDate(d.date) !== date)
+        .map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime }))
+      return api.patch(`/status-rows/${project.id}`, { days: remaining }).then((r) => r.data)
+    },
+    onSuccess: onUpdated,
+  })
+
+  const inputS: React.CSSProperties = {
+    width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px',
+    fontSize: 12, color: '#1e293b', fontFamily: 'inherit', outline: 'none',
+    background: '#fff', boxSizing: 'border-box',
+  }
+
+  return (
+    <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid #e2e8f0', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 10, padding: 14, overflowY: 'auto' }}>
+
+      {/* Block 1: static fields */}
+      <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden' }}>
+        {/* Status */}
+        <div style={{ padding: '9px 14px', borderBottom: '1px solid #f8fafc', position: 'relative' }}>
+          <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 3 }}>Статус</div>
+          <div onClick={() => setEditingStatus((v) => !v)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[project.status] ?? '#94a3b8', flexShrink: 0 }} />
-            <span style={{ color: STATUS_COLORS[project.status] ?? '#475569', fontWeight: 500 }}>{STATUS_LABELS[project.status] ?? project.status}</span>
+            <span style={{ fontSize: 13, color: STATUS_COLORS[project.status] ?? '#475569', fontWeight: 500 }}>
+              {STATUS_LABELS[project.status] ?? project.status}
+            </span>
           </div>
-          {open && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, boxShadow: '0 4px 14px rgba(0,0,0,0.1)', minWidth: 150, overflow: 'hidden' }}>
+          {editingStatus && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', minWidth: 160, overflow: 'hidden' }}>
               {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                <div
-                  key={k}
-                  onClick={() => { onSave('status', k); setOpen(false) }}
-                  style={{ padding: '6px 12px', fontSize: 12, cursor: 'pointer', color: STATUS_COLORS[k] ?? '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}
+                <div key={k} onClick={() => { onSave('status', k); setEditingStatus(false) }}
+                  style={{ padding: '7px 12px', fontSize: 12, cursor: 'pointer', color: STATUS_COLORS[k] ?? '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
-                >
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
                   <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLORS[k], display: 'inline-block' }} />
                   {v}
                 </div>
@@ -507,44 +597,107 @@ function ProjectInfoPanel({ project, onSave }: {
             </div>
           )}
         </div>
+        <InfoField label="Локация"        fieldKey="location"      value={project.location}      onSave={onSave} />
+        <InfoField label="Исп. продюсер"  fieldKey="execProducer"  value={project.execProducer}  onSave={onSave} />
+        <InfoField label="Лайн-продюсер"  fieldKey="lineProducer"  value={project.lineProducer}  onSave={onSave} />
       </div>
-    )
-  }
 
-  return (
-    <div style={{ width: 210, flexShrink: 0, borderRight: '1px solid #e2e8f0', overflowY: 'auto', padding: '12px 14px', background: '#fafafa' }}>
-      <StatusRow />
-      <Row label="B Клиент"     fieldKey="client"         value={project.client} />
-      <Row label="C Название"   fieldKey="name"            value={project.name} />
-      <Row label="D Исп.прод."  fieldKey="execProducer"    value={project.execProducer} />
-      <Row label="E Лайн-прод." fieldKey="lineProducer"    value={project.lineProducer} />
-      <Row label="F Аккаунт"    fieldKey="accountManager"  value={project.accountManager} />
-      <Row label="G Дата"       fieldKey="date"            value={project.date} type="date" />
-      <Row label="H Время"      fieldKey="time"            value={project.time} />
-      <Row label="I Формат"     fieldKey="format"          value={project.format} />
-      <Row label="J Локация"    fieldKey="location"        value={project.location} />
+      {/* Block 2: Date manager */}
+      <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px 8px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Даты и время</span>
+          <button onClick={() => setShowAddForm((v) => !v)}
+            style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: '1px solid #3b82f6', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            + Дата
+          </button>
+        </div>
+
+        <div style={{ overflowY: 'auto', flex: 1 }}>
+          {dateCols.map((entry) => {
+            const tColor = TYPE_COLORS[entry.type] ?? { bg: '#f3e8ff', color: '#7e22ce' }
+            return (
+              <div key={entry.date} style={{ padding: '7px 12px', borderBottom: '1px solid #f8fafc', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{fmtDateShort(entry.date)}</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: tColor.bg, color: tColor.color }}>
+                      {TYPE_LABELS[entry.type] ?? entry.type}
+                    </span>
+                  </div>
+                  {entry.isMain && <span style={{ fontSize: 10, color: '#94a3b8' }}>основная</span>}
+                </div>
+                {!entry.isMain && (
+                  <button onClick={() => removeDate.mutate(entry.date)}
+                    style={{ flexShrink: 0, background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: '1px 3px' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#cbd5e1')}>
+                    ×
+                  </button>
+                )}
+              </div>
+            )
+          })}
+          {dateCols.length === 0 && (
+            <div style={{ padding: 12, fontSize: 12, color: '#cbd5e1', textAlign: 'center' }}>Нет дат</div>
+          )}
+        </div>
+
+        {showAddForm && (
+          <div style={{ padding: '10px 12px', borderTop: '2px solid #e2e8f0', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 2 }}>Дата</label>
+              <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} style={inputS} />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 2 }}>Тип</label>
+              <select value={newType} onChange={(e) => setNewType(e.target.value)} style={inputS}>
+                <option value="zastroyka">Застройка</option>
+                <option value="efir">Эфир</option>
+                <option value="deadline">Дедлайн</option>
+                <option value="semka">Съёмка</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => { if (newDate) addDate.mutate() }} disabled={!newDate || addDate.isPending}
+                style={{ flex: 1, fontSize: 12, padding: '6px', borderRadius: 6, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                {addDate.isPending ? '...' : 'Добавить'}
+              </button>
+              <button onClick={() => { setShowAddForm(false); setNewDate('') }}
+                style={{ flex: 1, fontSize: 12, padding: '6px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
+
 // ─── TeamTable ────────────────────────────────────────────────────────────────
 
-function TeamTable({ project, members, loading, onUpdated }: {
+function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab, onCopy, onDelete, copyPending, deletePending }: {
   project: MicroProject
   members: ProjectMember[]
   loading: boolean
   onUpdated: () => void
+  microTab: 'team' | 'expenses'
+  setMicroTab: (t: 'team' | 'expenses') => void
+  onCopy: () => void
+  onDelete: () => void
+  copyPending: boolean
+  deletePending: boolean
 }) {
   const qc = useQueryClient()
   const [addingMember, setAddingMember] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPos, setNewPos] = useState('')
-  const [addingDate, setAddingDate] = useState(false)
-  const [newDate, setNewDate] = useState('')
-  const [editingDateCol, setEditingDateCol] = useState<string | null>(null) // dateString being edited
-  const [editingDateVal, setEditingDateVal] = useState('')
+  const [newEmpType, setNewEmpType] = useState('')
+  const [newRatePlan, setNewRatePlan] = useState('')
+  const [newRateFact, setNewRateFact] = useState('')
 
-  // Date columns: main date + ProjectDay dates, deduplicated + sorted
+  // Date columns derived from project — managed via left panel date manager
   const dateCols = useMemo(() => {
     const set = new Set<string>()
     if (project.date) set.add(toIsoDate(project.date))
@@ -552,13 +705,44 @@ function TeamTable({ project, members, loading, onUpdated }: {
     return [...set].sort()
   }, [project.date, project.days])
 
+  // Map date → type label for column headers
+  const dateTypeMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    if (project.date) map[toIsoDate(project.date)] = 'efir'
+    project.days.forEach((d) => { map[toIsoDate(d.date)] = d.type })
+    return map
+  }, [project.date, project.days])
+
+  const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
+    zastroyka: { bg: '#fef3c7', color: '#92400e' },
+    efir:      { bg: '#dbeafe', color: '#1d4ed8' },
+    deadline:  { bg: '#fee2e2', color: '#991b1b' },
+    semka:     { bg: '#d1fae5', color: '#065f46' },
+  }
+  const TYPE_LABELS: Record<string, string> = {
+    zastroyka: 'Застройка', efir: 'Эфир', deadline: 'Дедлайн', semka: 'Съёмка',
+  }
+
   const addMember = useMutation({
-    mutationFn: () => api.post('/project-members', { projectId: project.id, name: newName.trim(), position: newPos.trim() || null }).then((r) => r.data),
+    mutationFn: () => api.post('/project-members', {
+      projectId: project.id,
+      name: newName.trim(),
+      position: newPos.trim() || null,
+      employmentType: newEmpType || null,
+      ratePlan: newRatePlan ? parseFloat(newRatePlan) : null,
+      rateFact: newRateFact ? parseFloat(newRateFact) : null,
+    }).then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['project-members', project.id] })
       qc.invalidateQueries({ queryKey: ['micro-projects', project.matrixRegistryId] })
-      setNewName(''); setNewPos(''); setAddingMember(false)
+      setNewName(''); setNewPos(''); setNewEmpType(''); setNewRatePlan(''); setNewRateFact(''); setAddingMember(false)
     },
+  })
+
+  const updateMember = useMutation({
+    mutationFn: ({ id, ...data }: { id: string; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null }) =>
+      api.patch(`/project-members/${id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', project.id] }),
   })
 
   const removeMember = useMutation({
@@ -572,45 +756,6 @@ function TeamTable({ project, members, loading, onUpdated }: {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', project.id] }),
   })
 
-  const addDateCol = useMutation({
-    mutationFn: (date: string) => {
-      const existingDays = project.days.map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime }))
-      if (existingDays.some((d) => toIsoDate(d.date) === date)) return Promise.resolve(null)
-      return api.patch(`/status-rows/${project.id}`, {
-        days: [...existingDays, { date: new Date(date).toISOString(), type: 'efir', startTime: null }],
-      }).then((r) => r.data)
-    },
-    onSuccess: () => { onUpdated(); setAddingDate(false); setNewDate('') },
-  })
-
-  // Edit existing date column header
-  const editDateCol = useMutation({
-    mutationFn: ({ oldDate, newDateStr }: { oldDate: string; newDateStr: string }) => {
-      // Is it the main project date?
-      if (project.date && toIsoDate(project.date) === oldDate) {
-        return api.patch(`/status-rows/${project.id}`, { date: new Date(newDateStr).toISOString() }).then((r) => r.data)
-      }
-      // It's a ProjectDay
-      const updatedDays = project.days.map((d) =>
-        toIsoDate(d.date) === oldDate
-          ? { id: d.id, date: new Date(newDateStr).toISOString(), type: d.type, startTime: d.startTime }
-          : { id: d.id, date: d.date, type: d.type, startTime: d.startTime }
-      )
-      return api.patch(`/status-rows/${project.id}`, { days: updatedDays }).then((r) => r.data)
-    },
-    onSuccess: () => { onUpdated(); setEditingDateCol(null); setEditingDateVal('') },
-  })
-
-  const removeDateCol = useMutation({
-    mutationFn: (date: string) => {
-      const remaining = project.days
-        .filter((d) => toIsoDate(d.date) !== date)
-        .map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime }))
-      return api.patch(`/status-rows/${project.id}`, { days: remaining }).then((r) => r.data)
-    },
-    onSuccess: onUpdated,
-  })
-
   const toggleCell = (member: ProjectMember, date: string) => {
     const current = normalise(member.shifts[date])
     const currentConfirmed: ShiftConfirmed = current?.confirmed ?? (current ? 'yes' : null)
@@ -621,117 +766,113 @@ function TeamTable({ project, members, loading, onUpdated }: {
     updateMemberShifts.mutate({ id: member.id, shifts: newShifts })
   }
 
-  const isMainDate = (d: string) => project.date ? toIsoDate(project.date) === d : false
-  const isDay = (d: string) => project.days.some((pd) => toIsoDate(pd.date) === d)
-
   const inputS: React.CSSProperties = { fontSize: 12, padding: '3px 7px', border: '1px solid #e2e8f0', borderRadius: 5, color: '#1e293b', background: '#fff' }
-
-  // Table header cell for a date column
-  const DateHeader = ({ d }: { d: string }) => {
-    const isEditing = editingDateCol === d
-
-    if (isEditing) {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <input
-            type="date"
-            autoFocus
-            value={editingDateVal}
-            onChange={(e) => setEditingDateVal(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && editingDateVal) editDateCol.mutate({ oldDate: d, newDateStr: editingDateVal })
-              if (e.key === 'Escape') { setEditingDateCol(null); setEditingDateVal('') }
-            }}
-            onBlur={() => { if (editingDateVal) editDateCol.mutate({ oldDate: d, newDateStr: editingDateVal }); else { setEditingDateCol(null) } }}
-            style={{ ...inputS, fontSize: 11, width: 110 }}
-          />
-        </div>
-      )
-    }
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-        <span
-          onClick={() => { setEditingDateCol(d); setEditingDateVal(d) }}
-          title="Нажмите для изменения даты"
-          style={{ cursor: 'pointer', borderBottom: '1px dashed #cbd5e1', paddingBottom: 1, fontSize: 11, color: '#475569', fontWeight: 600 }}
-        >
-          {fmtDateShort(d)}
-        </span>
-        {isDay(d) && !isMainDate(d) && (
-          <button onClick={() => removeDateCol.mutate(d)} title="Удалить столбец"
-            style={{ fontSize: 9, color: '#cbd5e1', border: 'none', background: 'none', cursor: 'pointer', lineHeight: 1, padding: 0 }}>
-            ×
-          </button>
-        )}
-        {isMainDate(d) && (
-          <span style={{ fontSize: 9, color: '#94a3b8' }}>осн.</span>
-        )}
-      </div>
-    )
-  }
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* View toggle bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid #f1f5f9', flexShrink: 0, gap: 8 }}>
+        <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden' }}>
+          <button onClick={() => setMicroTab('team')}
+            style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', background: microTab === 'team' ? '#2563eb' : '#fff', color: microTab === 'team' ? '#fff' : '#64748b', fontFamily: 'inherit' }}>
+            Команда
+          </button>
+          <button onClick={() => setMicroTab('expenses')}
+            style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', background: microTab === 'expenses' ? '#2563eb' : '#fff', color: microTab === 'expenses' ? '#fff' : '#64748b', fontFamily: 'inherit' }}>
+            Производственные расходы
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={onCopy} disabled={copyPending}
+            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer', fontFamily: 'inherit' }}>
+            {copyPending ? '...' : 'Копировать'}
+          </button>
+          <button onClick={onDelete} disabled={deletePending}
+            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #fecaca', background: 'none', color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit' }}>
+            {deletePending ? '...' : 'Удалить'}
+          </button>
+          {microTab === 'team' && !addingMember && (
+            <button onClick={() => setAddingMember(true)}
+              style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid #2563eb', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}>
+              + Добавить
+            </button>
+          )}
+        </div>
+      </div>
+
       <div style={{ flex: 1, overflow: 'auto' }}>
         {loading && <div style={{ padding: 20, color: '#94a3b8', fontSize: 13 }}>Загрузка...</div>}
 
-        {!loading && (
+        {!loading && microTab === 'team' && (
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
                 <th style={{ padding: '8px 14px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', minWidth: 150, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>ФИО</th>
+                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Формат</th>
                 <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', minWidth: 120, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Должность</th>
-                {dateCols.map((d) => (
-                  <th key={d} style={{ padding: '8px 10px', borderBottom: '2px solid #e2e8f0', minWidth: 80, textAlign: 'center', verticalAlign: 'bottom' }}>
-                    <DateHeader d={d} />
-                  </th>
-                ))}
-                {/* Add date col */}
-                <th style={{ padding: '8px 10px', borderBottom: '2px solid #e2e8f0', minWidth: 70, textAlign: 'center', verticalAlign: 'bottom' }}>
-                  {addingDate ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
-                      <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)}
-                        style={{ ...inputS, width: 110, fontSize: 11 }} autoFocus />
-                      <div style={{ display: 'flex', gap: 3 }}>
-                        <button onClick={() => { if (newDate) addDateCol.mutate(toIsoDate(new Date(newDate).toISOString())) }}
-                          disabled={!newDate} style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>OK</button>
-                        <button onClick={() => { setAddingDate(false); setNewDate('') }}
-                          style={{ fontSize: 10, padding: '2px 5px', borderRadius: 4, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#64748b' }}>×</button>
+                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderBottom: '2px solid #e2e8f0', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Цена план</th>
+                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderBottom: '2px solid #e2e8f0', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Цена факт</th>
+                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderBottom: '2px solid #e2e8f0', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Сумма план</th>
+                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderBottom: '2px solid #e2e8f0', borderRight: '2px solid #cbd5e1', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Сумма факт</th>
+                {dateCols.map((d) => {
+                  const type = dateTypeMap[d] ?? 'efir'
+                  const tColor = TYPE_COLORS[type] ?? { bg: '#f3e8ff', color: '#7e22ce' }
+                  return (
+                    <th key={d} style={{ padding: '6px 10px', borderBottom: '2px solid #e2e8f0', minWidth: 84, textAlign: 'center', verticalAlign: 'bottom', fontSize: 11, fontWeight: 700, color: '#64748b' }}>
+                      {fmtDateShort(d)}
+                      <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: tColor.bg, color: tColor.color, display: 'inline-block' }}>
+                        {TYPE_LABELS[type] ?? type}
                       </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setAddingDate(true)} title="Добавить дату"
-                      style={{ fontSize: 16, color: '#94a3b8', border: 'none', background: 'none', cursor: 'pointer' }}>+</button>
-                  )}
-                </th>
+                    </th>
+                  )
+                })}
+                <th style={{ width: '100%', borderBottom: '2px solid #e2e8f0' }} />
                 <th style={{ padding: '8px 6px', borderBottom: '2px solid #e2e8f0', width: 30 }} />
               </tr>
             </thead>
             <tbody>
-              {members.map((m, ri) => (
-                <tr key={m.id} style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                  <td style={{ padding: '8px 14px', fontWeight: 600, color: '#1e293b', borderBottom: '1px solid #eef0f4', whiteSpace: 'nowrap' }}>{m.name}</td>
-                  <td style={{ padding: '8px 10px', color: '#64748b', borderBottom: '1px solid #eef0f4', whiteSpace: 'nowrap' }}>{m.position ?? <span style={{ color: '#cbd5e1' }}>—</span>}</td>
-                  {dateCols.map((d) => {
-                    const v = normalise(m.shifts[d])
-                    const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
-                    return (
-                      <td key={d} style={{ padding: '8px 10px', textAlign: 'center', borderBottom: '1px solid #eef0f4', borderLeft: '1px solid #f1f5f9' }}>
-                        <button onClick={() => toggleCell(m, d)}
-                          title={confirmed === 'yes' ? 'Подтверждён (нажмите → не подтверждён)' : confirmed === 'pending' ? 'Не подтверждён (нажмите → убрать)' : 'Нет (нажмите → добавить)'}
-                          style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid', borderColor: confirmed === 'yes' ? '#22c55e' : confirmed === 'pending' ? '#f59e0b' : '#e2e8f0', background: confirmedColor(confirmed), cursor: 'pointer', display: 'inline-block', transition: 'background 0.15s' }}
-                        />
-                      </td>
-                    )
-                  })}
-                  <td style={{ borderBottom: '1px solid #eef0f4' }} />
-                  <td style={{ padding: '8px 6px', borderBottom: '1px solid #eef0f4', textAlign: 'center' }}>
-                    <button onClick={() => removeMember.mutate(m.id)}
-                      style={{ fontSize: 14, color: '#cbd5e1', border: 'none', background: 'none', cursor: 'pointer', lineHeight: 1 }} title="Удалить">×</button>
-                  </td>
-                </tr>
-              ))}
+              {members.map((m, ri) => {
+                const sumPlan = calcSum(m.rate_plan, m.shifts, dateCols)
+                const sumFact = calcSum(m.rate_fact, m.shifts, dateCols)
+                return (
+                  <tr key={m.id} style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                    <td style={{ padding: '8px 14px', fontWeight: 600, color: '#1e293b', borderBottom: '1px solid #eef0f4', whiteSpace: 'nowrap' }}>{m.name}</td>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
+                      <EmpBadge type={m.employment_type} />
+                    </td>
+                    <td style={{ padding: '8px 10px', color: '#64748b', borderBottom: '1px solid #eef0f4', whiteSpace: 'nowrap' }}>{m.position ?? <span style={{ color: '#cbd5e1' }}>—</span>}</td>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'right' }}>
+                      <RateCell memberId={m.id} field="ratePlan" value={m.rate_plan} onSave={(v) => updateMember.mutate({ id: m.id, ratePlan: v })} />
+                    </td>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'right' }}>
+                      <RateCell memberId={m.id} field="rateFact" value={m.rate_fact} onSave={(v) => updateMember.mutate({ id: m.id, rateFact: v })} />
+                    </td>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+                      {sumPlan}{m.rate_plan ? ' ₽' : ''}
+                    </td>
+                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+                      {sumFact}{m.rate_fact ? ' ₽' : ''}
+                    </td>
+                    {dateCols.map((d) => {
+                      const v = normalise(m.shifts[d])
+                      const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
+                      return (
+                        <td key={d} style={{ padding: '8px 10px', textAlign: 'center', borderBottom: '1px solid #eef0f4', borderLeft: '1px solid #f1f5f9' }}>
+                          <button onClick={() => toggleCell(m, d)}
+                            title={confirmed === 'yes' ? 'Подтверждён (нажмите → не подтверждён)' : confirmed === 'pending' ? 'Не подтверждён (нажмите → убрать)' : 'Нет (нажмите → добавить)'}
+                            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid', borderColor: confirmed === 'yes' ? '#22c55e' : confirmed === 'pending' ? '#f59e0b' : '#e2e8f0', background: confirmedColor(confirmed), cursor: 'pointer', display: 'inline-block', transition: 'background 0.15s' }}
+                          />
+                        </td>
+                      )
+                    })}
+                    <td style={{ borderBottom: '1px solid #eef0f4' }} />
+                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #eef0f4', textAlign: 'center' }}>
+                      <button onClick={() => removeMember.mutate(m.id)}
+                        style={{ fontSize: 14, color: '#cbd5e1', border: 'none', background: 'none', cursor: 'pointer', lineHeight: 1 }} title="Удалить">×</button>
+                    </td>
+                  </tr>
+                )
+              })}
 
               {addingMember && (
                 <tr style={{ background: '#eff6ff' }}>
@@ -740,9 +881,25 @@ function TeamTable({ project, members, loading, onUpdated }: {
                       placeholder="ФИО *" style={{ ...inputS, width: '100%' }} />
                   </td>
                   <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
+                    <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value)} style={{ ...inputS, width: '100%' }}>
+                      <option value="">—</option>
+                      {Object.entries(EMP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
                     <input value={newPos} onChange={(e) => setNewPos(e.target.value)}
                       placeholder="Должность" style={{ ...inputS, width: '100%' }} />
                   </td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
+                    <input type="number" value={newRatePlan} onChange={(e) => setNewRatePlan(e.target.value)}
+                      placeholder="0" style={{ ...inputS, width: '100%' }} />
+                  </td>
+                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
+                    <input type="number" value={newRateFact} onChange={(e) => setNewRateFact(e.target.value)}
+                      placeholder="0" style={{ ...inputS, width: '100%' }} />
+                  </td>
+                  <td style={{ borderBottom: '1px solid #eef0f4' }} />
+                  <td style={{ borderBottom: '1px solid #eef0f4' }} />
                   {dateCols.map((d) => <td key={d} style={{ borderBottom: '1px solid #eef0f4', borderLeft: '1px solid #f1f5f9' }} />)}
                   <td style={{ borderBottom: '1px solid #eef0f4' }} />
                   <td style={{ padding: '6px', borderBottom: '1px solid #eef0f4' }}>
@@ -751,7 +908,7 @@ function TeamTable({ project, members, loading, onUpdated }: {
                         style={{ fontSize: 11, padding: '3px 7px', borderRadius: 5, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>
                         {addMember.isPending ? '...' : 'OK'}
                       </button>
-                      <button onClick={() => { setAddingMember(false); setNewName(''); setNewPos('') }}
+                      <button onClick={() => { setAddingMember(false); setNewName(''); setNewPos(''); setNewEmpType(''); setNewRatePlan(''); setNewRateFact('') }}
                         style={{ fontSize: 11, padding: '3px 5px', borderRadius: 5, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#64748b' }}>×</button>
                     </div>
                   </td>
@@ -760,17 +917,15 @@ function TeamTable({ project, members, loading, onUpdated }: {
             </tbody>
           </table>
         )}
+
+        {!loading && microTab === 'expenses' && (
+          <ExpensesTab projectId={project.id} />
+        )}
       </div>
 
-      {/* Footer: add member + legend */}
-      {!loading && (
-        <div style={{ padding: '8px 14px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0, background: '#fafafa' }}>
-          {!addingMember && (
-            <button onClick={() => setAddingMember(true)}
-              style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px dashed #cbd5e1', background: 'none', color: '#64748b', cursor: 'pointer' }}>
-              + Участник
-            </button>
-          )}
+      {/* Footer legend (only for team tab) */}
+      {!loading && microTab === 'team' && (
+        <div style={{ padding: '6px 14px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, background: '#fafafa' }}>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>
             <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#22c55e', verticalAlign: 'middle', marginRight: 4 }} />Подтверждён</span>
             <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#f59e0b', verticalAlign: 'middle', marginRight: 4 }} />Не подтверждён</span>

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
@@ -1466,8 +1466,434 @@ interface ShiftRow { isSeparator: true; text: string }
 interface ShiftEmployee { isSeparator: false; name: string; role: string | null; employmentType: string | null; shifts: boolean[] }
 interface MatrixShiftsData { sheetTitle: string; dates: string[]; activeCols: number[]; rows: (ShiftRow | ShiftEmployee)[] }
 
+// ─── Change Log Tab ───────────────────────────────────────────────────────────
+
+interface ChangeLogEntry {
+  id: string
+  entityType: string
+  entityId: string
+  field: string
+  oldValue: string | null
+  newValue: string | null
+  changedAt: string
+  source: string
+  user: { id: string; fullName: string } | null
+}
+
+// ─── Registry Info Tab ────────────────────────────────────────────────────────
+
+interface GanttTaskInfo { id: string; done: boolean }
+
+function RegistryInfoTab({ entry, ganttTasks }: { entry: RegistryEntry; ganttTasks?: GanttTaskInfo[] }) {
+  const isInternal = entry.source === 'internal'
+
+  // Fetch micro-projects and their financial data (only for internal)
+  const { data: projects = [] } = useQuery<any[]>({
+    queryKey: ['micro-projects-info', entry.id],
+    queryFn: () => api.get(`/status-rows?matrixRegistryId=${entry.id}`).then((r) => r.data),
+    enabled: isInternal,
+    staleTime: 60_000,
+  })
+
+  const memberQueries = useQueries({
+    queries: projects.map((p: any) => ({
+      queryKey: ['project-members', p.id],
+      queryFn: () => api.get(`/project-members?projectId=${p.id}`).then((r) => r.data as any[]),
+      staleTime: 60_000,
+    })),
+  })
+
+  const expenseQueries = useQueries({
+    queries: projects.map((p: any) => ({
+      queryKey: ['shift-expenses', p.id],
+      queryFn: () => api.get(`/shift-expenses?projectId=${p.id}`).then((r) => r.data as any[]),
+      staleTime: 60_000,
+    })),
+  })
+
+  // Financial calculations
+  const fin = useMemo(() => {
+    let specPlan = 0, specFact = 0, servicesPlan = 0, servicesFact = 0
+    projects.forEach((p: any, idx: number) => {
+      const members: any[] = memberQueries[idx]?.data ?? []
+      const expenses: any[] = expenseQueries[idx]?.data ?? []
+      // Date cols for this project
+      const dateCols: string[] = []
+      if (p.date) dateCols.push(new Date(p.date).toISOString().slice(0, 10))
+      ;(p.days ?? []).forEach((d: any) => {
+        const iso = new Date(d.date).toISOString().slice(0, 10)
+        if (!dateCols.includes(iso)) dateCols.push(iso)
+      })
+      members.forEach((m: any) => {
+        const confirmed = dateCols.filter((d) => {
+          const v = m.shifts?.[d]
+          if (!v) return false
+          if (typeof v === 'string') return !!v
+          return v.confirmed === 'yes'
+        }).length
+        if (m.rate_plan) specPlan += parseFloat(m.rate_plan) * confirmed
+        if (m.rate_fact) specFact += parseFloat(m.rate_fact) * confirmed
+      })
+      expenses.forEach((e: any) => {
+        const amt = e.amount ? parseFloat(String(e.amount)) : 0
+        servicesPlan += amt
+        servicesFact += amt
+      })
+    })
+    const taxRate = 0.13
+    const taxPlan = Math.round((specPlan + servicesPlan) * taxRate)
+    const taxFact = Math.round((specFact + servicesFact) * taxRate)
+    const totalPlan = specPlan + servicesPlan + taxPlan
+    const totalFact = specFact + servicesFact + taxFact
+    return { specPlan, specFact, servicesPlan, servicesFact, taxPlan, taxFact, totalPlan, totalFact }
+  }, [projects, memberQueries, expenseQueries])
+
+  const fmt = (n: number) => n === 0 ? '—' : n.toLocaleString('ru-RU') + ' ₽'
+  const pct = (plan: number, fact: number) => {
+    if (!plan) return '—'
+    const d = ((fact - plan) / plan) * 100
+    return (d >= 0 ? '+' : '') + d.toFixed(1) + '%'
+  }
+
+  // Gantt donut
+  const total = ganttTasks?.length ?? 0
+  const done = ganttTasks?.filter((t) => t.done).length ?? 0
+  const gPct = total > 0 ? Math.round((done / total) * 100) : 0
+  const R = 38, C = 2 * Math.PI * R
+  const dashFilled = total > 0 ? (done / total) * C : 0
+
+  const card: React.CSSProperties = { border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', background: '#fff' }
+  const cardHdr: React.CSSProperties = { padding: '11px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }
+  const dot = (color: string): React.CSSProperties => ({ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, display: 'inline-block' })
+  const cardTitle: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#64748b' }
+  const fRow: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', padding: '9px 18px', borderBottom: '1px solid #f8fafc', gap: 12 }
+  const fLbl: React.CSSProperties = { fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }
+  const fVal: React.CSSProperties = { fontSize: 14, color: '#1e293b', fontWeight: 500, textAlign: 'right' }
+  const thS: React.CSSProperties = { padding: '9px 10px', fontSize: 12, fontWeight: 700, color: '#fff', borderBottom: '2px solid #e2e8f0', textAlign: 'right', whiteSpace: 'nowrap' }
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+      {/* Row 1: О проекте | Команда | Прогресс */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr', gap: 18 }}>
+
+        {/* О проекте */}
+        <div style={card}>
+          <div style={cardHdr}><span style={dot('#3b82f6')} /><span style={cardTitle}>О проекте</span></div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}>
+            <span style={fLbl}>ID матрицы</span>
+            <span style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180, whiteSpace: 'nowrap' }}>{entry.matrixId}</span>
+          </div>
+          {entry.sheetUrl && (
+            <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}>
+              <span style={fLbl}>Ссылка</span>
+              <a href={entry.sheetUrl} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 20, padding: '3px 10px 3px 7px', color: '#15803d', textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>
+                <span style={{ fontSize: 13 }}>📊</span> Открыть <span style={{ opacity: 0.6, fontSize: 10 }}>↗</span>
+              </a>
+            </div>
+          )}
+          {entry.kpLink && (
+            <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}>
+              <span style={fLbl}>КП</span>
+              <a href={entry.kpLink} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '3px 10px 3px 7px', color: '#2563eb', textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>
+                <span style={{ fontSize: 13 }}>📄</span> КП <span style={{ opacity: 0.6, fontSize: 10 }}>↗</span>
+              </a>
+            </div>
+          )}
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Юнит</span><span style={fVal}>{entry.unit || '—'}</span></div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Формат</span><span style={fVal}>{entry.format || '—'}</span></div>
+          <div style={{ ...fRow, borderBottom: 'none' }}><span style={fLbl}>Дата</span><span style={{ ...fVal, fontWeight: 700 }}>{fmtDate(entry.date)}</span></div>
+        </div>
+
+        {/* Команда */}
+        <div style={card}>
+          <div style={cardHdr}><span style={dot('#8b5cf6')} /><span style={cardTitle}>Команда</span></div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Продюсер</span><span style={fVal}>{entry.producer || '—'}</span></div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Менеджер</span><span style={fVal}>{entry.manager || '—'}</span></div>
+          <div style={{ ...fRow, borderBottom: 'none' }}><span style={fLbl}>Куратор</span><span style={fVal}>{entry.curator || '—'}</span></div>
+        </div>
+
+        {/* Прогресс */}
+        <div style={card}>
+          <div style={cardHdr}><span style={dot('#f59e0b')} /><span style={cardTitle}>Прогресс</span></div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', padding: '12px', gap: 0 }}>
+
+            {/* Ганта dial */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '0 8px', borderRight: '1px solid #f1f5f9' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ганта</div>
+              <svg width="90" height="90" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r={R} fill="none" stroke="#e2e8f0" strokeWidth={8} />
+                {total > 0 && (
+                  <circle cx="45" cy="45" r={R} fill="none"
+                    stroke={gPct === 100 ? '#22c55e' : '#3b82f6'} strokeWidth={8}
+                    strokeDasharray={`${dashFilled} ${C - dashFilled}`}
+                    strokeDashoffset={C / 4} strokeLinecap="round" />
+                )}
+                <circle cx="45" cy="45" r="24" fill="#fff" />
+                <text x="45" y="41" textAnchor="middle" fontSize="11" fontWeight="700" fill="#0f172a">{gPct}%</text>
+                <text x="45" y="54" textAnchor="middle" fontSize="9" fill="#64748b">{done}/{total}</text>
+              </svg>
+              <div style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>задач выполнено</div>
+            </div>
+
+            {/* Подтверждено */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '0 8px' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Смены</div>
+              <svg width="90" height="90" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r={R} fill="none" stroke="#f1f5f9" strokeWidth={2} strokeDasharray="6 4" />
+                <circle cx="45" cy="45" r="24" fill="#f8fafc" />
+                <text x="45" y="41" textAnchor="middle" fontSize="10" fill="#cbd5e1">—</text>
+                <text x="45" y="54" textAnchor="middle" fontSize="9" fill="#cbd5e1">скоро</text>
+              </svg>
+              <div style={{ fontSize: 11, color: '#cbd5e1', textAlign: 'center' }}>данных нет</div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: Описание | Финансовые показатели */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px,0.58fr) minmax(0,1fr)', gap: 18, alignItems: 'stretch' }}>
+
+        {/* Описание */}
+        <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
+          <div style={cardHdr}><span style={dot('#8b5cf6')} /><span style={cardTitle}>Описание</span></div>
+          <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+              {([
+                { label: 'Название', value: entry.name },
+                { label: 'Клиент',   value: entry.client },
+              ] as { label: string; value: string | null | undefined }[]).map(({ label, value }) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontSize: 13, color: value ? '#1e293b' : '#cbd5e1' }}>{value || '—'}</span>
+                </div>
+              ))}
+            </div>
+            <textarea
+              defaultValue={entry.brief ?? ''}
+              placeholder="Введите описание проекта…"
+              style={{ flex: 1, minHeight: 80, border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: '#1e293b', fontFamily: 'inherit', resize: 'none', outline: 'none', lineHeight: 1.6, background: '#fff' }}
+            />
+          </div>
+        </div>
+
+        {/* Финансовые показатели */}
+        <div style={card}>
+          <div style={cardHdr}><span style={dot('#10b981')} /><span style={cardTitle}>Финансовые показатели</span></div>
+          <div style={{ padding: '0 0 14px', overflowX: 'auto' }}>
+            <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', padding: '9px 18px', background: '#f8fafc', borderBottom: '2px solid #e2e8f0', minWidth: 200 }}></th>
+                  <th style={{ ...thS, background: '#94a3b8' }}>План</th>
+                  <th style={{ ...thS, background: '#3b82f6' }}>Факт</th>
+                  <th style={{ ...thS, background: '#f8fafc', color: '#64748b', fontSize: 11 }}>% откл.</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ background: '#f0fdf4' }}>
+                  <td style={{ padding: '9px 18px', fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #e2e8f0' }}>Доход</td>
+                  <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, borderBottom: '2px solid #e2e8f0', color: '#94a3b8' }}>—</td>
+                  <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, borderBottom: '2px solid #e2e8f0', color: '#94a3b8' }}>—</td>
+                  <td style={{ padding: '9px 8px', textAlign: 'right', color: '#94a3b8', borderBottom: '2px solid #e2e8f0' }}>—</td>
+                </tr>
+                <tr><td colSpan={4} style={{ padding: '6px 18px 2px', fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>Статья расходов</td></tr>
+                <tr>
+                  <td style={{ padding: '7px 18px 7px 28px', color: '#475569', borderBottom: '1px solid #f8fafc' }}>Специалисты</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #f8fafc', color: fin.specPlan ? '#1e293b' : '#94a3b8' }}>{fmt(fin.specPlan)}</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #f8fafc', color: fin.specFact ? '#1e293b' : '#94a3b8' }}>{fmt(fin.specFact)}</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'right', color: '#94a3b8', borderBottom: '1px solid #f8fafc' }}>{pct(fin.specPlan, fin.specFact)}</td>
+                </tr>
+                <tr style={{ background: '#f8fafc' }}>
+                  <td style={{ padding: '7px 18px 7px 28px', color: '#475569', borderBottom: '1px solid #f1f5f9' }}>Услуги</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', color: fin.servicesPlan ? '#1e293b' : '#94a3b8' }}>{fmt(fin.servicesPlan)}</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', color: fin.servicesFact ? '#1e293b' : '#94a3b8' }}>{fmt(fin.servicesFact)}</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'right', color: '#94a3b8', borderBottom: '1px solid #f1f5f9' }}>{pct(fin.servicesPlan, fin.servicesFact)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '7px 18px 7px 28px', color: '#475569', borderBottom: '1px solid #f8fafc' }}>Иные расходы</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', color: '#94a3b8', borderBottom: '1px solid #f8fafc' }}>—</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', color: '#94a3b8', borderBottom: '1px solid #f8fafc' }}>—</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'right', color: '#94a3b8', borderBottom: '1px solid #f8fafc' }}>—</td>
+                </tr>
+                <tr style={{ background: '#f8fafc' }}>
+                  <td style={{ padding: '7px 18px 7px 28px', color: '#475569', borderBottom: '1px solid #f1f5f9' }}>Налог 13%</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', color: fin.taxPlan ? '#1e293b' : '#94a3b8' }}>{fmt(fin.taxPlan)}</td>
+                  <td style={{ padding: '7px 10px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', color: fin.taxFact ? '#1e293b' : '#94a3b8' }}>{fmt(fin.taxFact)}</td>
+                  <td style={{ padding: '7px 8px', textAlign: 'right', color: '#94a3b8', borderBottom: '1px solid #f1f5f9' }}>{pct(fin.taxPlan, fin.taxFact)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '9px 18px', fontWeight: 700, color: '#0f172a', borderTop: '2px solid #e2e8f0', borderBottom: '2px solid #e2e8f0' }}>Общая сумма расходов</td>
+                  <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, borderTop: '2px solid #e2e8f0', borderBottom: '2px solid #e2e8f0', color: fin.totalPlan ? '#1e293b' : '#94a3b8' }}>{fmt(fin.totalPlan)}</td>
+                  <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, borderTop: '2px solid #e2e8f0', borderBottom: '2px solid #e2e8f0', color: fin.totalFact ? '#1e293b' : '#94a3b8' }}>{fmt(fin.totalFact)}</td>
+                  <td style={{ padding: '9px 8px', textAlign: 'right', color: '#94a3b8', borderTop: '2px solid #e2e8f0', borderBottom: '2px solid #e2e8f0' }}>{pct(fin.totalPlan, fin.totalFact)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '8px 18px', fontWeight: 700, color: '#0f172a', borderBottom: '1px solid #f1f5f9' }}>Прибыль</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#94a3b8', borderBottom: '1px solid #f1f5f9' }}>—</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#94a3b8', borderBottom: '1px solid #f1f5f9' }}>—</td>
+                  <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8', borderBottom: '1px solid #f1f5f9' }}>—</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '8px 18px', fontWeight: 700, color: '#0f172a' }}>Маржинальность</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#94a3b8' }}>—</td>
+                  <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#94a3b8' }}>—</td>
+                  <td style={{ padding: '8px 8px', textAlign: 'right', color: '#94a3b8' }}>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Row 3: Доход·Прибыль·Маржа donuts | Расходы bar chart */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+
+        {/* Доход · Прибыль · Маржинальность */}
+        <div style={card}>
+          <div style={cardHdr}><span style={dot('#3b82f6')} /><span style={cardTitle}>Доход · Прибыль · Маржинальность</span></div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', padding: '12px 8px 16px', gap: 0 }}>
+            {([
+              { label: 'Доход', plan: '—', fact: '—', color: '#3b82f6' },
+              { label: 'Прибыль', plan: '—', fact: '—', color: '#3b82f6' },
+              { label: 'Маржа', plan: '—', fact: '—', color: '#ef4444' },
+            ]).map((item, i) => (
+              <div key={item.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '0 8px', borderRight: i < 2 ? '1px solid #e2e8f0' : undefined }}>
+                <svg viewBox="0 0 200 200" style={{ width: '100%', display: 'block' }}>
+                  <circle cx="100" cy="100" r="80" fill="none" stroke="#e2e8f0" strokeWidth="6" strokeDasharray="6 4" />
+                  <circle cx="100" cy="100" r="44" fill="#f8fafc" />
+                  <text x="100" y="95" textAnchor="middle" fontSize="12" fontWeight="700" fill="#cbd5e1">—</text>
+                  <text x="100" y="110" textAnchor="middle" fontSize="10" fill="#94a3b8">{item.label.toUpperCase()}</text>
+                </svg>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#64748b' }}>
+                      <span style={{ width: 8, height: 8, background: '#cbd5e1', borderRadius: 2, display: 'inline-block' }} />
+                      План
+                    </span>
+                    <span style={{ fontWeight: 700, color: '#94a3b8' }}>{item.plan}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#64748b' }}>
+                      <span style={{ width: 8, height: 8, background: item.color, borderRadius: 2, display: 'inline-block' }} />
+                      Факт
+                    </span>
+                    <span style={{ fontWeight: 700, color: '#94a3b8' }}>{item.fact}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Расходы: план vs факт bar chart */}
+        <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
+          <div style={cardHdr}><span style={dot('#f59e0b')} /><span style={cardTitle}>Расходы: план vs факт</span></div>
+          <div style={{ padding: '14px 14px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
+                <span style={{ width: 10, height: 10, background: '#94a3b8', borderRadius: 2, display: 'inline-block' }} />План
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
+                <span style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: 2, display: 'inline-block' }} />Факт
+              </span>
+            </div>
+            {(() => {
+              const maxVal = Math.max(fin.specPlan, fin.servicesPlan, fin.taxPlan, fin.totalPlan, 1)
+              const H = 140
+              const barH = (v: number) => Math.max(2, Math.round((v / maxVal) * H))
+              const groups = [
+                { label: 'Специалисты', plan: fin.specPlan, fact: fin.specFact },
+                { label: 'Услуги', plan: fin.servicesPlan, fact: fin.servicesFact },
+                { label: 'Налог', plan: fin.taxPlan, fact: fin.taxFact },
+                { label: 'Общ. расходы', plan: fin.totalPlan, fact: fin.totalFact },
+              ]
+              return (
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 16, height: H + 30, flex: 1 }}>
+                  {groups.map((g) => (
+                    <div key={g.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, height: '100%', justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: H }}>
+                        <div style={{ width: 18, background: '#94a3b8', borderRadius: '3px 3px 0 0', height: barH(g.plan) }} />
+                        <div style={{ width: 18, background: '#3b82f6', borderRadius: '3px 3px 0 0', height: barH(g.fact) }} />
+                      </div>
+                      <div style={{ fontSize: 9, color: '#64748b', textAlign: 'center', marginTop: 4, lineHeight: 1.3 }}>{g.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer info */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '6px 0', borderTop: '1px solid #f1f5f9', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Источник</span>
+          <span style={{ fontSize: 11, color: '#15803d', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, fontWeight: 600 }}>{entry.source ?? '—'}</span>
+        </div>
+        {entry.googleRowIndex != null && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+            <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Строка</span>
+            <span style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace', background: '#f1f5f9', padding: '2px 7px', borderRadius: 5 }}>{entry.googleRowIndex}</span>
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}
+
+
+function RegistryChangesTab({ entityId }: { entityId: string }) {
+  const { data: logs = [], isLoading } = useQuery<ChangeLogEntry[]>({
+    queryKey: ['change-logs', 'MatrixRegistry', entityId],
+    queryFn: () => api.get(`/change-logs?entityType=MatrixRegistry&entityId=${entityId}&limit=100`).then((r) => r.data),
+    staleTime: 30_000,
+  })
+
+  if (isLoading) return <div style={{ padding: '20px 24px', color: '#94a3b8', fontSize: 14 }}>Загрузка...</div>
+  if (logs.length === 0) return <div style={{ padding: '20px 24px', color: '#94a3b8', fontSize: 14 }}>Нет записанных изменений</div>
+
+  return (
+    <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {logs.map((log) => (
+          <div key={log.id} style={{ background: '#fff', borderRadius: 10, border: '1px solid #e2e8f0', padding: '12px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#1e293b' }}>{log.user?.fullName ?? 'Система'}</span>
+                <span style={{ fontSize: 11, padding: '1px 7px', borderRadius: 10, background: log.source === 'sync' ? '#eff6ff' : '#f0fdf4', color: log.source === 'sync' ? '#2563eb' : '#15803d', fontWeight: 500 }}>
+                  {log.source === 'sync' ? 'синхр.' : 'вручную'}
+                </span>
+              </div>
+              <span style={{ fontSize: 11, color: '#94a3b8', flexShrink: 0 }}>
+                {new Date(log.changedAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
+              <span style={{ fontWeight: 600, color: '#475569' }}>{log.field}</span>
+              {log.oldValue != null && (
+                <> <span style={{ color: '#ef4444', textDecoration: 'line-through', background: '#fef2f2', padding: '0 4px', borderRadius: 3 }}>{log.oldValue}</span></>
+              )}
+              {log.newValue != null && (
+                <> <span style={{ color: '#94a3b8' }}>→</span> <span style={{ color: '#16a34a', background: '#f0fdf4', padding: '0 4px', borderRadius: 3 }}>{log.newValue}</span></>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Registry Detail Modal ────────────────────────────────────────────────────
+
 function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, onCheck, checking }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; onCheck?: () => void; checking?: boolean }) {
-  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs'>('info')
+  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'>('info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
   const [customSeps, setCustomSeps] = useState<Map<number, { name: string; date: string }>>(() => {
@@ -1513,6 +1939,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
   const qc = useQueryClient()
   const [refreshKey, setRefreshKey] = useState(0)
   const isInternal = entry.source === 'internal'
+
   const { data: shiftsData, isLoading: shiftsLoading, error: shiftsError, isFetching: shiftsFetching } = useQuery<MatrixShiftsData>({
     queryKey: ['matrix-shifts', entry.matrixId, refreshKey],
     queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}${refreshKey > 0 ? '?refresh=true' : ''}`).then((r) => r.data),
@@ -1520,7 +1947,6 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
     staleTime: 10 * 60 * 1000,
   })
 
-  interface GanttTaskInfo { id: string; done: boolean }
   const { data: ganttTasks } = useQuery<GanttTaskInfo[]>({
     queryKey: ['matrix-gantt', entry.id],
     queryFn: () => api.get(`/matrix-gantt?matrixId=${entry.id}`).then((r) => r.data),
@@ -1530,178 +1956,104 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
   useEffect(() => {
     if (!shiftsData) return
     onShiftsLoaded(entry.matrixId, shiftsData.activeCols.length > 0)
-    // Синхронизируем базовый ключ (refreshKey=0) со свежими данными,
-    // чтобы при следующем открытии модала не было отката к устаревшему кэшу
     if (refreshKey > 0) {
       qc.setQueryData(['matrix-shifts', entry.matrixId, 0], shiftsData)
     }
   }, [shiftsData])
 
-  type FieldDef = { label: string; value: string | null | undefined; mono?: boolean; link?: boolean }
-
-  const leftCol: FieldDef[] = [
-    { label: 'ID матрицы', value: entry.matrixId, mono: true },
-    { label: 'Ссылка',     value: entry.sheetUrl, link: true },
-    { label: 'Юнит',       value: entry.unit },
-    { label: 'Формат',     value: entry.format },
-    { label: 'Дата',       value: fmtDate(entry.date) },
-  ]
-
-  const rightCol: FieldDef[] = [
-    { label: 'Продюсер', value: entry.producer },
-    { label: 'Менеджер', value: entry.manager },
-    { label: 'Куратор',  value: entry.curator },
-  ]
-
-  function Field({ label, value, mono, link }: FieldDef) {
-    const display = value && value !== '—' ? value : null
-    return (
-      <div style={{ paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{label}</div>
-        <div style={{ fontSize: 13, color: display ? '#1e293b' : '#cbd5e1', fontFamily: mono ? 'monospace' : undefined }}>
-          {link && display
-            ? (
-              <a
-                href={display}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 5,
-                  background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 20,
-                  padding: '2px 10px 2px 6px', color: '#15803d', textDecoration: 'none',
-                  fontSize: 12, fontWeight: 500, maxWidth: '100%',
-                }}
-              >
-                <span style={{ fontSize: 14 }}>📊</span>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  Открыть таблицу
-                </span>
-                <span style={{ fontSize: 10, opacity: 0.6 }}>↗</span>
-              </a>
-            )
-            : (display ?? '—')}
-        </div>
-      </div>
-    )
+  const statusColors: Record<string, { bg: string; color: string; border: string }> = {
+    request:        { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
+    negotiation:    { bg: '#fefce8', color: '#b45309', border: '#fde68a' },
+    preproduction:  { bg: '#f0fdf4', color: '#15803d', border: '#bbf7d0' },
+    production:     { bg: '#fdf4ff', color: '#9333ea', border: '#f3e8ff' },
+    postproduction: { bg: '#fff7ed', color: '#c2410c', border: '#fed7aa' },
+    delivered:      { bg: '#f0fdf4', color: '#166534', border: '#86efac' },
+    rejected:       { bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
+    cancelled:      { bg: '#f8fafc', color: '#94a3b8', border: '#e2e8f0' },
+    manual:         { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' },
   }
+  const statusStyle = entry.status ? (statusColors[entry.status] ?? { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }) : null
+
+  const TABS: { key: 'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'; label: string }[] = [
+    { key: 'info',    label: 'Инфо' },
+    { key: 'shifts',  label: 'Смены' },
+    { key: 'gantt',   label: 'Ганта' },
+    { key: 'notes',   label: 'Заметки' },
+    { key: 'docs',    label: 'Документы' },
+    { key: 'changes', label: 'Изменения' },
+  ]
 
   return (
     <>
     <div
-      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
       onMouseDown={onClose}
     >
       <div
-        style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ background: '#f8fafc', borderRadius: 16, boxShadow: '0 24px 80px rgba(0,0,0,0.25)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #1e3a5f 100%)', padding: '18px 24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexShrink: 0 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', lineHeight: 1.4 }}>{entry.name ?? entry.matrixId}</div>
-            {entry.client && <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{entry.client}</div>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+              {statusStyle && (
+                <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}`, letterSpacing: '0.03em' }}>
+                  {STATUS_LABELS[entry.status!] ?? entry.status}
+                </span>
+              )}
+              <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: isInternal ? 'rgba(167,243,208,0.15)' : 'rgba(191,219,254,0.15)', color: isInternal ? '#6ee7b7' : '#93c5fd', border: `1px solid ${isInternal ? 'rgba(110,231,183,0.25)' : 'rgba(147,197,253,0.25)'}` }}>
+                {isInternal ? 'Внутренняя' : 'Google Sheets'}
+              </span>
+            </div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name ?? entry.matrixId}</div>
+            {entry.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>{entry.client}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {entry.status && (
-              <span style={{ padding: '3px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600, background: '#f1f5f9', color: '#475569' }}>
-                {entry.status}
-              </span>
-            )}
-            <SourceBadge source={entry.source ?? 'google'} />
             {onCheck && (
               <button
                 onClick={onCheck}
                 disabled={checking}
                 title="Проверить — существует ли таблица в Drive"
-                style={{ background: 'none', border: '1px solid #e2e8f0', color: '#64748b', cursor: checking ? 'default' : 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: checking ? 'default' : 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}
               >
                 {checking ? '...' : '↻ Проверить'}
               </button>
             )}
             {onEdit && (
-              <button onClick={onEdit} style={{ background: 'none', border: '1px solid #e2e8f0', color: '#475569', cursor: 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}>
+              <button onClick={onEdit} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#e2e8f0', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}>
                 Изменить
               </button>
             )}
             {onDelete && (
-              <button onClick={onDelete} style={{ background: 'none', border: '1px solid #fecaca', color: '#ef4444', cursor: 'pointer', fontSize: 12, padding: '4px 10px', borderRadius: 6 }}>
+              <button onClick={onDelete} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}>
                 Удалить
               </button>
             )}
             <button
               onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px', borderRadius: 4 }}
+              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 10px', borderRadius: 8 }}
               title="Закрыть (Esc)"
             >×</button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flexShrink: 0, overflowX: 'auto' }}>
-          {([
-            ['info',   'Инфо'],
-            ['shifts', 'Смены'],
-            ['gantt',  'Ганта'],
-            ['notes',  'Заметки'],
-            ['docs',   'Документы'],
-          ] as const).map(([t, label]) => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              padding: '8px 18px', fontSize: 13, border: 'none', cursor: 'pointer', background: 'none',
-              borderBottom: tab === t ? '2px solid #3b82f6' : '2px solid transparent',
-              color: tab === t ? '#3b82f6' : '#64748b', fontWeight: tab === t ? 600 : 400,
+        <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, overflowX: 'auto', paddingLeft: 4 }}>
+          {TABS.map(({ key, label }) => (
+            <button key={key} onClick={() => setTab(key)} style={{
+              padding: '10px 20px', fontSize: 13, border: 'none', cursor: 'pointer', background: 'none',
+              borderBottom: tab === key ? '2px solid #3b82f6' : '2px solid transparent',
+              color: tab === key ? '#3b82f6' : '#64748b', fontWeight: tab === key ? 600 : 400,
               whiteSpace: 'nowrap', flexShrink: 0,
             }}>
               {label}
             </button>
           ))}
         </div>
-
         {/* Tab: Info */}
         {tab === 'info' && (
-          <div style={{ padding: '16px 20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', gap: 24 }}>
-              <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {leftCol.map((f) => <Field key={f.label} {...f} />)}
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {rightCol.map((f) => <Field key={f.label} {...f} />)}
-                {ganttTasks && ganttTasks.length > 0 && (() => {
-                  const total = ganttTasks.length
-                  const done = ganttTasks.filter((t) => t.done).length
-                  const pct = Math.round((done / total) * 100)
-                  const r = 28
-                  const circ = 2 * Math.PI * r
-                  const dashFilled = (done / total) * circ
-                  return (
-                    <div style={{ paddingBottom: 10, borderBottom: '1px solid #f1f5f9' }}>
-                      <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>Ганта</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <svg width={70} height={70} viewBox="0 0 70 70">
-                          <circle cx={35} cy={35} r={r} fill="none" stroke="#e2e8f0" strokeWidth={8} />
-                          <circle cx={35} cy={35} r={r} fill="none"
-                            stroke={pct === 100 ? '#22c55e' : '#3b82f6'}
-                            strokeWidth={8}
-                            strokeDasharray={`${dashFilled} ${circ - dashFilled}`}
-                            strokeDashoffset={circ / 4}
-                            strokeLinecap="round"
-                          />
-                          <text x={35} y={39} textAnchor="middle" fontSize={13} fontWeight={700} fill="#1e293b">{pct}%</text>
-                        </svg>
-                        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>
-                          <div><span style={{ fontWeight: 600, color: '#1e293b' }}>{done}</span> / {total}</div>
-                          <div>задач выполнено</div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 16, paddingTop: 6, borderTop: '1px solid #e2e8f0' }}>
-              <Field label="Строка в гугл таблице" value={entry.googleRowIndex != null ? String(entry.googleRowIndex) : null} />
-              <Field label="Источник" value={entry.source ?? 'google'} />
-            </div>
-          </div>
+          <RegistryInfoTab entry={entry} ganttTasks={ganttTasks} />
         )}
 
         {/* Tab: Shifts */}
@@ -1712,7 +2064,6 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
         )}
         {tab === 'shifts' && !isInternal && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Meta row — outside scroll so it stays fixed */}
             {shiftsData && shiftsData.activeCols.length > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 20px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
                 <div style={{ fontSize: 12, color: '#94a3b8' }}>Лист: {shiftsData.sheetTitle}</div>
@@ -1730,23 +2081,22 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
               </div>
             )}
             <div style={{ flex: 1, overflow: 'auto', padding: '0 20px 16px' }}>
-            {shiftsLoading && <div style={{ color: '#64748b', fontSize: 14, padding: '16px 0' }}>Загрузка...</div>}
-            {shiftsError && <div style={{ color: '#ef4444', fontSize: 14, padding: '16px 0' }}>Ошибка: {(shiftsError as any)?.response?.data?.error ?? (shiftsError as any)?.message}</div>}
-            {shiftsData && shiftsData.activeCols.length === 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
-                <span style={{ color: '#94a3b8', fontSize: 14 }}>Нет проставленных смен</span>
-                <button
-                  onClick={() => setRefreshKey((k) => k + 1)}
-                  disabled={shiftsFetching}
-                  title="Обновить из Google Sheets"
-                  style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
-                >
-                  {shiftsFetching ? '...' : '↻ Обновить'}
-                </button>
-              </div>
-            )}
-            {shiftsData && shiftsData.activeCols.length > 0 && (
-              <>
+              {shiftsLoading && <div style={{ color: '#64748b', fontSize: 14, padding: '16px 0' }}>Загрузка...</div>}
+              {shiftsError && <div style={{ color: '#ef4444', fontSize: 14, padding: '16px 0' }}>Ошибка: {(shiftsError as any)?.response?.data?.error ?? (shiftsError as any)?.message}</div>}
+              {shiftsData && shiftsData.activeCols.length === 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
+                  <span style={{ color: '#94a3b8', fontSize: 14 }}>Нет проставленных смен</span>
+                  <button
+                    onClick={() => setRefreshKey((k) => k + 1)}
+                    disabled={shiftsFetching}
+                    title="Обновить из Google Sheets"
+                    style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
+                  >
+                    {shiftsFetching ? '...' : '↻ Обновить'}
+                  </button>
+                </div>
+              )}
+              {shiftsData && shiftsData.activeCols.length > 0 && (
                 <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
                   <thead>
                     <tr style={{ background: '#f1f5f9' }}>
@@ -1766,7 +2116,6 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
                       if (row.isSeparator && !rowText.trim()) return null
                       const customSep = customSeps.get(ri)
                       const colSpanCount = 3 + shiftsData.activeCols.length
-                      const empIndex = ri // use original index for alternating bg
 
                       if (customSep) {
                         return (
@@ -1785,7 +2134,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
                       if (row.isSeparator) {
                         return (
                           <tr key={ri} onClick={(e) => handleRowCtrlClick(e, ri, rowText)} title="Ctrl+клик — сделать разделителем"
-                            style={{ background: empIndex % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'default' }}>
+                            style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'default' }}>
                             <td style={shiftTd}>{row.text}</td>
                             <td style={shiftTd} colSpan={colSpanCount - 1} />
                           </tr>
@@ -1794,7 +2143,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
 
                       return (
                         <tr key={ri} onClick={(e) => handleRowCtrlClick(e, ri, rowText)} title="Ctrl+клик — сделать разделителем"
-                          style={{ background: empIndex % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'default' }}>
+                          style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'default' }}>
                           <td style={shiftTd}>{row.name}</td>
                           <td style={{ ...shiftTd, color: '#64748b', whiteSpace: 'normal', maxWidth: 220, wordBreak: 'break-word' }}>{row.role ?? '—'}</td>
                           <td style={{ ...shiftTd, color: '#64748b' }}>{row.employmentType ?? '—'}</td>
@@ -1810,36 +2159,41 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
                     })}
                   </tbody>
                 </table>
-              </>
-            )}
+              )}
             </div>
           </div>
         )}
-      {/* Tab: Gantt */}
-      {tab === 'gantt' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <GanttTab matrixId={entry.id} />
-        </div>
-      )}
 
-      {/* Tab: Notes */}
-      {tab === 'notes' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <NotesTab matrixId={entry.id} />
-        </div>
-      )}
+        {/* Tab: Gantt */}
+        {tab === 'gantt' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <GanttTab matrixId={entry.id} />
+          </div>
+        )}
 
-      {/* Tab: Docs */}
-      {tab === 'docs' && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <DocumentsTab matrixId={entry.id} />
-        </div>
-      )}
+        {/* Tab: Notes */}
+        {tab === 'notes' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <NotesTab matrixId={entry.id} />
+          </div>
+        )}
+
+        {/* Tab: Docs */}
+        {tab === 'docs' && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <DocumentsTab matrixId={entry.id} />
+          </div>
+        )}
+
+        {/* Tab: Changes */}
+        {tab === 'changes' && (
+          <RegistryChangesTab entityId={entry.id} />
+        )}
+
       </div>
     </div>
 
     {/* Custom separator config popup */}
-
     {editingSep !== null && (
       <div
         style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}

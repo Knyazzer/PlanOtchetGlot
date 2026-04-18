@@ -175,6 +175,38 @@ tr.person-row:hover td { background:#f8faff; }
 .exp-table td { padding:9px 12px; border-bottom:1px solid #f1f5f9; }
 .exp-table tr:hover td { background:#f8faff; }
 
+/* ═══ DATE MANAGER ═══ */
+.shift-info-panel { display:flex; flex-direction:column; gap:10px; }
+.date-mgr-hdr { display:flex; align-items:center; justify-content:space-between; padding:9px 12px 8px; border-bottom:1px solid #f1f5f9; }
+.date-mgr-title { font-size:10px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.05em; }
+.date-add-btn { font-size:11px; font-weight:600; padding:3px 10px; border-radius:6px; border:1px solid #3b82f6; background:#eff6ff; color:#2563eb; cursor:pointer; white-space:nowrap; }
+.date-add-btn:hover { background:#dbeafe; }
+.date-mgr-list { overflow-y:auto; max-height:240px; }
+.date-entry { padding:7px 12px; border-bottom:1px solid #f8fafc; display:flex; align-items:flex-start; justify-content:space-between; gap:6px; }
+.date-entry:last-child { border-bottom:none; }
+.date-entry-info { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.date-entry-top { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.date-entry-date { font-size:12px; font-weight:600; color:#0f172a; }
+.date-entry-time { font-size:11px; color:#64748b; }
+.date-entry-info { cursor:pointer; flex:1; min-width:0; border-radius:6px; padding:2px 4px; margin:-2px -4px; transition:background .12s; }
+.date-entry-info:hover { background:#eff6ff; }
+.date-entry-del { flex-shrink:0; background:none; border:none; color:#cbd5e1; cursor:pointer; font-size:15px; line-height:1; padding:1px 3px; }
+.date-entry-del:hover { color:#ef4444; }
+.date-add-form { padding:10px 12px; border-top:2px solid #e2e8f0; background:#f8fafc; display:flex; flex-direction:column; gap:8px; }
+.date-add-form label { font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:2px; }
+.date-add-form input[type=date], .date-add-form input[type=time], .date-add-form select { width:100%; border:1px solid #e2e8f0; border-radius:6px; padding:5px 8px; font-size:12px; color:#1e293b; font-family:inherit; outline:none; background:#fff; box-sizing:border-box; }
+.date-add-form input[type=date]:focus, .date-add-form input[type=time]:focus, .date-add-form select:focus { border-color:#3b82f6; }
+.time-row { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.date-mode-toggle { display:flex; gap:0; border:1px solid #e2e8f0; border-radius:6px; overflow:hidden; }
+.date-mode-toggle button { flex:1; font-size:11px; padding:5px; border:none; background:#fff; color:#64748b; cursor:pointer; }
+.date-mode-toggle button.active { background:#2563eb; color:#fff; }
+.date-add-actions { display:flex; gap:6px; }
+.date-add-actions button { flex:1; font-size:12px; padding:6px; border-radius:6px; border:1px solid; cursor:pointer; }
+.date-add-actions .btn-confirm { background:#2563eb; color:#fff; border-color:#2563eb; font-weight:600; }
+.date-add-actions .btn-confirm:hover { background:#1d4ed8; }
+.date-add-actions .btn-cancel { background:#fff; color:#64748b; border-color:#e2e8f0; }
+.date-add-actions .btn-cancel:hover { background:#f8fafc; }
+
 /* ═══ GANTT ═══ */
 .gantt-split { display:flex; flex:1; overflow:hidden; }
 .gantt-left { width:460px; flex-shrink:0; border-right:1px solid #e2e8f0; display:flex; flex-direction:column; overflow:hidden; }
@@ -235,6 +267,14 @@ tr.person-row:hover td { background:#f8faff; }
 .doc-del { font-size:16px; color:#e2e8f0; border:none; background:none; cursor:pointer; }
 
 input[type=date] { font-size:12px; border:1px solid #e2e8f0; border-radius:5px; padding:3px 7px; color:#1e293b; font-family:inherit; width:100%; }
+.check-btn { font-size:12px; padding:4px 10px; border-radius:6px; border:1px solid #e2e8f0; background:#f8fafc; color:#475569; cursor:pointer; white-space:nowrap; }
+.check-btn:hover { border-color:#3b82f6; color:#2563eb; background:#eff6ff; }
+.check-btn.uploaded { border-color:#bbf7d0; color:#15803d; background:#f0fdf4; }
+/* Upload popup */
+.upload-overlay { position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; }
+.upload-box { background:#fff; border-radius:14px; padding:24px; width:420px; max-width:92vw; box-shadow:0 24px 80px rgba(0,0,0,.35); }
+.drop-zone { border:2px dashed #cbd5e1; border-radius:10px; padding:36px 20px; text-align:center; cursor:pointer; transition:border-color .15s, background .15s; }
+.drop-zone:hover, .drop-zone.drag-over { border-color:#3b82f6; background:#eff6ff; }
 input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b82f6; }
 .confirm-on { background:#dcfce7; color:#15803d; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; cursor:pointer; border:none; white-space:nowrap; }
 .confirm-off { background:#f1f5f9; color:#94a3b8; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; cursor:pointer; border:none; white-space:nowrap; }
@@ -315,206 +355,190 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
         </div>
       </div>
 
-      <!-- ═══ ФИНАНСОВЫЕ ПОКАЗАТЕЛИ ═══ -->
-      <div style="margin-top:18px;">
+      <!-- ═══ ФИНАНСОВЫЕ ПОКАЗАТЕЛИ: РЯД 1 ═══ -->
+      <div style="display:grid;grid-template-columns:minmax(300px,0.58fr) minmax(0,1fr);gap:18px;margin-top:18px;align-items:stretch;">
+
+        <!-- БЛОК 1: Описание -->
+        <div class="info-card" style="display:flex;flex-direction:column;">
+          <div class="info-card-header"><div class="card-dot" style="background:#8b5cf6"></div><div class="card-title">Описание</div></div>
+          <div style="padding:14px 16px 16px;display:flex;flex-direction:column;flex:1;">
+            <textarea style="flex:1;min-height:0;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-size:13px;color:#1e293b;font-family:inherit;resize:none;outline:none;line-height:1.6;" placeholder="Введите описание проекта…"></textarea>
+          </div>
+        </div>
+
+        <!-- БЛОК 2: Финансовые показатели -->
         <div class="info-card">
           <div class="info-card-header"><div class="card-dot" style="background:#10b981"></div><div class="card-title">Финансовые показатели</div></div>
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) 640px;">
-          <div style="padding:0 18px 4px;overflow-x:auto;">
+          <div style="padding:0 18px 14px;overflow-x:auto;">
             <table style="border-collapse:collapse;font-size:13px;width:100%;">
               <thead>
                 <tr>
                   <th style="text-align:left;padding:9px 12px;background:#f8fafc;border-bottom:2px solid #e2e8f0;min-width:200px;"></th>
-                  <th style="padding:9px 20px;font-size:12px;font-weight:700;color:#fff;background:#94a3b8;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">План</th>
-                  <th style="padding:9px 20px;font-size:12px;font-weight:700;color:#fff;background:#3b82f6;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">Факт</th>
-                  <th style="padding:9px 16px;font-size:11px;font-weight:700;color:#64748b;background:#f8fafc;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">% откл.</th>
+                  <th style="padding:9px 10px;font-size:12px;font-weight:700;color:#fff;background:#94a3b8;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">План</th>
+                  <th style="padding:9px 10px;font-size:12px;font-weight:700;color:#fff;background:#3b82f6;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">Факт</th>
+                  <th style="padding:9px 8px;font-size:11px;font-weight:700;color:#64748b;background:#f8fafc;border-bottom:2px solid #e2e8f0;text-align:right;white-space:nowrap;">% откл.</th>
                 </tr>
               </thead>
               <tbody>
                 <tr style="background:#f0fdf4;">
                   <td style="padding:9px 12px;font-weight:700;color:#0f172a;border-bottom:2px solid #e2e8f0;">Доход</td>
-                  <td style="padding:9px 20px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap;">32 635 ₽</td>
-                  <td style="padding:9px 20px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap;">32 635 ₽</td>
-                  <td style="padding:9px 16px;text-align:right;color:#64748b;border-bottom:2px solid #e2e8f0;">0,00%</td>
+                  <td style="padding:9px 10px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap;">32 635 ₽</td>
+                  <td style="padding:9px 10px;text-align:right;font-weight:700;border-bottom:2px solid #e2e8f0;white-space:nowrap;">32 635 ₽</td>
+                  <td style="padding:9px 8px;text-align:right;color:#64748b;border-bottom:2px solid #e2e8f0;">0,00%</td>
                 </tr>
                 <tr><td colspan="4" style="padding:6px 12px 2px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;background:#f8fafc;border-bottom:1px solid #f1f5f9;">Статья расходов</td></tr>
                 <tr>
                   <td style="padding:7px 12px 7px 22px;color:#475569;border-bottom:1px solid #f8fafc;">Специалисты</td>
-                  <td style="padding:7px 20px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
-                  <td style="padding:7px 20px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
-                  <td style="padding:7px 16px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">—</td>
+                  <td style="padding:7px 10px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
+                  <td style="padding:7px 10px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
+                  <td style="padding:7px 8px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">—</td>
                 </tr>
                 <tr style="background:#f8fafc;">
                   <td style="padding:7px 12px 7px 22px;color:#475569;border-bottom:1px solid #f1f5f9;">Услуги</td>
-                  <td style="padding:7px 20px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">22 722 ₽</td>
-                  <td style="padding:7px 20px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">22 722 ₽</td>
-                  <td style="padding:7px 16px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
+                  <td style="padding:7px 10px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">22 722 ₽</td>
+                  <td style="padding:7px 10px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">22 722 ₽</td>
+                  <td style="padding:7px 8px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
                 </tr>
                 <tr>
                   <td style="padding:7px 12px 7px 22px;color:#475569;border-bottom:1px solid #f8fafc;">Иные расходы</td>
-                  <td style="padding:7px 20px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
-                  <td style="padding:7px 20px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
-                  <td style="padding:7px 16px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">—</td>
+                  <td style="padding:7px 10px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
+                  <td style="padding:7px 10px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">0 ₽</td>
+                  <td style="padding:7px 8px;text-align:right;color:#94a3b8;border-bottom:1px solid #f8fafc;">—</td>
                 </tr>
                 <tr style="background:#f8fafc;">
                   <td style="padding:7px 12px 7px 22px;color:#475569;border-bottom:1px solid #f1f5f9;">Налог 13% (УСН+НДС)</td>
-                  <td style="padding:7px 20px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">4 242 ₽</td>
-                  <td style="padding:7px 20px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">4 242 ₽</td>
-                  <td style="padding:7px 16px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
+                  <td style="padding:7px 10px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">4 242 ₽</td>
+                  <td style="padding:7px 10px;text-align:right;border-bottom:1px solid #f1f5f9;white-space:nowrap;">4 242 ₽</td>
+                  <td style="padding:7px 8px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
                 </tr>
                 <tr>
                   <td style="padding:9px 12px;font-weight:700;color:#0f172a;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;">Общая сумма расходов</td>
-                  <td style="padding:9px 20px;text-align:right;font-weight:700;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;white-space:nowrap;">26 965 ₽</td>
-                  <td style="padding:9px 20px;text-align:right;font-weight:700;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;white-space:nowrap;">26 965 ₽</td>
-                  <td style="padding:9px 16px;text-align:right;color:#64748b;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;">0,00%</td>
+                  <td style="padding:9px 10px;text-align:right;font-weight:700;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;white-space:nowrap;">26 965 ₽</td>
+                  <td style="padding:9px 10px;text-align:right;font-weight:700;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;white-space:nowrap;">26 965 ₽</td>
+                  <td style="padding:9px 8px;text-align:right;color:#64748b;border-top:2px solid #e2e8f0;border-bottom:2px solid #e2e8f0;">0,00%</td>
                 </tr>
                 <tr>
                   <td style="padding:8px 12px;font-weight:700;color:#0f172a;border-bottom:1px solid #f1f5f9;">Прибыль</td>
-                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#15803d;border-bottom:1px solid #f1f5f9;white-space:nowrap;">5 670 ₽</td>
-                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#15803d;border-bottom:1px solid #f1f5f9;white-space:nowrap;">5 670 ₽</td>
-                  <td style="padding:8px 16px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
+                  <td style="padding:8px 10px;text-align:right;font-weight:700;color:#15803d;border-bottom:1px solid #f1f5f9;white-space:nowrap;">5 670 ₽</td>
+                  <td style="padding:8px 10px;text-align:right;font-weight:700;color:#15803d;border-bottom:1px solid #f1f5f9;white-space:nowrap;">5 670 ₽</td>
+                  <td style="padding:8px 8px;text-align:right;color:#64748b;border-bottom:1px solid #f1f5f9;">0,00%</td>
                 </tr>
                 <tr>
                   <td style="padding:8px 12px;font-weight:700;color:#0f172a;border-bottom:1px solid #f1f5f9;">Маржинальность</td>
-                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#fff;background:#ef4444;border-bottom:1px solid #f1f5f9;">0,17</td>
-                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#fff;background:#ef4444;border-bottom:1px solid #f1f5f9;">0,17</td>
-                  <td style="padding:8px 16px;text-align:right;color:#94a3b8;border-bottom:1px solid #f1f5f9;">—</td>
+                  <td style="padding:8px 10px;text-align:right;font-weight:700;color:#fff;background:#ef4444;border-bottom:1px solid #f1f5f9;">0,17</td>
+                  <td style="padding:8px 10px;text-align:right;font-weight:700;color:#fff;background:#ef4444;border-bottom:1px solid #f1f5f9;">0,17</td>
+                  <td style="padding:8px 8px;text-align:right;color:#94a3b8;border-bottom:1px solid #f1f5f9;">—</td>
                 </tr>
                 <tr>
                   <td style="padding:8px 12px;font-weight:700;color:#0f172a;">Рентабельность</td>
-                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#ef4444;white-space:nowrap;">17,38%</td>
-                  <td style="padding:8px 20px;text-align:right;font-weight:700;color:#ef4444;white-space:nowrap;">17,38%</td>
-                  <td style="padding:8px 16px;text-align:right;color:#94a3b8;">—</td>
+                  <td style="padding:8px 10px;text-align:right;font-weight:700;color:#ef4444;white-space:nowrap;">17,38%</td>
+                  <td style="padding:8px 10px;text-align:right;font-weight:700;color:#ef4444;white-space:nowrap;">17,38%</td>
+                  <td style="padding:8px 8px;text-align:right;color:#94a3b8;">—</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <!-- Donuts: 3 charts side by side — SVG fills remaining height via flex chain -->
-          <div style="display:flex;align-items:stretch;height:100%;border-left:2px solid #e2e8f0;">
+        </div>
 
-            <!-- ① Доход -->
-            <div style="flex:1;min-width:180px;display:flex;flex-direction:column;align-items:center;padding:14px 10px;gap:8px;border-right:1px solid #e2e8f0;">
-              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">Доход</div>
-              <div style="flex:1;min-height:220px;align-self:stretch;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-                <svg viewBox="0 0 200 200" style="height:100%;width:auto;max-width:100%;display:block;">
-                  <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
-                  <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#3b82f6" stroke="#fff" stroke-width="3"/>
-                  <circle cx="100" cy="100" r="44" fill="#fff"/>
-                  <text x="100" y="94" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">32 635 ₽</text>
-                  <text x="100" y="111" text-anchor="middle" font-size="9" fill="#94a3b8">ДОХОД</text>
-                </svg>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:5px;width:100%;flex-shrink:0;">
-                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
-                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span>
-                  <span style="font-weight:700;color:#1e293b;">32 635 ₽</span>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
-                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:2px;flex-shrink:0;"></span>Факт</span>
-                  <span style="font-weight:700;color:#1e293b;">32 635 ₽</span>
-                </div>
-                <div style="padding-top:6px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;">
-                  <span style="color:#94a3b8;">Выполнение</span>
-                  <span style="font-weight:700;color:#15803d;background:#dcfce7;padding:1px 7px;border-radius:20px;">100%</span>
-                </div>
+      </div>
+
+      <!-- ═══ ФИНАНСОВЫЕ ПОКАЗАТЕЛИ: РЯД 2 ═══ -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;">
+
+        <!-- БЛОК 3: Круговые диаграммы -->
+        <div class="info-card">
+          <div class="info-card-header"><div class="card-dot" style="background:#3b82f6"></div><div class="card-title">Доход · Прибыль · Маржинальность</div></div>
+          <div style="display:flex;align-items:flex-start;padding:12px 8px 16px;gap:0;">
+
+            <!-- Доход -->
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 8px;border-right:1px solid #e2e8f0;">
+              <svg viewBox="0 0 200 200" style="width:100%;display:block;">
+                <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
+                <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#3b82f6" stroke="#fff" stroke-width="3"/>
+                <circle cx="100" cy="100" r="44" fill="#fff"/>
+                <text x="100" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#0f172a">32 635 ₽</text>
+                <text x="100" y="108" text-anchor="middle" font-size="10" fill="#64748b">ДОХОД</text>
+              </svg>
+              <div style="display:flex;flex-direction:column;gap:4px;width:100%;">
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;"><span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span><span style="font-weight:700;color:#1e293b;">32 635 ₽</span></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;"><span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:2px;flex-shrink:0;"></span>Факт</span><span style="font-weight:700;color:#1e293b;">32 635 ₽</span></div>
+                <div style="padding-top:4px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;"><span style="color:#94a3b8;">Выполнение</span><span style="font-weight:700;color:#15803d;background:#dcfce7;padding:1px 7px;border-radius:20px;">100%</span></div>
               </div>
             </div>
 
-            <!-- ② Прибыль -->
-            <div style="flex:1;min-width:180px;display:flex;flex-direction:column;align-items:center;padding:14px 10px;gap:8px;border-right:1px solid #e2e8f0;">
-              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">Прибыль</div>
-              <div style="flex:1;min-height:220px;align-self:stretch;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-                <svg viewBox="0 0 200 200" style="height:100%;width:auto;max-width:100%;display:block;">
-                  <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
-                  <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#3b82f6" stroke="#fff" stroke-width="3"/>
-                  <circle cx="100" cy="100" r="44" fill="#fff"/>
-                  <text x="100" y="94" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">5 670 ₽</text>
-                  <text x="100" y="111" text-anchor="middle" font-size="9" fill="#94a3b8">ПРИБЫЛЬ</text>
-                </svg>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:5px;width:100%;flex-shrink:0;">
-                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
-                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span>
-                  <span style="font-weight:700;color:#1e293b;">5 670 ₽</span>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
-                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:2px;flex-shrink:0;"></span>Факт</span>
-                  <span style="font-weight:700;color:#1e293b;">5 670 ₽</span>
-                </div>
-                <div style="padding-top:6px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;">
-                  <span style="color:#94a3b8;">Выполнение</span>
-                  <span style="font-weight:700;color:#15803d;background:#dcfce7;padding:1px 7px;border-radius:20px;">100%</span>
-                </div>
+            <!-- Прибыль -->
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 8px;border-right:1px solid #e2e8f0;">
+              <svg viewBox="0 0 200 200" style="width:100%;display:block;">
+                <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
+                <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#3b82f6" stroke="#fff" stroke-width="3"/>
+                <circle cx="100" cy="100" r="44" fill="#fff"/>
+                <text x="100" y="92" text-anchor="middle" font-size="13" font-weight="700" fill="#0f172a">5 670 ₽</text>
+                <text x="100" y="108" text-anchor="middle" font-size="10" fill="#64748b">ПРИБЫЛЬ</text>
+              </svg>
+              <div style="display:flex;flex-direction:column;gap:4px;width:100%;">
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;"><span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span><span style="font-weight:700;color:#1e293b;">5 670 ₽</span></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;"><span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#3b82f6;border-radius:2px;flex-shrink:0;"></span>Факт</span><span style="font-weight:700;color:#1e293b;">5 670 ₽</span></div>
+                <div style="padding-top:4px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;"><span style="color:#94a3b8;">Выполнение</span><span style="font-weight:700;color:#15803d;background:#dcfce7;padding:1px 7px;border-radius:20px;">100%</span></div>
               </div>
             </div>
 
-            <!-- ③ Маржинальность -->
-            <div style="flex:1;min-width:180px;display:flex;flex-direction:column;align-items:center;padding:14px 10px;gap:8px;">
-              <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;">Маржинальность</div>
-              <div style="flex:1;min-height:220px;align-self:stretch;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-                <svg viewBox="0 0 200 200" style="height:100%;width:auto;max-width:100%;display:block;">
-                  <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
-                  <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#ef4444" stroke="#fff" stroke-width="3"/>
-                  <circle cx="100" cy="100" r="44" fill="#fff"/>
-                  <text x="100" y="94" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">0,17</text>
-                  <text x="100" y="111" text-anchor="middle" font-size="9" fill="#94a3b8">МАРЖА</text>
-                </svg>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:5px;width:100%;flex-shrink:0;">
-                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
-                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span>
-                  <span style="font-weight:700;color:#1e293b;">0,17</span>
-                </div>
-                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;">
-                  <span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:2px;flex-shrink:0;"></span>Факт</span>
-                  <span style="font-weight:700;color:#1e293b;">0,17</span>
-                </div>
-                <div style="padding-top:6px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;">
-                  <span style="color:#94a3b8;">Рентабельность</span>
-                  <span style="font-weight:700;color:#ef4444;background:#fee2e2;padding:1px 7px;border-radius:20px;">17,38%</span>
-                </div>
+            <!-- Маржинальность -->
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 8px;">
+              <svg viewBox="0 0 200 200" style="width:100%;display:block;">
+                <path d="M 100 20 A 80 80 0 0 1 100 180 L 100 148 A 48 48 0 0 0 100 52 Z" fill="#cbd5e1" stroke="#fff" stroke-width="3"/>
+                <path d="M 100 180 A 80 80 0 0 1 100 20 L 100 52 A 48 48 0 0 0 100 148 Z" fill="#ef4444" stroke="#fff" stroke-width="3"/>
+                <circle cx="100" cy="100" r="44" fill="#fff"/>
+                <text x="100" y="92" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">0,17</text>
+                <text x="100" y="108" text-anchor="middle" font-size="10" fill="#64748b">МАРЖА</text>
+              </svg>
+              <div style="display:flex;flex-direction:column;gap:4px;width:100%;">
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;"><span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#cbd5e1;border-radius:2px;border:1px solid #94a3b8;flex-shrink:0;"></span>План</span><span style="font-weight:700;color:#1e293b;">0,17</span></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;"><span style="display:flex;align-items:center;gap:5px;color:#64748b;"><span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:2px;flex-shrink:0;"></span>Факт</span><span style="font-weight:700;color:#1e293b;">0,17</span></div>
+                <div style="padding-top:4px;border-top:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;font-size:10px;"><span style="color:#94a3b8;">Рентабельность</span><span style="font-weight:700;color:#ef4444;background:#fee2e2;padding:1px 7px;border-radius:20px;">17,38%</span></div>
               </div>
             </div>
 
           </div>
-          </div><!-- /grid -->
-          <!-- Bar chart: Расходы план vs факт -->
-          <div style="border-top:1px solid #f1f5f9;padding:14px 18px 18px;">
-            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Расходы: план vs факт</div>
-            <div style="display:flex;gap:14px;margin-bottom:10px;">
-              <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#64748b;"><span style="display:inline-block;width:10px;height:10px;background:#94a3b8;border-radius:2px;"></span>План</span>
-              <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#64748b;"><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;"></span>Факт</span>
+        </div>
+
+        <!-- БЛОК 4: Расходы план vs факт -->
+        <div class="info-card" style="display:flex;flex-direction:column;">
+          <div class="info-card-header"><div class="card-dot" style="background:#f59e0b"></div><div class="card-title">Расходы: план vs факт</div></div>
+          <div style="padding:14px 14px 14px;display:flex;flex-direction:column;flex:1;">
+            <div style="display:flex;gap:16px;margin-bottom:10px;">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#64748b;"><span style="display:inline-block;width:10px;height:10px;background:#94a3b8;border-radius:2px;"></span>План</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#64748b;"><span style="display:inline-block;width:10px;height:10px;background:#3b82f6;border-radius:2px;"></span>Факт</span>
             </div>
-            <svg viewBox="0 0 900 200" style="width:100%;display:block;">
-              <!-- Gridlines (y=165 baseline, chart height 150px, max=27000) -->
-              <line x1="46" y1="15"  x2="880" y2="15"  stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="46" y1="65"  x2="880" y2="65"  stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="46" y1="115" x2="880" y2="115" stroke="#f1f5f9" stroke-width="1"/>
-              <line x1="46" y1="165" x2="880" y2="165" stroke="#e2e8f0" stroke-width="1.5"/>
-              <!-- Y labels -->
-              <text x="42" y="169" text-anchor="end" font-size="9" fill="#94a3b8">0</text>
-              <text x="42" y="119" text-anchor="end" font-size="9" fill="#94a3b8">9k</text>
-              <text x="42" y="69"  text-anchor="end" font-size="9" fill="#94a3b8">18k</text>
-              <text x="42" y="19"  text-anchor="end" font-size="9" fill="#94a3b8">27k</text>
-              <!-- Специалисты (0 ₽) — group center x=154 -->
-              <rect x="107" y="163" width="42" height="2"   fill="#cbd5e1" rx="2"/>
-              <rect x="159" y="163" width="42" height="2"   fill="#bfdbfe" rx="2"/>
-              <text x="154" y="182" text-anchor="middle" font-size="9" fill="#94a3b8">Специалисты</text>
-              <!-- Услуги (22 722 ₽ → 126px) — group center x=361 -->
-              <rect x="314" y="39"  width="42" height="126" fill="#94a3b8" rx="3"/>
-              <rect x="366" y="39"  width="42" height="126" fill="#3b82f6" rx="3"/>
-              <text x="361" y="182" text-anchor="middle" font-size="9" fill="#64748b">Услуги</text>
-              <!-- Налог (4 242 ₽ → 24px) — group center x=569 -->
-              <rect x="522" y="141" width="42" height="24"  fill="#94a3b8" rx="3"/>
-              <rect x="574" y="141" width="42" height="24"  fill="#3b82f6" rx="3"/>
-              <text x="569" y="182" text-anchor="middle" font-size="9" fill="#64748b">Налог</text>
-              <!-- Общая сумма расходов (26 965 ₽ → 150px) — group center x=776 -->
-              <rect x="729" y="15"  width="42" height="150" fill="#94a3b8" rx="3"/>
-              <rect x="781" y="15"  width="42" height="150" fill="#3b82f6" rx="3"/>
-              <text x="776" y="182" text-anchor="middle" font-size="9" fill="#64748b">Общ. расходы</text>
+            <svg viewBox="0 0 560 200" style="width:100%;flex:1;display:block;">
+              <line x1="36" y1="10"  x2="548" y2="10"  stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="36" y1="55"  x2="548" y2="55"  stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="36" y1="100" x2="548" y2="100" stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="36" y1="145" x2="548" y2="145" stroke="#e2e8f0" stroke-width="1.5"/>
+              <text x="33" y="149" text-anchor="end" font-size="9" fill="#94a3b8">0</text>
+              <text x="33" y="104" text-anchor="end" font-size="9" fill="#94a3b8">9k</text>
+              <text x="33" y="59"  text-anchor="end" font-size="9" fill="#94a3b8">18k</text>
+              <text x="33" y="14"  text-anchor="end" font-size="9" fill="#94a3b8">27k</text>
+              <!-- Специалисты: нет данных -->
+              <rect x="52"  y="143" width="58" height="2" fill="#cbd5e1" rx="2"/>
+              <rect x="114" y="143" width="58" height="2" fill="#bfdbfe" rx="2"/>
+              <text x="112" y="164" text-anchor="middle" font-size="9" fill="#94a3b8">Специалисты</text>
+              <!-- Услуги -->
+              <rect x="186" y="34"  width="58" height="111" fill="#94a3b8" rx="3"/>
+              <rect x="248" y="34"  width="58" height="111" fill="#3b82f6" rx="3"/>
+              <text x="246" y="164" text-anchor="middle" font-size="9" fill="#64748b">Услуги</text>
+              <!-- Налог -->
+              <rect x="320" y="124" width="58" height="21" fill="#94a3b8" rx="3"/>
+              <rect x="382" y="124" width="58" height="21" fill="#3b82f6" rx="3"/>
+              <text x="380" y="164" text-anchor="middle" font-size="9" fill="#64748b">Налог</text>
+              <!-- Общ. расходы -->
+              <rect x="454" y="13"  width="58" height="132" fill="#94a3b8" rx="3"/>
+              <rect x="454" y="13"  width="58" height="132" fill="url(#stripe)" rx="3" opacity=".3"/>
+              <rect x="516" y="13"  width="58" height="132" fill="#3b82f6" rx="3"/>
+              <text x="514" y="164" text-anchor="middle" font-size="9" fill="#64748b">Общ. расходы</text>
             </svg>
           </div>
         </div>
+
       </div>
 
     </div>
@@ -552,7 +576,10 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
             <tr>
               <th class="info-col-th">Смена</th>
               <th style="min-width:160px">ФИО</th>
+              <th style="min-width:80px">Формат</th>
               <th style="min-width:130px">Должность</th>
+              <th style="min-width:100px;text-align:right;">Сумма план</th>
+              <th style="min-width:100px;text-align:right;">Сумма факт</th>
               <th class="date-col">17 апр.</th>
               <th class="date-col">18 апр.</th>
               <th class="date-col">19 апр.</th>
@@ -560,121 +587,97 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
             </tr>
           </thead>
           <tbody>
-            <!-- ══ SHIFT 1: Эфир 18 апр — 3 человека → rowspan = 3 persons + 1 label row = 4 ══ -->
+            <!-- ══ SHIFT 1: Эфир 18 апр — 12 человек → rowspan = 13 ══ -->
             <tr class="date-label-row">
-              <td rowspan="4" class="info-td">
+              <td rowspan="13" class="info-td">
                 <div class="info-card-svod">
                   <div class="svod-card-name">Эфир 18 апр</div>
                   <div class="svod-card-date">18 апр. 2026</div>
-                  <div class="svod-card-field">
-                    <div class="svod-card-lbl">Статус</div>
-                    <div class="svod-card-val"><span class="status-badge-sm" style="background:#dbeafe;color:#2563eb">Запрос</span></div>
-                  </div>
-                  <div class="svod-card-field">
-                    <div class="svod-card-lbl">Исп. продюсер</div>
-                    <div class="svod-card-val">К. Гуманникова</div>
-                  </div>
+                  <div class="svod-card-field"><div class="svod-card-lbl">Статус</div><div class="svod-card-val"><span class="status-badge-sm" style="background:#dbeafe;color:#2563eb">Запрос</span></div></div>
+                  <div class="svod-card-field"><div class="svod-card-lbl">Исп. продюсер</div><div class="svod-card-val">К. Гуманникова</div></div>
                 </div>
               </td>
-              <!-- Date labels for shift 1 -->
-              <td colspan="2" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
+              <td colspan="5" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
               <td class="date-label-cell"><span class="dlabel dl-zastroyka">Застройка</span></td>
               <td class="date-label-cell"><span class="dlabel dl-efir">Эфир</span></td>
               <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
               <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
             </tr>
-            <tr class="person-row">
-              <td style="font-weight:600;color:#1e293b">Иванов Иван</td><td style="color:#64748b">Режиссёр</td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-            </tr>
-            <tr class="person-row" style="background:#f8fafc">
-              <td style="font-weight:600;color:#1e293b">Петрова Анна</td><td style="color:#64748b">Оператор</td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-            </tr>
-            <tr class="person-row">
-              <td style="font-weight:600;color:#1e293b">Морозов Дмитрий</td><td style="color:#64748b">Осветитель</td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-            </tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Иванов Иван</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Режиссёр</td><td style="text-align:right;font-size:12px;">34 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">30 000 ₽</td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Петрова Анна</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Оператор</td><td style="text-align:right;font-size:12px;">14 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">12 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Морозов Дмитрий</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Осветитель</td><td style="text-align:right;font-size:12px;">20 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">16 000 ₽</td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Захарова Мария</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Продюсер</td><td style="text-align:right;font-size:12px;">44 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">44 000 ₽</td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Федоров Алексей</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Звукорежиссёр</td><td style="text-align:right;font-size:12px;">20 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">18 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Белова Наталья</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Асс. оператора</td><td style="text-align:right;font-size:12px;">8 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">7 500 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Григорьев Павел</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Монтажник</td><td style="text-align:right;font-size:12px;">22 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">22 000 ₽</td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Соколова Ирина</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Гримёр</td><td style="text-align:right;font-size:12px;">9 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">9 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Новиков Сергей</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Водитель</td><td style="text-align:right;font-size:12px;">12 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">12 000 ₽</td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Кузнецова Анастасия</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Асс. режиссёра</td><td style="text-align:right;font-size:12px;">9 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">8 500 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Попов Андрей</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Тех. директор</td><td style="text-align:right;font-size:12px;">50 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">50 000 ₽</td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Лебедева Екатерина</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Администратор</td><td style="text-align:right;font-size:12px;">7 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">7 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
 
-            <tr class="section-gap"><td colspan="7"></td></tr>
+            <tr class="section-gap"><td colspan="10"></td></tr>
 
-            <!-- ══ SHIFT 2: Трансляция 19 апр — 2 человека → rowspan = 2+1 = 3 ══ -->
+            <!-- ══ SHIFT 2: Трансляция 19 апр — 12 человек → rowspan = 13 ══ -->
             <tr class="date-label-row">
-              <td rowspan="3" class="info-td">
+              <td rowspan="13" class="info-td">
                 <div class="info-card-svod">
                   <div class="svod-card-name">Трансляция 19 апр</div>
                   <div class="svod-card-date">19 апр. 2026</div>
-                  <div class="svod-card-field">
-                    <div class="svod-card-lbl">Статус</div>
-                    <div class="svod-card-val"><span class="status-badge-sm" style="background:#dcfce7;color:#15803d">Продакшн</span></div>
-                  </div>
-                  <div class="svod-card-field">
-                    <div class="svod-card-lbl">Исп. продюсер</div>
-                    <div class="svod-card-val">К. Гуманникова</div>
-                  </div>
+                  <div class="svod-card-field"><div class="svod-card-lbl">Статус</div><div class="svod-card-val"><span class="status-badge-sm" style="background:#dcfce7;color:#15803d">Продакшн</span></div></div>
+                  <div class="svod-card-field"><div class="svod-card-lbl">Исп. продюсер</div><div class="svod-card-val">К. Гуманникова</div></div>
                 </div>
               </td>
-              <td colspan="2" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
+              <td colspan="5" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
               <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
               <td class="date-label-cell"><span class="dlabel dl-semka">Съёмка</span></td>
               <td class="date-label-cell"><span class="dlabel dl-efir">Трансляция</span></td>
               <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
             </tr>
-            <tr class="person-row">
-              <td style="font-weight:600;color:#1e293b">Сидоров Кирилл</td><td style="color:#64748b">Звукорежиссёр</td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-            </tr>
-            <tr class="person-row" style="background:#f8fafc">
-              <td style="font-weight:600;color:#1e293b">Смирнова Ольга</td><td style="color:#64748b">Ассистент режиссёра</td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-            </tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Сидоров Кирилл</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Звукорежиссёр</td><td style="text-align:right;font-size:12px;">40 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">36 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Смирнова Ольга</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Асс. режиссёра</td><td style="text-align:right;font-size:12px;">16 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">14 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Орлов Максим</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Режиссёр эфира</td><td style="text-align:right;font-size:12px;">36 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">36 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Тихонова Валерия</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Оператор ПТС</td><td style="text-align:right;font-size:12px;">30 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">28 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Семёнов Роман</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Тех. продюсер</td><td style="text-align:right;font-size:12px;">19 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">19 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Козлова Дарья</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Редактор</td><td style="text-align:right;font-size:12px;">9 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">9 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Николаев Игорь</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Монтажник ПТС</td><td style="text-align:right;font-size:12px;">26 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">24 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Михайлова Светлана</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Диктор</td><td style="text-align:right;font-size:12px;">16 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">15 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Воробьёв Илья</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Инженер видеосв.</td><td style="text-align:right;font-size:12px;">28 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">28 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Павлова Юлия</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Асс. продюсера</td><td style="text-align:right;font-size:12px;">7 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">7 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Денисов Артём</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Видеоинженер</td><td style="text-align:right;font-size:12px;">24 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">22 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Волкова Анна</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">SMM-менеджер</td><td style="text-align:right;font-size:12px;">8 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">8 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td></tr>
 
-            <tr class="section-gap"><td colspan="7"></td></tr>
+            <tr class="section-gap"><td colspan="10"></td></tr>
 
-            <!-- ══ SHIFT 3: Застройка 20 апр — 1 человек → rowspan = 1+1 = 2 ══ -->
+            <!-- ══ SHIFT 3: Застройка 20 апр — 13 человек → rowspan = 14 ══ -->
             <tr class="date-label-row">
-              <td rowspan="2" class="info-td">
+              <td rowspan="14" class="info-td">
                 <div class="info-card-svod">
                   <div class="svod-card-name">Застройка 20 апр</div>
                   <div class="svod-card-date">20 апр. 2026</div>
-                  <div class="svod-card-field">
-                    <div class="svod-card-lbl">Статус</div>
-                    <div class="svod-card-val"><span class="status-badge-sm" style="background:#fef9c3;color:#854d0e">Препрод.</span></div>
-                  </div>
-                  <div class="svod-card-field">
-                    <div class="svod-card-lbl">Исп. продюсер</div>
-                    <div class="svod-card-val">К. Гуманникова</div>
-                  </div>
+                  <div class="svod-card-field"><div class="svod-card-lbl">Статус</div><div class="svod-card-val"><span class="status-badge-sm" style="background:#fef9c3;color:#854d0e">Препрод.</span></div></div>
+                  <div class="svod-card-field"><div class="svod-card-lbl">Исп. продюсер</div><div class="svod-card-val">К. Гуманникова</div></div>
                 </div>
               </td>
-              <td colspan="2" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
+              <td colspan="5" style="background:#f8fafc;border-bottom:1px solid #f1f5f9;"></td>
               <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
               <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
               <td class="date-label-cell"><span class="dlabel dl-empty">—</span></td>
               <td class="date-label-cell"><span class="dlabel dl-zastroyka">Застройка</span></td>
             </tr>
-            <tr class="person-row">
-              <td style="font-weight:600;color:#1e293b">Козлов Антон</td><td style="color:#64748b">Монтажник</td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="empty-dot"></span></td>
-              <td class="date-dot"><span class="shift-dot"></span></td>
-            </tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Козлов Антон</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Монтажник</td><td style="text-align:right;font-size:12px;">11 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">9 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Богданов Виктор</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Декоратор</td><td style="text-align:right;font-size:12px;">13 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">12 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Васильева Людмила</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Костюмер</td><td style="text-align:right;font-size:12px;">9 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">8 500 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Никитин Алексей</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Осветитель</td><td style="text-align:right;font-size:12px;">10 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">10 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Романова Ксения</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Постановщик</td><td style="text-align:right;font-size:12px;">15 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">14 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Степанов Евгений</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Звукотехник</td><td style="text-align:right;font-size:12px;">9 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">9 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Громова Анастасия</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Асс. постановщика</td><td style="text-align:right;font-size:12px;">8 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">8 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Иванченко Олег</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Водитель-экспедитор</td><td style="text-align:right;font-size:12px;">7 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">6 500 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Зайцева Татьяна</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Фотограф</td><td style="text-align:right;font-size:12px;">10 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">10 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Абрамов Дмитрий</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Видеограф</td><td style="text-align:right;font-size:12px;">12 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">12 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Жукова Наталья</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Дизайнер</td><td style="text-align:right;font-size:12px;">11 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">11 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row" style="background:#f8fafc"><td style="font-weight:600;color:#1e293b">Соловьёв Константин</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Тех. директор</td><td style="text-align:right;font-size:12px;">22 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">22 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
+            <tr class="person-row"><td style="font-weight:600;color:#1e293b">Попова Елена</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Администратор</td><td style="text-align:right;font-size:12px;">6 000 ₽</td><td style="text-align:right;font-size:12px;font-weight:600;">6 000 ₽</td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="empty-dot"></span></td><td class="date-dot"><span class="shift-dot"></span></td></tr>
           </tbody>
         </table>
       </div>
@@ -684,20 +687,81 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
     <div id="shift-s1" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
       <div class="shifts-body" style="flex:1;overflow:hidden;">
         <div class="shift-info-panel">
+          <!-- Block 1: static info -->
           <div class="shift-info-block">
             <div class="shift-field"><div class="shift-field-lbl">Статус</div><div class="shift-field-val"><span class="shift-status-badge">Запрос</span></div></div>
-            <div class="shift-field"><div class="shift-field-lbl">Время</div><div class="shift-field-val" style="font-weight:700">10:00</div></div>
-            <div class="shift-field"><div class="shift-field-lbl">Дата</div><div class="shift-field-val" style="font-weight:700;color:#0f172a">18 апр. 2026</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Локация</div><div class="shift-field-val">Москва, студия B</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Исп. продюсер</div><div class="shift-field-val">К. Гуманникова</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Лайн-продюсер</div><div class="shift-field-val" style="color:#cbd5e1">—</div></div>
+          </div>
+          <!-- Block 2: dates manager -->
+          <div class="shift-info-block" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
+            <div class="date-mgr-hdr">
+              <span class="date-mgr-title">Даты и время</span>
+              <button class="date-add-btn" onclick="showDateForm('s1')">+ Дата</button>
+            </div>
+            <div class="date-mgr-list" id="date-list-s1">              <div class="date-entry" data-date="2026-04-17" data-type="zastroyka" data-mode="smena" data-from="" data-to="" data-extra="">
+                <div class="date-entry-info" onclick="editDateEntry('s1',this.closest('.date-entry'))">
+                  <div class="date-entry-top">
+                    <span class="date-entry-date">17 апр</span>
+                    <span class="date-type-badge type-zastroyka">Застройка</span>
+                  </div>
+                  <div class="date-entry-time">Смена</div>
+                </div>
+                <button class="date-entry-del" onclick="removeDateEntry(this)" title="Удалить">×</button>
+              </div>              <div class="date-entry" data-date="2026-04-18" data-type="efir" data-mode="range" data-from="09:00" data-to="23:00" data-extra="15:00">
+                <div class="date-entry-info" onclick="editDateEntry('s1',this.closest('.date-entry'))">
+                  <div class="date-entry-top">
+                    <span class="date-entry-date">18 апр</span>
+                    <span class="date-type-badge type-efir">Эфир</span>
+                  </div>
+                  <div class="date-entry-time">09:00 – 23:00 · Нач. эфира: 15:00</div>
+                </div>
+                <button class="date-entry-del" onclick="removeDateEntry(this)" title="Удалить">×</button>
+              </div></div>
+            <div class="date-add-form" id="date-add-form-s1" style="display:none;">
+              <div>
+                <label>Дата</label>
+                <input type="date" id="dnew-date-s1">
+              </div>
+              <div>
+                <label>Тип</label>
+                <select id="dnew-type-s1" onchange="updateDateForm('s1')">
+                  <option value="zastroyka">Застройка</option>
+                  <option value="efir">Эфир</option>
+                  <option value="deadline">Дедлайн</option>
+                  <option value="semka">Съёмка</option>
+                </select>
+              </div>
+              <div id="dmode-wrap-s1">
+                <label>Время</label>
+                <div class="date-mode-toggle" id="dmode-s1">
+                  <button class="active" onclick="setDateMode('s1','smena',this)">Смена</button>
+                  <button onclick="setDateMode('s1','range',this)">Диапазон</button>
+                </div>
+              </div>
+              <div id="drange-s1" style="display:none;">
+                <label>Начало — конец</label>
+                <div class="time-row">
+                  <input type="time" id="dnew-from-s1" value="09:00">
+                  <input type="time" id="dnew-to-s1" value="18:00">
+                </div>
+              </div>
+              <div id="dextra-s1" style="display:none;">
+                <label id="dextra-lbl-s1">Начало эфира</label>
+                <input type="time" id="dnew-extra-s1" value="15:00">
+              </div>
+              <div class="date-add-actions">
+                <button class="btn-confirm" onclick="confirmDateAdd('s1')">Добавить</button>
+                <button class="btn-cancel" onclick="hideDateForm('s1')">Отмена</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="shifts-table-area">
           <div class="shifts-meta-bar">
             <div class="view-toggle">
               <button class="active" onclick="toggleView(this,'team-s1')">Команда</button>
-              <button onclick="toggleView(this,'usl-s1')">Услуги</button>
               <button onclick="toggleView(this,'prod-s1')">Производственные расходы</button>
             </div>
             <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
@@ -709,41 +773,36 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
                   <th style="white-space:nowrap">ФИО</th>
                   <th style="white-space:nowrap">Формат</th>
                   <th style="white-space:nowrap">Должность</th>
-                  <th style="white-space:nowrap;text-align:right;">Цена смены</th>
-                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма<br><span style="font-weight:400;color:#94a3b8;text-transform:none;letter-spacing:0;">факт</span></th>
-                  <th class="add-date-th" title="Добавить дату слева"><button class="add-date-btn">+</button></th>
-                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">
-                    17 апр.<br><span class="date-type-badge type-zastroyka">Застройка</span>
-                    <div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div>
-                  </th>
-                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">
-                    18 апр.<br><span class="date-type-badge type-efir">Эфир</span>
-                    <div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div>
-                  </th>
-                  <th class="add-date-th" title="Добавить дату справа"><button class="add-date-btn">+</button></th>
+                  <th style="white-space:nowrap;text-align:right;">Цена план</th>
+                  <th style="white-space:nowrap;text-align:right;">Цена факт</th>
+                  <th style="white-space:nowrap;text-align:right;">Сумма план</th>
+                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма факт</th>
+                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">17 апр.<br><span class="date-type-badge type-zastroyka">Застройка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div></th>
+                  <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">18 апр.<br><span class="date-type-badge type-efir">Эфир</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div><input class="date-dropdown-input" placeholder="Своё…" onclick="event.stopPropagation()"></div></th>
                   <th style="width:100%;cursor:default;" class="no-hover"></th>
                 </tr></thead>
                 <tbody>
-                  <tr><td style="font-weight:600">Иванов Иван</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Режиссёр</td><td style="text-align:right;font-weight:600;white-space:nowrap;">15 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">30 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr style="background:#f8fafc"><td style="font-weight:600">Петрова Анна</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Оператор</td><td style="text-align:right;font-weight:600;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">12 000 ₽</td><td></td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr><td style="font-weight:600">Морозов Дмитрий</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Осветитель</td><td style="text-align:right;font-weight:600;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">16 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div id="usl-s1" style="display:none;">
-              <table class="exp-table">
-                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
-                <tbody>
-                  <tr><td>Аренда оборудования</td><td style="color:#64748b">ООО «Свет»</td><td style="font-weight:600">45 000 ₽</td><td style="color:#64748b">Безнал</td><td style="color:#94a3b8">Счёт оплачен</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr style="background:#f8fafc"><td>Монтажник</td><td style="color:#64748b">Фрилансер</td><td style="font-weight:600">8 000 ₽</td><td style="color:#64748b">Наличные</td><td style="color:#94a3b8">—</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Иванов Иван</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Режиссёр</td><td style="text-align:right;white-space:nowrap;">17 000 ₽</td><td style="text-align:right;white-space:nowrap;">15 000 ₽</td><td style="text-align:right;white-space:nowrap;">34 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">30 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Петрова Анна</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Оператор</td><td style="text-align:right;white-space:nowrap;">14 000 ₽</td><td style="text-align:right;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;white-space:nowrap;">14 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">12 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Морозов Дмитрий</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Осветитель</td><td style="text-align:right;white-space:nowrap;">10 000 ₽</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;white-space:nowrap;">20 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">16 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Захарова Мария</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Продюсер</td><td style="text-align:right;white-space:nowrap;">22 000 ₽</td><td style="text-align:right;white-space:nowrap;">22 000 ₽</td><td style="text-align:right;white-space:nowrap;">44 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">44 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Федоров Алексей</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Звукорежиссёр</td><td style="text-align:right;white-space:nowrap;">20 000 ₽</td><td style="text-align:right;white-space:nowrap;">18 000 ₽</td><td style="text-align:right;white-space:nowrap;">20 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">18 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Белова Наталья</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Асс. оператора</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;white-space:nowrap;">7 500 ₽</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">7 500 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Григорьев Павел</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Монтажник</td><td style="text-align:right;white-space:nowrap;">11 000 ₽</td><td style="text-align:right;white-space:nowrap;">11 000 ₽</td><td style="text-align:right;white-space:nowrap;">22 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">22 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Соколова Ирина</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Гримёр</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">9 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Новиков Сергей</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Водитель</td><td style="text-align:right;white-space:nowrap;">6 000 ₽</td><td style="text-align:right;white-space:nowrap;">6 000 ₽</td><td style="text-align:right;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">12 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Кузнецова Анастасия</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Асс. режиссёра</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">8 500 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">8 500 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Попов Андрей</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Тех. директор</td><td style="text-align:right;white-space:nowrap;">25 000 ₽</td><td style="text-align:right;white-space:nowrap;">25 000 ₽</td><td style="text-align:right;white-space:nowrap;">50 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">50 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Лебедева Екатерина</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Администратор</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">7 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                 </tbody>
               </table>
             </div>
             <div id="prod-s1" style="display:none;">
               <table class="exp-table">
-                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th style="min-width:220px">Путь Dropbox</th><th style="min-width:140px">Чек</th><th style="width:36px"></th></tr></thead>
                 <tbody>
-                  <tr><td style="color:#94a3b8;font-style:italic;" colspan="6">Нет записей</td></tr>
+                  <tr><td>Аренда оборудования</td><td style="color:#64748b">ООО «Свет»</td><td style="font-weight:600">45 000 ₽</td><td style="color:#64748b">Безнал</td><td><input style="width:100%;border:1px solid #e2e8f0;border-radius:5px;padding:3px 8px;font-size:12px;color:#475569;font-family:inherit;outline:none;" placeholder="/Dropbox/…" value="/Dropbox/АльфаБанк/апр2026/аренда.pdf"></td><td><button onclick="openUpload(this)" class="check-btn">📎 Загрузить чек</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td>Монтажник</td><td style="color:#64748b">Фрилансер</td><td style="font-weight:600">8 000 ₽</td><td style="color:#64748b">Наличные</td><td><input style="width:100%;border:1px solid #e2e8f0;border-radius:5px;padding:3px 8px;font-size:12px;color:#475569;font-family:inherit;outline:none;" placeholder="/Dropbox/…"></td><td><button onclick="openUpload(this)" class="check-btn">📎 Загрузить чек</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                 </tbody>
               </table>
             </div>
@@ -756,20 +815,72 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
     <div id="shift-s2" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
       <div class="shifts-body" style="flex:1;overflow:hidden;">
         <div class="shift-info-panel">
+          <!-- Block 1: static info -->
           <div class="shift-info-block">
             <div class="shift-field"><div class="shift-field-lbl">Статус</div><div class="shift-field-val"><span class="shift-status-badge" style="background:#dcfce7;color:#15803d">Продакшн</span></div></div>
-            <div class="shift-field"><div class="shift-field-lbl">Время</div><div class="shift-field-val" style="font-weight:700">12:00</div></div>
-            <div class="shift-field"><div class="shift-field-lbl">Дата</div><div class="shift-field-val" style="font-weight:700;color:#0f172a">19 апр. 2026</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Локация</div><div class="shift-field-val">Москва, зал А</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Исп. продюсер</div><div class="shift-field-val">К. Гуманникова</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Лайн-продюсер</div><div class="shift-field-val" style="color:#cbd5e1">—</div></div>
+          </div>
+          <!-- Block 2: dates manager -->
+          <div class="shift-info-block" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
+            <div class="date-mgr-hdr">
+              <span class="date-mgr-title">Даты и время</span>
+              <button class="date-add-btn" onclick="showDateForm('s2')">+ Дата</button>
+            </div>
+            <div class="date-mgr-list" id="date-list-s2">              <div class="date-entry" data-date="2026-04-19" data-type="semka" data-mode="range" data-from="10:00" data-to="20:00" data-extra="11:30">
+                <div class="date-entry-info" onclick="editDateEntry('s2',this.closest('.date-entry'))">
+                  <div class="date-entry-top">
+                    <span class="date-entry-date">19 апр</span>
+                    <span class="date-type-badge type-semka">Съёмка</span>
+                  </div>
+                  <div class="date-entry-time">10:00 – 20:00 · Первый мотор: 11:30</div>
+                </div>
+                <button class="date-entry-del" onclick="removeDateEntry(this)" title="Удалить">×</button>
+              </div></div>
+            <div class="date-add-form" id="date-add-form-s2" style="display:none;">
+              <div>
+                <label>Дата</label>
+                <input type="date" id="dnew-date-s2">
+              </div>
+              <div>
+                <label>Тип</label>
+                <select id="dnew-type-s2" onchange="updateDateForm('s2')">
+                  <option value="zastroyka">Застройка</option>
+                  <option value="efir">Эфир</option>
+                  <option value="deadline">Дедлайн</option>
+                  <option value="semka">Съёмка</option>
+                </select>
+              </div>
+              <div id="dmode-wrap-s2">
+                <label>Время</label>
+                <div class="date-mode-toggle" id="dmode-s2">
+                  <button class="active" onclick="setDateMode('s2','smena',this)">Смена</button>
+                  <button onclick="setDateMode('s2','range',this)">Диапазон</button>
+                </div>
+              </div>
+              <div id="drange-s2" style="display:none;">
+                <label>Начало — конец</label>
+                <div class="time-row">
+                  <input type="time" id="dnew-from-s2" value="09:00">
+                  <input type="time" id="dnew-to-s2" value="18:00">
+                </div>
+              </div>
+              <div id="dextra-s2" style="display:none;">
+                <label id="dextra-lbl-s2">Начало эфира</label>
+                <input type="time" id="dnew-extra-s2" value="15:00">
+              </div>
+              <div class="date-add-actions">
+                <button class="btn-confirm" onclick="confirmDateAdd('s2')">Добавить</button>
+                <button class="btn-cancel" onclick="hideDateForm('s2')">Отмена</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="shifts-table-area">
           <div class="shifts-meta-bar">
             <div class="view-toggle">
               <button class="active" onclick="toggleView(this,'team-s2')">Команда</button>
-              <button onclick="toggleView(this,'usl-s2')">Услуги</button>
               <button onclick="toggleView(this,'prod-s2')">Производственные расходы</button>
             </div>
             <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
@@ -781,33 +892,36 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
                   <th style="white-space:nowrap">ФИО</th>
                   <th style="white-space:nowrap">Формат</th>
                   <th style="white-space:nowrap">Должность</th>
-                  <th style="white-space:nowrap;text-align:right;">Цена смены</th>
-                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма<br><span style="font-weight:400;color:#94a3b8;text-transform:none;letter-spacing:0;">факт</span></th>
-                  <th class="add-date-th" title="Добавить дату слева"><button class="add-date-btn">+</button></th>
+                  <th style="white-space:nowrap;text-align:right;">Цена план</th>
+                  <th style="white-space:nowrap;text-align:right;">Цена факт</th>
+                  <th style="white-space:nowrap;text-align:right;">Сумма план</th>
+                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма факт</th>
                   <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">18 апр.<br><span class="date-type-badge type-semka">Съёмка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
                   <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">19 апр.<br><span class="date-type-badge type-efir">Эфир</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
-                  <th class="add-date-th" title="Добавить дату справа"><button class="add-date-btn">+</button></th>
                   <th style="width:100%;cursor:default;" class="no-hover"></th>
                 </tr></thead>
                 <tbody>
-                  <tr><td style="font-weight:600">Сидоров Кирилл</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Звукорежиссёр</td><td style="text-align:right;font-weight:600;white-space:nowrap;">18 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">36 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                  <tr style="background:#f8fafc"><td style="font-weight:600">Смирнова Ольга</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Ассистент режиссёра</td><td style="text-align:right;font-weight:600;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">14 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div id="usl-s2" style="display:none;">
-              <table class="exp-table">
-                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
-                <tbody>
-                  <tr><td>Трансляция онлайн</td><td style="color:#64748b">ООО «Стрим»</td><td style="font-weight:600">25 000 ₽</td><td style="color:#64748b">Безнал</td><td style="color:#94a3b8">—</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Сидоров Кирилл</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Звукорежиссёр</td><td style="text-align:right;white-space:nowrap;">20 000 ₽</td><td style="text-align:right;white-space:nowrap;">18 000 ₽</td><td style="text-align:right;white-space:nowrap;">40 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">36 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Смирнова Ольга</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Асс. режиссёра</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;white-space:nowrap;">16 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">14 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Орлов Максим</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Режиссёр эфира</td><td style="text-align:right;white-space:nowrap;">18 000 ₽</td><td style="text-align:right;white-space:nowrap;">18 000 ₽</td><td style="text-align:right;white-space:nowrap;">36 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">36 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Тихонова Валерия</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Оператор ПТС</td><td style="text-align:right;white-space:nowrap;">15 000 ₽</td><td style="text-align:right;white-space:nowrap;">14 000 ₽</td><td style="text-align:right;white-space:nowrap;">30 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">28 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Семёнов Роман</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Тех. продюсер</td><td style="text-align:right;white-space:nowrap;">19 000 ₽</td><td style="text-align:right;white-space:nowrap;">19 000 ₽</td><td style="text-align:right;white-space:nowrap;">19 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">19 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Козлова Дарья</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Редактор</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">9 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Николаев Игорь</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Монтажник ПТС</td><td style="text-align:right;white-space:nowrap;">13 000 ₽</td><td style="text-align:right;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;white-space:nowrap;">26 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">24 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Михайлова Светлана</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Диктор</td><td style="text-align:right;white-space:nowrap;">16 000 ₽</td><td style="text-align:right;white-space:nowrap;">15 000 ₽</td><td style="text-align:right;white-space:nowrap;">16 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">15 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Воробьёв Илья</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Инженер видеосв.</td><td style="text-align:right;white-space:nowrap;">14 000 ₽</td><td style="text-align:right;white-space:nowrap;">14 000 ₽</td><td style="text-align:right;white-space:nowrap;">28 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">28 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Павлова Юлия</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Асс. продюсера</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">7 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Денисов Артём</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Видеоинженер</td><td style="text-align:right;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;white-space:nowrap;">11 000 ₽</td><td style="text-align:right;white-space:nowrap;">24 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">22 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Волкова Анна</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">SMM-менеджер</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">8 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                 </tbody>
               </table>
             </div>
             <div id="prod-s2" style="display:none;">
               <table class="exp-table">
-                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th style="min-width:220px">Путь Dropbox</th><th style="min-width:140px">Чек</th><th style="width:36px"></th></tr></thead>
                 <tbody>
-                  <tr><td style="color:#94a3b8;font-style:italic;" colspan="6">Нет записей</td></tr>
+                  <tr><td>Трансляция онлайн</td><td style="color:#64748b">ООО «Стрим»</td><td style="font-weight:600">25 000 ₽</td><td style="color:#64748b">Безнал</td><td><input style="width:100%;border:1px solid #e2e8f0;border-radius:5px;padding:3px 8px;font-size:12px;color:#475569;font-family:inherit;outline:none;" placeholder="/Dropbox/…" value="/Dropbox/АльфаБанк/апр2026/стрим.pdf"></td><td><button onclick="openUpload(this)" class="check-btn">📎 Загрузить чек</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="color:#94a3b8;font-style:italic;" colspan="7">+ Добавить расход</td></tr>
                 </tbody>
               </table>
             </div>
@@ -820,20 +934,72 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
     <div id="shift-s3" style="flex:1;overflow:hidden;display:none;flex-direction:column;">
       <div class="shifts-body" style="flex:1;overflow:hidden;">
         <div class="shift-info-panel">
+          <!-- Block 1: static info -->
           <div class="shift-info-block">
             <div class="shift-field"><div class="shift-field-lbl">Статус</div><div class="shift-field-val"><span class="shift-status-badge" style="background:#fef9c3;color:#854d0e">Препродакшн</span></div></div>
-            <div class="shift-field"><div class="shift-field-lbl">Время</div><div class="shift-field-val" style="font-weight:700">09:00</div></div>
-            <div class="shift-field"><div class="shift-field-lbl">Дата</div><div class="shift-field-val" style="font-weight:700;color:#0f172a">20 апр. 2026</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Локация</div><div class="shift-field-val">Склад, выезд</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Исп. продюсер</div><div class="shift-field-val">К. Гуманникова</div></div>
             <div class="shift-field"><div class="shift-field-lbl">Лайн-продюсер</div><div class="shift-field-val" style="color:#cbd5e1">—</div></div>
+          </div>
+          <!-- Block 2: dates manager -->
+          <div class="shift-info-block" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
+            <div class="date-mgr-hdr">
+              <span class="date-mgr-title">Даты и время</span>
+              <button class="date-add-btn" onclick="showDateForm('s3')">+ Дата</button>
+            </div>
+            <div class="date-mgr-list" id="date-list-s3">              <div class="date-entry" data-date="2026-04-20" data-type="zastroyka" data-mode="range" data-from="09:00" data-to="18:00" data-extra="">
+                <div class="date-entry-info" onclick="editDateEntry('s3',this.closest('.date-entry'))">
+                  <div class="date-entry-top">
+                    <span class="date-entry-date">20 апр</span>
+                    <span class="date-type-badge type-zastroyka">Застройка</span>
+                  </div>
+                  <div class="date-entry-time">09:00 – 18:00</div>
+                </div>
+                <button class="date-entry-del" onclick="removeDateEntry(this)" title="Удалить">×</button>
+              </div></div>
+            <div class="date-add-form" id="date-add-form-s3" style="display:none;">
+              <div>
+                <label>Дата</label>
+                <input type="date" id="dnew-date-s3">
+              </div>
+              <div>
+                <label>Тип</label>
+                <select id="dnew-type-s3" onchange="updateDateForm('s3')">
+                  <option value="zastroyka">Застройка</option>
+                  <option value="efir">Эфир</option>
+                  <option value="deadline">Дедлайн</option>
+                  <option value="semka">Съёмка</option>
+                </select>
+              </div>
+              <div id="dmode-wrap-s3">
+                <label>Время</label>
+                <div class="date-mode-toggle" id="dmode-s3">
+                  <button class="active" onclick="setDateMode('s3','smena',this)">Смена</button>
+                  <button onclick="setDateMode('s3','range',this)">Диапазон</button>
+                </div>
+              </div>
+              <div id="drange-s3" style="display:none;">
+                <label>Начало — конец</label>
+                <div class="time-row">
+                  <input type="time" id="dnew-from-s3" value="09:00">
+                  <input type="time" id="dnew-to-s3" value="18:00">
+                </div>
+              </div>
+              <div id="dextra-s3" style="display:none;">
+                <label id="dextra-lbl-s3">Начало эфира</label>
+                <input type="time" id="dnew-extra-s3" value="15:00">
+              </div>
+              <div class="date-add-actions">
+                <button class="btn-confirm" onclick="confirmDateAdd('s3')">Добавить</button>
+                <button class="btn-cancel" onclick="hideDateForm('s3')">Отмена</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="shifts-table-area">
           <div class="shifts-meta-bar">
             <div class="view-toggle">
               <button class="active" onclick="toggleView(this,'team-s3')">Команда</button>
-              <button onclick="toggleView(this,'usl-s3')">Услуги</button>
               <button onclick="toggleView(this,'prod-s3')">Производственные расходы</button>
             </div>
             <button class="btn" style="font-size:12px;padding:5px 12px">+ Добавить</button>
@@ -845,31 +1011,36 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
                   <th style="white-space:nowrap">ФИО</th>
                   <th style="white-space:nowrap">Формат</th>
                   <th style="white-space:nowrap">Должность</th>
-                  <th style="white-space:nowrap;text-align:right;">Цена смены</th>
-                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма<br><span style="font-weight:400;color:#94a3b8;text-transform:none;letter-spacing:0;">факт</span></th>
-                  <th class="add-date-th" title="Добавить дату слева"><button class="add-date-btn">+</button></th>
+                  <th style="white-space:nowrap;text-align:right;">Цена план</th>
+                  <th style="white-space:nowrap;text-align:right;">Цена факт</th>
+                  <th style="white-space:nowrap;text-align:right;">Сумма план</th>
+                  <th style="white-space:nowrap;text-align:right;border-right:2px solid #cbd5e1;">Сумма факт</th>
                   <th style="text-align:center;min-width:84px;position:relative;" onclick="toggleDateDrop(this)">20 апр.<br><span class="date-type-badge type-zastroyka">Застройка</span><div class="date-dropdown"><div class="date-dropdown-item" onclick="setDT(event,this,'type-zastroyka','Застройка')">Застройка</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-efir','Эфир')">Эфир</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-deadline','Дедлайн')">Дедлайн</div><div class="date-dropdown-item" onclick="setDT(event,this,'type-semka','Съёмка')">Съёмка</div></div></th>
-                  <th class="add-date-th" title="Добавить дату справа"><button class="add-date-btn">+</button></th>
                   <th style="width:100%;cursor:default;" class="no-hover"></th>
                 </tr></thead>
                 <tbody>
-                  <tr><td style="font-weight:600">Козлов Антон</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Монтажник</td><td style="text-align:right;font-weight:600;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">9 000 ₽</td><td></td><td style="text-align:center"><span class="shift-dot"></span></td><td></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
-                </tbody>
-              </table>
-            </div>
-            <div id="usl-s3" style="display:none;">
-              <table class="exp-table">
-                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
-                <tbody>
-                  <tr><td>Транспортировка</td><td style="color:#64748b">ГАЗель</td><td style="font-weight:600">6 000 ₽</td><td style="color:#64748b">Наличные</td><td style="color:#94a3b8">Туда и обратно</td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Козлов Антон</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Монтажник</td><td style="text-align:right;white-space:nowrap;">11 000 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">11 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">9 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Богданов Виктор</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Декоратор</td><td style="text-align:right;white-space:nowrap;">13 000 ₽</td><td style="text-align:right;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;white-space:nowrap;">13 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">12 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Васильева Людмила</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Костюмер</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">8 500 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">8 500 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Никитин Алексей</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Осветитель</td><td style="text-align:right;white-space:nowrap;">10 000 ₽</td><td style="text-align:right;white-space:nowrap;">10 000 ₽</td><td style="text-align:right;white-space:nowrap;">10 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">10 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Романова Ксения</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Постановщик</td><td style="text-align:right;white-space:nowrap;">15 000 ₽</td><td style="text-align:right;white-space:nowrap;">14 000 ₽</td><td style="text-align:right;white-space:nowrap;">15 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">14 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Степанов Евгений</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Звукотехник</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;white-space:nowrap;">9 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">9 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Громова Анастасия</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Асс. постановщика</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;white-space:nowrap;">8 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">8 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Иванченко Олег</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Водитель-экспедитор</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;white-space:nowrap;">6 500 ₽</td><td style="text-align:right;white-space:nowrap;">7 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">6 500 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Зайцева Татьяна</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Фотограф</td><td style="text-align:right;white-space:nowrap;">10 000 ₽</td><td style="text-align:right;white-space:nowrap;">10 000 ₽</td><td style="text-align:right;white-space:nowrap;">10 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">10 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Абрамов Дмитрий</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Видеограф</td><td style="text-align:right;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;white-space:nowrap;">12 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">12 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Жукова Наталья</td><td><span class="fmt-badge fmt-shtat">ШТАТ</span></td><td style="color:#64748b">Дизайнер</td><td style="text-align:right;white-space:nowrap;">11 000 ₽</td><td style="text-align:right;white-space:nowrap;">11 000 ₽</td><td style="text-align:right;white-space:nowrap;">11 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">11 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="font-weight:600">Соловьёв Константин</td><td><span class="fmt-badge fmt-ip">ИП</span></td><td style="color:#64748b">Тех. директор</td><td style="text-align:right;white-space:nowrap;">22 000 ₽</td><td style="text-align:right;white-space:nowrap;">22 000 ₽</td><td style="text-align:right;white-space:nowrap;">22 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">22 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr><td style="font-weight:600">Попова Елена</td><td><span class="fmt-badge fmt-sz">СЗ</span></td><td style="color:#64748b">Администратор</td><td style="text-align:right;white-space:nowrap;">6 000 ₽</td><td style="text-align:right;white-space:nowrap;">6 000 ₽</td><td style="text-align:right;white-space:nowrap;">6 000 ₽</td><td style="text-align:right;font-weight:700;white-space:nowrap;border-right:2px solid #cbd5e1;">6 000 ₽</td><td style="text-align:center"><span class="shift-dot"></span></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
                 </tbody>
               </table>
             </div>
             <div id="prod-s3" style="display:none;">
               <table class="exp-table">
-                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th>Комментарий</th><th style="width:36px"></th></tr></thead>
+                <thead><tr><th style="min-width:180px">Услуга</th><th style="min-width:150px">Исполнитель</th><th style="min-width:100px">Сумма</th><th style="min-width:120px">Форм. оплаты</th><th style="min-width:220px">Путь Dropbox</th><th style="min-width:140px">Чек</th><th style="width:36px"></th></tr></thead>
                 <tbody>
-                  <tr><td style="color:#94a3b8;font-style:italic;" colspan="6">Нет записей</td></tr>
+                  <tr><td>Транспортировка</td><td style="color:#64748b">ГАЗель</td><td style="font-weight:600">6 000 ₽</td><td style="color:#64748b">Наличные</td><td><input style="width:100%;border:1px solid #e2e8f0;border-radius:5px;padding:3px 8px;font-size:12px;color:#475569;font-family:inherit;outline:none;" placeholder="/Dropbox/…" value="/Dropbox/АльфаБанк/апр2026/газель.pdf"></td><td><button onclick="openUpload(this)" class="check-btn">📎 Загрузить чек</button></td><td style="text-align:center;color:#e2e8f0">×</td></tr>
+                  <tr style="background:#f8fafc"><td style="color:#94a3b8;font-style:italic;" colspan="7">+ Добавить расход</td></tr>
                 </tbody>
               </table>
             </div>
@@ -964,6 +1135,30 @@ input[type=checkbox] { width:15px; height:15px; cursor:pointer; accent-color:#3b
 
 </div>
 
+<!-- ═══ UPLOAD POPUP ═══ -->
+<div id="uploadPopup" class="upload-overlay" style="display:none;">
+  <div class="upload-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <span style="font-weight:700;font-size:15px;color:#0f172a;">Загрузить чек</span>
+      <button onclick="closeUpload()" style="background:none;border:none;font-size:22px;color:#94a3b8;cursor:pointer;line-height:1;padding:2px 4px;border-radius:5px;">×</button>
+    </div>
+    <div class="drop-zone" id="dropZone"
+      onclick="document.getElementById('fileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="handleDrop(event)">
+      <div style="font-size:38px;margin-bottom:10px;">📎</div>
+      <div style="font-size:14px;color:#475569;">Перетащите файл или <span style="color:#3b82f6;font-weight:600;">нажмите для выбора</span></div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:5px;">PDF, JPG, PNG — до 10 МБ</div>
+      <input id="fileInput" type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleUploadFile(this.files[0])">
+    </div>
+    <div id="uploadSuccess" style="display:none;margin-top:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:11px 14px;align-items:center;gap:10px;">
+      <span style="font-size:18px;">✅</span>
+      <span id="uploadFileName" style="font-size:13px;color:#15803d;font-weight:600;word-break:break-all;"></span>
+    </div>
+  </div>
+</div>
+
 <script>
 // Main tabs
 function showTab(name,btn){
@@ -992,9 +1187,192 @@ function toggleView(btn,showId){
   btn.closest('.view-toggle').querySelectorAll('button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   var area=btn.closest('.shifts-table-area');
-  area.querySelectorAll('[id^="team-"],[id^="usl-"],[id^="prod-"]').forEach(el=>el.style.display='none');
+  area.querySelectorAll('[id^="team-"],[id^="prod-"]').forEach(el=>el.style.display='none');
   var el=document.getElementById(showId);
   if(el)el.style.display='block';
+}
+
+// Date manager
+var _dateModes  = {};   // sid -> 'smena'|'range'
+var _editTarget = {};   // sid -> entry element being edited (null = add mode)
+
+function _buildEntryHTML(sid, dateStr, cls, label, timeStr) {
+  return '<div class="date-entry-info" data-sid="' + sid + '" onclick="handleEntryClick(this)">' +
+    '<div class="date-entry-top">' +
+      '<span class="date-entry-date">' + dateStr + '</span>' +
+      '<span class="date-type-badge ' + cls + '">' + label + '</span>' +
+    '</div>' +
+    '<div class="date-entry-time">' + timeStr + '</div>' +
+  '</div>' +
+  '<button class="date-entry-del" onclick="removeDateEntry(this)" title="Удалить">×</button>';
+}
+function handleEntryClick(el) {
+  editDateEntry(el.dataset.sid, el.closest('.date-entry'));
+}
+
+function _collectFormValues(sid) {
+  var dateVal = document.getElementById('dnew-date-' + sid).value;
+  var type    = document.getElementById('dnew-type-' + sid).value;
+  var mode    = _dateModes[sid] || 'smena';
+  var from    = document.getElementById('dnew-from-' + sid).value || '09:00';
+  var to      = document.getElementById('dnew-to-'   + sid).value || '18:00';
+  var extra   = document.getElementById('dnew-extra-'+ sid).value || '';
+  return { dateVal, type, mode, from, to, extra };
+}
+
+function _renderEntry(sid, v) {
+  var typeMap    = { zastroyka:'Застройка', efir:'Эфир', deadline:'Дедлайн', semka:'Съёмка' };
+  var typeClsMap = { zastroyka:'type-zastroyka', efir:'type-efir', deadline:'type-deadline', semka:'type-semka' };
+  var label = typeMap[v.type], cls = typeClsMap[v.type];
+  var d = new Date(v.dateVal);
+  var months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  var dateStr = d.getDate() + ' ' + months[d.getMonth()];
+  var timeStr = 'Смена';
+  if (v.mode === 'range' && v.type !== 'deadline') {
+    timeStr = v.from + ' – ' + v.to;
+    if (v.type === 'efir')  timeStr += ' · Нач. эфира: ' + (v.extra || '—');
+    if (v.type === 'semka') timeStr += ' · Первый мотор: ' + (v.extra || '—');
+  }
+  return { dateStr, cls, label, timeStr };
+}
+
+function showDateForm(sid) {
+  _editTarget[sid] = null;
+  var form = document.getElementById('date-add-form-' + sid);
+  form.style.display = 'flex';
+  form.style.flexDirection = 'column';
+  form.querySelector('.btn-confirm').textContent = 'Добавить';
+  document.getElementById('dnew-date-' + sid).value = '';
+  document.getElementById('dnew-type-' + sid).value = 'zastroyka';
+  updateDateForm(sid);
+}
+
+function editDateEntry(sid, el) {
+  _editTarget[sid] = el;
+  var form = document.getElementById('date-add-form-' + sid);
+  form.style.display = 'flex';
+  form.style.flexDirection = 'column';
+  form.querySelector('.btn-confirm').textContent = 'Сохранить';
+  // Pre-fill from data attributes
+  document.getElementById('dnew-date-' + sid).value  = el.dataset.date  || '';
+  document.getElementById('dnew-type-' + sid).value  = el.dataset.type  || 'zastroyka';
+  _dateModes[sid] = el.dataset.mode || 'smena';
+  updateDateForm(sid);
+  // Set range/extra values after updateDateForm (which may show/hide fields)
+  if (el.dataset.from)  document.getElementById('dnew-from-'  + sid).value = el.dataset.from;
+  if (el.dataset.to)    document.getElementById('dnew-to-'    + sid).value = el.dataset.to;
+  if (el.dataset.extra) document.getElementById('dnew-extra-' + sid).value = el.dataset.extra;
+  // Sync mode toggle buttons
+  var modeToggle = document.getElementById('dmode-' + sid);
+  if (modeToggle) {
+    modeToggle.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+    var activeBtn = [...modeToggle.querySelectorAll('button')].find(b =>
+      (b.textContent.trim() === 'Смена' && _dateModes[sid] === 'smena') ||
+      (b.textContent.trim() === 'Диапазон' && _dateModes[sid] === 'range'));
+    if (activeBtn) activeBtn.classList.add('active');
+  }
+  // Scroll form into view
+  form.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function hideDateForm(sid) {
+  document.getElementById('date-add-form-' + sid).style.display = 'none';
+  _editTarget[sid] = null;
+}
+
+function setDateMode(sid, mode, btn) {
+  _dateModes[sid] = mode;
+  btn.closest('.date-mode-toggle').querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('drange-' + sid).style.display = mode === 'range' ? 'block' : 'none';
+}
+
+function updateDateForm(sid) {
+  var type = document.getElementById('dnew-type-' + sid).value;
+  var modeWrap = document.getElementById('dmode-wrap-' + sid);
+  var range    = document.getElementById('drange-' + sid);
+  var extra    = document.getElementById('dextra-' + sid);
+  var extraLbl = document.getElementById('dextra-lbl-' + sid);
+  if (type === 'deadline') {
+    modeWrap.style.display = 'none'; range.style.display = 'none'; extra.style.display = 'none';
+    _dateModes[sid] = 'smena';
+  } else if (type === 'efir') {
+    modeWrap.style.display = 'none'; range.style.display = 'block'; extra.style.display = 'block';
+    extraLbl.textContent = 'Начало эфира'; _dateModes[sid] = 'range';
+  } else if (type === 'semka') {
+    modeWrap.style.display = 'none'; range.style.display = 'block'; extra.style.display = 'block';
+    extraLbl.textContent = 'Первый мотор'; _dateModes[sid] = 'range';
+  } else {
+    modeWrap.style.display = 'block';
+    var mode = _dateModes[sid] || 'smena';
+    range.style.display = mode === 'range' ? 'block' : 'none'; extra.style.display = 'none';
+  }
+}
+
+function confirmDateAdd(sid) {
+  var v = _collectFormValues(sid);
+  if (!v.dateVal) { alert('Укажите дату'); return; }
+  var r = _renderEntry(sid, v);
+  var target = _editTarget[sid];
+
+  if (target) {
+    // Edit mode: update existing entry
+    target.dataset.date  = v.dateVal;
+    target.dataset.type  = v.type;
+    target.dataset.mode  = v.mode;
+    target.dataset.from  = v.from;
+    target.dataset.to    = v.to;
+    target.dataset.extra = v.extra;
+    target.innerHTML = _buildEntryHTML(sid, r.dateStr, r.cls, r.label, r.timeStr);
+  } else {
+    // Add mode: append new entry
+    var div = document.createElement('div');
+    div.className = 'date-entry';
+    div.dataset.date  = v.dateVal;
+    div.dataset.type  = v.type;
+    div.dataset.mode  = v.mode;
+    div.dataset.from  = v.from;
+    div.dataset.to    = v.to;
+    div.dataset.extra = v.extra;
+    div.innerHTML = _buildEntryHTML(sid, r.dateStr, r.cls, r.label, r.timeStr);
+    document.getElementById('date-list-' + sid).appendChild(div);
+  }
+  hideDateForm(sid);
+}
+
+function removeDateEntry(btn) {
+  btn.closest('.date-entry').remove();
+}
+
+// Upload popup
+
+var _uploadBtn=null;
+function openUpload(btn){
+  _uploadBtn=btn;
+  document.getElementById('uploadPopup').style.display='flex';
+  document.getElementById('uploadSuccess').style.display='none';
+  document.getElementById('fileInput').value='';
+  document.getElementById('dropZone').classList.remove('drag-over');
+}
+function closeUpload(){
+  document.getElementById('uploadPopup').style.display='none';
+}
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  var f=e.dataTransfer.files[0];
+  if(f) handleUploadFile(f);
+}
+function handleUploadFile(f){
+  if(!f)return;
+  document.getElementById('uploadFileName').textContent=f.name;
+  document.getElementById('uploadSuccess').style.display='flex';
+  if(_uploadBtn){
+    var short=f.name.length>22?f.name.substring(0,22)+'…':f.name;
+    _uploadBtn.textContent='✅ '+short;
+    _uploadBtn.classList.add('uploaded');
+  }
+  setTimeout(closeUpload,1600);
 }
 
 // Date dropdown

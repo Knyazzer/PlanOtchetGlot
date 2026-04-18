@@ -231,8 +231,9 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
 }
 
 function GanttChart({ tasks, minDate, totalDays }: { tasks: GanttTask[]; minDate: Date; totalDays: number }) {
-  const DAY_W = 28 // px per day
-  const ROW_H = 33 // px per row
+  const DAY_W = 28
+  const ROW_H = 33
+  const MONTH_H = 20
 
   const days = Array.from({ length: totalDays }, (_, i) => {
     const d = new Date(minDate)
@@ -240,57 +241,92 @@ function GanttChart({ tasks, minDate, totalDays }: { tasks: GanttTask[]; minDate
     return d
   })
 
+  // Group days into month spans for the month header row
+  const monthGroups: { label: string; count: number }[] = []
+  for (const d of days) {
+    const label = format(d, 'LLL yyyy', { locale: ru })
+    if (monthGroups.length === 0 || monthGroups[monthGroups.length - 1].label !== label) {
+      monthGroups.push({ label, count: 1 })
+    } else {
+      monthGroups[monthGroups.length - 1].count++
+    }
+  }
+
+  const todayOffset = differenceInDays(startOfDay(new Date()), minDate)
+  const showToday = todayOffset >= 0 && todayOffset < totalDays
+
   return (
     <div style={{ minWidth: totalDays * DAY_W + 1, position: 'relative' }}>
-      {/* Header row with dates */}
-      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
+      {/* Month header */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, background: '#f8fafc', zIndex: 2 }}>
+        {monthGroups.map(({ label, count }, i) => (
+          <div key={i} style={{
+            width: count * DAY_W, flexShrink: 0, fontSize: 10, fontWeight: 700,
+            color: '#475569', padding: '3px 6px', textAlign: 'left',
+            borderLeft: i > 0 ? '1px solid #e2e8f0' : 'none',
+            overflow: 'hidden', whiteSpace: 'nowrap', height: MONTH_H, boxSizing: 'border-box',
+          }}>
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* Day header */}
+      <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: MONTH_H, background: '#fff', zIndex: 1 }}>
         {days.map((d, i) => {
           const isMonday = d.getDay() === 1
+          const isToday = i === todayOffset
           return (
-            <div
-              key={i}
-              style={{
-                width: DAY_W, flexShrink: 0, textAlign: 'center', fontSize: 10, color: '#94a3b8',
-                padding: '4px 0', borderLeft: isMonday ? '1px solid #e2e8f0' : '1px solid #f8fafc',
-                background: d.getDay() === 0 || d.getDay() === 6 ? '#f8fafc' : '#fff',
-              }}
-            >
+            <div key={i} style={{
+              width: DAY_W, flexShrink: 0, textAlign: 'center', fontSize: 10,
+              color: isToday ? '#ef4444' : '#94a3b8', fontWeight: isToday ? 700 : 400,
+              padding: '4px 0', borderLeft: isMonday ? '1px solid #e2e8f0' : '1px solid #f8fafc',
+              background: isToday ? '#fef2f2' : (d.getDay() === 0 || d.getDay() === 6 ? '#f8fafc' : '#fff'),
+            }}>
               {format(d, 'd', { locale: ru })}
             </div>
           )
         })}
       </div>
 
-      {/* Task bars */}
-      {tasks.map((t) => {
-        const start = t.start_date ? differenceInDays(startOfDay(parseISO(t.start_date)), minDate) : null
-        const end   = t.deadline   ? differenceInDays(startOfDay(parseISO(t.deadline)),   minDate) : null
-        const left  = start != null ? Math.max(0, start) * DAY_W : null
-        const width = start != null && end != null ? Math.max(1, end - start + 1) * DAY_W : null
+      {/* Task rows + today line */}
+      <div style={{ position: 'relative' }}>
+        {showToday && (
+          <div style={{
+            position: 'absolute', left: todayOffset * DAY_W + Math.floor(DAY_W / 2) - 1,
+            top: 0, bottom: 0, width: 2, background: 'rgba(239,68,68,0.4)', zIndex: 1, pointerEvents: 'none',
+          }} />
+        )}
+        {tasks.map((t) => {
+          const start = t.start_date ? differenceInDays(startOfDay(parseISO(t.start_date)), minDate) : null
+          const end   = t.deadline   ? differenceInDays(startOfDay(parseISO(t.deadline)),   minDate) : null
+          const left  = start != null ? Math.max(0, start) * DAY_W : null
+          const width = start != null && end != null ? Math.max(1, end - start + 1) * DAY_W : null
 
-        return (
-          <div key={t.id} style={{ height: ROW_H, position: 'relative', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
-            {/* Weekend shading */}
-            {days.map((d, i) => (
-              (d.getDay() === 0 || d.getDay() === 6) && (
-                <div key={i} style={{ position: 'absolute', left: i * DAY_W, width: DAY_W, height: '100%', background: '#f8fafc' }} />
-              )
-            ))}
-            {left != null && width != null && (
-              <div
-                title={`${t.name}: ${fmtDate(t.start_date)} – ${fmtDate(t.deadline)}`}
-                style={{
-                  position: 'absolute', left: left + 2, width: width - 4,
-                  height: 18, borderRadius: 4,
-                  background: t.done ? '#bbf7d0' : '#bfdbfe',
-                  border: `1px solid ${t.done ? '#22c55e' : '#3b82f6'}`,
-                  opacity: t.done ? 0.7 : 1,
-                }}
-              />
-            )}
-          </div>
-        )
-      })}
+          return (
+            <div key={t.id} style={{ height: ROW_H, position: 'relative', display: 'flex', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
+              {days.map((d, i) => (
+                (d.getDay() === 0 || d.getDay() === 6) && (
+                  <div key={i} style={{ position: 'absolute', left: i * DAY_W, width: DAY_W, height: '100%', background: '#f8fafc' }} />
+                )
+              ))}
+              {left != null && width != null && (
+                <div
+                  title={`${t.name}: ${fmtDate(t.start_date)} – ${fmtDate(t.deadline)}`}
+                  style={{
+                    position: 'absolute', left: left + 2, width: width - 4,
+                    height: 18, borderRadius: 4,
+                    background: t.done ? '#bbf7d0' : '#bfdbfe',
+                    border: `1px solid ${t.done ? '#22c55e' : '#3b82f6'}`,
+                    opacity: t.done ? 0.7 : 1,
+                    zIndex: 1,
+                  }}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
