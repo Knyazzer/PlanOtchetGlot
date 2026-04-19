@@ -32,8 +32,10 @@ All occurrences of "матрица" in user-facing strings are replaced with "п
 
 ### Status field
 - Removed from form as an editable `<select>`
-- Replaced with a static badge at the **top** of the form showing `Запрос`
-- Both on create and edit (status is only editable inside the project card)
+- Replaced with a static badge at the **top** of the form
+  - On **create**: always shows `Запрос`
+  - On **edit**: shows the project's current status (read-only; edit via project card)
+- Status is only editable inside the project card (Info tab → Description block)
 
 ### Name preview block
 - The block showing `Матрица v4.1: клиент: название: дата` is **removed entirely**

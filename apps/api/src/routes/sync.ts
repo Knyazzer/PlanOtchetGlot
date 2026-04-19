@@ -69,6 +69,7 @@ export async function syncRoutes(app: FastifyInstance) {
       curator:        r.curator,
       kpLink:         r.kp_link,
       brief:          r.brief,
+      revenuePlan:    r.revenue_plan ?? null,
       projectId:      r.project_id,
       googleRowIndex: r.google_row_index,
       hasShiftsData:  r.has_shifts_data,

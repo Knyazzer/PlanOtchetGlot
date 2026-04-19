@@ -17,6 +17,7 @@ const createMatrixSchema = z.object({
   curator:      z.string().nullable().optional(),
   kpLink:       z.string().nullable().optional(),
   brief:        z.string().nullable().optional(),
+  revenuePlan:  z.number().nullable().optional(),
   status:       z.string().nullable().optional(),
   templateId:   z.string().uuid().nullable().optional(),
 })
@@ -94,7 +95,7 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
       client: 'client', unit: 'unit', format: 'format', date: 'date',
       producer: 'producer', manager: 'manager', curator: 'curator',
       projectName: 'project_name', kpLink: 'kp_link', brief: 'brief',
-      status: 'status', templateId: 'template_id',
+      revenuePlan: 'revenue_plan', status: 'status', templateId: 'template_id',
     }
     for (const [key, col] of Object.entries(map)) {
       if ((body.data as any)[key] !== undefined) {

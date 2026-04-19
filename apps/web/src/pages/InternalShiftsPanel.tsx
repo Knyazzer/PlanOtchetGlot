@@ -503,7 +503,9 @@ function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId: st
 
 // ─── MicroProjectTab ──────────────────────────────────────────────────────────
 
-function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
+export { MicroProject }
+
+export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
   project: MicroProject
   onDeleted: () => void
   onCopied: (newId: string) => void

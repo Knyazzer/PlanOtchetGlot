@@ -193,6 +193,7 @@ model MatrixRegistry {
   projectName    String?   @map("project_name")
   kpLink         String?   @map("kp_link")
   brief          String?
+  revenuePlan    Float?    @map("revenue_plan")
   source         String    @default("google")
   templateId     String?   @map("template_id")
   createdAt    DateTime  @default(now()) @map("created_at")

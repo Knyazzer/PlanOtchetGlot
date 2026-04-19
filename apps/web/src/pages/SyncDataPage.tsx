@@ -1,10 +1,102 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
-import { InternalShiftsPanel } from './InternalShiftsPanel'
+import { InternalShiftsPanel, MicroProjectTab } from './InternalShiftsPanel'
 import { GanttTab, NotesTab, DocumentsTab } from './MatrixTabs'
+
+// ─── ConfirmDialog ────────────────────────────────────────────────────────────
+
+interface ConfirmOptions {
+  title: string
+  message?: string
+  confirmLabel?: string
+  confirmColor?: string
+}
+
+interface ConfirmState extends ConfirmOptions {
+  open: boolean
+  resolve: ((ok: boolean) => void) | null
+}
+
+function useConfirmDialog() {
+  const [state, setState] = useState<ConfirmState>({
+    open: false, title: '', resolve: null,
+  })
+
+  const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setState({ ...opts, open: true, resolve })
+    })
+  }, [])
+
+  const handleConfirm = useCallback(() => {
+    setState((s) => { s.resolve?.(true); return { ...s, open: false, resolve: null } })
+  }, [])
+
+  const handleCancel = useCallback(() => {
+    setState((s) => { s.resolve?.(false); return { ...s, open: false, resolve: null } })
+  }, [])
+
+  return { confirm, confirmDialogProps: { ...state, onConfirm: handleConfirm, onCancel: handleCancel } }
+}
+
+function ConfirmDialog({
+  open, title, message, confirmLabel = 'Подтвердить', confirmColor = '#ef4444',
+  onConfirm, onCancel,
+}: {
+  open: boolean
+  title: string
+  message?: string
+  confirmLabel?: string
+  confirmColor?: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); onCancel() }
+      if (e.key === 'Enter') { e.stopPropagation(); onConfirm() }
+    }
+    document.addEventListener('keydown', handler, true)
+    return () => document.removeEventListener('keydown', handler, true)
+  }, [open, onConfirm, onCancel])
+
+  if (!open) return null
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onMouseDown={onCancel}
+    >
+      <div
+        style={{ background: '#fff', borderRadius: 14, boxShadow: '0 24px 64px rgba(0,0,0,0.25)', width: '100%', maxWidth: 400, overflow: 'hidden' }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div style={{ padding: '20px 24px 0' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: message ? 8 : 0 }}>{title}</div>
+          {message && <div style={{ fontSize: 14, color: '#64748b', lineHeight: 1.55 }}>{message}</div>}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '20px 24px' }}>
+          <button
+            onClick={onCancel}
+            style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+          >
+            Отмена
+          </button>
+          <button
+            onClick={onConfirm}
+            style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: confirmColor, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +120,7 @@ interface Project {
   linkedMatrix: { matrixId: string } | null
   sheetMatrixId: string | null
   uncertainFields: string[]
+  days: Array<{ id: string; date: string; type: string; startTime: string | null; timeFrom: string | null; timeTo: string | null; allDay: boolean; firstMotor: string | null }>
 }
 
 interface RegistryEntry {
@@ -52,6 +145,7 @@ interface RegistryEntry {
   lastSyncedAt: string | null
   source: string
   templateId: string | null
+  revenuePlan: number | null
 }
 
 interface MatrixTemplate {
@@ -985,7 +1079,7 @@ function ProjectFormModal({
       >
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать проект' : 'Новый проект'}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать смену' : 'Новая смена'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px' }}>×</button>
         </div>
 
@@ -1324,7 +1418,7 @@ function ProjectsTable({
             onClick={() => setFormProject('new')}
             style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
           >
-            + Добавить проект
+            + Создать смену
           </button>
         </div>
       </div>
@@ -1438,16 +1532,33 @@ function ProjectsTable({
     </div>
 
     {selectedProject && (
-      <ProjectDetailModal
-        project={selectedProject}
-        onClose={closeProject}
-        onEdit={() => { setFormProject(selectedProject); closeProject() }}
-        onDelete={() => {
-          if (window.confirm(`Удалить проект «${selectedProject.name}»?`)) {
-            deleteProject.mutate(selectedProject.id)
-          }
-        }}
-      />
+      <div
+        style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        onMouseDown={closeProject}
+      >
+        <div
+          style={{ background: '#f8fafc', borderRadius: 16, boxShadow: '0 24px 80px rgba(0,0,0,0.25)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #1e3a5f 100%)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedProject.name}</div>
+              {selectedProject.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>{selectedProject.client}</div>}
+            </div>
+            <button onClick={closeProject} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 10px', borderRadius: 8 }} title="Закрыть (Esc)">×</button>
+          </div>
+          {/* Body */}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <MicroProjectTab
+              project={selectedProject as any}
+              onDeleted={() => { deleteProject.mutate(selectedProject.id); closeProject() }}
+              onCopied={(newId) => { qc.invalidateQueries({ queryKey: ['status-rows-sync'] }); closeProject() }}
+              onUpdated={() => qc.invalidateQueries({ queryKey: ['status-rows-sync'] })}
+            />
+          </div>
+        </div>
+      </div>
     )}
     {formProject != null && (
       <ProjectFormModal
@@ -1492,6 +1603,18 @@ function RegistryInfoTab({
   onStatusChanged?: (newStatus: string) => void
 }) {
   const isInternal = entry.source === 'internal'
+
+  const { data: kfpdRaw } = useQuery<KfpdData>({
+    queryKey: ['kfpd-preview'],
+    queryFn: () => api.get('/database/preview/kfpd').then((r) => r.data),
+    staleTime: 5 * 60_000,
+  })
+  const kfpdCol = (idx: number): string[] => kfpdRaw
+    ? [...new Set(kfpdRaw.rows.map((r) => r[idx] ?? '').filter(Boolean) as string[])]
+    : []
+  const unitOptions  = kfpdCol(5)
+  const formatOptions = kfpdCol(1)
+  const producerOptions = kfpdCol(2)
 
   // Fetch micro-projects and their financial data (only for internal)
   const { data: projects = [] } = useQuery<any[]>({
@@ -1581,6 +1704,58 @@ function RegistryInfoTab({
     },
   })
 
+  // Inline editable fields (internal only)
+  const initFields = () => ({
+    kpLink:      entry.kpLink   ?? '',
+    format:      entry.format   ?? '',
+    date:        entry.date ? new Date(entry.date).toISOString().slice(0, 10) : '',
+    producer:    entry.producer ?? '',
+    manager:     entry.manager  ?? '',
+    curator:     entry.curator  ?? '',
+    unit:        Array.isArray(entry.unit) ? entry.unit : [],
+    revenuePlan: entry.revenuePlan != null ? String(entry.revenuePlan) : '',
+  })
+
+  const [fields, setFields] = useState(initFields)
+  const [savedFields, setSavedFields] = useState(fields)
+
+  useEffect(() => {
+    const next = initFields()
+    setFields(next)
+    setSavedFields(next)
+  }, [entry.id])
+
+  const patchField = useMutation({
+    mutationFn: (patch: Record<string, unknown>) =>
+      api.patch(`/internal-matrix/${entry.id}`, patch).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['internal-matrix'] })
+      qc.invalidateQueries({ queryKey: ['sync-registry'] })
+    },
+  })
+
+  const saveField = (key: string, value: unknown) => {
+    setSavedFields((prev) => ({ ...prev, [key]: value }))
+    const apiVal = key === 'revenuePlan'
+      ? (value !== '' && value != null ? Number(value) : null)
+      : (value || null)
+    patchField.mutate({ [key]: apiVal })
+  }
+
+  const onFieldBlur = (key: string) => {
+    const cur = (fields as any)[key]
+    const saved = (savedFields as any)[key]
+    if (cur !== saved) saveField(key, cur)
+  }
+
+  // Styled editable field — always shows border (readable + editable)
+  const editField: React.CSSProperties = {
+    fontSize: 13, color: '#1e293b', fontWeight: 500, textAlign: 'right',
+    border: '1px solid #e2e8f0', borderRadius: 20, padding: '3px 10px',
+    background: '#f8fafc', outline: 'none', maxWidth: 200, width: 'auto',
+    fontFamily: 'inherit', cursor: 'text',
+  }
+
   const fmt = (n: number) => n === 0 ? '—' : n.toLocaleString('ru-RU') + ' ₽'
   const pct = (plan: number, fact: number) => {
     if (!plan) return '—'
@@ -1617,35 +1792,92 @@ function RegistryInfoTab({
             <span style={fLbl}>ID матрицы</span>
             <span style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180, whiteSpace: 'nowrap' }}>{entry.matrixId}</span>
           </div>
-          {entry.sheetUrl && (
-            <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}>
-              <span style={fLbl}>Ссылка</span>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}>
+            <span style={fLbl}>Google Таблица</span>
+            {entry.sheetUrl ? (
               <a href={entry.sheetUrl} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 20, padding: '3px 10px 3px 7px', color: '#15803d', textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>
                 <span style={{ fontSize: 13 }}>📊</span> Открыть <span style={{ opacity: 0.6, fontSize: 10 }}>↗</span>
               </a>
-            </div>
-          )}
-          {entry.kpLink && (
-            <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}>
-              <span style={fLbl}>КП</span>
-              <a href={entry.kpLink} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '3px 10px 3px 7px', color: '#2563eb', textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>
-                <span style={{ fontSize: 13 }}>📄</span> КП <span style={{ opacity: 0.6, fontSize: 10 }}>↗</span>
-              </a>
-            </div>
-          )}
-          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Юнит</span><span style={fVal}>{Array.isArray(entry.unit) && entry.unit.length ? entry.unit.join(', ') : '—'}</span></div>
-          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Формат</span><span style={fVal}>{entry.format || '—'}</span></div>
-          <div style={{ ...fRow, borderBottom: 'none' }}><span style={fLbl}>Дата</span><span style={{ ...fVal, fontWeight: 700 }}>{fmtDate(entry.date)}</span></div>
+            ) : (
+              <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Таблица не сгенерирована</span>
+            )}
+          </div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}>
+            <span style={fLbl}>Юнит</span>
+            {isInternal ? (
+              <MultiSelect
+                options={unitOptions}
+                value={fields.unit}
+                onChange={(v) => { setFields((p) => ({ ...p, unit: v })); saveField('unit', v) }}
+                placeholder="Не выбрано"
+              />
+            ) : (
+              <span style={fVal}>{Array.isArray(entry.unit) && entry.unit.length ? entry.unit.join(', ') : '—'}</span>
+            )}
+          </div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}>
+            <span style={fLbl}>Формат</span>
+            {isInternal ? (
+              <StyledSelect
+                options={formatOptions}
+                value={fields.format}
+                onChange={(v) => { setFields((p) => ({ ...p, format: v })); saveField('format', v) }}
+                placeholder="— не выбрано —"
+              />
+            ) : (
+              <span style={fVal}>{entry.format || '—'}</span>
+            )}
+          </div>
+          <div style={{ ...fRow, borderBottom: 'none' }}>
+            <span style={fLbl}>Дата</span>
+            {isInternal ? (
+              <input
+                type="date"
+                value={fields.date}
+                onChange={(e) => setFields((p) => ({ ...p, date: e.target.value }))}
+                onBlur={() => onFieldBlur('date')}
+                style={{ ...editField, cursor: 'pointer', maxWidth: 160 }}
+              />
+            ) : (
+              <span style={{ ...fVal, fontWeight: 700 }}>{fmtDate(entry.date)}</span>
+            )}
+          </div>
         </div>
 
         {/* Команда */}
         <div style={card}>
           <div style={cardHdr}><span style={dot('#8b5cf6')} /><span style={cardTitle}>Команда</span></div>
-          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Продюсер от ММ</span><span style={fVal}>{entry.producer || '—'}</span></div>
-          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Менеджер по продажам</span><span style={fVal}>{entry.manager || '—'}</span></div>
-          <div style={{ ...fRow, borderBottom: 'none' }}><span style={fLbl}>Куратор от заказчика</span><span style={fVal}>{entry.curator || '—'}</span></div>
+          {(['producer', 'manager', 'curator'] as const).map((key, i, arr) => {
+            const labels: Record<string, string> = { producer: 'Продюсер от ММ', manager: 'Менеджер по продажам', curator: 'Куратор от заказчика' }
+            const isSelect = key === 'producer' || key === 'manager'
+            return (
+              <div key={key} style={{ ...fRow, borderBottom: i < arr.length - 1 ? '1px solid #f8fafc' : 'none' }}>
+                <span style={fLbl}>{labels[key]}</span>
+                {isInternal ? (
+                  isSelect ? (
+                    <StyledSelect
+                      options={producerOptions}
+                      value={fields[key]}
+                      onChange={(v) => { setFields((p) => ({ ...p, [key]: v })); saveField(key, v) }}
+                      placeholder="— не выбрано —"
+                    />
+                  ) : (
+                    <input
+                      value={fields[key]}
+                      onChange={(e) => setFields((p) => ({ ...p, [key]: e.target.value }))}
+                      onBlur={() => onFieldBlur(key)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                      placeholder="ФИО"
+                      style={{ ...editField }}
+                    />
+                  )
+                ) : (
+                  <span style={fVal}>{(entry as any)[key] || '—'}</span>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         {/* Прогресс */}
@@ -1710,16 +1942,14 @@ function RegistryInfoTab({
             {entry.source === 'internal' && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
                 <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>Статус</span>
-                <select
+                <StyledSelect
+                  options={Object.keys(STATUS_LABELS)}
                   value={entry.status ?? ''}
-                  onChange={(e) => { if (e.target.value) updateStatus.mutate(e.target.value) }}
-                  disabled={updateStatus.isPending}
-                  style={{ fontSize: 12, padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 6, color: '#1e293b', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
-                >
-                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => { if (v) updateStatus.mutate(v) }}
+                  renderOption={(opt) => <span>{STATUS_LABELS[opt] ?? opt}</span>}
+                  renderValue={(v) => <span>{STATUS_LABELS[v] ?? v}</span>}
+                  placeholder="— статус —"
+                />
               </div>
             )}
 
@@ -1759,7 +1989,21 @@ function RegistryInfoTab({
               <tbody>
                 <tr style={{ background: '#f0fdf4' }}>
                   <td style={{ padding: '9px 18px', fontWeight: 700, color: '#0f172a', borderBottom: '2px solid #e2e8f0' }}>Доход</td>
-                  <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, borderBottom: '2px solid #e2e8f0', color: '#94a3b8' }}>—</td>
+                  <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 700, borderBottom: '2px solid #e2e8f0' }}>
+                    {isInternal ? (
+                      <input
+                        type="number"
+                        value={fields.revenuePlan}
+                        onChange={(e) => setFields((p) => ({ ...p, revenuePlan: e.target.value }))}
+                        onBlur={() => onFieldBlur('revenuePlan')}
+                        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                        placeholder="0"
+                        style={{ ...editField, maxWidth: 120, textAlign: 'right', fontSize: 13 }}
+                      />
+                    ) : (
+                      <span style={{ color: '#94a3b8' }}>—</span>
+                    )}
+                  </td>
                   <td style={{ padding: '9px 10px', textAlign: 'right', fontWeight: 700, borderBottom: '2px solid #e2e8f0', color: '#94a3b8' }}>—</td>
                   <td style={{ padding: '9px 8px', textAlign: 'right', color: '#94a3b8', borderBottom: '2px solid #e2e8f0' }}>—</td>
                 </tr>
@@ -1892,19 +2136,6 @@ function RegistryInfoTab({
         </div>
       </div>
 
-      {/* Footer info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '6px 0', borderTop: '1px solid #f1f5f9', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Источник</span>
-          <span style={{ fontSize: 11, color: '#15803d', background: '#dcfce7', padding: '2px 7px', borderRadius: 5, fontWeight: 600 }}>{entry.source ?? '—'}</span>
-        </div>
-        {entry.googleRowIndex != null && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Строка</span>
-            <span style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace', background: '#f1f5f9', padding: '2px 7px', borderRadius: 5 }}>{entry.googleRowIndex}</span>
-          </div>
-        )}
-      </div>
 
     </div>
   )
@@ -2066,9 +2297,6 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete 
                   {STATUS_LABELS[localEntry.status!] ?? localEntry.status}
                 </span>
               )}
-              <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: isInternal ? 'rgba(167,243,208,0.15)' : 'rgba(191,219,254,0.15)', color: isInternal ? '#6ee7b7' : '#93c5fd', border: `1px solid ${isInternal ? 'rgba(110,231,183,0.25)' : 'rgba(147,197,253,0.25)'}` }}>
-                {isInternal ? 'Внутренняя' : 'Google Sheets'}
-              </span>
             </div>
             <div style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {localEntry.projectName ?? localEntry.name ?? localEntry.matrixId}
@@ -2076,11 +2304,6 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete 
             {localEntry.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>{localEntry.client}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {onEdit && (
-              <button onClick={onEdit} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#e2e8f0', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}>
-                Изменить
-              </button>
-            )}
             {onDelete && (
               <button onClick={onDelete} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}>
                 Удалить
@@ -2249,6 +2472,22 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete 
         {tab === 'changes' && (
           <RegistryChangesTab entityId={entry.id} />
         )}
+
+        {/* Sticky footer — source info */}
+        <div style={{ flexShrink: 0, borderTop: '1px solid #e2e8f0', background: '#f8fafc', padding: '7px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>Источник:</span>
+          <span style={{
+            padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+            background: isInternal ? '#f0fdf4' : '#eff6ff',
+            color: isInternal ? '#15803d' : '#2563eb',
+            border: `1px solid ${isInternal ? '#bbf7d0' : '#bfdbfe'}`,
+          }}>
+            {isInternal ? 'Внутренняя' : 'Google Sheets'}
+          </span>
+          {localEntry.lastSyncedAt && !isInternal && (
+            <span style={{ fontSize: 11, color: '#cbd5e1' }}>· синхр. {fmtDate(localEntry.lastSyncedAt)}</span>
+          )}
+        </div>
 
       </div>
     </div>
@@ -2502,13 +2741,21 @@ function MultiSelect({
 
   useEffect(() => {
     if (!open) return
-    const handler = (e: MouseEvent) => {
+    const mouseHandler = (e: MouseEvent) => {
       const t = e.target as Node
       if (triggerRef.current?.contains(t) || dropRef.current?.contains(t)) return
+      e.stopPropagation() // don't let this click close the parent modal
       setOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) }
+    }
+    document.addEventListener('mousedown', mouseHandler, true)
+    document.addEventListener('keydown', keyHandler, true)
+    return () => {
+      document.removeEventListener('mousedown', mouseHandler, true)
+      document.removeEventListener('keydown', keyHandler, true)
+    }
   }, [open])
 
   const toggle = (opt: string) => {
@@ -2518,7 +2765,7 @@ function MultiSelect({
   const handleOpen = () => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
-      setDropPos({ top: rect.bottom + 2, left: rect.left, width: rect.width })
+      setDropPos({ top: rect.bottom + 2, left: rect.left, width: Math.max(rect.width, 240) })
     }
     setOpen((o) => !o)
   }
@@ -2558,6 +2805,94 @@ function MultiSelect({
         </div>
       )}
     </div>
+  )
+}
+
+// ─── StyledSelect ─────────────────────────────────────────────────────────────
+
+function StyledSelect({
+  options, value, onChange, placeholder = '—',
+  renderOption, renderValue,
+}: {
+  options: string[]
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  renderOption?: (opt: string) => React.ReactNode
+  renderValue?: (v: string) => React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const mouseHandler = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t) || dropRef.current?.contains(t)) return
+      e.stopPropagation()
+      setOpen(false)
+    }
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) }
+    }
+    document.addEventListener('mousedown', mouseHandler, true)
+    document.addEventListener('keydown', keyHandler, true)
+    return () => {
+      document.removeEventListener('mousedown', mouseHandler, true)
+      document.removeEventListener('keydown', keyHandler, true)
+    }
+  }, [open])
+
+  const handleOpen = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropPos({ top: rect.bottom + 2, left: rect.left, width: Math.max(rect.width, 200) })
+    }
+    setOpen((o) => !o)
+  }
+
+  const triggerStyle: React.CSSProperties = {
+    fontSize: 13, padding: '4px 10px', border: '1px solid #e2e8f0',
+    borderRadius: 20, outline: 'none', color: value ? '#1e293b' : '#94a3b8',
+    background: '#f8fafc', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+    whiteSpace: 'nowrap', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis',
+    display: 'inline-flex', alignItems: 'center', gap: 5,
+  }
+
+  return (
+    <>
+    <button type="button" ref={triggerRef} style={triggerStyle} onClick={handleOpen}>
+      {value ? (renderValue ? renderValue(value) : value) : placeholder}
+      <span style={{ opacity: 0.5, fontSize: 10, marginLeft: 2 }}>▾</span>
+    </button>
+    {open && dropPos && (
+      <div ref={dropRef} style={{
+        position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width,
+        zIndex: 9999, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+        boxShadow: '0 4px 20px rgba(0,0,0,0.12)', maxHeight: 220, overflowY: 'auto',
+      }}>
+        {options.map((opt) => (
+          <div
+            key={opt}
+            onClick={() => { onChange(opt); setOpen(false) }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px',
+              cursor: 'pointer', fontSize: 13, color: opt === value ? '#1d4ed8' : '#1e293b',
+              background: opt === value ? '#eff6ff' : 'transparent',
+            }}
+          >
+            <span style={{ width: 14, flexShrink: 0, fontSize: 11 }}>{opt === value ? '✓' : ''}</span>
+            {renderOption ? renderOption(opt) : opt}
+          </div>
+        ))}
+        {options.length === 0 && (
+          <div style={{ padding: '10px 14px', fontSize: 13, color: '#94a3b8' }}>Нет вариантов</div>
+        )}
+      </div>
+    )}
+    </>
   )
 }
 
@@ -2609,12 +2944,19 @@ function MatrixFormModal({
   const producers  = kfpdCol(2)
   const bizUnits   = kfpdCol(5)
 
+  const { confirm, confirmDialogProps } = useConfirmDialog()
+
+  const confirmClose = async () => {
+    const ok = await confirm({ title: 'Закрыть форму?', message: 'Несохранённые данные будут потеряны.', confirmLabel: 'Закрыть', confirmColor: '#64748b' })
+    if (ok) onClose()
+  }
+
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') confirmClose() }
     window.addEventListener('keydown', handler)
     document.body.style.overflow = 'hidden'
     return () => { window.removeEventListener('keydown', handler); document.body.style.overflow = '' }
-  }, [onClose])
+  }, [])
 
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [key]: e.target.value }))
@@ -2672,11 +3014,12 @@ function MatrixFormModal({
   )
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onMouseDown={onClose}>
+    <>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onMouseDown={confirmClose}>
       <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 580, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать проект' : 'Новый проект'}</div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20 }}>×</button>
+          <button onClick={confirmClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20 }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
 
@@ -2728,7 +3071,7 @@ function MatrixFormModal({
           {error && <div style={{ fontSize: 13, color: '#ef4444', background: '#fef2f2', padding: '8px 12px', borderRadius: 6 }}>{error}</div>}
         </div>
         <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button onClick={onClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
+          <button onClick={confirmClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
           <button
             onClick={() => save.mutate()}
             disabled={save.isPending}
@@ -2739,6 +3082,8 @@ function MatrixFormModal({
         </div>
       </div>
     </div>
+    <ConfirmDialog {...confirmDialogProps} />
+    </>
   )
 }
 
@@ -2774,6 +3119,8 @@ function RegistryTable({
       queryClient.invalidateQueries({ queryKey: ['sync-registry'] })
     },
   })
+
+  const { confirm: confirmAction, confirmDialogProps } = useConfirmDialog()
 
   function openEntry(r: RegistryEntry) {
     if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null }
@@ -3065,7 +3412,11 @@ function RegistryTable({
         onClose={closeEntry}
         onShiftsLoaded={handleShiftsLoaded}
         onEdit={selectedEntry.source === 'internal' ? () => { setFormMatrix(selectedEntry); closeEntry() } : undefined}
-        onDelete={selectedEntry.source === 'internal' ? () => { deleteMatrix.mutate(selectedEntry.id); closeEntry() } : undefined}
+        onDelete={selectedEntry.source === 'internal' ? async () => {
+          const name = selectedEntry.projectName ?? selectedEntry.name ?? selectedEntry.matrixId
+          const ok = await confirmAction({ title: `Удалить проект «${name}»?`, message: 'Это действие нельзя отменить.', confirmLabel: 'Удалить', confirmColor: '#ef4444' })
+          if (ok) { deleteMatrix.mutate(selectedEntry.id); closeEntry() }
+        } : undefined}
       />
     )}
     {selectedMatrix && (
@@ -3084,6 +3435,7 @@ function RegistryTable({
         onSaved={() => { queryClient.invalidateQueries({ queryKey: ['sync-registry'] }); setFormMatrix(null) }}
       />
     )}
+    <ConfirmDialog {...confirmDialogProps} />
     </>
   )
 }

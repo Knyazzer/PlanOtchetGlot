@@ -1,0 +1,1 @@
+ALTER TABLE "matrix_registry" ADD COLUMN IF NOT EXISTS "revenue_plan" DOUBLE PRECISION;
