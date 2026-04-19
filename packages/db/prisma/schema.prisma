@@ -177,7 +177,7 @@ model MatrixRegistry {
   matrixId     String    @unique @map("matrix_id")
   sheetUrl     String?   @map("sheet_url")
   status       String?
-  unit         String?
+  unit         String[]  @default([])
   client       String?
   name         String?
   format       String?
