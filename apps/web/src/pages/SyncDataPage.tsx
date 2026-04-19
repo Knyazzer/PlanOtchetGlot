@@ -1484,7 +1484,13 @@ interface ChangeLogEntry {
 
 interface GanttTaskInfo { id: string; done: boolean }
 
-function RegistryInfoTab({ entry, ganttTasks }: { entry: RegistryEntry; ganttTasks?: GanttTaskInfo[] }) {
+function RegistryInfoTab({
+  entry, ganttTasks, onStatusChanged,
+}: {
+  entry: RegistryEntry
+  ganttTasks?: GanttTaskInfo[]
+  onStatusChanged?: (newStatus: string) => void
+}) {
   const isInternal = entry.source === 'internal'
 
   // Fetch micro-projects and their financial data (only for internal)
@@ -1548,6 +1554,29 @@ function RegistryInfoTab({ entry, ganttTasks }: { entry: RegistryEntry; ganttTas
     return { specPlan, specFact, servicesPlan, servicesFact, taxPlan, taxFact, totalPlan, totalFact }
   }, [projects, memberQueries, expenseQueries])
 
+  const qc = useQueryClient()
+
+  const updateStatus = useMutation({
+    mutationFn: (newStatus: string) =>
+      api.patch(`/internal-matrix/${entry.id}`, { status: newStatus }).then((r) => r.data),
+    onSuccess: (_data: unknown, newStatus: string) => {
+      qc.invalidateQueries({ queryKey: ['internal-matrix'] })
+      onStatusChanged?.(newStatus)
+    },
+  })
+
+  const [briefText, setBriefText] = useState(entry.brief ?? '')
+  const [briefDirty, setBriefDirty] = useState(false)
+
+  const saveBrief = useMutation({
+    mutationFn: () =>
+      api.patch(`/internal-matrix/${entry.id}`, { brief: briefText }).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['internal-matrix'] })
+      setBriefDirty(false)
+    },
+  })
+
   const fmt = (n: number) => n === 0 ? '—' : n.toLocaleString('ru-RU') + ' ₽'
   const pct = (plan: number, fact: number) => {
     if (!plan) return '—'
@@ -1610,9 +1639,9 @@ function RegistryInfoTab({ entry, ganttTasks }: { entry: RegistryEntry; ganttTas
         {/* Команда */}
         <div style={card}>
           <div style={cardHdr}><span style={dot('#8b5cf6')} /><span style={cardTitle}>Команда</span></div>
-          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Продюсер</span><span style={fVal}>{entry.producer || '—'}</span></div>
-          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Менеджер</span><span style={fVal}>{entry.manager || '—'}</span></div>
-          <div style={{ ...fRow, borderBottom: 'none' }}><span style={fLbl}>Куратор</span><span style={fVal}>{entry.curator || '—'}</span></div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Продюсер от ММ</span><span style={fVal}>{entry.producer || '—'}</span></div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Менеджер по продажам</span><span style={fVal}>{entry.manager || '—'}</span></div>
+          <div style={{ ...fRow, borderBottom: 'none' }}><span style={fLbl}>Куратор от заказчика</span><span style={fVal}>{entry.curator || '—'}</span></div>
         </div>
 
         {/* Прогресс */}
@@ -1660,23 +1689,53 @@ function RegistryInfoTab({ entry, ganttTasks }: { entry: RegistryEntry; ganttTas
         {/* Описание */}
         <div style={{ ...card, display: 'flex', flexDirection: 'column' }}>
           <div style={cardHdr}><span style={dot('#8b5cf6')} /><span style={cardTitle}>Описание</span></div>
-          <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-              {([
-                { label: 'Название', value: entry.name },
-                { label: 'Клиент',   value: entry.client },
-              ] as { label: string; value: string | null | undefined }[]).map(({ label, value }) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>{label}</span>
-                  <span style={{ fontSize: 13, color: value ? '#1e293b' : '#cbd5e1' }}>{value || '—'}</span>
-                </div>
-              ))}
-            </div>
+          <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1, gap: 10 }}>
+
+            {/* Ссылка на КП */}
+            {entry.kpLink && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>Ссылка на КП</span>
+                <a href={entry.kpLink} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '3px 10px 3px 7px', color: '#2563eb', textDecoration: 'none', fontSize: 12, fontWeight: 600 }}>
+                  <span style={{ fontSize: 13 }}>📄</span> КП <span style={{ opacity: 0.6, fontSize: 10 }}>↗</span>
+                </a>
+              </div>
+            )}
+
+            {/* Статус (только для внутренних) */}
+            {entry.source === 'internal' && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', flexShrink: 0 }}>Статус</span>
+                <select
+                  value={entry.status ?? ''}
+                  onChange={(e) => { if (e.target.value) updateStatus.mutate(e.target.value) }}
+                  disabled={updateStatus.isPending}
+                  style={{ fontSize: 12, padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 6, color: '#1e293b', background: '#f8fafc', cursor: 'pointer', outline: 'none' }}
+                >
+                  {Object.entries(STATUS_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Бриф / описание */}
             <textarea
-              defaultValue={entry.brief ?? ''}
+              value={briefText}
+              onChange={(e) => { setBriefText(e.target.value); setBriefDirty(true) }}
               placeholder="Введите описание проекта…"
               style={{ flex: 1, minHeight: 80, border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: '#1e293b', fontFamily: 'inherit', resize: 'none', outline: 'none', lineHeight: 1.6, background: '#fff' }}
             />
+            {briefDirty && (
+              <button
+                onClick={() => saveBrief.mutate()}
+                disabled={saveBrief.isPending}
+                style={{ alignSelf: 'flex-end', fontSize: 12, padding: '5px 14px', borderRadius: 6, border: 'none', background: saveBrief.isPending ? '#93c5fd' : '#2563eb', color: '#fff', cursor: saveBrief.isPending ? 'default' : 'pointer', fontWeight: 500 }}
+              >
+                {saveBrief.isPending ? 'Сохраняю...' : 'Сохранить'}
+              </button>
+            )}
+
           </div>
         </div>
 
@@ -1893,6 +1952,7 @@ function RegistryChangesTab({ entityId }: { entityId: string }) {
 // ─── Registry Detail Modal ────────────────────────────────────────────────────
 
 function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, onCheck, checking }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; onCheck?: () => void; checking?: boolean }) {
+  const [localEntry, setLocalEntry] = useState<RegistryEntry>(entry)
   const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'>('info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
@@ -1938,7 +1998,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
 
   const qc = useQueryClient()
   const [refreshKey, setRefreshKey] = useState(0)
-  const isInternal = entry.source === 'internal'
+  const isInternal = localEntry.source === 'internal'
 
   const { data: shiftsData, isLoading: shiftsLoading, error: shiftsError, isFetching: shiftsFetching } = useQuery<MatrixShiftsData>({
     queryKey: ['matrix-shifts', entry.matrixId, refreshKey],
@@ -1972,7 +2032,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
     cancelled:      { bg: '#f8fafc', color: '#94a3b8', border: '#e2e8f0' },
     manual:         { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' },
   }
-  const statusStyle = entry.status ? (statusColors[entry.status] ?? { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }) : null
+  const statusStyle = localEntry.status ? (statusColors[localEntry.status] ?? { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }) : null
 
   const TABS: { key: 'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'; label: string }[] = [
     { key: 'info',    label: 'Инфо' },
@@ -1999,15 +2059,17 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
               {statusStyle && (
                 <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}`, letterSpacing: '0.03em' }}>
-                  {STATUS_LABELS[entry.status!] ?? entry.status}
+                  {STATUS_LABELS[localEntry.status!] ?? localEntry.status}
                 </span>
               )}
               <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: isInternal ? 'rgba(167,243,208,0.15)' : 'rgba(191,219,254,0.15)', color: isInternal ? '#6ee7b7' : '#93c5fd', border: `1px solid ${isInternal ? 'rgba(110,231,183,0.25)' : 'rgba(147,197,253,0.25)'}` }}>
                 {isInternal ? 'Внутренняя' : 'Google Sheets'}
               </span>
             </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name ?? entry.matrixId}</div>
-            {entry.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>{entry.client}</div>}
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {localEntry.projectName ?? localEntry.name ?? localEntry.matrixId}
+            </div>
+            {localEntry.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>{localEntry.client}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {onCheck && (
@@ -2053,7 +2115,11 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
         </div>
         {/* Tab: Info */}
         {tab === 'info' && (
-          <RegistryInfoTab entry={entry} ganttTasks={ganttTasks} />
+          <RegistryInfoTab
+            entry={localEntry}
+            ganttTasks={ganttTasks}
+            onStatusChanged={(newStatus) => setLocalEntry((prev) => ({ ...prev, status: newStatus }))}
+          />
         )}
 
         {/* Tab: Shifts */}
