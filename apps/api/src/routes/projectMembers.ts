@@ -25,6 +25,7 @@ const memberSchema = z.object({
   rateFact:       z.number().nullable().optional(),
   isApproved:     z.boolean().optional(),
   fieldApprovals: z.record(z.boolean()).optional(),
+  groupName:      z.string().nullable().optional(),
 })
 
 export type ShiftValue = z.infer<typeof shiftValueSchema>
@@ -59,10 +60,10 @@ export async function projectMembersRoutes(app: FastifyInstance) {
     const body = memberSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные', details: body.error.flatten() })
 
-    const { projectId, name, position, shifts, employmentType, ratePlan, rateFact } = body.data
+    const { projectId, name, position, shifts, employmentType, ratePlan, rateFact, groupName } = body.data
     const rows = await prisma.$queryRawUnsafe<MemberRow[]>(
-      `INSERT INTO project_members (id, project_id, name, position, employment_type, rate_plan, rate_fact, shifts, updated_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7::jsonb, NOW())
+      `INSERT INTO project_members (id, project_id, name, position, employment_type, rate_plan, rate_fact, shifts, group_name, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7::jsonb, $8, NOW())
        RETURNING *`,
       projectId,
       name,
@@ -71,6 +72,7 @@ export async function projectMembersRoutes(app: FastifyInstance) {
       ratePlan ?? null,
       rateFact ?? null,
       JSON.stringify(shifts ?? {}),
+      groupName ?? null,
     )
     return reply.code(201).send(rows[0])
   })
@@ -92,6 +94,7 @@ export async function projectMembersRoutes(app: FastifyInstance) {
     if (body.data.shifts         !== undefined) { sets.push(`shifts = $${i++}::jsonb`);       vals.push(JSON.stringify(body.data.shifts)) }
     if (body.data.isApproved     !== undefined) { sets.push(`is_approved = $${i++}`);                      vals.push(body.data.isApproved) }
     if (body.data.fieldApprovals !== undefined) { sets.push(`field_approvals = field_approvals || $${i++}::jsonb`); vals.push(JSON.stringify(body.data.fieldApprovals)) }
+    if (body.data.groupName      !== undefined) { sets.push(`group_name = $${i++}`);                       vals.push(body.data.groupName ?? null) }
     if (sets.length === 0) return reply.code(400).send({ error: 'Нечего обновлять' })
     sets.push(`updated_at = NOW()`)
     vals.push(id)

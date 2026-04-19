@@ -28,6 +28,7 @@ export interface ProjectMember {
   shifts: Record<string, RawShiftValue>
   is_approved: boolean
   field_approvals: Record<string, boolean>
+  group_name: string | null
 }
 
 interface ProjectDay {
@@ -57,6 +58,15 @@ interface MicroProject {
   notes: string | null
   days: ProjectDay[]
   matrixRegistryId: string | null
+}
+
+interface GroupScheduleEntry {
+  date?: string
+  time?: string      // одиночное время (завоз, монтаж)
+  timeFrom?: string  // диапазон от
+  timeTo?: string    // диапазон до
+  startTime?: string // начало эфира
+  note?: string      // пометка в заголовке блока
 }
 
 interface ShiftExpense {
@@ -189,6 +199,35 @@ const LOCATION_OPTIONS = [
   'Знаменка камин',
   'Романов',
   'Выезд',
+]
+
+const SHIFT_FORMATS = ['ТВ', 'Радио', 'Телерадио', 'Съёмки', 'Оффлайн', 'Менеджмент']
+
+// Which schedule fields each group uses
+const GROUP_FIELDS: Record<string, ('date' | 'time' | 'timeFrom' | 'timeTo' | 'startTime')[]> = {
+  sbor:      ['date', 'timeFrom', 'timeTo'],
+  zavoz:     ['date', 'timeFrom', 'timeTo'],
+  montazh:   ['date', 'timeFrom', 'timeTo'],
+  efir:      ['date', 'timeFrom', 'timeTo', 'startTime'],
+  demontazh: ['date', 'timeFrom', 'timeTo'],
+  vyvoz:     ['date', 'timeFrom', 'timeTo'],
+  default:   ['date', 'timeFrom', 'timeTo'],
+}
+
+const STUDIO_GROUPS: { id: string; label: string; color: string }[] = [
+  { id: 'sbor',      label: 'Сбор оборудования',     color: '#64748b' },
+  { id: 'montazh',   label: 'Монтаж оборудования',   color: '#0ea5e9' },
+  { id: 'efir',      label: 'Эфир',                  color: '#10b981' },
+  { id: 'demontazh', label: 'Демонтаж оборудования', color: '#f59e0b' },
+]
+
+const VIEZD_GROUPS: { id: string; label: string; color: string }[] = [
+  { id: 'sbor',      label: 'Сбор оборудования',     color: '#64748b' },
+  { id: 'zavoz',     label: 'Завоз оборудования',    color: '#7c3aed' },
+  { id: 'montazh',   label: 'Монтаж оборудования',   color: '#0ea5e9' },
+  { id: 'efir',      label: 'Эфир',                  color: '#10b981' },
+  { id: 'demontazh', label: 'Демонтаж оборудования', color: '#f59e0b' },
+  { id: 'vyvoz',     label: 'Вывоз оборудования',    color: '#ef4444' },
 ]
 
 // ─── HoldToDelete ─────────────────────────────────────────────────────────────
@@ -735,21 +774,24 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
   const [datePopup, setDatePopup] = useState<DatePopup | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  // Field approvals for this project (location, execProducer, lineProducer, date_*)
+  // Field approvals for this project (location, execProducer, lineProducer)
   const { data: fieldApprovals = {} } = useQuery<Record<string, boolean>>({
     queryKey: ['field-approvals', project.id],
     queryFn: () => api.get(`/status-rows/${project.id}/approvals`).then((r) => r.data),
     staleTime: 30_000,
   })
-  const toggleFieldApprovalMutation = useMutation({
-    mutationFn: (patch: Record<string, boolean>) =>
-      api.patch(`/status-rows/${project.id}/approvals`, patch).then((r) => r.data),
-    onSuccess: (data) => qc.setQueryData(['field-approvals', project.id], data),
+
+  // Group schedule — date/time/type per group block
+  const { data: groupSchedule = {} } = useQuery<Record<string, GroupScheduleEntry>>({
+    queryKey: ['group-schedule', project.id],
+    queryFn: () => api.get(`/status-rows/${project.id}/group-schedule`).then((r) => r.data),
+    staleTime: 30_000,
   })
-  const toggleDateApproval = (date: string) => {
-    const key = `date_${date}`
-    toggleFieldApprovalMutation.mutate({ [key]: !fieldApprovals[key] })
-  }
+  const updateGroupSchedule = useMutation({
+    mutationFn: (patch: Record<string, GroupScheduleEntry | null>) =>
+      api.patch(`/status-rows/${project.id}/group-schedule`, patch).then((r) => r.data),
+    onSuccess: (data) => qc.setQueryData(['group-schedule', project.id], data),
+  })
 
   const updateProject = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
@@ -874,10 +916,8 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
           onDelete={() => setShowDeleteConfirm(true)}
           copyPending={copyProject.isPending}
           deletePending={deleteProject.isPending}
-          onAddDate={openAddDate}
-          onEditDate={openEditDate}
-          dateApprovals={fieldApprovals}
-          onDateApprovalToggle={toggleDateApproval}
+          groupSchedule={groupSchedule}
+          onGroupScheduleUpdate={(patch) => updateGroupSchedule.mutate(patch)}
         />
       </div>
 
@@ -1102,6 +1142,7 @@ function ProjectInfoPanel({ project, onSave }: {
             </>
           )}
         </div>
+        <ProducerField label="Формат"          fieldKey="format"        value={project.format}        options={SHIFT_FORMATS}      onSave={onSave} isApproved={fieldApprovals['format']}       onApprovalToggle={() => toggleFieldApproval.mutate('format')} />
         <ProducerField label="Локация"        fieldKey="location"      value={project.location}      options={LOCATION_OPTIONS} onSave={onSave} isApproved={fieldApprovals['location']}     onApprovalToggle={() => toggleFieldApproval.mutate('location')} />
         <ProducerField label="Исп. продюсер"  fieldKey="execProducer"  value={project.execProducer}  options={producerOptions}    onSave={onSave} isApproved={fieldApprovals['execProducer']} onApprovalToggle={() => toggleFieldApproval.mutate('execProducer')} />
         <ProducerField label="Лайн-продюсер"  fieldKey="lineProducer"  value={project.lineProducer}  options={producerOptions}    onSave={onSave} isApproved={fieldApprovals['lineProducer']} onApprovalToggle={() => toggleFieldApproval.mutate('lineProducer')} />
@@ -1125,6 +1166,59 @@ function ProjectInfoPanel({ project, onSave }: {
 }
 
 
+// ─── GroupDateBlock ───────────────────────────────────────────────────────────
+
+function GroupDateBlock({ groupId, color, sched, onSave, startTimeLabel = 'Начало эфира' }: {
+  groupId: string
+  color: string
+  sched: GroupScheduleEntry
+  onSave: (patch: Partial<GroupScheduleEntry>) => void
+  startTimeLabel?: string
+}) {
+  const baseId = /^efir_\d+$/.test(groupId) ? 'efir' : groupId
+  const fields = GROUP_FIELDS[baseId] ?? GROUP_FIELDS.default
+  const inpS: React.CSSProperties = {
+    fontSize: 11, padding: '3px 6px', border: '1px solid #e2e8f0', borderRadius: 5,
+    color: '#1e293b', background: 'rgba(255,255,255,0.8)', fontFamily: 'inherit',
+    outline: 'none', width: '100%', boxSizing: 'border-box' as const,
+  }
+  const rowS: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2 }
+  const lblS: React.CSSProperties = { fontSize: 9, color: color, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.04em' }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px', background: color + '08', minWidth: 150 }}>
+      {fields.includes('date') && (
+        <div style={rowS}>
+          <span style={lblS}>Дата</span>
+          <input type="date" value={sched.date ?? ''} onChange={(e) => onSave({ date: e.target.value || undefined })} style={inpS} />
+        </div>
+      )}
+      {fields.includes('time') && (
+        <div style={rowS}>
+          <span style={lblS}>Время</span>
+          <input type="time" value={sched.time ?? ''} onChange={(e) => onSave({ time: e.target.value || undefined })} style={inpS} />
+        </div>
+      )}
+      {fields.includes('timeFrom') && (
+        <div style={rowS}>
+          <span style={lblS}>Время</span>
+          <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+            <input type="time" value={sched.timeFrom ?? ''} onChange={(e) => onSave({ timeFrom: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
+            <span style={{ color: '#94a3b8', fontSize: 10, flexShrink: 0 }}>—</span>
+            <input type="time" value={sched.timeTo ?? ''} onChange={(e) => onSave({ timeTo: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
+          </div>
+        </div>
+      )}
+      {fields.includes('startTime') && (
+        <div style={rowS}>
+          <span style={lblS}>{startTimeLabel}</span>
+          <input type="time" value={sched.startTime ?? ''} onChange={(e) => onSave({ startTime: e.target.value || undefined })} style={inpS} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── MemberRow ────────────────────────────────────────────────────────────────
 
 function fieldApprovalStyle(approved: boolean | undefined): React.CSSProperties {
@@ -1133,15 +1227,16 @@ function fieldApprovalStyle(approved: boolean | undefined): React.CSSProperties 
 }
 
 function MemberRow({
-  m, dateCols, isC, updateMember, removeMember, toggleCell, onFieldApprovalToggle, inputS, cellBdr,
+  m, isC, updateMember, removeMember, onFieldApprovalToggle, onDragStart, isDragging, rightCell, inputS, cellBdr,
 }: {
   m: ProjectMember
-  dateCols: string[]
   isC: (col: string) => boolean
-  updateMember: (data: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null; isApproved?: boolean; fieldApprovals?: Record<string, boolean> }) => void
+  updateMember: (data: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null; isApproved?: boolean; fieldApprovals?: Record<string, boolean>; groupName?: string | null }) => void
   removeMember: (id: string) => void
-  toggleCell: (m: ProjectMember, date: string) => void
   onFieldApprovalToggle: (m: ProjectMember, field: string) => void
+  onDragStart: (e: React.PointerEvent, m: ProjectMember) => void
+  isDragging: boolean
+  rightCell?: React.ReactNode
   inputS: React.CSSProperties
   cellBdr: string
 }) {
@@ -1159,14 +1254,20 @@ function MemberRow({
   useEffect(() => { setRatePlan(m.rate_plan ?? '') }, [m.id, m.rate_plan])
   useEffect(() => { setRateFact(m.rate_fact ?? '') }, [m.id, m.rate_fact])
 
-  const sumPlan = calcSum(m.rate_plan, m.shifts, dateCols)
-  const sumFact = calcSum(m.rate_fact, m.shifts, dateCols)
-
   const fa = m.field_approvals ?? {}
   const mkCtx = (field: string) => (e: React.MouseEvent) => { e.preventDefault(); onFieldApprovalToggle(m, field) }
 
   return (
-    <tr>
+    <tr style={{ opacity: isDragging ? 0.35 : 1, transition: 'opacity 0.15s' }}>
+      {/* Drag handle */}
+      <td style={{ width: 22, borderBottom: cellBdr, textAlign: 'center', padding: '0 3px', cursor: 'grab', userSelect: 'none' }}
+        onPointerDown={(e) => onDragStart(e, m)}>
+        <span style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, width: 12, margin: '0 auto' }}>
+          {[0,1,2,3,4,5].map((i) => (
+            <span key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: '#94a3b8', display: 'block' }} />
+          ))}
+        </span>
+      </td>
       {isC('name') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
         <td style={{ padding: '4px 14px', borderBottom: cellBdr }}>
           <input value={name} onChange={(e) => setName(e.target.value)}
@@ -1217,45 +1318,17 @@ function MemberRow({
             placeholder="—" style={{ ...inputS, ...fieldApprovalStyle(fa['rateFact']), width: '100%', textAlign: 'right', ...(m.employment_type === 'staff' ? { background: '#f1f5f9', color: '#cbd5e1', cursor: 'not-allowed' } : {}) }} />
         </td>
       )}
-      {isC('sumPlan') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
-        <td style={{ padding: '4px 10px', borderBottom: cellBdr, textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
-          {sumPlan}{m.rate_plan ? ' ₽' : ''}
-        </td>
-      )}
-      {isC('sumFact') ? <td style={{ width: 20, borderBottom: cellBdr, borderRight: '2px solid #cbd5e1' }} /> : (
-        <td style={{ padding: '4px 10px', borderBottom: cellBdr, borderRight: '2px solid #cbd5e1', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontSize: 12, color: m.employment_type === 'staff' ? '#cbd5e1' : '#1e293b', textDecoration: m.employment_type === 'staff' ? 'line-through' : 'none' }}
-          title={m.employment_type === 'staff' ? 'ШТАТ — не учитывается в своде' : undefined}>
-          {sumFact}{m.rate_fact ? ' ₽' : ''}
-        </td>
-      )}
-      <td style={{ borderBottom: cellBdr }} />
-      {dateCols.map((d) => {
-        const v = normalise(m.shifts[d])
-        const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
-        return (
-          <React.Fragment key={d}>
-            <td style={{ padding: '4px 10px', textAlign: 'center', borderBottom: cellBdr, borderLeft: '1px solid #f1f5f9' }}>
-              <button
-                onClick={() => toggleCell(m, d)}
-                title={(confirmed === 'yes' || confirmed === 'pending') ? 'Участвует (нажмите → убрать)' : 'Не участвует (нажмите → добавить)'}
-                style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid', borderColor: (confirmed === 'yes' || confirmed === 'pending') ? '#3b82f6' : '#e2e8f0', background: confirmedColor(confirmed), cursor: 'pointer', display: 'inline-block', transition: 'background 0.15s' }}
-              />
-            </td>
-            <td style={{ borderBottom: cellBdr }} />
-          </React.Fragment>
-        )
-      })}
-      <td style={{ borderBottom: cellBdr }} />
       <td style={{ padding: '4px 6px', borderBottom: cellBdr, textAlign: 'center' }}>
         <HoldToDelete onDelete={() => removeMember(m.id)} />
       </td>
+      {rightCell}
     </tr>
   )
 }
 
 // ─── TeamTable ────────────────────────────────────────────────────────────────
 
-function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab, onCopy, onDelete, copyPending, deletePending, onAddDate, onEditDate, dateApprovals, onDateApprovalToggle }: {
+function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab, onCopy, onDelete, copyPending, deletePending, groupSchedule, onGroupScheduleUpdate }: {
   project: MicroProject
   members: ProjectMember[]
   loading: boolean
@@ -1266,10 +1339,8 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   onDelete: () => void
   copyPending: boolean
   deletePending: boolean
-  onAddDate: () => void
-  onEditDate: (entry: { date: string; type: string; isMain?: boolean }) => void
-  dateApprovals: Record<string, boolean>
-  onDateApprovalToggle: (date: string) => void
+  groupSchedule: Record<string, GroupScheduleEntry | null>
+  onGroupScheduleUpdate: (patch: Record<string, GroupScheduleEntry | null>) => void
 }) {
   const qc = useQueryClient()
 
@@ -1280,42 +1351,107 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   })
   const isC = (col: string) => collapsedCols.has(col)
 
-  // Date columns derived from project — editable via column header clicks
-  const dateCols = useMemo(() => {
-    const set = new Set<string>()
-    if (project.date) set.add(toIsoDate(project.date))
-    project.days.forEach((d) => set.add(toIsoDate(d.date)))
-    return [...set].sort()
-  }, [project.date, project.days])
+  // ── Drag state ──────────────────────────────────────────────────────────────
+  const [dragMember, setDragMember] = useState<ProjectMember | null>(null)
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 })
+  const [dragOverGroup, setDragOverGroup] = useState<string | null>(null)
+  const groupBodyRefs = useRef<Record<string, HTMLTableSectionElement | null>>({})
 
-  // Map date → type label for column headers
-  const dateTypeMap = useMemo(() => {
-    const map: Record<string, string> = {}
-    if (project.date) map[toIsoDate(project.date)] = 'efir'
-    project.days.forEach((d) => { map[toIsoDate(d.date)] = d.type })
-    return map
-  }, [project.date, project.days])
+  useEffect(() => {
+    if (!dragMember) return
+    const onMove = (e: PointerEvent) => {
+      setDragPos({ x: e.clientX, y: e.clientY })
+      // Find which group tbody we're over
+      let found: string | null = null
+      for (const [gid, el] of Object.entries(groupBodyRefs.current)) {
+        if (!el) continue
+        const r = el.getBoundingClientRect()
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          found = gid; break
+        }
+      }
+      setDragOverGroup(found)
+    }
+    const onUp = () => {
+      if (dragMember && dragOverGroup && dragOverGroup !== dragMember.group_name) {
+        updateMember.mutate({ id: dragMember.id, groupName: dragOverGroup === 'ungrouped' ? null : dragOverGroup })
+      }
+      setDragMember(null)
+      setDragOverGroup(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [dragMember, dragOverGroup])
 
-  // Map date → ProjectDay for time display
-  const dateDayMap = useMemo(() => {
-    const map: Record<string, ProjectDay> = {}
-    project.days.forEach((d) => { map[toIsoDate(d.date)] = d })
-    return map
-  }, [project.days])
-
-  const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-    zastroyka: { bg: '#fef3c7', color: '#92400e' },
-    efir:      { bg: '#dbeafe', color: '#1d4ed8' },
-    deadline:  { bg: '#fee2e2', color: '#991b1b' },
-    semka:     { bg: '#d1fae5', color: '#065f46' },
+  const startDrag = (e: React.PointerEvent, m: ProjectMember) => {
+    e.preventDefault()
+    setDragMember(m)
+    setDragPos({ x: e.clientX, y: e.clientY })
   }
-  const TYPE_LABELS: Record<string, string> = {
-    zastroyka: 'Застройка', efir: 'Эфир', deadline: 'Дедлайн', semka: 'Съёмка',
+
+  // ── Groups ──────────────────────────────────────────────────────────────────
+  const loc = project.location ?? ''
+  const isViezd = loc.startsWith('Выезд')
+  const isStudio = !isViezd && loc !== ''
+  const isManagement = project.format === 'Менеджмент'
+  const activeGroupDefs = isViezd ? VIEZD_GROUPS : isStudio ? STUDIO_GROUPS : []
+  const hasGroups = activeGroupDefs.length > 0 && !isManagement
+
+  const efirLabel = project.format === 'Съёмки' ? 'Съёмки'
+    : project.format === 'Оффлайн' ? 'Мероприятие'
+    : 'Эфир'
+
+  const efirCopyIds = useMemo(() =>
+    Object.entries(groupSchedule)
+      .filter(([k, v]) => /^efir_\d+$/.test(k) && v != null)
+      .map(([k]) => k)
+      .sort(),
+  [groupSchedule])
+
+  const groups = useMemo(() => {
+    if (isManagement) {
+      return [{ id: 'default', label: 'Команда', color: '#64748b', members }]
+    }
+    if (!hasGroups) {
+      return [{ id: 'default', label: 'Команда', color: '#64748b', members }]
+    }
+    const efirDef = activeGroupDefs.find((g) => g.id === 'efir')
+    const allDefinedIds = new Set([...activeGroupDefs.map((g) => g.id), ...efirCopyIds])
+    const result: { id: string; label: string; color: string; members: ProjectMember[] }[] = []
+    for (const g of activeGroupDefs) {
+      result.push({ ...g, label: g.id === 'efir' ? efirLabel : g.label, members: members.filter((m) => m.group_name === g.id) })
+      if (g.id === 'efir' && efirDef) {
+        for (const copyId of efirCopyIds) {
+          result.push({ id: copyId, label: efirLabel, color: efirDef.color, members: members.filter((m) => m.group_name === copyId) })
+        }
+      }
+    }
+    const ungroupedMembers = members.filter((m) => !m.group_name || !allDefinedIds.has(m.group_name))
+    if (ungroupedMembers.length > 0) {
+      result.push({ id: 'ungrouped', label: 'Без группы', color: '#94a3b8', members: ungroupedMembers })
+    }
+    return result
+  }, [members, hasGroups, isManagement, activeGroupDefs, efirLabel, efirCopyIds])
+
+  const copyEfirGroup = () => {
+    const nums = efirCopyIds.map((id) => parseInt(id.replace('efir_', ''), 10))
+    const next = nums.length > 0 ? Math.max(...nums) + 1 : 2
+    onGroupScheduleUpdate({ [`efir_${next}`]: {} })
   }
 
+  const deleteEfirCopy = (copyId: string) => {
+    members.filter((m) => m.group_name === copyId).forEach((m) => updateMember.mutate({ id: m.id, groupName: null }))
+    onGroupScheduleUpdate({ [copyId]: null })
+  }
+
+  // ── Mutations ───────────────────────────────────────────────────────────────
   const createMember = useMutation({
-    mutationFn: () => api.post('/project-members', {
-      projectId: project.id, name: 'Новый участник', position: null, employmentType: null, ratePlan: null, rateFact: null,
+    mutationFn: (groupName: string | null = null) => api.post('/project-members', {
+      projectId: project.id, name: 'Новый участник', position: null, employmentType: null, ratePlan: null, rateFact: null, groupName,
     }).then((r) => r.data),
     onSuccess: (created: ProjectMember) => {
       qc.setQueryData(['project-members', project.id], (old: ProjectMember[] | undefined) => [...(old ?? []), created])
@@ -1323,7 +1459,7 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   })
 
   const updateMember = useMutation({
-    mutationFn: ({ id, ...data }: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null; isApproved?: boolean }) =>
+    mutationFn: ({ id, ...data }: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null; isApproved?: boolean; fieldApprovals?: Record<string, boolean>; groupName?: string | null }) =>
       api.patch(`/project-members/${id}`, data).then((r) => r.data),
     onSuccess: (updated: any) => {
       qc.setQueryData(['project-members', project.id], (old: ProjectMember[] | undefined) =>
@@ -1337,22 +1473,6 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
     onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', project.id] }),
   })
 
-  const updateMemberShifts = useMutation({
-    mutationFn: ({ id, shifts }: { id: string; shifts: Record<string, RawShiftValue> }) =>
-      api.patch(`/project-members/${id}`, { shifts }).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', project.id] }),
-  })
-
-  const toggleCell = (member: ProjectMember, date: string) => {
-    const current = normalise(member.shifts[date])
-    const currentConfirmed: ShiftConfirmed = current?.confirmed ?? (current ? 'yes' : null)
-    const next = nextConfirmed(currentConfirmed)
-    const newShifts = { ...member.shifts }
-    if (next === null) delete newShifts[date]
-    else newShifts[date] = { type: 'efir', confirmed: next }
-    updateMemberShifts.mutate({ id: member.id, shifts: newShifts })
-  }
-
   const toggleFieldApproval = (member: ProjectMember, field: string) => {
     const current = member.field_approvals?.[field] ?? false
     updateMember.mutate({ id: member.id, fieldApprovals: { [field]: !current } })
@@ -1361,7 +1481,7 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   const inputS: React.CSSProperties = { fontSize: 12, padding: '3px 7px', border: '1px solid #e2e8f0', borderRadius: 5, color: '#1e293b', background: '#fff' }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       {/* View toggle bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid #f1f5f9', flexShrink: 0, gap: 8 }}>
         <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden' }}>
@@ -1393,92 +1513,122 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
-                {/* collapsible team columns — double-click to collapse */}
-                {(['name','emp','pos','ratePlan','rateFact','sumPlan','sumFact'] as const).map((col, ci) => {
-                  const labels: Record<string, string> = { name:'ФИО', emp:'Формат', pos:'Должность', ratePlan:'Цена план', rateFact:'Цена факт', sumPlan:'Сумма план', sumFact:'Сумма факт' }
-                  const minWidths: Record<string, number> = { name:150, emp:80, pos:120, ratePlan:80, rateFact:80, sumPlan:80, sumFact:80 }
-                  const aligns: Record<string, string> = { ratePlan:'right', rateFact:'right', sumPlan:'right', sumFact:'right' }
+                <th style={{ width: 22, borderBottom: '2px solid #e2e8f0' }} />
+                {(['name','emp','pos','ratePlan','rateFact'] as const).map((col) => {
+                  const labels: Record<string, string> = { name:'ФИО', emp:'Формат', pos:'Должность', ratePlan:'Цена план', rateFact:'Цена факт' }
+                  const minWidths: Record<string, number> = { name:150, emp:80, pos:120, ratePlan:80, rateFact:80 }
+                  const aligns: Record<string, string> = { ratePlan:'right', rateFact:'right' }
                   const collapsed = isC(col)
                   return (
                     <th key={col} onDoubleClick={() => toggleCol(col)} title={collapsed ? `Показать «${labels[col]}»` : 'Двойной клик — скрыть столбец'}
                       style={{ borderBottom: '2px solid #e2e8f0', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', ...(collapsed
-                        ? { width: 20, padding: '0 2px', textAlign: 'center', fontSize: 10, color: '#94a3b8', background: '#f8fafc', ...(col === 'sumFact' ? { borderRight: '2px solid #cbd5e1' } : {}) }
-                        : { padding: col === 'name' ? '8px 14px' : '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: (aligns[col] ?? 'left') as any, minWidth: minWidths[col], textTransform: 'uppercase', letterSpacing: '0.03em', ...(col === 'sumFact' ? { borderRight: '2px solid #cbd5e1' } : {}) }
+                        ? { width: 20, padding: '0 2px', textAlign: 'center', fontSize: 10, color: '#94a3b8', background: '#f8fafc' }
+                        : { padding: col === 'name' ? '8px 14px' : '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: (aligns[col] ?? 'left') as any, minWidth: minWidths[col], textTransform: 'uppercase', letterSpacing: '0.03em' }
                       )}}>
                       {collapsed ? '▶' : labels[col]}
                     </th>
                   )
                 })}
-                {/* + button before first date */}
-                <th style={{ borderBottom: '2px solid #e2e8f0', width: 24, padding: '0 2px', textAlign: 'center', verticalAlign: 'middle' }}>
-                  <button onClick={onAddDate} title="Добавить дату"
-                    style={{ fontSize: 14, lineHeight: 1, width: 20, height: 20, borderRadius: 4, border: '1px dashed #cbd5e1', background: 'none', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                </th>
-                {dateCols.map((d) => {
-                  const type = dateTypeMap[d] ?? 'efir'
-                  const tColor = TYPE_COLORS[type] ?? { bg: '#f3e8ff', color: '#7e22ce' }
-                  const isMain = project.date ? toIsoDate(project.date) === d : false
-                  const dateApproved = dateApprovals[`date_${d}`]
-                  const dateBorderColor = dateApproved ? '#22c55e' : '#f97316'
-                  const dateBorderWidth = dateApproved ? 1 : 2
-                  return (
-                    <React.Fragment key={d}>
-                      <th onClick={() => onEditDate({ date: d, type, isMain })}
-                        onContextMenu={(e) => { e.preventDefault(); onDateApprovalToggle(d) }}
-                        title="ЛКМ — редактировать, ПКМ — утвердить/отменить"
-                        style={{ padding: '6px 10px', borderBottom: `${dateBorderWidth}px solid ${dateBorderColor}`, minWidth: 84, textAlign: 'center', verticalAlign: 'bottom', fontSize: 11, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                        {fmtDateShort(d)}
-                        <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: tColor.bg, color: tColor.color, display: 'inline-block' }}>
-                          {TYPE_LABELS[type] ?? type}
-                        </div>
-                        {(() => {
-                          const day = dateDayMap[d]
-                          if (!day) return null
-                          if (day.allDay) return <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>Весь день</div>
-                          if (day.timeFrom || day.timeTo) return <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>{day.timeFrom || '?'}–{day.timeTo || '?'}</div>
-                          return null
-                        })()}
-                      </th>
-                      {/* + button after each date */}
-                      <th style={{ borderBottom: '2px solid #e2e8f0', width: 24, padding: '0 2px', textAlign: 'center', verticalAlign: 'middle' }}>
-                        <button onClick={onAddDate} title="Добавить дату"
-                          style={{ fontSize: 14, lineHeight: 1, width: 20, height: 20, borderRadius: 4, border: '1px dashed #cbd5e1', background: 'none', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
-                      </th>
-                    </React.Fragment>
-                  )
-                })}
-                <th style={{ width: '100%', borderBottom: '2px solid #e2e8f0' }} />
-                <th style={{ padding: '8px 6px', borderBottom: '2px solid #e2e8f0', width: 30 }} />
+                <th style={{ width: 30, borderBottom: '2px solid #e2e8f0' }} />
+                <th style={{ borderBottom: '2px solid #e2e8f0', borderLeft: '2px solid #e2e8f0', minWidth: 160, padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Дата / Время</th>
               </tr>
             </thead>
-            <tbody>
-              {members.map((m) => (
-                <MemberRow
-                  key={m.id}
-                  m={m}
-                  dateCols={dateCols}
-                  isC={isC}
-                  updateMember={(data) => updateMember.mutate(data)}
-                  removeMember={(id) => removeMember.mutate(id)}
-                  toggleCell={toggleCell}
-                  onFieldApprovalToggle={toggleFieldApproval}
-                  inputS={inputS}
-                  cellBdr="1px solid #eef0f4"
-                />
-              ))}
 
-              {/* + row to add new member */}
-              <tr onClick={() => { if (!createMember.isPending) createMember.mutate() }}
-                style={{ cursor: createMember.isPending ? 'default' : 'pointer', background: 'transparent' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                <td colSpan={99} style={{ padding: '5px 14px', textAlign: 'center', color: '#94a3b8', fontSize: 18, borderBottom: '1px solid #eef0f4' }}>
-                  {createMember.isPending ? '…' : '+'}
-                </td>
-              </tr>
-            </tbody>
+            {/* Render each group as a separate <tbody> for drag targeting */}
+            {groups.map((group) => {
+              const isDropTarget = dragMember !== null && dragOverGroup === group.id && dragMember.group_name !== group.id
+              return (
+                <tbody
+                  key={group.id}
+                  ref={(el) => { groupBodyRefs.current[group.id] = el }}
+                  style={{ outline: isDropTarget ? `2px solid ${group.color}` : 'none', outlineOffset: -2, transition: 'outline 0.1s' }}>
+                  {/* Group header row */}
+                  {hasGroups && (
+                    <tr style={{ background: group.color + '0a', borderTop: '2px solid #f1f5f9' }}>
+                      <td colSpan={99} style={{ padding: '4px 10px 3px', borderBottom: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: group.color, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: group.color }} />
+                            {group.label}
+                          </span>
+                          <input
+                            key={`${group.id}-note`}
+                            placeholder="Пометка..."
+                            defaultValue={(groupSchedule[group.id] as GroupScheduleEntry | null | undefined)?.note ?? ''}
+                            onBlur={(e) => {
+                              const note = e.target.value || undefined
+                              const current = (groupSchedule[group.id] as GroupScheduleEntry | null) ?? {}
+                              onGroupScheduleUpdate({ [group.id]: { ...current, note } })
+                            }}
+                            style={{ fontSize: 11, padding: '2px 7px', border: '1px solid #e2e8f0', borderRadius: 4, color: '#475569', flex: 1, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+                          />
+                          {group.id === 'efir' && (
+                            <button onClick={copyEfirGroup} title="Копировать блок"
+                              style={{ fontSize: 12, padding: '1px 8px', border: '1px solid #e2e8f0', borderRadius: 4, background: 'none', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, lineHeight: 1.4 }}>
+                              ⎘
+                            </button>
+                          )}
+                          {/^efir_\d+$/.test(group.id) && (
+                            <button onClick={() => deleteEfirCopy(group.id)} title="Удалить копию"
+                              style={{ fontSize: 13, padding: '1px 6px', border: '1px solid #fecaca', borderRadius: 4, background: 'none', color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, lineHeight: 1.4 }}>
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Member rows — first one gets the date block as rightCell with rowspan */}
+                  {(() => {
+                    const sched: GroupScheduleEntry = (groupSchedule[group.id] as GroupScheduleEntry | null) ?? {}
+                    const saveSched = (patch: Partial<GroupScheduleEntry>) =>
+                      onGroupScheduleUpdate({ [group.id]: { ...sched, ...patch } })
+                    const totalRowspan = group.members.length + 1 // members + add row
+                    const dateCell = (
+                      <td rowSpan={totalRowspan}
+                        style={{ borderLeft: '2px solid #e2e8f0', borderBottom: '1px solid #eef0f4', padding: 0, verticalAlign: 'top', minWidth: 160 }}>
+                        <GroupDateBlock groupId={group.id} color={group.color} sched={sched} onSave={saveSched} startTimeLabel={(group.id === 'efir' || /^efir_\d+$/.test(group.id)) ? (project.format === 'Съёмки' ? 'Первый мотор' : project.format === 'Оффлайн' ? 'Начало мероприятия' : 'Начало эфира') : 'Начало эфира'} />
+                      </td>
+                    )
+                    return (
+                      <>
+                        {group.members.map((m, idx) => (
+                          <MemberRow
+                            key={m.id}
+                            m={m}
+                            isC={isC}
+                            updateMember={(data) => updateMember.mutate(data)}
+                            removeMember={(id) => removeMember.mutate(id)}
+                            onFieldApprovalToggle={toggleFieldApproval}
+                            onDragStart={startDrag}
+                            isDragging={dragMember?.id === m.id}
+                            rightCell={idx === 0 ? dateCell : undefined}
+                            inputS={inputS}
+                            cellBdr="1px solid #eef0f4"
+                          />
+                        ))}
+                        {/* + row — date block already spans here via rowspan */}
+                        <tr style={{ cursor: createMember.isPending ? 'default' : 'pointer', background: 'transparent' }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                          <td colSpan={7} style={{ padding: '4px 14px', textAlign: 'center', color: isDropTarget ? group.color : '#94a3b8', fontSize: 16, borderBottom: '1px solid #eef0f4', fontWeight: isDropTarget ? 700 : 400, transition: 'color 0.1s' }}
+                            onClick={() => { if (!createMember.isPending) createMember.mutate(hasGroups && group.id !== 'ungrouped' ? group.id : null) }}>
+                            {createMember.isPending ? '…' : '+'}
+                          </td>
+                          {/* If no members, date block goes here (rowspan = 1 via parent tbody) */}
+                          {group.members.length === 0 && (
+                            <td style={{ borderLeft: '2px solid #e2e8f0', borderBottom: '1px solid #eef0f4', padding: 0, verticalAlign: 'top', minWidth: 160 }}>
+                              <GroupDateBlock groupId={group.id} color={group.color} sched={sched} onSave={saveSched} startTimeLabel={(group.id === 'efir' || /^efir_\d+$/.test(group.id)) ? (project.format === 'Съёмки' ? 'Первый мотор' : project.format === 'Оффлайн' ? 'Начало мероприятия' : 'Начало эфира') : 'Начало эфира'} />
+                            </td>
+                          )}
+                        </tr>
+                      </>
+                    )
+                  })()}
+                </tbody>
+              )
+            })}
           </table>
         )}
 
@@ -1494,6 +1644,37 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
             <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#3b82f6', verticalAlign: 'middle', marginRight: 4 }} />Участвует</span>
             <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#e2e8f0', border: '1px solid #cbd5e1', verticalAlign: 'middle', marginRight: 4 }} />Не участвует</span>
           </div>
+        </div>
+      )}
+
+      {/* Drag ghost — follows cursor */}
+      {dragMember && (
+        <div style={{
+          position: 'fixed',
+          left: dragPos.x + 14,
+          top: dragPos.y - 12,
+          zIndex: 9999,
+          background: '#fff',
+          border: '2px solid #3b82f6',
+          borderRadius: 8,
+          padding: '5px 12px',
+          fontSize: 12,
+          fontWeight: 600,
+          color: '#1e293b',
+          boxShadow: '0 8px 28px rgba(0,0,0,0.18)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          transform: 'rotate(-1.5deg)',
+          whiteSpace: 'nowrap',
+          maxWidth: 220,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {dragMember.name}
+          {dragOverGroup && (() => {
+            const g = groups.find((g) => g.id === dragOverGroup)
+            return g ? <span style={{ fontSize: 10, color: g.color, marginLeft: 6, fontWeight: 400 }}>→ {g.label}</span> : null
+          })()}
         </div>
       )}
     </div>
@@ -1763,8 +1944,20 @@ function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
         <div><span style={label}>Название *</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название смены" style={inputS} autoFocus /></div>
         <div><span style={label}>Дата</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputS} /></div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1 }}><span style={label}>Формат</span><input value={format_} onChange={(e) => setFormat(e.target.value)} placeholder="Формат" style={inputS} /></div>
-          <div style={{ flex: 1 }}><span style={label}>Локация</span><input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Локация" style={inputS} /></div>
+          <div style={{ flex: 1 }}>
+            <span style={label}>Формат</span>
+            <select value={format_} onChange={(e) => setFormat(e.target.value)} style={inputS}>
+              <option value="">— не выбрано —</option>
+              {SHIFT_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <span style={label}>Локация</span>
+            <select value={location} onChange={(e) => setLocation(e.target.value)} style={inputS}>
+              <option value="">— не выбрано —</option>
+              {LOCATION_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
         </div>
         <div>
           <span style={label}>Статус</span>

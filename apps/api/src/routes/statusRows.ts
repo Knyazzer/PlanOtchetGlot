@@ -307,6 +307,29 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     return rows[0].field_approvals ?? {}
   })
 
+  // GET /status-rows/:id/group-schedule
+  app.get('/:id/group-schedule', { preHandler: requireRole('admin') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const rows = await prisma.$queryRawUnsafe<{ group_schedule: Record<string, unknown> }[]>(
+      `SELECT group_schedule FROM status_rows WHERE id = $1`, id
+    )
+    if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
+    return rows[0].group_schedule ?? {}
+  })
+
+  // PATCH /status-rows/:id/group-schedule — merge group schedule
+  app.patch('/:id/group-schedule', { preHandler: requireRole('admin') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const patch = request.body as Record<string, unknown>
+    if (!patch || typeof patch !== 'object') return reply.code(400).send({ error: 'Invalid body' })
+    const rows = await prisma.$queryRawUnsafe<{ group_schedule: Record<string, unknown> }[]>(
+      `UPDATE status_rows SET group_schedule = group_schedule || $1::jsonb, updated_at = NOW() WHERE id = $2 RETURNING group_schedule`,
+      JSON.stringify(patch), id
+    )
+    if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
+    return rows[0].group_schedule ?? {}
+  })
+
   // POST /status-rows/:id/sync-block — manual trigger of matrix block sync
   app.post('/:id/sync-block', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { id } = request.params as { id: string }
