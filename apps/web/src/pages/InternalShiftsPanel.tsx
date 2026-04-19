@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -94,15 +94,11 @@ function normalise(raw: RawShiftValue | undefined): ShiftValue | null {
 }
 
 function confirmedColor(v: ShiftConfirmed): string {
-  if (v === 'yes')     return '#22c55e'
-  if (v === 'pending') return '#f59e0b'
-  return '#e2e8f0'
+  return (v === 'yes' || v === 'pending') ? '#3b82f6' : '#e2e8f0'
 }
 
 function nextConfirmed(v: ShiftConfirmed): ShiftConfirmed {
-  if (v === null)  return 'yes'
-  if (v === 'yes') return 'pending'
-  return null
+  return v === null ? 'yes' : null
 }
 
 const EMP_LABELS: Record<string, string> = {
@@ -178,11 +174,138 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: '#ef4444', cancelled: '#6b7280', manual: '#64748b',
 }
 
+const LOCATION_OPTIONS = [
+  'Знаменка крыша',
+  'Знаменка чёрная',
+  'Знаменка камин',
+  'Романов',
+  'Выезд',
+]
+
+// ─── ProducerField ────────────────────────────────────────────────────────────
+
+// Парсит "Выезд: ул. Тверская 10" → { selected: 'Выезд', address: 'ул. Тверская 10' }
+// Для остальных локаций → { selected: value, address: '' }
+function parseLocation(value: string | null): { selected: string | null; address: string } {
+  if (!value) return { selected: null, address: '' }
+  if (value.startsWith('Выезд: ')) return { selected: 'Выезд', address: value.slice('Выезд: '.length) }
+  if (value === 'Выезд') return { selected: 'Выезд', address: '' }
+  return { selected: value, address: '' }
+}
+
+function ProducerField({ label, fieldKey, value, options, onSave }: {
+  label: string; fieldKey: string; value: string | null
+  options: string[]
+  onSave: (k: string, v: unknown) => void
+}) {
+  const isLocation = fieldKey === 'location'
+  const { selected, address: initAddress } = isLocation ? parseLocation(value) : { selected: value, address: '' }
+
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState('')
+  const [addressDraft, setAddressDraft] = useState(initAddress)
+  const ref = useRef<HTMLDivElement>(null)
+  const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null)
+
+  // Sync address draft when value changes externally
+  useEffect(() => {
+    if (isLocation) setAddressDraft(parseLocation(value).address)
+  }, [value])
+
+  const filtered = filter.trim()
+    ? options.filter((o) => o.toLowerCase().includes(filter.trim().toLowerCase()))
+    : options
+
+  const openDrop = () => {
+    const rect = ref.current?.getBoundingClientRect()
+    setDropRect(rect ? { top: rect.bottom + 2, left: rect.left, width: rect.width } : null)
+    setFilter('')
+    setOpen(true)
+  }
+
+  const pick = (v: string | null) => {
+    if (isLocation && v !== 'Выезд') setAddressDraft('')
+    onSave(fieldKey, v)
+    setOpen(false)
+  }
+
+  const saveAddress = (addr: string) => {
+    const trimmed = addr.trim()
+    onSave(fieldKey, trimmed ? `Выезд: ${trimmed}` : 'Выезд')
+  }
+
+  const displayValue = isLocation ? selected : value
+
+  return (
+    <div style={{ padding: '9px 14px', borderBottom: '1px solid #f8fafc' }}>
+      <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 3 }}>{label}</div>
+      <div ref={ref} onClick={openDrop} style={{ fontSize: 13, color: displayValue ? '#1e293b' : '#94a3b8', cursor: 'pointer', minHeight: 18, fontWeight: displayValue ? 500 : 400, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #e2e8f0', borderRadius: 5, padding: '3px 7px', background: '#fafafa' }}>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayValue || 'Не выбрано'}</span>
+        <span style={{ color: '#cbd5e1', fontSize: 10, flexShrink: 0, marginLeft: 4 }}>▾</span>
+      </div>
+
+      {/* Адрес — только для локации "Выезд" */}
+      {isLocation && selected === 'Выезд' && (
+        <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <input
+            value={addressDraft}
+            onChange={(e) => setAddressDraft(e.target.value)}
+            onBlur={() => { if (addressDraft !== initAddress) saveAddress(addressDraft) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur() } }}
+            placeholder="Введите адрес..."
+            style={{ width: '100%', fontSize: 12, border: '1px solid #e2e8f0', borderRadius: 5, padding: '4px 7px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', color: '#1e293b', background: '#fff' }}
+          />
+          {addressDraft.trim() && (
+            <a
+              href={`https://yandex.ru/maps/?text=${encodeURIComponent(addressDraft.trim())}`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: 11, color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 0' }}
+            >
+              <span style={{ fontSize: 13 }}>🗺</span> Открыть в Я.Картах
+            </a>
+          )}
+        </div>
+      )}
+
+      {open && dropRect && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 599 }} onClick={() => setOpen(false)} />
+          <div style={{ position: 'fixed', top: dropRect.top, left: dropRect.left, width: Math.max(dropRect.width, 180), zIndex: 600, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 7, boxShadow: '0 4px 16px rgba(0,0,0,0.13)', overflow: 'hidden', maxHeight: 260, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '6px 8px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+              <input autoFocus value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Поиск..." style={{ width: '100%', fontSize: 12, border: '1px solid #e2e8f0', borderRadius: 5, padding: '3px 7px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              <div onClick={() => pick(null)} style={{ padding: '6px 10px', fontSize: 12, cursor: 'pointer', color: '#94a3b8' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
+                — Не выбрано
+              </div>
+              {filtered.map((o) => (
+                <div key={o} onClick={() => pick(o)} style={{ padding: '6px 10px', fontSize: 12, cursor: 'pointer', color: o === selected ? '#2563eb' : '#1e293b', fontWeight: o === selected ? 600 : 400, background: o === selected ? '#eff6ff' : 'none' }}
+                  onMouseEnter={(e) => { if (o !== selected) e.currentTarget.style.background = '#f8fafc' }}
+                  onMouseLeave={(e) => { if (o !== selected) e.currentTarget.style.background = 'none' }}>
+                  {o}
+                </div>
+              ))}
+              {filtered.length === 0 && <div style={{ padding: '8px 10px', fontSize: 12, color: '#94a3b8' }}>Не найдено</div>}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ─── InternalShiftsPanel ─────────────────────────────────────────────────────
 
-export function InternalShiftsPanel({ matrixRegistryId }: { matrixRegistryId: string }) {
+export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { matrixRegistryId: string; initialProjectId?: string | null }) {
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'summary' | string>('summary')
+
+  useEffect(() => {
+    if (initialProjectId) setActiveTab(initialProjectId)
+  }, [initialProjectId])
   const [creating, setCreating] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -670,12 +793,6 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
                 <TimeField label="Конец" value={datePopup.timeTo} onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
               </div>
             )}
-            {datePopup.type === 'deadline' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" id="allday-chk" checked={datePopup.allDay} onChange={(e) => setDatePopup((p) => p ? { ...p, allDay: e.target.checked } : null)} style={{ width: 16, height: 16 }} />
-                <label htmlFor="allday-chk" style={{ fontSize: 12, color: '#1e293b', cursor: 'pointer' }}>Весь день</label>
-              </div>
-            )}
             {datePopup.type === 'semka' && (
               <>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -685,6 +802,10 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
                 <TimeField label="Первый мотор" value={datePopup.firstMotor} onChange={(v) => setDatePopup((p) => p ? { ...p, firstMotor: v } : null)} />
               </>
             )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input type="checkbox" id="allday-chk" checked={datePopup.allDay} onChange={(e) => setDatePopup((p) => p ? { ...p, allDay: e.target.checked } : null)} style={{ width: 16, height: 16 }} />
+              <label htmlFor="allday-chk" style={{ fontSize: 12, color: '#1e293b', cursor: 'pointer' }}>Весь день</label>
+            </div>
             <div style={{ display: 'flex', gap: 6, paddingTop: 4 }}>
               <button onClick={submitPopup} disabled={!datePopup.date || datePopupPending}
                 style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 6, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: (!datePopup.date || datePopupPending) ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: (!datePopup.date || datePopupPending) ? 0.6 : 1 }}>
@@ -716,6 +837,7 @@ function InfoField({ label, fieldKey, value, onSave }: {
 }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value ?? '')
+  const [hovered, setHovered] = useState(false)
   const commit = () => {
     if ((draft.trim() || null) !== (value || null)) onSave(fieldKey, draft.trim() || null)
     setEditing(false)
@@ -730,9 +852,11 @@ function InfoField({ label, fieldKey, value, onSave }: {
           style={{ fontSize: 13, padding: '2px 6px', border: '1px solid #3b82f6', borderRadius: 5, width: '100%', boxSizing: 'border-box' as const, outline: 'none', color: '#1e293b', fontFamily: 'inherit' }} />
       ) : (
         <div onClick={() => { setDraft(value ?? ''); setEditing(true) }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
           title="Нажмите для редактирования"
-          style={{ fontSize: 13, color: value ? '#1e293b' : '#cbd5e1', cursor: 'text', minHeight: 18, fontWeight: value ? 500 : 400 }}>
-          {value || '—'}
+          style={{ fontSize: 13, color: value ? '#1e293b' : '#94a3b8', cursor: 'text', minHeight: 18, fontWeight: value ? 500 : 400, border: hovered ? '1px solid #cbd5e1' : '1px solid transparent', borderRadius: 4, padding: '1px 5px', margin: '0 -5px', background: hovered ? '#f8fafc' : 'transparent', transition: 'all 0.1s' }}>
+          {value || 'Не указано'}
         </div>
       )}
     </div>
@@ -781,8 +905,25 @@ function ProjectInfoPanel({ project, onSave }: {
 }) {
   const [editingStatus, setEditingStatus] = useState(false)
   const [notesDraft, setNotesDraft] = useState(project.notes ?? '')
+  const statusRef = useRef<HTMLDivElement>(null)
+  const [dropRect, setDropRect] = useState<{ top: number; left: number; width: number } | null>(null)
+
+  const { data: kfpdRaw } = useQuery<{ columns: string[]; rows: string[][] }>({
+    queryKey: ['kfpd-preview'],
+    queryFn: () => api.get('/database/preview/kfpd').then((r) => r.data),
+    staleTime: 5 * 60_000,
+  })
+  const producerOptions: string[] = kfpdRaw
+    ? [...new Set(kfpdRaw.rows.map((r) => r[2] ?? '').filter(Boolean))]
+    : []
 
   useEffect(() => { setNotesDraft(project.notes ?? '') }, [project.id, project.notes])
+
+  const openStatus = () => {
+    const rect = statusRef.current?.getBoundingClientRect()
+    setDropRect(rect ? { top: rect.bottom + 2, left: rect.left, width: rect.width } : null)
+    setEditingStatus(true)
+  }
 
   return (
     <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid #e2e8f0', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 10, padding: 14, overflowY: 'auto' }}>
@@ -790,31 +931,34 @@ function ProjectInfoPanel({ project, onSave }: {
       {/* Block 1: static fields */}
       <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden' }}>
         {/* Status */}
-        <div style={{ padding: '9px 14px', borderBottom: '1px solid #f8fafc', position: 'relative' }}>
+        <div style={{ padding: '9px 14px', borderBottom: '1px solid #f8fafc' }}>
           <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 3 }}>Статус</div>
-          <div onClick={() => setEditingStatus((v) => !v)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div ref={statusRef} onClick={openStatus} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: STATUS_COLORS[project.status] ?? '#94a3b8', flexShrink: 0 }} />
             <span style={{ fontSize: 13, color: STATUS_COLORS[project.status] ?? '#475569', fontWeight: 500 }}>
               {STATUS_LABELS[project.status] ?? project.status}
             </span>
           </div>
-          {editingStatus && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 20, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', minWidth: 160, overflow: 'hidden' }}>
-              {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                <div key={k} onClick={() => { onSave('status', k); setEditingStatus(false) }}
-                  style={{ padding: '7px 12px', fontSize: 12, cursor: 'pointer', color: STATUS_COLORS[k] ?? '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLORS[k], display: 'inline-block' }} />
-                  {v}
-                </div>
-              ))}
-            </div>
+          {editingStatus && dropRect && (
+            <>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 499 }} onClick={() => setEditingStatus(false)} />
+              <div style={{ position: 'fixed', top: dropRect.top, left: dropRect.left, minWidth: Math.max(dropRect.width, 160), zIndex: 500, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
+                {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                  <div key={k} onClick={() => { onSave('status', k); setEditingStatus(false) }}
+                    style={{ padding: '7px 12px', fontSize: 12, cursor: 'pointer', color: STATUS_COLORS[k] ?? '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATUS_COLORS[k], display: 'inline-block' }} />
+                    {v}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
-        <InfoField label="Локация"        fieldKey="location"      value={project.location}      onSave={onSave} />
-        <InfoField label="Исп. продюсер"  fieldKey="execProducer"  value={project.execProducer}  onSave={onSave} />
-        <InfoField label="Лайн-продюсер"  fieldKey="lineProducer"  value={project.lineProducer}  onSave={onSave} />
+        <ProducerField label="Локация"        fieldKey="location"      value={project.location}      options={LOCATION_OPTIONS} onSave={onSave} />
+        <ProducerField label="Исп. продюсер"  fieldKey="execProducer"  value={project.execProducer}  options={producerOptions}    onSave={onSave} />
+        <ProducerField label="Лайн-продюсер"  fieldKey="lineProducer"  value={project.lineProducer}  options={producerOptions}    onSave={onSave} />
       </div>
 
       {/* Block 2: Описание */}
@@ -834,6 +978,101 @@ function ProjectInfoPanel({ project, onSave }: {
   )
 }
 
+
+// ─── MemberRow ────────────────────────────────────────────────────────────────
+
+function MemberRow({
+  m, dateCols, isC, updateMember, removeMember, toggleCell, inputS, cellBdr,
+}: {
+  m: ProjectMember
+  dateCols: string[]
+  isC: (col: string) => boolean
+  updateMember: (data: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null }) => void
+  removeMember: (id: string) => void
+  toggleCell: (m: ProjectMember, date: string) => void
+  inputS: React.CSSProperties
+  cellBdr: string
+}) {
+  const [name, setName] = useState(m.name)
+  const [pos, setPos] = useState(m.position ?? '')
+  const [empType, setEmpType] = useState(m.employment_type ?? '')
+
+  useEffect(() => { setName(m.name) }, [m.id, m.name])
+  useEffect(() => { setPos(m.position ?? '') }, [m.id, m.position])
+  useEffect(() => { setEmpType(m.employment_type ?? '') }, [m.id, m.employment_type])
+
+  const sumPlan = calcSum(m.rate_plan, m.shifts, dateCols)
+  const sumFact = calcSum(m.rate_fact, m.shifts, dateCols)
+
+  return (
+    <tr>
+      {isC('name') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+        <td style={{ padding: '4px 14px', borderBottom: cellBdr }}>
+          <input value={name} onChange={(e) => setName(e.target.value)}
+            onBlur={() => { const v = name.trim() || m.name; if (v !== m.name) updateMember({ id: m.id, name: v }) }}
+            style={{ ...inputS, width: '100%', fontWeight: 600 }} />
+        </td>
+      )}
+      {isC('emp') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+        <td style={{ padding: '4px 10px', borderBottom: cellBdr }}>
+          <select value={empType} onChange={(e) => { setEmpType(e.target.value); updateMember({ id: m.id, employmentType: e.target.value || null }) }}
+            style={{ ...inputS, width: '100%' }}>
+            <option value="">—</option>
+            {Object.entries(EMP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </td>
+      )}
+      {isC('pos') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+        <td style={{ padding: '4px 10px', borderBottom: cellBdr }}>
+          <input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="Должность"
+            onBlur={() => { const v = pos.trim() || null; if (v !== m.position) updateMember({ id: m.id, position: v }) }}
+            style={{ ...inputS, width: '100%', color: '#64748b' }} />
+        </td>
+      )}
+      {isC('ratePlan') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+        <td style={{ padding: '4px 10px', borderBottom: cellBdr, textAlign: 'right' }}>
+          <RateCell memberId={m.id} field="ratePlan" value={m.rate_plan} onSave={(v) => updateMember({ id: m.id, ratePlan: v != null ? parseFloat(v) : null })} />
+        </td>
+      )}
+      {isC('rateFact') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+        <td style={{ padding: '4px 10px', borderBottom: cellBdr, textAlign: 'right' }}>
+          <RateCell memberId={m.id} field="rateFact" value={m.rate_fact} onSave={(v) => updateMember({ id: m.id, rateFact: v != null ? parseFloat(v) : null })} />
+        </td>
+      )}
+      {isC('sumPlan') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+        <td style={{ padding: '4px 10px', borderBottom: cellBdr, textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+          {sumPlan}{m.rate_plan ? ' ₽' : ''}
+        </td>
+      )}
+      {isC('sumFact') ? <td style={{ width: 20, borderBottom: cellBdr, borderRight: '2px solid #cbd5e1' }} /> : (
+        <td style={{ padding: '4px 10px', borderBottom: cellBdr, borderRight: '2px solid #cbd5e1', textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+          {sumFact}{m.rate_fact ? ' ₽' : ''}
+        </td>
+      )}
+      <td style={{ borderBottom: cellBdr }} />
+      {dateCols.map((d) => {
+        const v = normalise(m.shifts[d])
+        const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
+        return (
+          <React.Fragment key={d}>
+            <td style={{ padding: '4px 10px', textAlign: 'center', borderBottom: cellBdr, borderLeft: '1px solid #f1f5f9' }}>
+              <button onClick={() => toggleCell(m, d)}
+                title={(confirmed === 'yes' || confirmed === 'pending') ? 'Участвует (нажмите → убрать)' : 'Не участвует (нажмите → добавить)'}
+                style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid', borderColor: (confirmed === 'yes' || confirmed === 'pending') ? '#3b82f6' : '#e2e8f0', background: confirmedColor(confirmed), cursor: 'pointer', display: 'inline-block', transition: 'background 0.15s' }}
+              />
+            </td>
+            <td style={{ borderBottom: cellBdr }} />
+          </React.Fragment>
+        )
+      })}
+      <td style={{ borderBottom: cellBdr }} />
+      <td style={{ padding: '4px 6px', borderBottom: cellBdr, textAlign: 'center' }}>
+        <button onClick={() => removeMember(m.id)}
+          style={{ fontSize: 14, color: '#cbd5e1', border: 'none', background: 'none', cursor: 'pointer', lineHeight: 1 }} title="Удалить">×</button>
+      </td>
+    </tr>
+  )
+}
 
 // ─── TeamTable ────────────────────────────────────────────────────────────────
 
@@ -860,10 +1099,6 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   })
   const isC = (col: string) => collapsedCols.has(col)
 
-  // New-member inline edit row
-  type EditRowState = { id: string; name: string; pos: string; empType: string; ratePlan: string; rateFact: string }
-  const [editRow, setEditRow] = useState<EditRowState | null>(null)
-
   // Date columns derived from project — editable via column header clicks
   const dateCols = useMemo(() => {
     const set = new Set<string>()
@@ -879,6 +1114,13 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
     project.days.forEach((d) => { map[toIsoDate(d.date)] = d.type })
     return map
   }, [project.date, project.days])
+
+  // Map date → ProjectDay for time display
+  const dateDayMap = useMemo(() => {
+    const map: Record<string, ProjectDay> = {}
+    project.days.forEach((d) => { map[toIsoDate(d.date)] = d })
+    return map
+  }, [project.days])
 
   const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
     zastroyka: { bg: '#fef3c7', color: '#92400e' },
@@ -896,7 +1138,6 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
     }).then((r) => r.data),
     onSuccess: (created: ProjectMember) => {
       qc.setQueryData(['project-members', project.id], (old: ProjectMember[] | undefined) => [...(old ?? []), created])
-      setEditRow({ id: created.id, name: 'Новый участник', pos: '', empType: '', ratePlan: '', rateFact: '' })
     },
   })
 
@@ -905,16 +1146,6 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
       api.patch(`/project-members/${id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', project.id] }),
   })
-
-  const saveEditField = (field: keyof EditRowState, val: string) => {
-    if (!editRow) return
-    const id = editRow.id
-    if (field === 'name') updateMember.mutate({ id, name: val.trim() || 'Новый участник' })
-    else if (field === 'pos') updateMember.mutate({ id, position: val.trim() || null })
-    else if (field === 'empType') updateMember.mutate({ id, employmentType: val || null })
-    else if (field === 'ratePlan') updateMember.mutate({ id, ratePlan: val ? parseFloat(val) : null })
-    else if (field === 'rateFact') updateMember.mutate({ id, rateFact: val ? parseFloat(val) : null })
-  }
 
   const removeMember = useMutation({
     mutationFn: (id: string) => api.delete(`/project-members/${id}`).then((r) => r.data),
@@ -1008,6 +1239,13 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
                         <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: tColor.bg, color: tColor.color, display: 'inline-block' }}>
                           {TYPE_LABELS[type] ?? type}
                         </div>
+                        {(() => {
+                          const day = dateDayMap[d]
+                          if (!day) return null
+                          if (day.allDay) return <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>Весь день</div>
+                          if (day.timeFrom || day.timeTo) return <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 1 }}>{day.timeFrom || '?'}–{day.timeTo || '?'}</div>
+                          return null
+                        })()}
                       </th>
                       {/* + button after each date */}
                       <th style={{ borderBottom: '2px solid #e2e8f0', width: 24, padding: '0 2px', textAlign: 'center', verticalAlign: 'middle' }}>
@@ -1022,96 +1260,19 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
               </tr>
             </thead>
             <tbody>
-              {members.map((m, ri) => {
-                const isEditRow = editRow?.id === m.id
-                const sumPlan = calcSum(m.rate_plan, m.shifts, dateCols)
-                const sumFact = calcSum(m.rate_fact, m.shifts, dateCols)
-                const rowBg = isEditRow ? '#f0f9ff' : ri % 2 === 0 ? '#fff' : '#f8fafc'
-                const cellBdr = '1px solid #eef0f4'
-                return (
-                  <tr key={m.id} style={{ background: rowBg }}>
-                    {/* ФИО */}
-                    {isC('name') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
-                      <td style={{ padding: '8px 14px', fontWeight: 600, color: '#1e293b', borderBottom: cellBdr, whiteSpace: 'nowrap' }}>
-                        {isEditRow
-                          ? <input autoFocus value={editRow!.name} onChange={(e) => setEditRow((p) => p ? { ...p, name: e.target.value } : null)} onBlur={() => saveEditField('name', editRow!.name)} style={{ ...inputS, width: '100%', fontWeight: 600 }} />
-                          : m.name}
-                      </td>
-                    )}
-                    {/* Формат */}
-                    {isC('emp') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
-                      <td style={{ padding: '8px 10px', borderBottom: cellBdr }}>
-                        {isEditRow
-                          ? <select value={editRow!.empType} onChange={(e) => setEditRow((p) => p ? { ...p, empType: e.target.value } : null)} onBlur={() => saveEditField('empType', editRow!.empType)} style={{ ...inputS, width: '100%' }}>
-                              <option value="">—</option>
-                              {Object.entries(EMP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                            </select>
-                          : <EmpBadge type={m.employment_type} />}
-                      </td>
-                    )}
-                    {/* Должность */}
-                    {isC('pos') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
-                      <td style={{ padding: '8px 10px', color: '#64748b', borderBottom: cellBdr }}>
-                        {isEditRow
-                          ? <input value={editRow!.pos} onChange={(e) => setEditRow((p) => p ? { ...p, pos: e.target.value } : null)} onBlur={() => saveEditField('pos', editRow!.pos)} placeholder="Должность" style={{ ...inputS, width: '100%' }} />
-                          : m.position ?? <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    )}
-                    {/* Цена план */}
-                    {isC('ratePlan') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
-                      <td style={{ padding: '8px 10px', borderBottom: cellBdr, textAlign: 'right' }}>
-                        {isEditRow
-                          ? <input type="number" value={editRow!.ratePlan} onChange={(e) => setEditRow((p) => p ? { ...p, ratePlan: e.target.value } : null)} onBlur={() => saveEditField('ratePlan', editRow!.ratePlan)} placeholder="0" style={{ ...inputS, width: '100%', textAlign: 'right' }} />
-                          : <RateCell memberId={m.id} field="ratePlan" value={m.rate_plan} onSave={(v) => updateMember.mutate({ id: m.id, ratePlan: v })} />}
-                      </td>
-                    )}
-                    {/* Цена факт */}
-                    {isC('rateFact') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
-                      <td style={{ padding: '8px 10px', borderBottom: cellBdr, textAlign: 'right' }}>
-                        {isEditRow
-                          ? <input type="number" value={editRow!.rateFact} onChange={(e) => setEditRow((p) => p ? { ...p, rateFact: e.target.value } : null)} onBlur={() => saveEditField('rateFact', editRow!.rateFact)} placeholder="0" style={{ ...inputS, width: '100%', textAlign: 'right' }} />
-                          : <RateCell memberId={m.id} field="rateFact" value={m.rate_fact} onSave={(v) => updateMember.mutate({ id: m.id, rateFact: v })} />}
-                      </td>
-                    )}
-                    {/* Сумма план */}
-                    {isC('sumPlan') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
-                      <td style={{ padding: '8px 10px', borderBottom: cellBdr, textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
-                        {isEditRow ? null : <>{sumPlan}{m.rate_plan ? ' ₽' : ''}</>}
-                      </td>
-                    )}
-                    {/* Сумма факт */}
-                    {isC('sumFact') ? <td style={{ width: 20, borderBottom: cellBdr, borderRight: '2px solid #cbd5e1' }} /> : (
-                      <td style={{ padding: '8px 10px', borderBottom: cellBdr, textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
-                        {isEditRow ? null : <>{sumFact}{m.rate_fact ? ' ₽' : ''}</>}
-                      </td>
-                    )}
-                    {/* leading + spacer */}
-                    <td style={{ borderBottom: cellBdr }} />
-                    {dateCols.map((d) => {
-                      const v = normalise(m.shifts[d])
-                      const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
-                      return (
-                        <React.Fragment key={d}>
-                          <td style={{ padding: '8px 10px', textAlign: 'center', borderBottom: cellBdr, borderLeft: '1px solid #f1f5f9' }}>
-                            {!isEditRow && (
-                              <button onClick={() => toggleCell(m, d)}
-                                title={confirmed === 'yes' ? 'Подтверждён (нажмите → не подтверждён)' : confirmed === 'pending' ? 'Не подтверждён (нажмите → убрать)' : 'Нет (нажмите → добавить)'}
-                                style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid', borderColor: confirmed === 'yes' ? '#22c55e' : confirmed === 'pending' ? '#f59e0b' : '#e2e8f0', background: confirmedColor(confirmed), cursor: 'pointer', display: 'inline-block', transition: 'background 0.15s' }}
-                              />
-                            )}
-                          </td>
-                          <td style={{ borderBottom: cellBdr }} />
-                        </React.Fragment>
-                      )
-                    })}
-                    <td style={{ borderBottom: cellBdr }} />
-                    <td style={{ padding: '8px 6px', borderBottom: cellBdr, textAlign: 'center' }}>
-                      <button onClick={() => { removeMember.mutate(m.id); if (isEditRow) setEditRow(null) }}
-                        style={{ fontSize: 14, color: '#cbd5e1', border: 'none', background: 'none', cursor: 'pointer', lineHeight: 1 }} title="Удалить">×</button>
-                    </td>
-                  </tr>
-                )
-              })}
+              {members.map((m) => (
+                <MemberRow
+                  key={m.id}
+                  m={m}
+                  dateCols={dateCols}
+                  isC={isC}
+                  updateMember={(data) => updateMember.mutate(data)}
+                  removeMember={(id) => removeMember.mutate(id)}
+                  toggleCell={toggleCell}
+                  inputS={inputS}
+                  cellBdr="1px solid #eef0f4"
+                />
+              ))}
 
               {/* + row to add new member */}
               <tr onClick={() => { if (!createMember.isPending) createMember.mutate() }}
@@ -1135,8 +1296,8 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
       {!loading && microTab === 'team' && (
         <div style={{ padding: '6px 14px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, background: '#fafafa' }}>
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>
-            <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#22c55e', verticalAlign: 'middle', marginRight: 4 }} />Подтверждён</span>
-            <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#f59e0b', verticalAlign: 'middle', marginRight: 4 }} />Не подтверждён</span>
+            <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#3b82f6', verticalAlign: 'middle', marginRight: 4 }} />Участвует</span>
+            <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#e2e8f0', border: '1px solid #cbd5e1', verticalAlign: 'middle', marginRight: 4 }} />Не участвует</span>
           </div>
         </div>
       )}

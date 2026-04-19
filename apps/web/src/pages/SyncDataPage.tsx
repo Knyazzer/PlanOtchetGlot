@@ -1162,12 +1162,13 @@ function ProjectFormModal({
 
 function ProjectsTable({
   projects, loading, sheetUrl,
-  primaryFilters,
+  primaryFilters, onOpenMatrix,
 }: {
   projects: Project[]
   loading: boolean
   sheetUrl: string | null
   primaryFilters: Record<string, string[]>
+  onOpenMatrix?: (registryId: string, projectId: string) => void
 }) {
   const qc = useQueryClient()
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-proj')
@@ -1553,7 +1554,17 @@ function ProjectsTable({
               <div style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedProject.name}</div>
               {selectedProject.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>{selectedProject.client}</div>}
             </div>
-            <button onClick={closeProject} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 10px', borderRadius: 8 }} title="Закрыть (Esc)">×</button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+              {selectedProject.matrixRegistryId && onOpenMatrix && (
+                <button
+                  onClick={() => { onOpenMatrix(selectedProject.matrixRegistryId!, selectedProject.id); closeProject() }}
+                  style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.5)', color: '#93c5fd', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 7, fontWeight: 500, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                  title="Открыть в матрице">
+                  Открыть в проекте
+                </button>
+              )}
+              <button onClick={closeProject} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 10px', borderRadius: 8 }} title="Закрыть (Esc)">×</button>
+            </div>
           </div>
           {/* Body */}
           <div style={{ flex: 1, overflow: 'hidden' }}>
@@ -2193,9 +2204,9 @@ function RegistryChangesTab({ entityId }: { entityId: string }) {
 
 // ─── Registry Detail Modal ────────────────────────────────────────────────────
 
-function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void }) {
+function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, initialProjectId }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; initialProjectId?: string | null }) {
   const [localEntry, setLocalEntry] = useState<RegistryEntry>(entry)
-  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'>('info')
+  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'>(initialProjectId ? 'shifts' : 'info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
   const [customSeps, setCustomSeps] = useState<Map<number, { name: string; date: string }>>(() => {
@@ -2356,7 +2367,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete 
         {/* Tab: Shifts */}
         {tab === 'shifts' && isInternal && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <InternalShiftsPanel matrixRegistryId={entry.id} />
+            <InternalShiftsPanel matrixRegistryId={entry.id} initialProjectId={initialProjectId} />
           </div>
         )}
         {tab === 'shifts' && !isInternal && (
@@ -3105,12 +3116,14 @@ function MatrixFormModal({
 
 function RegistryTable({
   registry, loading, sheetUrl,
-  primaryFilters,
+  primaryFilters, externalOpenTarget, onExternalOpenConsumed,
 }: {
   registry: RegistryEntry[]
   loading: boolean
   sheetUrl: string | null
   primaryFilters: Record<string, string[]>
+  externalOpenTarget?: { registryId: string; projectId: string } | null
+  onExternalOpenConsumed?: () => void
 }) {
   const queryClient = useQueryClient()
   const [colFilters, setColFilters] = usePersistedFilters('sync-col-reg')
@@ -3146,6 +3159,18 @@ function RegistryTable({
     setSelectedEntry(null)
     highlightTimer.current = setTimeout(() => { setHighlightedId(null); highlightTimer.current = null }, 1000)
   }
+
+  // External open (from "Открыть в проекте" button in ProjectsTable)
+  const [initialProjectId, setInitialProjectId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!externalOpenTarget) return
+    const entry = registry.find((r) => r.id === externalOpenTarget.registryId)
+    if (entry) {
+      openEntry(entry)
+      setInitialProjectId(externalOpenTarget.projectId)
+    }
+    onExternalOpenConsumed?.()
+  }, [externalOpenTarget])
 
   const [shiftsStatus, setShiftsStatus] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem('matrix-shifts-status') ?? '{}') } catch { return {} }
@@ -3423,8 +3448,9 @@ function RegistryTable({
     {selectedEntry && (
       <RegistryDetailModal
         entry={selectedEntry}
-        onClose={closeEntry}
+        onClose={() => { closeEntry(); setInitialProjectId(null) }}
         onShiftsLoaded={handleShiftsLoaded}
+        initialProjectId={initialProjectId}
         onEdit={selectedEntry.source === 'internal' ? () => { setFormMatrix(selectedEntry); closeEntry() } : undefined}
         onDelete={selectedEntry.source === 'internal' ? async () => {
           const name = selectedEntry.projectName ?? selectedEntry.name ?? selectedEntry.matrixId
@@ -3468,6 +3494,7 @@ export function SyncDataPage() {
 
   const [projFilters, setProjFilters] = usePersistedFilters('sync-primary-proj')
   const [regFilters, setRegFilters] = usePersistedFilters('sync-primary-reg')
+  const [openMatrixTarget, setOpenMatrixTarget] = useState<{ registryId: string; projectId: string } | null>(null)
 
   const { data: allProjects = [], isLoading: projLoading } = useQuery<Project[]>({
     queryKey: ['status-rows-sync'],
@@ -3614,6 +3641,7 @@ export function SyncDataPage() {
                 projects={projects} loading={projLoading}
                 sheetUrl={sheetUrls?.projectsSheetUrl ?? null}
                 primaryFilters={projFilters}
+                onOpenMatrix={(regId, projId) => setOpenMatrixTarget({ registryId: regId, projectId: projId })}
               />
             </div>
             <div
@@ -3627,6 +3655,8 @@ export function SyncDataPage() {
                 registry={registry} loading={regLoading}
                 sheetUrl={sheetUrls?.registrySheetUrl ?? null}
                 primaryFilters={regFilters}
+                externalOpenTarget={openMatrixTarget}
+                onExternalOpenConsumed={() => setOpenMatrixTarget(null)}
               />
             </div>
           </>
@@ -3637,6 +3667,7 @@ export function SyncDataPage() {
                 projects={projects} loading={projLoading}
                 sheetUrl={sheetUrls?.projectsSheetUrl ?? null}
                 primaryFilters={projFilters}
+                onOpenMatrix={(regId, projId) => setOpenMatrixTarget({ registryId: regId, projectId: projId })}
               />
             )}
             {showReg && (
@@ -3644,6 +3675,8 @@ export function SyncDataPage() {
                 registry={registry} loading={regLoading}
                 sheetUrl={sheetUrls?.registrySheetUrl ?? null}
                 primaryFilters={regFilters}
+                externalOpenTarget={openMatrixTarget}
+                onExternalOpenConsumed={() => setOpenMatrixTarget(null)}
               />
             )}
           </div>
