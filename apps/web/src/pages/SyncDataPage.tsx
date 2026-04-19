@@ -144,7 +144,7 @@ const PROJ_COLS: ColDef[] = [
   { key: 'time',           label: 'H Время' },
   { key: 'format',         label: 'I Формат',       filterable: true },
   { key: 'location',       label: 'J Локация',      filterable: true },
-  { key: 'matrixId',       label: 'K Матрица',      filterable: true, special: 'matrixId' },
+  { key: 'matrixId',       label: 'K Проект',       filterable: true, special: 'matrixId' },
 ]
 
 // Брейкпоинты по ширине: убираем столбцы по мере сужения
@@ -163,7 +163,7 @@ function getProjHiddenCols(width: number): Set<string> {
 
 const REG_COLS: ColDef[] = [
   { key: 'status',   label: 'A Статус',   filterable: true },
-  { key: 'sheetUrl', label: 'B Матрица' },
+  { key: 'sheetUrl', label: 'B Проект' },
   { key: 'matrixId', label: 'C ID' },
   { key: 'unit',     label: 'E Юнит',     filterable: true },
   { key: 'client',   label: 'F Заказчик', filterable: true },
@@ -689,7 +689,7 @@ function ProjectMatrixSection({ projectId, client }: { projectId: string; client
 
   return (
     <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
-      <div style={sectionLabel}>Матрица (внутренняя)</div>
+      <div style={sectionLabel}>Проект (внутренний)</div>
       {isLoading && <div style={{ fontSize: 13, color: '#94a3b8' }}>Загрузка...</div>}
       {!isLoading && linkInfo && (
         <>
@@ -1006,7 +1006,7 @@ function ProjectFormModal({
 
           {/* Matrix dropdown — depends on selected client */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={ls}>Матрица</div>
+            <div style={ls}>Проект</div>
             <select style={fs} value={form.matrixRegistryId} onChange={set('matrixRegistryId')}>
               <option value="">— отсутствует —</option>
               {clientMatrices.map((m) => {
@@ -1631,7 +1631,7 @@ function RegistryInfoTab({
               </a>
             </div>
           )}
-          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Юнит</span><span style={fVal}>{entry.unit || '—'}</span></div>
+          <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Юнит</span><span style={fVal}>{Array.isArray(entry.unit) && entry.unit.length ? entry.unit.join(', ') : '—'}</span></div>
           <div style={{ ...fRow, borderBottom: '1px solid #f8fafc' }}><span style={fLbl}>Формат</span><span style={fVal}>{entry.format || '—'}</span></div>
           <div style={{ ...fRow, borderBottom: 'none' }}><span style={fLbl}>Дата</span><span style={{ ...fVal, fontWeight: 700 }}>{fmtDate(entry.date)}</span></div>
         </div>
@@ -3077,7 +3077,7 @@ function RegistryTable({
     )}
     {deletedNotice && (
       <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', zIndex: 500, background: '#1e293b', color: '#fff', borderRadius: 10, padding: '12px 20px', fontSize: 13, boxShadow: '0 4px 24px rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', gap: 12, maxWidth: 420 }}>
-        <span>Матрица <b>«{deletedNotice}»</b> удалена вручную — запись удалена из реестра</span>
+        <span>Проект <b>«{deletedNotice}»</b> удалён вручную — запись удалена из реестра</span>
         <button onClick={() => setDeletedNotice(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
       </div>
     )}
