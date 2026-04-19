@@ -87,7 +87,7 @@ pnpm --filter @tv-shifts/web exec vitest run src/components/MyComponent.test.tsx
 ### Data Flow
 1. React frontend fetches from Fastify API via HTTP
 2. Fastify uses Prisma to query PostgreSQL
-3. A `node-cron` job in the API syncs data from Google Sheets every 30 minutes (also triggerable via `POST /sync/trigger`)
+3. Sync runs **only when manually triggered** via `POST /sync/trigger` (admin/producer). Automatic cron-sync is not implemented — `node-cron` is NOT in `server.ts`
 
 ### Server Startup
 `apps/api/src/server.ts` waits for PostgreSQL (30 retries, 2s each) before starting. On every startup all `SyncLog` records are deleted — sync history does not persist across server restarts. API port defaults to 4000, overridable via `PORT` env var.
@@ -136,13 +136,17 @@ Key enums:
 - `EmploymentType` — `staff | ip_7 | ip_8 | ip_10 | szt`
 - `ShiftType` — `zastroyka | efir | demontazh`
 - `ShiftSource` — `matrix | manual`
-- `DayType` — `zastroyka | efir`
+- `DayType` — `zastroyka | efir | deadline | semka`
 - `TaskStatus` — `open | in_progress | done`
 - `NotificationType` — `no_matrix | unmatched_name | data_conflict | schedule_change`
 - `DealStatus` — `preliminary | in_progress | completed`
 - `SyncType` — `projects | registry | matrix` (used in `SyncLog`)
 - `SyncStatus` — `running | success | error` (used in `SyncLog`)
 - `ChangeSource` — `sync | manual` (used in `ChangeLog`)
+
+**Schema drift warning** — `ProjectMember` and `StatusRow` in `schema.prisma` are missing columns added via raw SQL migrations. The Prisma client doesn't know about them; all access is via `$queryRawUnsafe`:
+- `project_members`: `employment_type`, `rate_plan`, `rate_fact`, `is_approved`, `field_approvals` (JSONB), `group_name`
+- `status_rows`: `field_approvals` (JSONB), `group_schedule` (JSONB)
 
 ### Prisma Client Workaround
 The running API process locks the Prisma client DLL, preventing `pnpm db:generate` without stopping the server. If the generated client is outdated (e.g., missing new enum values), use raw SQL via `$queryRawUnsafe` / `$executeRawUnsafe` with explicit PostgreSQL enum casts:
@@ -196,7 +200,26 @@ Used by `/internal-matrix` routes to:
 
 Frontend components that consume these routes:
 - `apps/web/src/pages/MatrixTabs.tsx` — `GanttTab`, `NotesTab`, `DocumentsTab` rendered inside the matrix detail modal in `SyncDataPage`
-- `apps/web/src/pages/InternalShiftsPanel.tsx` — `InternalShiftsPanel` rendered inside the same modal for internal matrices; shows sub-tabs per linked `StatusRow` ("micro-project"), each with a `TeamTable` (dates × members grid, shift confirmed/pending toggles) and an `ExpensesTab` (calls `/shift-expenses`). The "Свод смен" tab aggregates all members across all linked projects via `useQueries`.
+- `apps/web/src/pages/InternalShiftsPanel.tsx` — `InternalShiftsPanel` rendered inside the same modal for internal matrices; shows sub-tabs per linked `StatusRow` ("micro-project"), each with a `TeamTable` (team grid with group blocks) and an `ExpensesTab` (calls `/shift-expenses`). The "Свод смен" tab aggregates all members across all linked projects via `useQueries`.
+
+### InternalShiftsPanel Architecture
+
+`InternalShiftsPanel.tsx` (≈2000 lines) is the core UI for managing shifts within internal matrices.
+
+**Group system** — team members are organized into blocks by `group_name` field on `ProjectMember`. Available groups depend on `project.location`:
+- `Выезд*` → `VIEZD_GROUPS`: Сбор, Завоз, Монтаж, Эфир, Демонтаж, Вывоз
+- `Знаменка*` → `STUDIO_GROUPS`: Сбор, Монтаж, Эфир, Демонтаж
+- No location or `Менеджмент` format → single flat "Команда" block
+
+**Dynamic group labels** based on `project.format`: Съёмки → Эфир becomes «Съёмки»; Оффлайн → «Мероприятие»; Менеджмент → single block overrides all location logic.
+
+**Эфир block copying** — the ⎘ button on the Эфир/Съёмки/Мероприятие group creates a copy (`efir_2`, `efir_3`, …) stored in `group_schedule`. Each copy has its own date/time block and note. The × button deletes the copy and moves members to "Без группы".
+
+**GroupDateBlock** — right-side column that spans all member rows via HTML `rowspan`. Fields: Дата + Время (диапазон от–до) + Начало эфира / Первый мотор / Начало мероприятия (for Эфир group only). All stored in `status_rows.group_schedule JSONB` per group ID, merged via `|| $1::jsonb`.
+
+**Drag-and-drop** — pointer events (not HTML5 drag API): `onPointerDown` → ghost element follows cursor → `pointermove` checks `groupBodyRefs` bounding rects → `pointerup` calls `updateMember({ groupName })`. Ghost is a `position: fixed` clone.
+
+**`group_schedule` deletion** — setting a key to `null` removes an efir copy: `PATCH /status-rows/:id/group-schedule` with `{ "efir_2": null }` merges null into JSONB; frontend filters out null entries when reading copy IDs.
 
 ### Change Logging
 `apps/api/src/services/changeLog.ts` exports `logChanges(entityType, entityId, oldData, newData, changedBy, source)`. It diffs `oldData` vs `newData` key-by-key and writes each changed field as a row to `change_logs`. Route handlers call this after any manual edit; sync uses `source = 'sync'`. The `/change-logs` route exposes these records for audit.
@@ -276,11 +299,11 @@ Nginx config is in `nginx/`. The `migrate:deploy` script in `packages/db` runs m
 |------|------|--------|
 | Login | `LoginPage.tsx` | Done |
 | Calendar | `CalendarPage.tsx` | Done |
-| Sync Data | `SyncDataPage.tsx` | Done |
+| Sync Data | `SyncDataPage.tsx` | Done — includes internal matrix management, project members, matrix linking |
 | Users | `UsersPage.tsx` | Done |
 | Deals | `DealsPage.tsx` | Done |
 | Database | `DatabasePage.tsx` | Done (admin-only, nav label "БД") |
-| Tasks | `TasksPage.tsx` | Stub (🚧) |
-| Analytics | `AnalyticsPage.tsx` | Stub (🚧) |
-| Profile | `ProfilePage.tsx` | Stub (🚧) |
+| Tasks | `TasksPage.tsx` | Stub (🚧) — API ready |
+| Analytics | `AnalyticsPage.tsx` | Stub (🚧) — API ready |
+| Profile | `ProfilePage.tsx` | Stub (🚧) — API ready |
 | Notifications | `NotificationBell` in `AppShell.tsx` | Done (polls `/notifications/count` every 30s, mark-read/all-read) |

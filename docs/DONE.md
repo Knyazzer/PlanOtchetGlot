@@ -247,6 +247,55 @@
 
 ---
 
+---
+
+## Этап 14 — Эпик «Матрица как проект» (Смены внутри матрицы)
+
+> Полная реализация управления сменами внутри внутренних матриц. UI — `InternalShiftsPanel.tsx`, задействован из `SyncDataPage.tsx`.
+
+### Фаза 1 — Смены внутри матрицы
+
+- [x] **Backend: `?matrixRegistryId` фильтр** — `GET /status-rows` принимает `matrixRegistryId` и возвращает только привязанные проекты
+- [x] **Backend: схема `ProjectMember.shifts`** — JSON-значение `{ type, confirmed: "yes"|"pending"|null, timeStart?, timeEnd? }`; обратная совместимость: строка = `{ type: string, confirmed: null }`; поля `employment_type`, `rate_plan`, `rate_fact`, `is_approved`, `field_approvals`, `group_name` добавлены через raw SQL миграции
+- [x] **Frontend: `InternalShiftsPanel`** — вкладка смен для внутренних матриц: горизонтальные саб-вкладки «Свод смен» + по одной на каждый `StatusRow` + кнопка «+»
+- [x] **Frontend: `MicroProjectTab`** — одна саб-вкладка = один `StatusRow`: шапка проекта (`ProjectInfoPanel`) + таблица команды (`TeamTable`); ячейки — состояние confirmed/pending/null с цветом
+- [x] **Frontend: создание `StatusRow` из матрицы** — форма `CreateMicroProjectForm`, при сохранении — привязка к матрице (`matrixRegistryId`) + автоназначение `blockSlot`
+- [x] **Backend: `group_name` на участниках** — миграция + поддержка в API (`POST/PATCH /project-members`)
+
+### Фаза 2 — Свод смен
+
+- [x] **`ShiftsSummaryTab` (Свод смен)** — первая саб-вкладка: единая таблица всех участников всех микропроектов матрицы через `useQueries`; цвет ячейки по статусу подтверждения
+
+### Фаза 3 — Доп. функционал смен
+
+- [x] **Копирование микропроекта** — кнопка «Копировать» в заголовке `MicroProjectTab`; копирует `StatusRow` + всех `ProjectMember`; открывает новую вкладку
+- [x] **Подтверждение участника** — клик по ячейке: `null → "yes" → null`; ПКМ → `"pending"`; цвет: серый / синий
+
+### Фаза 3.5 — Группы и расписание блоков
+
+- [x] **Группы по локации** — `location` определяет набор групп: `Выезд` → 6 блоков (Сбор, Завоз, Монтаж, Эфир, Демонтаж, Вывоз); `Знаменка*` → 4 блока; участники распределяются по `group_name`, drag-and-drop между группами (pointer events API)
+- [x] **Блок расписания правее команды** — `GroupDateBlock` с полями Дата / Время / Начало эфира (первый мотор / начало мероприятия в зависимости от формата); хранится в `status_rows.group_schedule JSONB`; мерж через `|| $1::jsonb`
+- [x] **Копирование блока Эфир/Съёмки/Мероприятие** — кнопка ⎘ у заголовка группы; создаёт `efir_2`, `efir_3`, … в `group_schedule`; кнопка × удаляет копию
+- [x] **Пометка к блоку** — текстовое поле в заголовке каждой группы, хранится в `GroupScheduleEntry.note`
+- [x] **Динамические метки групп по формату** — Съёмки → «Эфир» → «Съёмки»; Оффлайн → «Мероприятие»; Менеджмент → один общий блок без привязки к локации
+- [x] **Backend: `group_schedule` на `StatusRow`** — миграция + `GET/PATCH /status-rows/:id/group-schedule`
+
+### Фаза 4 — Вкладки матрицы
+
+- [x] **Диаграмма Ганта** — `GanttTab` в `MatrixTabs.tsx`; модель `GanttTask`; CRUD `/matrix-gantt`; CSS-полосы на временной шкале через inline styles
+- [x] **Заметки** — `NotesTab`; модель `MatrixNote` с автором; CRUD `/matrix-notes`; лента с `textarea`
+- [x] **Документы** — `DocumentsTab`; модель `MatrixDocument`; CRUD `/matrix-documents`; список ссылок + форма добавления (имя по умолчанию = последний сегмент URL)
+
+### Прочие улучшения в рамках эпика
+
+- [x] Формат проекта — dropdown (`ТВ, Радио, Телерадио, Съёмки, Оффлайн, Менеджмент`) в `CreateMicroProjectForm` и `ProjectInfoPanel`
+- [x] Локация проекта — dropdown c вариантами вместо текстового поля
+- [x] `HoldToDelete` — удержание кнопки 0.8с для удаления участника; `DeleteConfirmModal` для удаления проекта
+- [x] RMB (правая кнопка) по дате участника — массовое подтверждение по столбцу
+- [x] Сворачивание столбцов таблицы команды двойным кликом по заголовку
+
+---
+
 ## Технический долг (закрыт)
 
 - [x] `docs/04-database-schema.md` — обновлён: добавлены `MatrixTemplate`, `ProjectMember`, `SheetConfig`, `UserNotificationRead`, новые поля `status_rows` и `matrix_registry`, таблица enum'ов, актуальный ERD
