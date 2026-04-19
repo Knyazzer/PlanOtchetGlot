@@ -7,10 +7,9 @@ import { copyTemplateToFolder, setupMatrixPermissions, appendToInternalRegistry,
 import { syncProjectBlockNow } from '../services/matrixBlockSync'
 
 const createMatrixSchema = z.object({
-  // projectName is used to auto-generate the matrix name
   projectName:  z.string().nullable().optional(),
   client:       z.string().nullable().optional(),
-  unit:         z.string().nullable().optional(),
+  unit:         z.array(z.string()).optional().default([]),
   format:       z.string().nullable().optional(),
   date:         z.string().nullable().optional(),
   producer:     z.string().nullable().optional(),
@@ -27,7 +26,7 @@ interface MatrixRow {
   matrix_id: string
   sheet_url: string | null
   status: string | null
-  unit: string | null
+  unit: string[]
   client: string | null
   name: string | null
   format: string | null
@@ -54,11 +53,8 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     const { projectName, client, unit, format, date, producer, manager, curator,
             kpLink, brief, status, templateId } = body.data
 
-    const dateStr = date
-      ? new Date(date).toISOString().slice(0, 10).replace(/-/g, ' ')
-      : new Date().toISOString().slice(0, 10).replace(/-/g, ' ')
-    const name = `Матрица v4.1: ${client ?? ''}: ${projectName ?? ''}: ${dateStr}`
     const matrixId = `INT-${Date.now()}`
+    const name = [client, projectName].filter(Boolean).join(' — ') || projectName || matrixId
 
     const templateRows = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `SELECT id FROM matrix_templates WHERE is_active = true LIMIT 1`
@@ -70,15 +66,16 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
          (id, matrix_id, name, client, unit, format, date, producer, manager, curator,
           project_name, kp_link, brief, status, source, template_id, sheet_url, updated_at)
        VALUES
-         (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9,
-          $10, $11, $12, $13, 'internal', $14, NULL, NOW())
+         (gen_random_uuid(), $1, $2, $3, $4::TEXT[], $5, $6, $7, $8, $9,
+          $10, $11, $12, 'request', 'internal', $13, NULL, NOW())
        RETURNING *`,
       matrixId, name,
-      client ?? null, unit ?? null, format ?? null,
+      client ?? null, unit ?? [],
+      format ?? null,
       date ? new Date(date) : null,
       producer ?? null, manager ?? null, curator ?? null,
       projectName ?? null, kpLink ?? null, brief ?? null,
-      status ?? null, resolvedTemplateId,
+      resolvedTemplateId,
     )
 
     return reply.code(201).send(rows[0])
@@ -101,11 +98,16 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
     }
     for (const [key, col] of Object.entries(map)) {
       if ((body.data as any)[key] !== undefined) {
-        const val = key === 'date' && (body.data as any)[key]
-          ? new Date((body.data as any)[key])
-          : (body.data as any)[key] ?? null
-        sets.push(`${col} = $${i++}`)
-        vals.push(val)
+        if (key === 'unit') {
+          sets.push(`unit = $${i++}::TEXT[]`)
+          vals.push((body.data as any).unit ?? [])
+        } else {
+          const val = key === 'date' && (body.data as any)[key]
+            ? new Date((body.data as any)[key])
+            : (body.data as any)[key] ?? null
+          sets.push(`${col} = $${i++}`)
+          vals.push(val)
+        }
       }
     }
     if (sets.length === 0) return reply.code(400).send({ error: 'Нечего обновлять' })
@@ -244,7 +246,7 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
           salesManager:  matrix.manager ?? null,
           kpLink:        matrix.kp_link ?? null,
           curator:       matrix.curator ?? null,
-          businessUnit:  matrix.unit ?? null,
+          businessUnit:  matrix.unit?.length ? matrix.unit.join(', ') : null,
           brief:         matrix.brief ?? null,
         }).catch((e: unknown) => app.log.warn({ err: e }, '[sync-to-drive] СВОД write failed (non-fatal)'))
 
