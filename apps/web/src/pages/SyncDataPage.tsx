@@ -1568,6 +1568,10 @@ function RegistryInfoTab({
   const [briefText, setBriefText] = useState(entry.brief ?? '')
   const [briefDirty, setBriefDirty] = useState(false)
 
+  useEffect(() => {
+    if (!briefDirty) setBriefText(entry.brief ?? '')
+  }, [entry.id, entry.brief])
+
   const saveBrief = useMutation({
     mutationFn: () =>
       api.patch(`/internal-matrix/${entry.id}`, { brief: briefText }).then((r) => r.data),
