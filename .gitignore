@@ -13,3 +13,6 @@ _TABLES EXMPL/
 *.xlsx
 .playwright-mcp/
 
+# Git worktrees
+.worktrees/
+
