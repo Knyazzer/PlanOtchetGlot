@@ -2494,12 +2494,14 @@ function MultiSelect({
   const [open, setOpen] = useState(false)
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      const target = e.target as Node
-      if (triggerRef.current && !triggerRef.current.closest('div')?.contains(target)) setOpen(false)
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t) || dropRef.current?.contains(t)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -2535,7 +2537,7 @@ function MultiSelect({
         {value.length === 0 ? '— не выбрано —' : value.join(', ')}
       </button>
       {open && dropPos && (
-        <div style={{
+        <div ref={dropRef} style={{
           position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width,
           zIndex: 9999, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
           boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxHeight: 200, overflowY: 'auto',
