@@ -2492,12 +2492,14 @@ function MultiSelect({
   onChange: (v: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (triggerRef.current && !triggerRef.current.closest('div')?.contains(target)) setOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -2505,6 +2507,14 @@ function MultiSelect({
 
   const toggle = (opt: string) => {
     onChange(value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt])
+  }
+
+  const handleOpen = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setDropPos({ top: rect.bottom + 2, left: rect.left, width: rect.width })
+    }
+    setOpen((o) => !o)
   }
 
   const ls: React.CSSProperties = {
@@ -2519,16 +2529,16 @@ function MultiSelect({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }} ref={ref}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={ls}>{label}</div>
-      <button type="button" style={triggerStyle} onClick={() => setOpen((o) => !o)}>
+      <button type="button" ref={triggerRef} style={triggerStyle} onClick={handleOpen}>
         {value.length === 0 ? '— не выбрано —' : value.join(', ')}
       </button>
-      {open && (
+      {open && dropPos && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
-          background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto', marginTop: 2,
+          position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width,
+          zIndex: 9999, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxHeight: 200, overflowY: 'auto',
         }}>
           {options.map((opt) => (
             <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: '#1e293b' }}>
