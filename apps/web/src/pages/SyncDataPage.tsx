@@ -35,7 +35,7 @@ interface RegistryEntry {
   matrixId: string
   sheetUrl: string | null
   status: string | null
-  unit: string | null
+  unit: string[]
   client: string | null
   name: string | null
   format: string | null
@@ -406,7 +406,7 @@ function GlobalSettingsPopup({
         {/* Filters — Registry */}
         <div style={settingsSection}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <span style={settingsSectionTitle}>Фильтры — Реестр матриц</span>
+            <span style={settingsSectionTitle}>Фильтры — Реестр проектов</span>
             {regTotal > 0 && (
               <button onClick={() => onRegFilters({})} style={resetBtn}>Сбросить ({regTotal})</button>
             )}
@@ -2419,10 +2419,74 @@ function MatrixPreviewModal({ matrixId, onClose }: { matrixId: string; onClose: 
 function getRegValue(r: RegistryEntry, col: string): string {
   switch (col) {
     case 'status': return r.status ?? ''
-    case 'unit':   return r.unit ?? ''
+    case 'unit':   return Array.isArray(r.unit) ? r.unit.join(', ') : ''
     case 'client': return r.client ?? ''
     default:       return ''
   }
+}
+
+// ─── MultiSelect ──────────────────────────────────────────────────────────────
+
+function MultiSelect({
+  label, options, value, onChange,
+}: {
+  label: string
+  options: string[]
+  value: string[]
+  onChange: (v: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const toggle = (opt: string) => {
+    onChange(value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt])
+  }
+
+  const ls: React.CSSProperties = {
+    fontSize: 11, fontWeight: 600, color: '#64748b',
+    textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4,
+  }
+  const triggerStyle: React.CSSProperties = {
+    width: '100%', fontSize: 13, padding: '7px 10px', border: '1px solid #e2e8f0',
+    borderRadius: 6, outline: 'none', color: value.length ? '#1e293b' : '#94a3b8',
+    background: '#f8fafc', boxSizing: 'border-box', cursor: 'pointer',
+    textAlign: 'left', fontFamily: 'inherit',
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', position: 'relative' }} ref={ref}>
+      <div style={ls}>{label}</div>
+      <button type="button" style={triggerStyle} onClick={() => setOpen((o) => !o)}>
+        {value.length === 0 ? '— не выбрано —' : value.join(', ')}
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
+          background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6,
+          boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 200, overflowY: 'auto', marginTop: 2,
+        }}>
+          {options.map((opt) => (
+            <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', cursor: 'pointer', fontSize: 13, color: '#1e293b' }}>
+              <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} style={{ cursor: 'pointer' }} />
+              {opt}
+            </label>
+          ))}
+          {options.length === 0 && (
+            <div style={{ padding: '10px 12px', fontSize: 13, color: '#94a3b8' }}>Нет вариантов</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ─── Matrix Form Modal ────────────────────────────────────────────────────────
@@ -2445,7 +2509,7 @@ function MatrixFormModal({
   const [form, setForm] = useState({
     projectName: matrix?.projectName ?? '',
     client:      matrix?.client     ?? '',
-    unit:        matrix?.unit       ?? '',
+    unit:        matrix?.unit       ?? [],
     format:      matrix?.format     ?? '',
     date:        matrix?.date ? matrix.date.slice(0, 10) : '',
     producer:    matrix?.producer   ?? '',
@@ -2453,7 +2517,6 @@ function MatrixFormModal({
     curator:     matrix?.curator    ?? '',
     kpLink:      matrix?.kpLink     ?? '',
     brief:       matrix?.brief      ?? '',
-    status:      matrix?.status     ?? '',
     templateId:  matrix?.templateId ?? '',
   })
   const [error, setError] = useState<string | null>(null)
@@ -2473,13 +2536,6 @@ function MatrixFormModal({
   const formats    = kfpdCol(1)
   const producers  = kfpdCol(2)
   const bizUnits   = kfpdCol(5)
-  const statuses   = kfpdCol(8)
-
-  // Auto-generated name preview
-  const datePreview = form.date
-    ? form.date.replace(/-/g, ' ')
-    : new Date().toISOString().slice(0, 10).replace(/-/g, ' ')
-  const namePreview = `Матрица v4.1: ${form.client || '…'}: ${form.projectName || '…'}: ${datePreview}`
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -2496,7 +2552,7 @@ function MatrixFormModal({
       const body: Record<string, unknown> = {
         projectName: form.projectName.trim() || null,
         client:      form.client.trim()      || null,
-        unit:        form.unit.trim()        || null,
+        unit:        form.unit,
         format:      form.format.trim()      || null,
         date:        form.date ? new Date(form.date).toISOString() : null,
         producer:    form.producer.trim()    || null,
@@ -2504,7 +2560,6 @@ function MatrixFormModal({
         curator:     form.curator.trim()     || null,
         kpLink:      form.kpLink.trim()      || null,
         brief:       form.brief.trim()       || null,
-        status:      form.status.trim()      || null,
         templateId:  form.templateId         || null,
       }
       return isEdit
@@ -2512,7 +2567,7 @@ function MatrixFormModal({
         : api.post('/internal-matrix', body).then((r) => r.data)
     },
     onSuccess: (data: any) => {
-      if (data?.driveError) setError(`Матрица создана, но ошибка Drive: ${data.driveError}`)
+      if (data?.driveError) setError(`Проект создан, но ошибка Drive: ${data.driveError}`)
       else { onSaved(); onClose() }
     },
     onError: (e: any) => setError(e?.response?.data?.error ?? e?.message ?? 'Ошибка'),
@@ -2548,17 +2603,21 @@ function MatrixFormModal({
     <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onMouseDown={onClose}>
       <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 580, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать матрицу' : 'Новая матрица'}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать проект' : 'Новый проект'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20 }}>×</button>
         </div>
         <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-          {/* Auto-generated name preview */}
-          {!isEdit && (
-            <div style={{ fontSize: 12, color: '#64748b', background: '#f1f5f9', padding: '8px 12px', borderRadius: 6, fontStyle: 'italic' }}>
-              {namePreview}
-            </div>
-          )}
+          {/* Status badge — read-only */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Статус</span>
+            <span style={{
+              padding: '3px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700,
+              background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
+            }}>
+              {STATUS_LABELS[isEdit ? (matrix?.status ?? 'request') : 'request'] ?? 'Запрос'}
+            </span>
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {fsel('Клиент', 'client', clients)}
@@ -2578,7 +2637,12 @@ function MatrixFormModal({
           {fg('Ссылка на КП', 'kpLink', 'https://')}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {fg('Куратор от заказчика', 'curator', 'ФИО')}
-            {fsel('Бизнес Юнит', 'unit', bizUnits)}
+            <MultiSelect
+              label="Бизнес Юнит"
+              options={bizUnits}
+              value={form.unit}
+              onChange={(v) => setForm((f) => ({ ...f, unit: v }))}
+            />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={ls}>Бриф по проекту</div>
@@ -2589,8 +2653,6 @@ function MatrixFormModal({
               placeholder="Краткое описание проекта"
             />
           </div>
-          {fsel('Статус', 'status', statuses)}
-
           {error && <div style={{ fontSize: 13, color: '#ef4444', background: '#fef2f2', padding: '8px 12px', borderRadius: 6 }}>{error}</div>}
         </div>
         <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -2708,8 +2770,11 @@ function RegistryTable({
       for (const [col, sel] of Object.entries(primaryFilters)) {
         if (sel.length === 0) continue
         let val: string
+        if (col === 'unit') {
+          if (!r.unit.some((u) => sel.includes(u))) return false
+          continue
+        }
         if (col === 'status') val = r.status ?? ''
-        else if (col === 'unit') val = r.unit ?? ''
         else if (col === 'format') val = r.format ?? ''
         else continue
         if (!sel.includes(val)) return false
@@ -2721,7 +2786,7 @@ function RegistryTable({
   // Column dropdown values
   const colValues = useMemo(() => ({
     status: uniq(afterPrimary.map((r) => r.status)),
-    unit:   uniq(afterPrimary.map((r) => r.unit)),
+    unit:   uniq(afterPrimary.flatMap((r) => r.unit)),
     client: uniq(afterPrimary.map((r) => r.client)),
   }), [afterPrimary])
 
@@ -2785,7 +2850,7 @@ function RegistryTable({
           {r.matrixId}
         </button>
       )
-      case 'unit':     return r.unit ?? '—'
+      case 'unit':     return Array.isArray(r.unit) && r.unit.length ? r.unit.join(', ') : '—'
       case 'client':   return r.client ?? '—'
       case 'name':     return r.name ?? '—'
       case 'format':   return r.format ?? '—'
@@ -2804,7 +2869,7 @@ function RegistryTable({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b', whiteSpace: 'nowrap' }}>
             <a href={sheetUrl ?? '#'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}>
-              Реестр матриц
+              Реестр проектов
             </a>
             <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
               {afterSecondary.length} / {registry.length}
@@ -2837,7 +2902,7 @@ function RegistryTable({
             onClick={() => setFormMatrix('new')}
             style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
           >
-            + Создать матрицу
+            + Создать проект
           </button>
         </div>
       </div>
@@ -3017,7 +3082,7 @@ export function SyncDataPage() {
   }), [allNonSepProj])
   const regOpts = useMemo(() => ({
     status: uniq(registry.map((r) => r.status)),
-    unit:   uniq(registry.map((r) => r.unit)),
+    unit:   uniq(registry.flatMap((r) => r.unit)),
     format: uniq(registry.map((r) => r.format)),
   }), [registry])
 
