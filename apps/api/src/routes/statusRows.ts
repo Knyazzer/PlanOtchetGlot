@@ -284,6 +284,29 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     return row
   })
 
+  // GET /status-rows/:id/approvals
+  app.get('/:id/approvals', { preHandler: requireRole('admin') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const rows = await prisma.$queryRawUnsafe<{ field_approvals: Record<string, boolean> }[]>(
+      `SELECT field_approvals FROM status_rows WHERE id = $1`, id
+    )
+    if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
+    return rows[0].field_approvals ?? {}
+  })
+
+  // PATCH /status-rows/:id/approvals — merge field approvals
+  app.patch('/:id/approvals', { preHandler: requireRole('admin') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const patch = request.body as Record<string, boolean>
+    if (!patch || typeof patch !== 'object') return reply.code(400).send({ error: 'Invalid body' })
+    const rows = await prisma.$queryRawUnsafe<{ field_approvals: Record<string, boolean> }[]>(
+      `UPDATE status_rows SET field_approvals = field_approvals || $1::jsonb, updated_at = NOW() WHERE id = $2 RETURNING field_approvals`,
+      JSON.stringify(patch), id
+    )
+    if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
+    return rows[0].field_approvals ?? {}
+  })
+
   // POST /status-rows/:id/sync-block — manual trigger of matrix block sync
   app.post('/:id/sync-block', { preHandler: requireRole('admin') }, async (request, reply) => {
     const { id } = request.params as { id: string }

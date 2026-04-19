@@ -23,6 +23,8 @@ const memberSchema = z.object({
   employmentType: z.string().nullable().optional(),
   ratePlan:       z.number().nullable().optional(),
   rateFact:       z.number().nullable().optional(),
+  isApproved:     z.boolean().optional(),
+  fieldApprovals: z.record(z.boolean()).optional(),
 })
 
 export type ShiftValue = z.infer<typeof shiftValueSchema>
@@ -88,6 +90,8 @@ export async function projectMembersRoutes(app: FastifyInstance) {
     if (body.data.ratePlan       !== undefined) { sets.push(`rate_plan = $${i++}`);           vals.push(body.data.ratePlan ?? null) }
     if (body.data.rateFact       !== undefined) { sets.push(`rate_fact = $${i++}`);           vals.push(body.data.rateFact ?? null) }
     if (body.data.shifts         !== undefined) { sets.push(`shifts = $${i++}::jsonb`);       vals.push(JSON.stringify(body.data.shifts)) }
+    if (body.data.isApproved     !== undefined) { sets.push(`is_approved = $${i++}`);                      vals.push(body.data.isApproved) }
+    if (body.data.fieldApprovals !== undefined) { sets.push(`field_approvals = field_approvals || $${i++}::jsonb`); vals.push(JSON.stringify(body.data.fieldApprovals)) }
     if (sets.length === 0) return reply.code(400).send({ error: 'Нечего обновлять' })
     sets.push(`updated_at = NOW()`)
     vals.push(id)
