@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -52,6 +52,7 @@ interface MicroProject {
   lineProducer: string | null
   accountManager: string | null
   time: string | null
+  notes: string | null
   days: ProjectDay[]
   matrixRegistryId: string | null
 }
@@ -513,6 +514,7 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
 }) {
   const qc = useQueryClient()
   const [microTab, setMicroTab] = useState<'team' | 'expenses'>('team')
+  const [datePopup, setDatePopup] = useState<DatePopup | null>(null)
 
   const updateProject = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
@@ -557,11 +559,64 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
     onSuccess: (d) => onCopied(d.id),
   })
 
+  // ── Date mutations ─────────────────────────────────────────────────────────
+
+  const addDateMutation = useMutation({
+    mutationFn: (p: DatePopup) => {
+      const iso = p.date
+      if (project.days.some((d) => toIsoDate(d.date) === iso)) return Promise.resolve(null)
+      return api.patch(`/status-rows/${project.id}`, {
+        days: [
+          ...buildDaysPayload(project.days),
+          { date: new Date(iso).toISOString(), type: p.type, startTime: p.startTime || null, timeFrom: p.timeFrom || null, timeTo: p.timeTo || null, allDay: p.allDay, firstMotor: p.firstMotor || null },
+        ],
+      }).then((r) => r.data)
+    },
+    onSuccess: () => { onUpdated(); setDatePopup(null) },
+  })
+
+  const updateDayMutation = useMutation({
+    mutationFn: (p: DatePopup) => {
+      const updated = project.days.map((d) =>
+        toIsoDate(d.date) === p.origDate
+          ? { id: d.id, date: p.date ? new Date(p.date).toISOString() : d.date, type: p.type, startTime: p.startTime || null, timeFrom: p.timeFrom || null, timeTo: p.timeTo || null, allDay: p.allDay, firstMotor: p.firstMotor || null }
+          : { id: d.id, date: d.date, type: d.type, startTime: d.startTime ?? null, timeFrom: d.timeFrom ?? null, timeTo: d.timeTo ?? null, allDay: d.allDay ?? false, firstMotor: d.firstMotor ?? null }
+      )
+      return api.patch(`/status-rows/${project.id}`, { days: updated }).then((r) => r.data)
+    },
+    onSuccess: () => { onUpdated(); setDatePopup(null) },
+  })
+
+  const removeDateMutation = useMutation({
+    mutationFn: (date: string) => {
+      const remaining = project.days
+        .filter((d) => toIsoDate(d.date) !== date)
+        .map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime ?? null, timeFrom: d.timeFrom ?? null, timeTo: d.timeTo ?? null, allDay: d.allDay ?? false, firstMotor: d.firstMotor ?? null }))
+      return api.patch(`/status-rows/${project.id}`, { days: remaining }).then((r) => r.data)
+    },
+    onSuccess: onUpdated,
+  })
+
+  const openAddDate = () => setDatePopup({ mode: 'add', origDate: '', date: '', type: 'efir', timeFrom: '', timeTo: '', startTime: '', allDay: false, firstMotor: '' })
+  const openEditDate = (entry: { date: string; type: string; isMain?: boolean }) => {
+    const day = project.days.find((d) => toIsoDate(d.date) === entry.date)
+    setDatePopup({ mode: 'edit', origDate: entry.date, date: entry.date, type: entry.type, isMain: entry.isMain, timeFrom: day?.timeFrom ?? '', timeTo: day?.timeTo ?? '', startTime: day?.startTime ?? '', allDay: day?.allDay ?? false, firstMotor: day?.firstMotor ?? '' })
+  }
+  const closePopup = () => setDatePopup(null)
+  const submitPopup = () => {
+    if (!datePopup) return
+    if (datePopup.mode === 'add') { if (datePopup.date) addDateMutation.mutate(datePopup) }
+    else updateDayMutation.mutate(datePopup)
+  }
+  const datePopupPending = addDateMutation.isPending || updateDayMutation.isPending
+
+  const inputS: React.CSSProperties = { width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', fontSize: 12, color: '#1e293b', fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Content — left info panel always visible */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <ProjectInfoPanel project={project} onSave={saveField} onUpdated={onUpdated} />
+        <ProjectInfoPanel project={project} onSave={saveField} />
         <TeamTable
           project={project}
           members={members}
@@ -573,8 +628,82 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
           onDelete={() => { if (confirm(`Удалить «${project.name}»?`)) deleteProject.mutate() }}
           copyPending={copyProject.isPending}
           deletePending={deleteProject.isPending}
+          onAddDate={openAddDate}
+          onEditDate={openEditDate}
         />
       </div>
+
+      {/* Date popup (shared) */}
+      {datePopup && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onMouseDown={closePopup}>
+          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', padding: 20, width: 300, display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '90vh', overflowY: 'auto' }}
+            onMouseDown={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+              {datePopup.mode === 'add' ? 'Добавить дату' : 'Редактировать дату'}
+            </div>
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 4 }}>Дата</label>
+              <input type="date" value={datePopup.date} onChange={(e) => setDatePopup((p) => p ? { ...p, date: e.target.value } : null)} style={inputS} />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 4 }}>Тип</label>
+              <select value={datePopup.type} onChange={(e) => setDatePopup((p) => p ? { ...p, type: e.target.value } : null)} style={inputS}>
+                <option value="zastroyka">Застройка</option>
+                <option value="efir">Эфир</option>
+                <option value="deadline">Дедлайн</option>
+                <option value="semka">Съёмка</option>
+              </select>
+            </div>
+            {datePopup.type === 'efir' && (
+              <>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <TimeField label="Начало" value={datePopup.timeFrom} onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
+                  <TimeField label="Конец" value={datePopup.timeTo} onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
+                </div>
+                <TimeField label="Начало эфира" value={datePopup.startTime} onChange={(v) => setDatePopup((p) => p ? { ...p, startTime: v } : null)} />
+              </>
+            )}
+            {datePopup.type === 'zastroyka' && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <TimeField label="Начало" value={datePopup.timeFrom} onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
+                <TimeField label="Конец" value={datePopup.timeTo} onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
+              </div>
+            )}
+            {datePopup.type === 'deadline' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="checkbox" id="allday-chk" checked={datePopup.allDay} onChange={(e) => setDatePopup((p) => p ? { ...p, allDay: e.target.checked } : null)} style={{ width: 16, height: 16 }} />
+                <label htmlFor="allday-chk" style={{ fontSize: 12, color: '#1e293b', cursor: 'pointer' }}>Весь день</label>
+              </div>
+            )}
+            {datePopup.type === 'semka' && (
+              <>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <TimeField label="Начало" value={datePopup.timeFrom} onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
+                  <TimeField label="Конец" value={datePopup.timeTo} onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
+                </div>
+                <TimeField label="Первый мотор" value={datePopup.firstMotor} onChange={(v) => setDatePopup((p) => p ? { ...p, firstMotor: v } : null)} />
+              </>
+            )}
+            <div style={{ display: 'flex', gap: 6, paddingTop: 4 }}>
+              <button onClick={submitPopup} disabled={!datePopup.date || datePopupPending}
+                style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 6, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: (!datePopup.date || datePopupPending) ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: (!datePopup.date || datePopupPending) ? 0.6 : 1 }}>
+                {datePopupPending ? '...' : datePopup.mode === 'add' ? 'Добавить' : 'Сохранить'}
+              </button>
+              {datePopup.mode === 'edit' && !datePopup.isMain && (
+                <button onClick={() => { removeDateMutation.mutate(datePopup.origDate); closePopup() }}
+                  style={{ fontSize: 12, padding: '7px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff', color: '#ef4444', cursor: 'pointer' }}>
+                  Удалить
+                </button>
+              )}
+              <button onClick={closePopup}
+                style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -612,6 +741,17 @@ function InfoField({ label, fieldKey, value, onSave }: {
 
 // ─── ProjectInfoPanel ──────────────────────────────────────────────────────
 
+function buildDaysPayload(days: ProjectDay[]) {
+  return days.map((d) => ({
+    id: d.id, date: d.date, type: d.type,
+    startTime: d.startTime ?? null,
+    timeFrom: d.timeFrom ?? null,
+    timeTo: d.timeTo ?? null,
+    allDay: d.allDay ?? false,
+    firstMotor: d.firstMotor ?? null,
+  }))
+}
+
 type DatePopup = {
   mode: 'add' | 'edit'
   origDate: string        // original ISO date (key for edit)
@@ -635,134 +775,14 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
   )
 }
 
-function ProjectInfoPanel({ project, onSave, onUpdated }: {
+function ProjectInfoPanel({ project, onSave }: {
   project: MicroProject
   onSave: (key: string, value: unknown) => void
-  onUpdated: () => void
 }) {
   const [editingStatus, setEditingStatus] = useState(false)
-  const [datePopup, setDatePopup] = useState<DatePopup | null>(null)
+  const [notesDraft, setNotesDraft] = useState(project.notes ?? '')
 
-  const TYPE_LABELS: Record<string, string> = {
-    zastroyka: 'Застройка', efir: 'Эфир', deadline: 'Дедлайн', semka: 'Съёмка',
-  }
-  const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-    zastroyka: { bg: '#fef3c7', color: '#92400e' },
-    efir:      { bg: '#dbeafe', color: '#1d4ed8' },
-    deadline:  { bg: '#fee2e2', color: '#991b1b' },
-    semka:     { bg: '#d1fae5', color: '#065f46' },
-  }
-
-  const dateCols = useMemo(() => {
-    const entries: { date: string; type: string; isMain: boolean }[] = []
-    if (project.date) {
-      const mainDay = project.days.find((d) => toIsoDate(d.date) === toIsoDate(project.date!))
-      entries.push({ date: toIsoDate(project.date), type: mainDay?.type ?? 'efir', isMain: true })
-    }
-    project.days.forEach((d) => {
-      const iso = toIsoDate(d.date)
-      if (!entries.some((e) => e.date === iso)) {
-        entries.push({ date: iso, type: d.type, isMain: false })
-      }
-    })
-    return entries.sort((a, b) => a.date.localeCompare(b.date))
-  }, [project.date, project.days])
-
-  const buildDaysPayload = (days: ProjectDay[]) =>
-    days.map((d) => ({
-      id: d.id, date: d.date, type: d.type,
-      startTime: d.startTime ?? null,
-      timeFrom: d.timeFrom ?? null,
-      timeTo: d.timeTo ?? null,
-      allDay: d.allDay ?? false,
-      firstMotor: d.firstMotor ?? null,
-    }))
-
-  const addDate = useMutation({
-    mutationFn: (p: DatePopup) => {
-      const iso = p.date
-      const existingDays = project.days
-      if (existingDays.some((d) => toIsoDate(d.date) === iso)) return Promise.resolve(null)
-      return api.patch(`/status-rows/${project.id}`, {
-        days: [
-          ...buildDaysPayload(existingDays),
-          {
-            date: new Date(iso).toISOString(), type: p.type,
-            startTime: p.startTime || null,
-            timeFrom: p.timeFrom || null,
-            timeTo: p.timeTo || null,
-            allDay: p.allDay,
-            firstMotor: p.firstMotor || null,
-          },
-        ],
-      }).then((r) => r.data)
-    },
-    onSuccess: () => { onUpdated(); setDatePopup(null) },
-  })
-
-  const updateDay = useMutation({
-    mutationFn: (p: DatePopup) => {
-      const updated = project.days.map((d) =>
-        toIsoDate(d.date) === p.origDate
-          ? {
-              id: d.id,
-              date: p.date ? new Date(p.date).toISOString() : d.date,
-              type: p.type,
-              startTime: p.startTime || null,
-              timeFrom: p.timeFrom || null,
-              timeTo: p.timeTo || null,
-              allDay: p.allDay,
-              firstMotor: p.firstMotor || null,
-            }
-          : { id: d.id, date: d.date, type: d.type, startTime: d.startTime ?? null, timeFrom: d.timeFrom ?? null, timeTo: d.timeTo ?? null, allDay: d.allDay ?? false, firstMotor: d.firstMotor ?? null }
-      )
-      return api.patch(`/status-rows/${project.id}`, { days: updated }).then((r) => r.data)
-    },
-    onSuccess: () => { onUpdated(); setDatePopup(null) },
-  })
-
-  const removeDate = useMutation({
-    mutationFn: (date: string) => {
-      const remaining = project.days
-        .filter((d) => toIsoDate(d.date) !== date)
-        .map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime ?? null, timeFrom: d.timeFrom ?? null, timeTo: d.timeTo ?? null, allDay: d.allDay ?? false, firstMotor: d.firstMotor ?? null }))
-      return api.patch(`/status-rows/${project.id}`, { days: remaining }).then((r) => r.data)
-    },
-    onSuccess: onUpdated,
-  })
-
-  const inputS: React.CSSProperties = {
-    width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px',
-    fontSize: 12, color: '#1e293b', fontFamily: 'inherit', outline: 'none',
-    background: '#fff', boxSizing: 'border-box',
-  }
-
-  const openAdd = () => setDatePopup({ mode: 'add', origDate: '', date: '', type: 'efir', timeFrom: '', timeTo: '', startTime: '', allDay: false, firstMotor: '' })
-  const openEdit = (entry: { date: string; type: string; isMain?: boolean }) => {
-    const day = project.days.find((d) => toIsoDate(d.date) === entry.date)
-    setDatePopup({
-      mode: 'edit', origDate: entry.date, date: entry.date, type: entry.type,
-      isMain: entry.isMain,
-      timeFrom: day?.timeFrom ?? '',
-      timeTo: day?.timeTo ?? '',
-      startTime: day?.startTime ?? '',
-      allDay: day?.allDay ?? false,
-      firstMotor: day?.firstMotor ?? '',
-    })
-  }
-  const closePopup = () => setDatePopup(null)
-
-  const submitPopup = () => {
-    if (!datePopup) return
-    if (datePopup.mode === 'add') {
-      if (!datePopup.date) return
-      addDate.mutate(datePopup)
-    } else {
-      updateDay.mutate(datePopup)
-    }
-  }
-
-  const isPending = addDate.isPending || updateDay.isPending
+  useEffect(() => { setNotesDraft(project.notes ?? '') }, [project.id, project.notes])
 
   return (
     <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid #e2e8f0', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: 10, padding: 14, overflowY: 'auto' }}>
@@ -797,145 +817,19 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
         <InfoField label="Лайн-продюсер"  fieldKey="lineProducer"  value={project.lineProducer}  onSave={onSave} />
       </div>
 
-      {/* Block 2: Date manager */}
+      {/* Block 2: Описание */}
       <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px 8px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Даты и время</span>
-          <button onClick={openAdd}
-            style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: '1px solid #3b82f6', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            + Дата
-          </button>
+        <div style={{ padding: '9px 12px 8px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание</span>
         </div>
-
-        <div style={{ overflowY: 'auto', flex: 1 }}>
-          {dateCols.map((entry) => {
-            const tColor = TYPE_COLORS[entry.type] ?? { bg: '#f3e8ff', color: '#7e22ce' }
-            return (
-              <div key={entry.date}
-                onClick={() => openEdit(entry)}
-                style={{ padding: '7px 12px', borderBottom: '1px solid #f8fafc', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6, cursor: 'pointer' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>{fmtDateShort(entry.date)}</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: tColor.bg, color: tColor.color }}>
-                      {TYPE_LABELS[entry.type] ?? entry.type}
-                    </span>
-                  </div>
-                  {entry.isMain && <span style={{ fontSize: 10, color: '#94a3b8' }}>основная</span>}
-                </div>
-                <span style={{ fontSize: 10, color: '#cbd5e1', flexShrink: 0, marginTop: 3 }}>✎</span>
-              </div>
-            )
-          })}
-          {dateCols.length === 0 && (
-            <div style={{ padding: 12, fontSize: 12, color: '#cbd5e1', textAlign: 'center' }}>Нет дат</div>
-          )}
-        </div>
+        <textarea
+          value={notesDraft}
+          onChange={(e) => setNotesDraft(e.target.value)}
+          onBlur={() => { if ((notesDraft.trim() || null) !== (project.notes || null)) onSave('notes', notesDraft.trim() || null) }}
+          placeholder="Добавьте описание..."
+          style={{ flex: 1, resize: 'none', border: 'none', outline: 'none', padding: '10px 12px', fontSize: 12, color: '#1e293b', fontFamily: 'inherit', background: 'transparent', lineHeight: 1.5, minHeight: 80 }}
+        />
       </div>
-
-      {/* Date popup */}
-      {datePopup && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onMouseDown={closePopup}>
-          <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 8px 40px rgba(0,0,0,0.18)', padding: 20, width: 300, display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '90vh', overflowY: 'auto' }}
-            onMouseDown={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
-              {datePopup.mode === 'add' ? 'Добавить дату' : 'Редактировать дату'}
-            </div>
-
-            {/* Date field */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 4 }}>Дата</label>
-              <input type="date" value={datePopup.date}
-                onChange={(e) => setDatePopup((p) => p ? { ...p, date: e.target.value } : null)}
-                style={inputS} />
-            </div>
-
-            {/* Type selector */}
-            <div>
-              <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 4 }}>Тип</label>
-              <select value={datePopup.type} onChange={(e) => setDatePopup((p) => p ? { ...p, type: e.target.value } : null)} style={inputS}>
-                <option value="zastroyka">Застройка</option>
-                <option value="efir">Эфир</option>
-                <option value="deadline">Дедлайн</option>
-                <option value="semka">Съёмка</option>
-              </select>
-            </div>
-
-            {/* Эфир: диапазон + начало эфира */}
-            {datePopup.type === 'efir' && (
-              <>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <TimeField label="Начало" value={datePopup.timeFrom}
-                    onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
-                  <TimeField label="Конец" value={datePopup.timeTo}
-                    onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
-                </div>
-                <TimeField label="Начало эфира" value={datePopup.startTime}
-                  onChange={(v) => setDatePopup((p) => p ? { ...p, startTime: v } : null)} />
-              </>
-            )}
-
-            {/* Застройка: диапазон */}
-            {datePopup.type === 'zastroyka' && (
-              <div style={{ display: 'flex', gap: 8 }}>
-                <TimeField label="Начало" value={datePopup.timeFrom}
-                  onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
-                <TimeField label="Конец" value={datePopup.timeTo}
-                  onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
-              </div>
-            )}
-
-            {/* Дедлайн: allDay checkbox */}
-            {datePopup.type === 'deadline' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" id="allday-chk" checked={datePopup.allDay}
-                  onChange={(e) => setDatePopup((p) => p ? { ...p, allDay: e.target.checked } : null)}
-                  style={{ width: 16, height: 16 }} />
-                <label htmlFor="allday-chk" style={{ fontSize: 12, color: '#1e293b', cursor: 'pointer' }}>Весь день</label>
-              </div>
-            )}
-
-            {/* Съёмка: диапазон + первый мотор */}
-            {datePopup.type === 'semka' && (
-              <>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <TimeField label="Начало" value={datePopup.timeFrom}
-                    onChange={(v) => setDatePopup((p) => p ? { ...p, timeFrom: v } : null)} />
-                  <TimeField label="Конец" value={datePopup.timeTo}
-                    onChange={(v) => setDatePopup((p) => p ? { ...p, timeTo: v } : null)} />
-                </div>
-                <TimeField label="Первый мотор" value={datePopup.firstMotor}
-                  onChange={(v) => setDatePopup((p) => p ? { ...p, firstMotor: v } : null)} />
-              </>
-            )}
-
-            {/* Action buttons */}
-            <div style={{ display: 'flex', gap: 6, paddingTop: 4 }}>
-              <button
-                onClick={submitPopup}
-                disabled={(!datePopup.date) || isPending}
-                style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 6, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: (!datePopup.date || isPending) ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: (!datePopup.date || isPending) ? 0.6 : 1 }}>
-                {isPending ? '...' : datePopup.mode === 'add' ? 'Добавить' : 'Сохранить'}
-              </button>
-              {datePopup.mode === 'edit' && !datePopup.isMain && (
-                <button
-                  onClick={() => { removeDate.mutate(datePopup.origDate); closePopup() }}
-                  style={{ fontSize: 12, padding: '7px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff', color: '#ef4444', cursor: 'pointer' }}>
-                  Удалить
-                </button>
-              )}
-              <button onClick={closePopup}
-                style={{ flex: 1, fontSize: 12, padding: '7px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
-                Отмена
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
@@ -943,7 +837,7 @@ function ProjectInfoPanel({ project, onSave, onUpdated }: {
 
 // ─── TeamTable ────────────────────────────────────────────────────────────────
 
-function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab, onCopy, onDelete, copyPending, deletePending }: {
+function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab, onCopy, onDelete, copyPending, deletePending, onAddDate, onEditDate }: {
   project: MicroProject
   members: ProjectMember[]
   loading: boolean
@@ -954,16 +848,23 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   onDelete: () => void
   copyPending: boolean
   deletePending: boolean
+  onAddDate: () => void
+  onEditDate: (entry: { date: string; type: string; isMain?: boolean }) => void
 }) {
   const qc = useQueryClient()
-  const [addingMember, setAddingMember] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newPos, setNewPos] = useState('')
-  const [newEmpType, setNewEmpType] = useState('')
-  const [newRatePlan, setNewRatePlan] = useState('')
-  const [newRateFact, setNewRateFact] = useState('')
 
-  // Date columns derived from project — managed via left panel date manager
+  // Collapsible columns
+  const [collapsedCols, setCollapsedCols] = useState<Set<string>>(new Set())
+  const toggleCol = (col: string) => setCollapsedCols((prev) => {
+    const next = new Set(prev); if (next.has(col)) next.delete(col); else next.add(col); return next
+  })
+  const isC = (col: string) => collapsedCols.has(col)
+
+  // New-member inline edit row
+  type EditRowState = { id: string; name: string; pos: string; empType: string; ratePlan: string; rateFact: string }
+  const [editRow, setEditRow] = useState<EditRowState | null>(null)
+
+  // Date columns derived from project — editable via column header clicks
   const dateCols = useMemo(() => {
     const set = new Set<string>()
     if (project.date) set.add(toIsoDate(project.date))
@@ -989,27 +890,31 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
     zastroyka: 'Застройка', efir: 'Эфир', deadline: 'Дедлайн', semka: 'Съёмка',
   }
 
-  const addMember = useMutation({
+  const createMember = useMutation({
     mutationFn: () => api.post('/project-members', {
-      projectId: project.id,
-      name: newName.trim(),
-      position: newPos.trim() || null,
-      employmentType: newEmpType || null,
-      ratePlan: newRatePlan ? parseFloat(newRatePlan) : null,
-      rateFact: newRateFact ? parseFloat(newRateFact) : null,
+      projectId: project.id, name: 'Новый участник', position: null, employmentType: null, ratePlan: null, rateFact: null,
     }).then((r) => r.data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project-members', project.id] })
-      qc.invalidateQueries({ queryKey: ['micro-projects', project.matrixRegistryId] })
-      setNewName(''); setNewPos(''); setNewEmpType(''); setNewRatePlan(''); setNewRateFact(''); setAddingMember(false)
+    onSuccess: (created: ProjectMember) => {
+      qc.setQueryData(['project-members', project.id], (old: ProjectMember[] | undefined) => [...(old ?? []), created])
+      setEditRow({ id: created.id, name: 'Новый участник', pos: '', empType: '', ratePlan: '', rateFact: '' })
     },
   })
 
   const updateMember = useMutation({
-    mutationFn: ({ id, ...data }: { id: string; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null }) =>
+    mutationFn: ({ id, ...data }: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null }) =>
       api.patch(`/project-members/${id}`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', project.id] }),
   })
+
+  const saveEditField = (field: keyof EditRowState, val: string) => {
+    if (!editRow) return
+    const id = editRow.id
+    if (field === 'name') updateMember.mutate({ id, name: val.trim() || 'Новый участник' })
+    else if (field === 'pos') updateMember.mutate({ id, position: val.trim() || null })
+    else if (field === 'empType') updateMember.mutate({ id, employmentType: val || null })
+    else if (field === 'ratePlan') updateMember.mutate({ id, ratePlan: val ? parseFloat(val) : null })
+    else if (field === 'rateFact') updateMember.mutate({ id, rateFact: val ? parseFloat(val) : null })
+  }
 
   const removeMember = useMutation({
     mutationFn: (id: string) => api.delete(`/project-members/${id}`).then((r) => r.data),
@@ -1057,12 +962,6 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
             style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #fecaca', background: 'none', color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit' }}>
             {deletePending ? '...' : 'Удалить'}
           </button>
-          {microTab === 'team' && !addingMember && (
-            <button onClick={() => setAddingMember(true)}
-              style={{ fontSize: 12, padding: '4px 12px', borderRadius: 6, border: '1px solid #2563eb', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}>
-              + Добавить
-            </button>
-          )}
         </div>
       </div>
 
@@ -1073,23 +972,49 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc' }}>
-                <th style={{ padding: '8px 14px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', minWidth: 150, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>ФИО</th>
-                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Формат</th>
-                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', minWidth: 120, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Должность</th>
-                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderBottom: '2px solid #e2e8f0', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Цена план</th>
-                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderBottom: '2px solid #e2e8f0', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Цена факт</th>
-                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderBottom: '2px solid #e2e8f0', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Сумма план</th>
-                <th style={{ padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'right', borderBottom: '2px solid #e2e8f0', borderRight: '2px solid #cbd5e1', minWidth: 80, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>Сумма факт</th>
+                {/* collapsible team columns — double-click to collapse */}
+                {(['name','emp','pos','ratePlan','rateFact','sumPlan','sumFact'] as const).map((col, ci) => {
+                  const labels: Record<string, string> = { name:'ФИО', emp:'Формат', pos:'Должность', ratePlan:'Цена план', rateFact:'Цена факт', sumPlan:'Сумма план', sumFact:'Сумма факт' }
+                  const minWidths: Record<string, number> = { name:150, emp:80, pos:120, ratePlan:80, rateFact:80, sumPlan:80, sumFact:80 }
+                  const aligns: Record<string, string> = { ratePlan:'right', rateFact:'right', sumPlan:'right', sumFact:'right' }
+                  const collapsed = isC(col)
+                  return (
+                    <th key={col} onDoubleClick={() => toggleCol(col)} title={collapsed ? `Показать «${labels[col]}»` : 'Двойной клик — скрыть столбец'}
+                      style={{ borderBottom: '2px solid #e2e8f0', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', ...(collapsed
+                        ? { width: 20, padding: '0 2px', textAlign: 'center', fontSize: 10, color: '#94a3b8', background: '#f8fafc', ...(col === 'sumFact' ? { borderRight: '2px solid #cbd5e1' } : {}) }
+                        : { padding: col === 'name' ? '8px 14px' : '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: (aligns[col] ?? 'left') as any, minWidth: minWidths[col], textTransform: 'uppercase', letterSpacing: '0.03em', ...(col === 'sumFact' ? { borderRight: '2px solid #cbd5e1' } : {}) }
+                      )}}>
+                      {collapsed ? '▶' : labels[col]}
+                    </th>
+                  )
+                })}
+                {/* + button before first date */}
+                <th style={{ borderBottom: '2px solid #e2e8f0', width: 24, padding: '0 2px', textAlign: 'center', verticalAlign: 'middle' }}>
+                  <button onClick={onAddDate} title="Добавить дату"
+                    style={{ fontSize: 14, lineHeight: 1, width: 20, height: 20, borderRadius: 4, border: '1px dashed #cbd5e1', background: 'none', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                </th>
                 {dateCols.map((d) => {
                   const type = dateTypeMap[d] ?? 'efir'
                   const tColor = TYPE_COLORS[type] ?? { bg: '#f3e8ff', color: '#7e22ce' }
+                  const isMain = project.date ? toIsoDate(project.date) === d : false
                   return (
-                    <th key={d} style={{ padding: '6px 10px', borderBottom: '2px solid #e2e8f0', minWidth: 84, textAlign: 'center', verticalAlign: 'bottom', fontSize: 11, fontWeight: 700, color: '#64748b' }}>
-                      {fmtDateShort(d)}
-                      <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: tColor.bg, color: tColor.color, display: 'inline-block' }}>
-                        {TYPE_LABELS[type] ?? type}
-                      </div>
-                    </th>
+                    <React.Fragment key={d}>
+                      <th onClick={() => onEditDate({ date: d, type, isMain })}
+                        title="Нажмите для редактирования"
+                        style={{ padding: '6px 10px', borderBottom: '2px solid #e2e8f0', minWidth: 84, textAlign: 'center', verticalAlign: 'bottom', fontSize: 11, fontWeight: 700, color: '#64748b', cursor: 'pointer' }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                        {fmtDateShort(d)}
+                        <div style={{ marginTop: 2, fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: tColor.bg, color: tColor.color, display: 'inline-block' }}>
+                          {TYPE_LABELS[type] ?? type}
+                        </div>
+                      </th>
+                      {/* + button after each date */}
+                      <th style={{ borderBottom: '2px solid #e2e8f0', width: 24, padding: '0 2px', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <button onClick={onAddDate} title="Добавить дату"
+                          style={{ fontSize: 14, lineHeight: 1, width: 20, height: 20, borderRadius: 4, border: '1px dashed #cbd5e1', background: 'none', color: '#94a3b8', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+                      </th>
+                    </React.Fragment>
                   )
                 })}
                 <th style={{ width: '100%', borderBottom: '2px solid #e2e8f0' }} />
@@ -1098,88 +1023,105 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
             </thead>
             <tbody>
               {members.map((m, ri) => {
+                const isEditRow = editRow?.id === m.id
                 const sumPlan = calcSum(m.rate_plan, m.shifts, dateCols)
                 const sumFact = calcSum(m.rate_fact, m.shifts, dateCols)
+                const rowBg = isEditRow ? '#f0f9ff' : ri % 2 === 0 ? '#fff' : '#f8fafc'
+                const cellBdr = '1px solid #eef0f4'
                 return (
-                  <tr key={m.id} style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                    <td style={{ padding: '8px 14px', fontWeight: 600, color: '#1e293b', borderBottom: '1px solid #eef0f4', whiteSpace: 'nowrap' }}>{m.name}</td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
-                      <EmpBadge type={m.employment_type} />
-                    </td>
-                    <td style={{ padding: '8px 10px', color: '#64748b', borderBottom: '1px solid #eef0f4', whiteSpace: 'nowrap' }}>{m.position ?? <span style={{ color: '#cbd5e1' }}>—</span>}</td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'right' }}>
-                      <RateCell memberId={m.id} field="ratePlan" value={m.rate_plan} onSave={(v) => updateMember.mutate({ id: m.id, ratePlan: v })} />
-                    </td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'right' }}>
-                      <RateCell memberId={m.id} field="rateFact" value={m.rate_fact} onSave={(v) => updateMember.mutate({ id: m.id, rateFact: v })} />
-                    </td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
-                      {sumPlan}{m.rate_plan ? ' ₽' : ''}
-                    </td>
-                    <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4', textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
-                      {sumFact}{m.rate_fact ? ' ₽' : ''}
-                    </td>
+                  <tr key={m.id} style={{ background: rowBg }}>
+                    {/* ФИО */}
+                    {isC('name') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+                      <td style={{ padding: '8px 14px', fontWeight: 600, color: '#1e293b', borderBottom: cellBdr, whiteSpace: 'nowrap' }}>
+                        {isEditRow
+                          ? <input autoFocus value={editRow!.name} onChange={(e) => setEditRow((p) => p ? { ...p, name: e.target.value } : null)} onBlur={() => saveEditField('name', editRow!.name)} style={{ ...inputS, width: '100%', fontWeight: 600 }} />
+                          : m.name}
+                      </td>
+                    )}
+                    {/* Формат */}
+                    {isC('emp') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+                      <td style={{ padding: '8px 10px', borderBottom: cellBdr }}>
+                        {isEditRow
+                          ? <select value={editRow!.empType} onChange={(e) => setEditRow((p) => p ? { ...p, empType: e.target.value } : null)} onBlur={() => saveEditField('empType', editRow!.empType)} style={{ ...inputS, width: '100%' }}>
+                              <option value="">—</option>
+                              {Object.entries(EMP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                            </select>
+                          : <EmpBadge type={m.employment_type} />}
+                      </td>
+                    )}
+                    {/* Должность */}
+                    {isC('pos') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+                      <td style={{ padding: '8px 10px', color: '#64748b', borderBottom: cellBdr }}>
+                        {isEditRow
+                          ? <input value={editRow!.pos} onChange={(e) => setEditRow((p) => p ? { ...p, pos: e.target.value } : null)} onBlur={() => saveEditField('pos', editRow!.pos)} placeholder="Должность" style={{ ...inputS, width: '100%' }} />
+                          : m.position ?? <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    )}
+                    {/* Цена план */}
+                    {isC('ratePlan') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+                      <td style={{ padding: '8px 10px', borderBottom: cellBdr, textAlign: 'right' }}>
+                        {isEditRow
+                          ? <input type="number" value={editRow!.ratePlan} onChange={(e) => setEditRow((p) => p ? { ...p, ratePlan: e.target.value } : null)} onBlur={() => saveEditField('ratePlan', editRow!.ratePlan)} placeholder="0" style={{ ...inputS, width: '100%', textAlign: 'right' }} />
+                          : <RateCell memberId={m.id} field="ratePlan" value={m.rate_plan} onSave={(v) => updateMember.mutate({ id: m.id, ratePlan: v })} />}
+                      </td>
+                    )}
+                    {/* Цена факт */}
+                    {isC('rateFact') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+                      <td style={{ padding: '8px 10px', borderBottom: cellBdr, textAlign: 'right' }}>
+                        {isEditRow
+                          ? <input type="number" value={editRow!.rateFact} onChange={(e) => setEditRow((p) => p ? { ...p, rateFact: e.target.value } : null)} onBlur={() => saveEditField('rateFact', editRow!.rateFact)} placeholder="0" style={{ ...inputS, width: '100%', textAlign: 'right' }} />
+                          : <RateCell memberId={m.id} field="rateFact" value={m.rate_fact} onSave={(v) => updateMember.mutate({ id: m.id, rateFact: v })} />}
+                      </td>
+                    )}
+                    {/* Сумма план */}
+                    {isC('sumPlan') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+                      <td style={{ padding: '8px 10px', borderBottom: cellBdr, textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+                        {isEditRow ? null : <>{sumPlan}{m.rate_plan ? ' ₽' : ''}</>}
+                      </td>
+                    )}
+                    {/* Сумма факт */}
+                    {isC('sumFact') ? <td style={{ width: 20, borderBottom: cellBdr, borderRight: '2px solid #cbd5e1' }} /> : (
+                      <td style={{ padding: '8px 10px', borderBottom: cellBdr, textAlign: 'right', color: '#1e293b', fontVariantNumeric: 'tabular-nums', fontSize: 12 }}>
+                        {isEditRow ? null : <>{sumFact}{m.rate_fact ? ' ₽' : ''}</>}
+                      </td>
+                    )}
+                    {/* leading + spacer */}
+                    <td style={{ borderBottom: cellBdr }} />
                     {dateCols.map((d) => {
                       const v = normalise(m.shifts[d])
                       const confirmed: ShiftConfirmed = v?.confirmed ?? (v ? 'yes' : null)
                       return (
-                        <td key={d} style={{ padding: '8px 10px', textAlign: 'center', borderBottom: '1px solid #eef0f4', borderLeft: '1px solid #f1f5f9' }}>
-                          <button onClick={() => toggleCell(m, d)}
-                            title={confirmed === 'yes' ? 'Подтверждён (нажмите → не подтверждён)' : confirmed === 'pending' ? 'Не подтверждён (нажмите → убрать)' : 'Нет (нажмите → добавить)'}
-                            style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid', borderColor: confirmed === 'yes' ? '#22c55e' : confirmed === 'pending' ? '#f59e0b' : '#e2e8f0', background: confirmedColor(confirmed), cursor: 'pointer', display: 'inline-block', transition: 'background 0.15s' }}
-                          />
-                        </td>
+                        <React.Fragment key={d}>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', borderBottom: cellBdr, borderLeft: '1px solid #f1f5f9' }}>
+                            {!isEditRow && (
+                              <button onClick={() => toggleCell(m, d)}
+                                title={confirmed === 'yes' ? 'Подтверждён (нажмите → не подтверждён)' : confirmed === 'pending' ? 'Не подтверждён (нажмите → убрать)' : 'Нет (нажмите → добавить)'}
+                                style={{ width: 24, height: 24, borderRadius: 6, border: '1px solid', borderColor: confirmed === 'yes' ? '#22c55e' : confirmed === 'pending' ? '#f59e0b' : '#e2e8f0', background: confirmedColor(confirmed), cursor: 'pointer', display: 'inline-block', transition: 'background 0.15s' }}
+                              />
+                            )}
+                          </td>
+                          <td style={{ borderBottom: cellBdr }} />
+                        </React.Fragment>
                       )
                     })}
-                    <td style={{ borderBottom: '1px solid #eef0f4' }} />
-                    <td style={{ padding: '8px 6px', borderBottom: '1px solid #eef0f4', textAlign: 'center' }}>
-                      <button onClick={() => removeMember.mutate(m.id)}
+                    <td style={{ borderBottom: cellBdr }} />
+                    <td style={{ padding: '8px 6px', borderBottom: cellBdr, textAlign: 'center' }}>
+                      <button onClick={() => { removeMember.mutate(m.id); if (isEditRow) setEditRow(null) }}
                         style={{ fontSize: 14, color: '#cbd5e1', border: 'none', background: 'none', cursor: 'pointer', lineHeight: 1 }} title="Удалить">×</button>
                     </td>
                   </tr>
                 )
               })}
 
-              {addingMember && (
-                <tr style={{ background: '#eff6ff' }}>
-                  <td style={{ padding: '8px 14px', borderBottom: '1px solid #eef0f4' }}>
-                    <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)}
-                      placeholder="ФИО *" style={{ ...inputS, width: '100%' }} />
-                  </td>
-                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
-                    <select value={newEmpType} onChange={(e) => setNewEmpType(e.target.value)} style={{ ...inputS, width: '100%' }}>
-                      <option value="">—</option>
-                      {Object.entries(EMP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </select>
-                  </td>
-                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
-                    <input value={newPos} onChange={(e) => setNewPos(e.target.value)}
-                      placeholder="Должность" style={{ ...inputS, width: '100%' }} />
-                  </td>
-                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
-                    <input type="number" value={newRatePlan} onChange={(e) => setNewRatePlan(e.target.value)}
-                      placeholder="0" style={{ ...inputS, width: '100%' }} />
-                  </td>
-                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #eef0f4' }}>
-                    <input type="number" value={newRateFact} onChange={(e) => setNewRateFact(e.target.value)}
-                      placeholder="0" style={{ ...inputS, width: '100%' }} />
-                  </td>
-                  <td style={{ borderBottom: '1px solid #eef0f4' }} />
-                  <td style={{ borderBottom: '1px solid #eef0f4' }} />
-                  {dateCols.map((d) => <td key={d} style={{ borderBottom: '1px solid #eef0f4', borderLeft: '1px solid #f1f5f9' }} />)}
-                  <td style={{ borderBottom: '1px solid #eef0f4' }} />
-                  <td style={{ padding: '6px', borderBottom: '1px solid #eef0f4' }}>
-                    <div style={{ display: 'flex', gap: 3 }}>
-                      <button onClick={() => { if (newName.trim()) addMember.mutate() }} disabled={!newName.trim() || addMember.isPending}
-                        style={{ fontSize: 11, padding: '3px 7px', borderRadius: 5, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>
-                        {addMember.isPending ? '...' : 'OK'}
-                      </button>
-                      <button onClick={() => { setAddingMember(false); setNewName(''); setNewPos(''); setNewEmpType(''); setNewRatePlan(''); setNewRateFact('') }}
-                        style={{ fontSize: 11, padding: '3px 5px', borderRadius: 5, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#64748b' }}>×</button>
-                    </div>
-                  </td>
-                </tr>
-              )}
+              {/* + row to add new member */}
+              <tr onClick={() => { if (!createMember.isPending) createMember.mutate() }}
+                style={{ cursor: createMember.isPending ? 'default' : 'pointer', background: 'transparent' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                <td colSpan={99} style={{ padding: '5px 14px', textAlign: 'center', color: '#94a3b8', fontSize: 18, borderBottom: '1px solid #eef0f4' }}>
+                  {createMember.isPending ? '…' : '+'}
+                </td>
+              </tr>
             </tbody>
           </table>
         )}
@@ -1206,11 +1148,16 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
 
 function ExpensesTab({ projectId }: { projectId: string }) {
   const qc = useQueryClient()
-  const [adding, setAdding] = useState(false)
-  const [newType, setNewType] = useState('')
-  const [newBy, setNewBy] = useState('')
-  const [newAmount, setNewAmount] = useState('')
-  const [newNotes, setNewNotes] = useState('')
+  const [collapsedCols, setCollapsedCols] = useState<Set<string>>(new Set())
+  const [uploadExpenseId, setUploadExpenseId] = useState<string | null>(null)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const toggleCol = (col: string) => setCollapsedCols((prev) => {
+    const next = new Set(prev); if (next.has(col)) next.delete(col); else next.add(col); return next
+  })
+  const isC = (col: string) => collapsedCols.has(col)
 
   const { data: expenses = [], isLoading } = useQuery<ShiftExpense[]>({
     queryKey: ['shift-expenses', projectId],
@@ -1218,17 +1165,10 @@ function ExpensesTab({ projectId }: { projectId: string }) {
     staleTime: 30_000,
   })
 
-  const addExpense = useMutation({
-    mutationFn: () => api.post('/shift-expenses', {
-      projectId,
-      expenseType: newType.trim(),
-      orderedBy: newBy.trim() || null,
-      amount: newAmount ? parseFloat(newAmount) : null,
-      notes: newNotes.trim() || null,
-    }).then((r) => r.data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['shift-expenses', projectId] })
-      setAdding(false); setNewType(''); setNewBy(''); setNewAmount(''); setNewNotes('')
+  const createExpense = useMutation({
+    mutationFn: () => api.post('/shift-expenses', { projectId, expenseType: 'Новый расход', orderedBy: null, amount: null, notes: null }).then((r) => r.data),
+    onSuccess: (created) => {
+      qc.setQueryData(['shift-expenses', projectId], (old: ShiftExpense[] | undefined) => [...(old ?? []), created])
     },
   })
 
@@ -1249,12 +1189,26 @@ function ExpensesTab({ projectId }: { projectId: string }) {
   })
 
   const inputS: React.CSSProperties = { fontSize: 12, padding: '4px 8px', border: '1px solid #e2e8f0', borderRadius: 5, color: '#1e293b', background: '#fff' }
-  const thS: React.CSSProperties = { padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.03em', background: '#f8fafc' }
+
+  const thBase: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'left', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.03em', background: '#f8fafc', cursor: 'pointer', userSelect: 'none' }
   const tdS: React.CSSProperties = { padding: '8px 12px', fontSize: 13, borderBottom: '1px solid #f1f5f9' }
+
+  const ColTh = ({ col, label, style }: { col: string; label: string; style?: React.CSSProperties }) => {
+    const collapsed = isC(col)
+    return (
+      <th onDoubleClick={() => toggleCol(col)} title={collapsed ? `Показать «${label}»` : 'Двойной клик — скрыть столбец'}
+        style={{ ...thBase, ...(collapsed ? { width: 20, padding: '0 2px', textAlign: 'center' } : { padding: '8px 12px', ...style }) }}>
+        {collapsed ? '▶' : label}
+      </th>
+    )
+  }
+  const ColTd = ({ col, children, style }: { col: string; children?: React.ReactNode; style?: React.CSSProperties }) =>
+    isC(col) ? <td style={{ width: 20, borderBottom: '1px solid #f1f5f9', overflow: 'hidden', padding: 0 }} /> : <td style={{ ...tdS, ...style }}>{children}</td>
 
   const EditableCell = ({ expense, field, type = 'text' }: { expense: ShiftExpense; field: keyof ShiftExpense; type?: string }) => {
     const [editing, setEditing] = useState(false)
     const [draft, setDraft] = useState(String(expense[field] ?? ''))
+    useEffect(() => { setDraft(String(expense[field] ?? '')) }, [expense.id, expense[field]])
     const commit = () => {
       const v = type === 'number' ? (draft ? parseFloat(draft) : null) : (draft.trim() || null)
       updateExpense.mutate({ id: expense.id, [field]: v } as any)
@@ -1274,6 +1228,8 @@ function ExpensesTab({ projectId }: { projectId: string }) {
 
   const total = expenses.reduce((s, e) => s + (e.amount ? parseFloat(String(e.amount)) : 0), 0)
 
+  const canUpload = (e: ShiftExpense) => !!(e.expense_type && e.ordered_by && e.amount)
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -1282,67 +1238,99 @@ function ExpensesTab({ projectId }: { projectId: string }) {
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
               <tr>
-                <th style={{ ...thS, width: '30%' }}>Тип расхода</th>
-                <th style={{ ...thS, width: '25%' }}>Кто заказал</th>
-                <th style={{ ...thS, width: '15%' }}>Сумма, ₽</th>
-                <th style={{ ...thS, flex: 1 }}>Примечание</th>
-                <th style={{ ...thS, width: 36 }} />
+                <ColTh col="type"     label="Тип расхода"         style={{ width: '28%' }} />
+                <ColTh col="by"       label="Кто заказал"         style={{ width: '22%' }} />
+                <ColTh col="amount"   label="Сумма, ₽"            style={{ width: '13%' }} />
+                <ColTh col="dropbox"  label="Путь к папке Dropbox" style={{}} />
+                <th style={{ ...thBase, width: 100, padding: '8px 12px', cursor: 'default' }}>Чек</th>
+                <th style={{ ...thBase, width: 36, cursor: 'default' }} />
               </tr>
             </thead>
             <tbody>
               {expenses.map((e, ri) => (
                 <tr key={e.id} style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                  <td style={tdS}><EditableCell expense={e} field="expense_type" /></td>
-                  <td style={tdS}><EditableCell expense={e} field="ordered_by" /></td>
-                  <td style={tdS}><EditableCell expense={e} field="amount" type="number" /></td>
-                  <td style={tdS}><EditableCell expense={e} field="notes" /></td>
+                  <ColTd col="type"><EditableCell expense={e} field="expense_type" /></ColTd>
+                  <ColTd col="by"><EditableCell expense={e} field="ordered_by" /></ColTd>
+                  <ColTd col="amount"><EditableCell expense={e} field="amount" type="number" /></ColTd>
+                  <ColTd col="dropbox"><EditableCell expense={e} field="notes" /></ColTd>
+                  <td style={{ ...tdS, textAlign: 'center' }}>
+                    {canUpload(e) ? (
+                      <button onClick={() => { setUploadExpenseId(e.id); setUploadFile(null) }}
+                        style={{ fontSize: 11, padding: '3px 8px', borderRadius: 10, border: '1px solid #3b82f6', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                        📎 Загрузить чек
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: 11, color: '#cbd5e1' }} title="Заполните тип, заказчика и сумму">—</span>
+                    )}
+                  </td>
                   <td style={{ ...tdS, textAlign: 'center' }}>
                     <button onClick={() => deleteExpense.mutate(e.id)}
                       style={{ fontSize: 14, color: '#cbd5e1', border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
                   </td>
                 </tr>
               ))}
-
-              {adding && (
-                <tr style={{ background: '#eff6ff' }}>
-                  <td style={tdS}><input autoFocus value={newType} onChange={(e) => setNewType(e.target.value)} placeholder="Тип расхода" style={{ ...inputS, width: '100%' }} /></td>
-                  <td style={tdS}><input value={newBy} onChange={(e) => setNewBy(e.target.value)} placeholder="Кто заказал" style={{ ...inputS, width: '100%' }} /></td>
-                  <td style={tdS}><input type="number" value={newAmount} onChange={(e) => setNewAmount(e.target.value)} placeholder="0" style={{ ...inputS, width: '100%' }} /></td>
-                  <td style={tdS}><input value={newNotes} onChange={(e) => setNewNotes(e.target.value)} placeholder="Примечание" style={{ ...inputS, width: '100%' }} /></td>
-                  <td style={{ ...tdS, textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: 3 }}>
-                      <button onClick={() => { if (newType.trim() || newAmount) addExpense.mutate() }}
-                        style={{ fontSize: 11, padding: '3px 7px', borderRadius: 5, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>OK</button>
-                      <button onClick={() => setAdding(false)}
-                        style={{ fontSize: 11, padding: '3px 5px', borderRadius: 5, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#64748b' }}>×</button>
-                    </div>
-                  </td>
-                </tr>
-              )}
+              {/* inline + row */}
+              <tr onClick={() => { if (!createExpense.isPending) createExpense.mutate() }}
+                style={{ cursor: createExpense.isPending ? 'default' : 'pointer' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                <td colSpan={99} style={{ padding: '5px 14px', textAlign: 'center', color: '#94a3b8', fontSize: 18, borderBottom: '1px solid #f1f5f9' }}>
+                  {createExpense.isPending ? '…' : '+'}
+                </td>
+              </tr>
             </tbody>
             {expenses.length > 0 && (
               <tfoot>
                 <tr style={{ background: '#f1f5f9' }}>
                   <td colSpan={2} style={{ ...tdS, fontWeight: 700, color: '#475569' }}>Итого:</td>
                   <td style={{ ...tdS, fontWeight: 700, color: '#1e293b' }}>{total.toLocaleString('ru-RU')} ₽</td>
-                  <td colSpan={2} style={tdS} />
+                  <td colSpan={3} style={tdS} />
                 </tr>
               </tfoot>
             )}
           </table>
         )}
-        {!isLoading && expenses.length === 0 && !adding && (
-          <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>Расходов нет</div>
-        )}
       </div>
-      <div style={{ padding: '8px 14px', borderTop: '1px solid #f1f5f9', flexShrink: 0, background: '#fafafa' }}>
-        {!adding && (
-          <button onClick={() => setAdding(true)}
-            style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px dashed #cbd5e1', background: 'none', color: '#64748b', cursor: 'pointer' }}>
-            + Добавить расход
-          </button>
-        )}
-      </div>
+
+      {/* File upload popup */}
+      {uploadExpenseId && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onMouseDown={() => { setUploadExpenseId(null); setUploadFile(null) }}>
+          <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 8px 40px rgba(0,0,0,0.2)', padding: 28, width: 360, display: 'flex', flexDirection: 'column', gap: 16 }}
+            onMouseDown={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Загрузить чек</div>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) setUploadFile(f) }}
+              onClick={() => fileInputRef.current?.click()}
+              style={{ border: `2px dashed ${dragOver ? '#3b82f6' : '#cbd5e1'}`, borderRadius: 10, padding: '32px 20px', textAlign: 'center', cursor: 'pointer', background: dragOver ? '#eff6ff' : '#f8fafc', transition: 'all 0.15s' }}>
+              <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) setUploadFile(f) }} />
+              {uploadFile ? (
+                <div style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>📄 {uploadFile.name}</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>📂</div>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>Перетащите файл сюда или кликните для выбора</div>
+                </>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center' }}>
+              Загрузка файлов будет доступна после настройки хранилища
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button disabled={!uploadFile}
+                style={{ flex: 1, fontSize: 12, padding: '8px', borderRadius: 7, border: '1px solid #2563eb', background: uploadFile ? '#2563eb' : '#e2e8f0', color: uploadFile ? '#fff' : '#94a3b8', cursor: uploadFile ? 'pointer' : 'not-allowed', fontWeight: 600 }}>
+                Загрузить
+              </button>
+              <button onClick={() => { setUploadExpenseId(null); setUploadFile(null) }}
+                style={{ flex: 1, fontSize: 12, padding: '8px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

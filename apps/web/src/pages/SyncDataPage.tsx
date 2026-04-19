@@ -1534,7 +1534,14 @@ function ProjectsTable({
     {selectedProject && (
       <div
         style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-        onMouseDown={closeProject}
+        onMouseDown={() => {
+          const el = document.activeElement
+          if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) {
+            (el as HTMLElement).blur()
+            return
+          }
+          closeProject()
+        }}
       >
         <div
           style={{ background: '#f8fafc', borderRadius: 16, boxShadow: '0 24px 80px rgba(0,0,0,0.25)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
@@ -2282,7 +2289,14 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete 
     <>
     <div
       style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-      onMouseDown={onClose}
+      onMouseDown={() => {
+        const el = document.activeElement
+        if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) {
+          (el as HTMLElement).blur()
+          return
+        }
+        onClose()
+      }}
     >
       <div
         style={{ background: '#f8fafc', borderRadius: 16, boxShadow: '0 24px 80px rgba(0,0,0,0.25)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}

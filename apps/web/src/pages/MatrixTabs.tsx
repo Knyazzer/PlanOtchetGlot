@@ -199,6 +199,7 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
                       ref={inputRef}
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
+                      onBlur={() => { if (newName.trim()) commitAdd(); else cancelAdd() }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && newName.trim()) commitAdd()
                         if (e.key === 'Escape') cancelAdd()
