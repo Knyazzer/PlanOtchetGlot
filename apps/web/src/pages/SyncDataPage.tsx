@@ -1951,7 +1951,7 @@ function RegistryChangesTab({ entityId }: { entityId: string }) {
 
 // ─── Registry Detail Modal ────────────────────────────────────────────────────
 
-function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, onCheck, checking }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; onCheck?: () => void; checking?: boolean }) {
+function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void }) {
   const [localEntry, setLocalEntry] = useState<RegistryEntry>(entry)
   const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'>('info')
   const storageKey = `matrix-seps-${entry.matrixId}`
@@ -2072,16 +2072,6 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
             {localEntry.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>{localEntry.client}</div>}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {onCheck && (
-              <button
-                onClick={onCheck}
-                disabled={checking}
-                title="Проверить — существует ли таблица в Drive"
-                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: checking ? 'default' : 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}
-              >
-                {checking ? '...' : '↻ Проверить'}
-              </button>
-            )}
             {onEdit && (
               <button onClick={onEdit} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#e2e8f0', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}>
                 Изменить
@@ -2758,24 +2748,16 @@ function RegistryTable({
   const [formMatrix, setFormMatrix] = useState<RegistryEntry | 'new' | null>(null)
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [checking, setChecking] = useState<Set<string>>(new Set())
   const [deletedNotice, setDeletedNotice] = useState<string | null>(null)
 
-  async function checkMatrix(r: RegistryEntry) {
-    setChecking((prev) => new Set(prev).add(r.id))
-    try {
-      const result = await api.post(`/internal-matrix/${r.id}/check`).then((res) => res.data)
-      if (result.deleted) {
-        setDeletedNotice(r.name ?? r.matrixId)
-        queryClient.invalidateQueries({ queryKey: ['sync-registry'] })
-        closeEntry()
-      }
-    } catch {
-      // ignore
-    } finally {
-      setChecking((prev) => { const s = new Set(prev); s.delete(r.id); return s })
-    }
-  }
+  const deleteMatrix = useMutation({
+    mutationFn: (id: string) => api.delete(`/internal-matrix/${id}`).then((r) => r.data),
+    onSuccess: (_data, id) => {
+      const entry = registry.find((r) => r.id === id)
+      setDeletedNotice(entry?.projectName ?? entry?.name ?? entry?.matrixId ?? id)
+      queryClient.invalidateQueries({ queryKey: ['sync-registry'] })
+    },
+  })
 
   function openEntry(r: RegistryEntry) {
     if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null }
@@ -3067,9 +3049,7 @@ function RegistryTable({
         onClose={closeEntry}
         onShiftsLoaded={handleShiftsLoaded}
         onEdit={selectedEntry.source === 'internal' ? () => { setFormMatrix(selectedEntry); closeEntry() } : undefined}
-        onDelete={undefined}
-        onCheck={selectedEntry.source === 'internal' ? () => checkMatrix(selectedEntry) : undefined}
-        checking={checking.has(selectedEntry.id)}
+        onDelete={selectedEntry.source === 'internal' ? () => { deleteMatrix.mutate(selectedEntry.id); closeEntry() } : undefined}
       />
     )}
     {selectedMatrix && (
