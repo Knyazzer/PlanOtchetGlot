@@ -458,19 +458,25 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
     staleTime: 30_000,
   })
 
-  const handleCreated = (id: string) => {
+  const invalidateMicroProjects = () => {
     qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    qc.invalidateQueries({ queryKey: ['micro-projects-info', matrixRegistryId] })
+    qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
+  }
+
+  const handleCreated = (id: string) => {
+    invalidateMicroProjects()
     setCreating(false)
     setActiveTab(id)
   }
 
   const handleDeleted = (id: string) => {
-    qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    invalidateMicroProjects()
     if (activeTab === id) setActiveTab('summary')
   }
 
   const handleCopied = (newId: string) => {
-    qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    invalidateMicroProjects()
     setActiveTab(newId)
   }
 
@@ -781,7 +787,12 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
   const updateProject = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       api.patch(`/status-rows/${project.id}`, data).then((r) => r.data),
-    onSuccess: onUpdated,
+    onSuccess: (updated) => {
+      qc.setQueryData(['micro-projects', project.matrixRegistryId!], (old: MicroProject[] | undefined) =>
+        old?.map((p) => (p.id === project.id ? { ...p, ...updated } : p))
+      )
+      onUpdated()
+    },
   })
 
   const saveField = (key: string, value: unknown) => {
@@ -1471,7 +1482,10 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
 
   const removeMember = useMutation({
     mutationFn: (id: string) => api.delete(`/project-members/${id}`).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', project.id] }),
+    onSuccess: (_, deletedId) =>
+      qc.setQueryData(['project-members', project.id], (old: ProjectMember[] | undefined) =>
+        old?.filter((m) => m.id !== deletedId)
+      ),
   })
 
   const toggleFieldApproval = (member: ProjectMember, field: string) => {
@@ -2351,7 +2365,7 @@ function KanbanBoard({ projectId, members }: { projectId: string; members: Proje
           members={nonFreelanceMembers}
           onSave={(patch) => patchTask.mutate({ id: editTask.id, ...patch })}
           onDelete={() => deleteTask.mutate(editTask.id)}
-          onClose={() => { setEditTask(null); invalidate() }}
+          onClose={() => setEditTask(null)}
         />
       )}
     </div>

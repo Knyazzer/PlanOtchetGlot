@@ -30,16 +30,20 @@ describe('PATCH /status-rows/:id', () => {
     const row = await createTestStatusRow({ name: 'PATCH Test Project', status: 'request' })
     rowId = row.id
 
-    // Create a MatrixRegistry entry for the matrixRegistryId linkage test
-    const matrix = await prisma.matrixRegistry.create({
-      data: { matrixId: `patch-test-matrix-${Date.now()}`, lastSyncedAt: new Date() },
-    })
-    matrixId = matrix.id
+    // Use raw SQL to avoid Prisma schema drift on the `unit` column (JSONB default [] ≠ String)
+    const testMatrixId = `patch-test-matrix-${Date.now()}`
+    const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+      `INSERT INTO matrix_registry (id, matrix_id, last_synced_at, updated_at) VALUES (gen_random_uuid(), $1, NOW(), NOW()) RETURNING id::text`,
+      testMatrixId,
+    )
+    matrixId = rows[0].id
   })
 
   afterAll(async () => {
     await prisma.changeLog.deleteMany({ where: { entityId: rowId } }).catch(() => {})
-    await prisma.matrixRegistry.delete({ where: { id: matrixId } }).catch(() => {})
+    if (matrixId) {
+      await prisma.$executeRawUnsafe(`DELETE FROM matrix_registry WHERE id = $1::uuid`, matrixId).catch(() => {})
+    }
     await cleanupTestStatusRow(rowId)
     await cleanupTestUser(adminId)
     await app.close()

@@ -32,7 +32,7 @@
 | @fastify/rate-limit | latest | Rate limiting (только `POST /auth/login`, `global: false`) |
 | bcryptjs | latest | Хэширование паролей |
 | googleapis | latest | Google Sheets API v4 + Google Drive API v3 |
-| node-cron | latest | Планировщик синхронизации (каждые 30 мин) |
+| node-cron | latest | Установлен, но auto-cron **не активирован** — синхронизация только ручная (`POST /sync/trigger`) |
 | zod | latest | Валидация входящих данных |
 
 ### База данных

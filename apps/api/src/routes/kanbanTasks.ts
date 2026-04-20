@@ -88,7 +88,9 @@ export async function kanbanTasksRoutes(app: FastifyInstance) {
     vals.push(id)
 
     const rows = await prisma.$queryRawUnsafe<KanbanTask[]>(
-      `UPDATE kanban_tasks SET ${sets.join(', ')} WHERE id = $${i}::uuid RETURNING *`,
+      `UPDATE kanban_tasks SET ${sets.join(', ')} WHERE id = $${i}::uuid
+       RETURNING kanban_tasks.*,
+         (SELECT name FROM project_members WHERE id = kanban_tasks.assignee_id) AS assignee_name`,
       ...vals
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Задача не найдена' })

@@ -2294,7 +2294,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
   })
 
   const { data: ganttTasks } = useQuery<GanttTaskInfo[]>({
-    queryKey: ['matrix-gantt', entry.id],
+    queryKey: ['gantt-tasks', entry.id],
     queryFn: () => api.get(`/matrix-gantt?matrixId=${entry.id}`).then((r) => r.data),
     staleTime: 30_000,
   })

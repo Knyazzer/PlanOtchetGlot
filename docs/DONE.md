@@ -380,3 +380,71 @@
 - [x] `apps/api/src/routes/statusRows.snapshot.test.ts` — 3 теста + 2 снэпшота `GET /status-rows`: snapshot ключей и типов всех 27+ полей полного ответа; `slim=true` — отсутствие join-полей; `withSeparators=true` — параметр принимается без ошибки
 
 **Итого: 172 теста, 0 провалов** (14 тестовых файлов)
+
+---
+
+## Этап 14 — Отделы, Канбан и UI-доработки (сборки 86–106)
+
+### Отделы (Канбан для творческих отделов)
+
+- [x] **`KanbanBoard` компонент** — встроен в `InternalShiftsPanel.tsx` под кнопкой «Планировщик» для форматов `CREATIVE_FORMATS` (Моушн, Постпродакшн, Дизайн, Саунд-дизайн, Не профильный); три колонки: Заявка / В работе / Сделано
+- [x] **Drag-and-drop задач** — pointer events (не HTML5 drag API); ghost-карточка при перетаскивании; смена колонки через `PATCH /kanban-tasks/:id`
+- [x] **`KanbanTaskModal`** — редактирование задачи: заголовок, исполнитель (из `ProjectMember`), даты начала / конца; сохранение через `PATCH`, удаление через `DELETE`; drag-and-drop без открытия модалки
+- [x] **API `kanbanTasks.ts`** — `GET`, `POST`, `PATCH`, `DELETE /kanban-tasks`; JOIN с `users` (creator_name) и `project_members` (assignee_name) в GET; raw SQL через `$queryRawUnsafe`
+- [x] **Таблица `kanban_tasks` в БД** — поля: `project_id`, `title`, `status`, `created_by`, `assignee_id`, `date_start`, `date_end`
+
+### RegistryDetailModal — вкладка Инфо
+
+- [x] **Финансовый виджет** — бюджет план/факт по специалистам + расходам с расчётом налога; «пончик» прогресса Ганта
+- [x] **Редактируемые поля** — KP-ссылка, формат, дата, продюсер, менеджер, куратор, бизнес-юнит (MultiSelect), бриф; сохранение через `PATCH /internal-matrix/:id`
+- [x] **Изменение статуса** — dropdown прямо в Info-вкладке; `PATCH /internal-matrix/:id`
+- [x] **Бриф** — textarea с авто-сохранением; синхронизируется при переходе между матрицами
+
+### `RegistryDetailModal` — прочие улучшения
+
+- [x] **`MultiSelect` компонент** — выпадающий список с множественным выбором; закрытие по клику вне; `position: fixed` для dropdown чтобы не обрезался родителем
+- [x] **Название проекта в заголовке модалки** — `localEntry.projectName` / `name` / `matrixId`; local state `localEntry` — живые обновления статуса без рефетча всего реестра
+- [x] **Синхронизация `briefText`** — `useEffect` по `[entry.id, entry.brief]`, чтобы бриф менялся при открытии другой матрицы
+- [x] **Кнопка «Удалить»** вместо «Проверить» в шапке карточки проекта
+
+### ProfilePage
+
+- [x] **`ProfilePage.tsx`** — профиль пользователя, месячная сводка, список смен с кнопкой «Подтвердить» для admin; выбор месяца через UI
+
+### ShiftPlanner (завершён)
+
+- [x] **Временные пресеты для ТВ/Телерадио** — при первом открытии вкладки без данных автоматически заполняет `group_schedule`
+- [x] **Таймлайн-компонент** — CSS grid 4-cell, синхронизация скролла через JS listener
+- [x] **Рендер блоков из `group_schedule`** — динамический диапазон, шаг 30 мин, greedy stacking
+- [x] **Person-first строки** — секции по бригадам, коннектор-линия
+- [x] **Drag-and-drop блоков** — перемещение + resize краёв; прямой DOM, `render()` на pointerup
+- [x] **Попап даты блока** — клик → ◄ дата ► + Закрыть; шаг ±1440 мин
+- [x] **Резайз диапазона участника** — ручки на краях бара, зажаты диапазоном блока, шаг 30 мин
+- [x] **Зум** — кнопки +/− (×1.3), 18%–600%; Ctrl+колесо с привязкой к курсору
+- [x] **Сохранение изменений** — `PATCH /status-rows/:id/group-schedule` для дат/времён блоков
+- [x] **«Свод матрица» (placeholder)** — вкладка добавлена в `RegistryDetailModal`, заглушка «Появится после подключения базы цен сотрудников»
+
+---
+
+## Сессия 2026-04-20 — Исправление кэш-багов и тестов
+
+### Исправленные баги TanStack Query (кэш-инвалидация)
+
+- [x] **KanbanBoard race condition** — убран `invalidate()` из `onClose` в `KanbanTaskModal` (`InternalShiftsPanel.tsx:2354`); `patchTask.onSuccess` с `setQueryData` достаточен; устранён сценарий «нужно нажать сохранить дважды»
+- [x] **Открытая карточка отдела показывала устаревшие данные** — `updateProject.onSuccess` теперь вызывает `setQueryData(['micro-projects', matrixRegistryId!])` сразу, без ожидания рефетча (`InternalShiftsPanel.tsx:781`)
+- [x] **Счётчик задач Ганта в вкладке Инфо не обновлялся** — исправлен ключ запроса с `'matrix-gantt'` на `'gantt-tasks'` в `SyncDataPage.tsx:2297`; теперь совпадает с ключом инвалидации в `MatrixTabs.tsx:66`
+- [x] **Новые отделы не появлялись в таблице проектов** — `handleCreated/Deleted/Copied` вынесены в `invalidateMicroProjects()`, добавлена инвалидация `['status-rows-sync']` и `['micro-projects-info', matrixRegistryId]` (`InternalShiftsPanel.tsx:461`)
+- [x] **Вкладка Инфо: финансовые данные не обновлялись** — `['micro-projects-info']` теперь инвалидируется из `handleCreated`, `handleDeleted`, `handleCopied`
+- [x] **PATCH `/kanban-tasks` не возвращал `assignee_name`** — добавлен подзапрос к `project_members` в RETURNING (`kanbanTasks.ts:90`)
+
+### Технический долг
+
+- [x] **`removeMember` лишний сетевой запрос** — заменён `invalidateQueries` на `setQueryData(...filter)` (`InternalShiftsPanel.tsx:1483`)
+
+### Тестовая инфраструктура
+
+- [x] **`statusRows.patch.test.ts` утечка в БД** — `prisma.matrixRegistry.create` падал из-за schema drift (`unit: TEXT[]` vs `String`); исправлено на `$queryRawUnsafe` INSERT с `gen_random_uuid()` и явным `updated_at`; `afterAll` защищён `if (matrixId)`
+- [x] **`internalMatrix.test.ts` 4 провала** — тесты проверяли устаревшее поведение (Drive-интеграция в POST, строка вместо массива для `unit`, проверка года '2025'); приведены в соответствие с текущей реализацией (POST не вызывает Drive, Drive-синхронизация вынесена в `/sync-to-drive`)
+- [x] **Мусор `patch-test-matrix-*` в dev-БД** — удалены вручную; корень устранён исправлением теста
+
+**Счёт тестов после сессии: 163 теста, 0 провалов**
