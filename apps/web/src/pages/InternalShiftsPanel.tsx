@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
 import { ShiftPlanner } from './ShiftPlanner'
+import { useCurrentUser } from '../hooks/useAuth'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -189,14 +190,14 @@ function RateCell({ memberId, field, value, onSave }: { memberId: string; field:
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  request: 'Запрос', negotiation: 'На согл.', preproduction: 'Препрод.',
+  request: 'Запрос', preproduction: 'Препрод.',
   production: 'Продакшн', postproduction: 'Постпрод.', delivered: 'Сдан',
-  rejected: 'Не согл.', cancelled: 'Отменён', manual: 'Ручной',
+  rejected: 'Не согл.', cancelled: 'Отменён',
 }
 const STATUS_COLORS: Record<string, string> = {
-  request: '#f59e0b', negotiation: '#3b82f6', preproduction: '#8b5cf6',
+  request: '#f59e0b', preproduction: '#8b5cf6',
   production: '#10b981', postproduction: '#06b6d4', delivered: '#16a34a',
-  rejected: '#ef4444', cancelled: '#6b7280', manual: '#64748b',
+  rejected: '#ef4444', cancelled: '#6b7280',
 }
 
 const LOCATION_OPTIONS = [
@@ -207,8 +208,11 @@ const LOCATION_OPTIONS = [
   'Выезд',
 ]
 
-const SHIFT_FORMATS = ['Трансляция', 'Моушн', 'Съемки', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн']
-const FORMATS_WITH_LOCATION = ['Трансляция', 'Съемки']
+const SHIFT_FORMATS = ['Трансляция', 'Телерадио', 'Съемки', 'Радио', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн']
+const FORMATS_WITH_LOCATION = ['Трансляция', 'Телерадио', 'Съемки']
+const DEPARTMENTS = ['ТВ', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Радио', 'Не профильный']
+const CREATIVE_FORMATS = ['Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Не профильный']
+const TV_FORMATS = ['Трансляция', 'Телерадио', 'Съемки']
 
 // Which schedule fields each group uses
 const GROUP_FIELDS: Record<string, ('date' | 'time' | 'timeFrom' | 'timeTo' | 'startTime')[]> = {
@@ -282,7 +286,7 @@ function DeleteConfirmModal({ name, onConfirm, onCancel }: { name: string; onCon
     <>
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000 }} onClick={onCancel} />
       <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 1001, background: '#fff', borderRadius: 12, padding: '24px 28px', minWidth: 320, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>Удалить смену?</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>Удалить отдел?</div>
         <div style={{ fontSize: 13, color: '#64748b', marginBottom: 22 }}>«{name}» будет удалена без возможности восстановления.</div>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button onClick={onCancel}
@@ -486,23 +490,27 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
       {/* Sub-tabs strip */}
       <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', overflowX: 'auto', flexShrink: 0 }}>
         <button style={tabBtn(activeTab === 'summary')} onClick={() => { setActiveTab('summary'); setCreating(false) }}>
-          Свод смен
+          Свод отделов
         </button>
 
-        {projects.map((p) => (
-          <button
-            key={p.id}
-            style={{ ...tabBtn(activeTab === p.id), maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
-            title={p.name}
-            onClick={() => { setActiveTab(p.id); setCreating(false) }}
-          >
-            {p.name || '(без названия)'}
-          </button>
-        ))}
+        {projects.map((p) => {
+          const fmt = p.format ?? ''
+          const label = TV_FORMATS.includes(fmt) ? `ТВ:${fmt}` : (fmt || p.name || '(без названия)')
+          return (
+            <button
+              key={p.id}
+              style={{ ...tabBtn(activeTab === p.id), maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+              title={label}
+              onClick={() => { setActiveTab(p.id); setCreating(false) }}
+            >
+              {label}
+            </button>
+          )
+        })}
 
         <button
           style={{ padding: '4px 14px', fontSize: 18, border: 'none', cursor: 'pointer', background: 'none', color: '#94a3b8', borderBottom: '2px solid transparent', flexShrink: 0 }}
-          title="Добавить смену"
+          title="Добавить отдел"
           onClick={() => { setCreating(true); setActiveTab('new') }}
         >+</button>
       </div>
@@ -539,7 +547,7 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
 
         {!isLoading && projects.length === 0 && !creating && activeTab === 'summary' && (
           <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
-            Нет смен. Нажмите «+», чтобы добавить.
+            Нет отделов. Нажмите «+», чтобы добавить.
           </div>
         )}
       </div>
@@ -615,7 +623,7 @@ function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId: st
       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
-            <th style={{ ...thS, minWidth: 170 }}>Смена</th>
+            <th style={{ ...thS, minWidth: 170 }}>Отдел</th>
             <th style={{ ...thS, minWidth: 160 }}>ФИО</th>
             <th style={{ ...thS, minWidth: 80 }}>Формат</th>
             <th style={{ ...thS, minWidth: 130 }}>Должность</th>
@@ -1383,6 +1391,7 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   // ── Groups ──────────────────────────────────────────────────────────────────
   const fmt = project.format ?? ''
   const loc = project.location ?? ''
+  const isCreative = CREATIVE_FORMATS.includes(fmt)
   const hasLocationPreset = FORMATS_WITH_LOCATION.includes(fmt)
   const isViezd = hasLocationPreset && loc.startsWith('Выезд')
   const isStudio = hasLocationPreset && !isViezd && loc !== ''
@@ -1559,14 +1568,17 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
 
       {!loading && microTab === 'planner' && (
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <ShiftPlanner
-            projectId={project.id}
-            projectDate={project.date}
-            projectFormat={project.format}
-            groups={groups}
-            groupSchedule={groupSchedule}
-            onGroupScheduleUpdate={onGroupScheduleUpdate}
-          />
+          {isCreative
+            ? <KanbanBoard projectId={project.id} members={members} />
+            : <ShiftPlanner
+                projectId={project.id}
+                projectDate={project.date}
+                projectFormat={project.format}
+                groups={groups}
+                groupSchedule={groupSchedule}
+                onGroupScheduleUpdate={onGroupScheduleUpdate}
+              />
+          }
         </div>
       )}
 
@@ -1594,7 +1606,7 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
                   )
                 })}
                 <th style={{ width: 30, borderBottom: '2px solid #e2e8f0' }} />
-                <th style={{ borderBottom: '2px solid #e2e8f0', borderLeft: '2px solid #e2e8f0', minWidth: 160, padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Дата / Время</th>
+                {!isCreative && <th style={{ borderBottom: '2px solid #e2e8f0', borderLeft: '2px solid #e2e8f0', minWidth: 160, padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Дата / Время</th>}
               </tr>
             </thead>
 
@@ -1615,7 +1627,7 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
                       : 'Начало эфира'
                     // rowSpan covers: (hasGroups ? 1 header row : 0) + members + 1 add row
                     const dateRowSpan = (hasGroups ? 1 : 0) + group.members.length + 1
-                    const dateCell = (
+                    const dateCell = isCreative ? null : (
                       <td rowSpan={dateRowSpan}
                         style={{ borderLeft: '2px solid #e2e8f0', borderBottom: '1px solid #eef0f4', padding: 0, verticalAlign: 'top', minWidth: 160 }}>
                         <GroupDateBlock groupId={group.id} color={group.color} sched={sched} onSave={saveSched} startTimeLabel={startTimeLabel} />
@@ -2150,6 +2162,280 @@ function ExpensesTab({ projectId }: { projectId: string }) {
   )
 }
 
+// ─── KanbanBoard ─────────────────────────────────────────────────────────────
+
+interface KanbanTask {
+  id: string
+  project_id: string
+  title: string
+  status: string
+  created_by: string | null
+  assignee_id: string | null
+  date_start: string | null
+  date_end: string | null
+  creator_name: string | null
+  assignee_name: string | null
+}
+
+const KANBAN_COLS: { id: string; label: string; color: string }[] = [
+  { id: 'request',     label: 'Заявка',   color: '#f59e0b' },
+  { id: 'in_progress', label: 'В работе', color: '#3b82f6' },
+  { id: 'done',        label: 'Сделано',  color: '#10b981' },
+]
+
+function KanbanBoard({ projectId, members }: { projectId: string; members: ProjectMember[] }) {
+  const qc = useQueryClient()
+  const currentUser = useCurrentUser()
+
+  const { data: tasks = [] } = useQuery<KanbanTask[]>({
+    queryKey: ['kanban-tasks', projectId],
+    queryFn: () => api.get(`/kanban-tasks?projectId=${projectId}`).then((r) => r.data),
+    staleTime: 15_000,
+  })
+
+  const [editTask, setEditTask] = useState<KanbanTask | null>(null)
+  const [dragTask, setDragTask] = useState<KanbanTask | null>(null)
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 })
+  const [dragOverCol, setDragOverCol] = useState<string | null>(null)
+  const colRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+  useEffect(() => {
+    if (!dragTask) return
+    const onMove = (e: PointerEvent) => {
+      setDragPos({ x: e.clientX, y: e.clientY })
+      let found: string | null = null
+      for (const [colId, el] of Object.entries(colRefs.current)) {
+        if (!el) continue
+        const r = el.getBoundingClientRect()
+        if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+          found = colId; break
+        }
+      }
+      setDragOverCol(found)
+    }
+    const onUp = () => {
+      if (dragTask && dragOverCol && dragOverCol !== dragTask.status) {
+        patchTask.mutate({ id: dragTask.id, status: dragOverCol })
+      }
+      setDragTask(null)
+      setDragOverCol(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    return () => { window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp) }
+  }, [dragTask, dragOverCol])
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['kanban-tasks', projectId] })
+
+  const createTask = useMutation({
+    mutationFn: (status: string) => api.post('/kanban-tasks', { projectId, status }).then((r) => r.data),
+    onSuccess: (created: KanbanTask) => {
+      qc.setQueryData(['kanban-tasks', projectId], (old: KanbanTask[] | undefined) => [...(old ?? []), created])
+      setEditTask(created)
+    },
+  })
+
+  const patchTask = useMutation({
+    mutationFn: (data: { id: string } & Partial<KanbanTask>) => {
+      const { id, ...rest } = data
+      return api.patch(`/kanban-tasks/${id}`, rest).then((r) => r.data)
+    },
+    onSuccess: (updated: KanbanTask) => {
+      qc.setQueryData(['kanban-tasks', projectId], (old: KanbanTask[] | undefined) =>
+        (old ?? []).map((t) => t.id !== updated.id ? t : {
+          ...t,
+          ...updated,
+          creator_name:  updated.creator_name  ?? t.creator_name,
+          assignee_name: updated.assignee_name ?? t.assignee_name,
+        }))
+    },
+  })
+
+  const deleteTask = useMutation({
+    mutationFn: (id: string) => api.delete(`/kanban-tasks/${id}`).then((r) => r.data),
+    onSuccess: (_: unknown, id: string) => {
+      qc.setQueryData(['kanban-tasks', projectId], (old: KanbanTask[] | undefined) =>
+        (old ?? []).filter((t) => t.id !== id))
+      setEditTask(null)
+    },
+  })
+
+  const nonFreelanceMembers = members.filter((m) => !m.is_freelancer)
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Columns */}
+      <div style={{ flex: 1, display: 'flex', gap: 12, padding: 16, overflow: 'auto' }}>
+        {KANBAN_COLS.map((col) => {
+          const colTasks = tasks.filter((t) => t.status === col.id)
+          const isOver = dragTask !== null && dragOverCol === col.id && dragTask.status !== col.id
+          return (
+            <div
+              key={col.id}
+              ref={(el) => { colRefs.current[col.id] = el }}
+              style={{
+                flex: '1 1 0', minWidth: 220, display: 'flex', flexDirection: 'column',
+                background: isOver ? col.color + '18' : '#f8fafc',
+                border: `1.5px solid ${isOver ? col.color : '#e2e8f0'}`,
+                borderRadius: 10, transition: 'border-color 0.15s, background 0.15s',
+              }}
+            >
+              {/* Column header */}
+              <div style={{ padding: '10px 12px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: col.color, display: 'inline-block' }} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{col.label}</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{colTasks.length}</span>
+                </div>
+                <button
+                  onClick={() => createTask.mutate(col.id)}
+                  disabled={createTask.isPending}
+                  style={{ width: 22, height: 22, borderRadius: 5, border: 'none', background: col.color + '22', color: col.color, fontSize: 16, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}
+                  title="Добавить задачу"
+                >+</button>
+              </div>
+
+              {/* Cards */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 4px' }}>
+                {colTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    onPointerDown={(e) => { e.preventDefault(); setDragTask(task); setDragPos({ x: e.clientX, y: e.clientY }) }}
+                    onClick={() => setEditTask(task)}
+                    style={{
+                      background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+                      padding: '10px 12px', marginBottom: 8, cursor: 'grab',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                      opacity: dragTask?.id === task.id ? 0.4 : 1,
+                      userSelect: 'none',
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginBottom: 8, lineHeight: 1.3 }}>{task.title}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
+                        <span style={{ color: '#94a3b8', flexShrink: 0, minWidth: 60 }}>Исполнитель</span>
+                        <span style={{ color: '#1e293b', fontWeight: 500 }}>{task.assignee_name || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
+                        <span style={{ color: '#94a3b8', flexShrink: 0, minWidth: 60 }}>Создал</span>
+                        <span style={{ color: '#475569' }}>{task.creator_name || '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
+                        <span style={{ color: '#94a3b8', flexShrink: 0, minWidth: 60 }}>Начало</span>
+                        <span style={{ color: '#475569' }}>{task.date_start ? task.date_start.slice(0, 10) : '—'}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, fontSize: 11 }}>
+                        <span style={{ color: '#94a3b8', flexShrink: 0, minWidth: 60 }}>Конец</span>
+                        <span style={{ color: '#475569' }}>{task.date_end ? task.date_end.slice(0, 10) : '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Drag ghost */}
+      {dragTask && (
+        <div style={{ position: 'fixed', left: dragPos.x + 12, top: dragPos.y - 20, zIndex: 9999, pointerEvents: 'none', background: '#fff', border: '1.5px solid #2563eb', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 600, color: '#1e293b', boxShadow: '0 4px 16px rgba(0,0,0,0.15)', maxWidth: 200 }}>
+          {dragTask.title}
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editTask && (
+        <KanbanTaskModal
+          task={editTask}
+          members={nonFreelanceMembers}
+          onSave={(patch) => patchTask.mutate({ id: editTask.id, ...patch })}
+          onDelete={() => deleteTask.mutate(editTask.id)}
+          onClose={() => { setEditTask(null); invalidate() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function KanbanTaskModal({ task, members, onSave, onDelete, onClose }: {
+  task: KanbanTask
+  members: ProjectMember[]
+  onSave: (patch: Partial<KanbanTask>) => void
+  onDelete: () => void
+  onClose: () => void
+}) {
+  const [title, setTitle] = useState(task.title)
+  const [assigneeId, setAssigneeId] = useState(task.assignee_id ?? '')
+  const [dateStart, setDateStart] = useState(task.date_start ? task.date_start.slice(0, 10) : '')
+  const [dateEnd, setDateEnd] = useState(task.date_end ? task.date_end.slice(0, 10) : '')
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  const save = () => {
+    onSave({
+      title: title.trim() || 'Новая задача',
+      assigneeId: (assigneeId || null) as any,
+      dateStart: (dateStart || null) as any,
+      dateEnd: (dateEnd || null) as any,
+    })
+    onClose()
+  }
+
+  const inp: React.CSSProperties = { width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '7px 10px', fontSize: 13, color: '#1e293b', outline: 'none', boxSizing: 'border-box', background: '#f8fafc', fontFamily: 'inherit' }
+  const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4, display: 'block' }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(15,23,42,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onMouseDown={onClose}>
+      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        onMouseDown={(e) => e.stopPropagation()}>
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Задача</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, color: '#94a3b8', cursor: 'pointer', lineHeight: 1 }}>×</button>
+        </div>
+        <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div>
+            <span style={lbl}>Название</span>
+            <input style={inp} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+          </div>
+          <div>
+            <span style={lbl}>Исполнитель</span>
+            <select style={inp} value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+              <option value="">— не назначен —</option>
+              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <span style={lbl}>Начало</span>
+              <input type="date" style={inp} value={dateStart} onChange={(e) => setDateStart(e.target.value)} />
+            </div>
+            <div>
+              <span style={lbl}>Конец</span>
+              <input type="date" style={inp} value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} />
+            </div>
+          </div>
+          {task.creator_name && (
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>Создал: {task.creator_name}</div>
+          )}
+        </div>
+        <div style={{ padding: '12px 18px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
+          <button onClick={onDelete} style={{ fontSize: 12, padding: '6px 14px', borderRadius: 6, border: '1px solid #fecaca', background: 'none', color: '#ef4444', cursor: 'pointer' }}>Удалить</button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={{ fontSize: 12, padding: '6px 14px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>Отмена</button>
+            <button onClick={save} style={{ fontSize: 12, padding: '6px 14px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500 }}>Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── CreateMicroProjectForm ───────────────────────────────────────────────────
 
 function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
@@ -2157,19 +2443,24 @@ function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
   onCreated: (id: string) => void
   onCancel: () => void
 }) {
-  const [format_, setFormat] = useState('')
+  const [dept, setDept] = useState('')          // выбранный отдел (ТВ / Моушн / ...)
+  const [tvFormat, setTvFormat] = useState('')  // формат внутри ТВ
   const [location, setLocation] = useState('')
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
 
-  const showLocation = FORMATS_WITH_LOCATION.includes(format_)
+  const isTv = dept === 'ТВ'
+  // итоговый формат сохраняемый в БД
+  const resolvedFormat = isTv ? tvFormat : dept
+  const showLocation = FORMATS_WITH_LOCATION.includes(resolvedFormat)
+  const canCreate = dept.trim() !== '' && (!isTv || tvFormat.trim() !== '') && (!showLocation || location.trim() !== '')
 
   const create = useMutation({
     mutationFn: () => api.post('/status-rows', {
-      name: format_ || 'Без названия',
+      name: resolvedFormat || dept || 'Без названия',
       notes: notes.trim() || null,
       date: date ? new Date(date).toISOString() : null,
-      format: format_ || null,
+      format: resolvedFormat || null,
       location: showLocation ? (location || null) : null,
       matrixRegistryId,
       status: 'request',
@@ -2178,26 +2469,36 @@ function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
   })
 
   const inputS: React.CSSProperties = { fontSize: 13, padding: '7px 10px', border: '1px solid #e2e8f0', borderRadius: 6, color: '#1e293b', background: '#fff', width: '100%', boxSizing: 'border-box' }
-  const label: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4, display: 'block' }
+  const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4, display: 'block' }
 
   return (
     <div style={{ padding: 20, maxWidth: 480 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>Новая смена</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>Новый отдел</div>
         <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}>Запрос</span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Отдел */}
         <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: showLocation ? 1 : 2 }}>
-            <span style={label}>Формат</span>
-            <select value={format_} onChange={(e) => { setFormat(e.target.value); setLocation('') }} style={inputS} autoFocus>
+          <div style={{ flex: 1 }}>
+            <span style={lbl}>Отдел</span>
+            <select value={dept} onChange={(e) => { setDept(e.target.value); setTvFormat(''); setLocation('') }} style={inputS} autoFocus>
               <option value="">— не выбрано —</option>
-              {SHIFT_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+              {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
+          {isTv && (
+            <div style={{ flex: 1 }}>
+              <span style={lbl}>Формат</span>
+              <select value={tvFormat} onChange={(e) => { setTvFormat(e.target.value); setLocation('') }} style={inputS}>
+                <option value="">— не выбрано —</option>
+                {TV_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+          )}
           {showLocation && (
             <div style={{ flex: 1 }}>
-              <span style={label}>Локация</span>
+              <span style={lbl}>Локация</span>
               <select value={location} onChange={(e) => setLocation(e.target.value)} style={inputS}>
                 <option value="">— не выбрано —</option>
                 {LOCATION_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
@@ -2205,12 +2506,12 @@ function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
             </div>
           )}
         </div>
-        <div><span style={label}>Дата</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputS} /></div>
-        <div><span style={label}>Описание</span><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Краткое описание смены" style={inputS} /></div>
+        <div><span style={lbl}>Дата</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputS} /></div>
+        <div><span style={lbl}>Описание</span><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Краткое описание" style={inputS} /></div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-        <button onClick={() => { if (format_.trim()) create.mutate() }} disabled={!format_.trim() || create.isPending}
-          style={{ fontSize: 13, padding: '7px 18px', borderRadius: 7, border: 'none', background: !format_.trim() ? '#93c5fd' : '#2563eb', color: '#fff', cursor: format_.trim() ? 'pointer' : 'default', fontWeight: 500 }}>
+        <button onClick={() => { if (canCreate) create.mutate() }} disabled={!canCreate || create.isPending}
+          style={{ fontSize: 13, padding: '7px 18px', borderRadius: 7, border: 'none', background: !canCreate ? '#93c5fd' : '#2563eb', color: '#fff', cursor: canCreate ? 'pointer' : 'default', fontWeight: 500 }}>
           {create.isPending ? 'Создание...' : 'Создать'}
         </button>
         <button onClick={onCancel} style={{ fontSize: 13, padding: '7px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>Отмена</button>

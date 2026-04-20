@@ -352,7 +352,12 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       await unlinkAndShiftBlocks(id, mId, bSlot)
     }
 
-    await prisma.statusRow.delete({ where: { id } })
+    try {
+      await prisma.statusRow.delete({ where: { id } })
+    } catch (e: any) {
+      if (e?.code === 'P2025') return { ok: true } // already deleted — treat as success
+      throw e
+    }
     return { ok: true }
   })
 

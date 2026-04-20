@@ -107,6 +107,7 @@ interface Project {
   status: string
   client: string | null
   name: string
+  notes: string | null
   execProducer: string | null
   lineProducer: string | null
   accountManager: string | null
@@ -230,7 +231,7 @@ interface ColDef {
 const PROJ_COLS: ColDef[] = [
   { key: 'status',         label: 'A Статус',       filterable: true },
   { key: 'client',         label: 'B Клиент',       filterable: true },
-  { key: 'name',           label: 'C Название' },
+  { key: 'notes',          label: 'C Описание' },
   { key: 'execProducer',   label: 'D Исп.прод.',   filterable: true },
   { key: 'lineProducer',   label: 'E Лайн-прод.',  filterable: true },
   { key: 'accountManager', label: 'F Аккаунт',     filterable: true },
@@ -924,12 +925,11 @@ function SourceBadge({ source }: { source: string }) {
 
 const STATUS_OPTIONS = [
   { value: 'request',        label: 'Запрос' },
-  { value: 'negotiation',    label: 'На согласовании' },
-  { value: 'preproduction',  label: 'Препродакшн' },
+  { value: 'preproduction',  label: 'Препрод.' },
   { value: 'production',     label: 'Продакшн' },
-  { value: 'postproduction', label: 'Постпродакшн' },
+  { value: 'postproduction', label: 'Постпрод.' },
   { value: 'delivered',      label: 'Сдан' },
-  { value: 'rejected',       label: 'Не согласован' },
+  { value: 'rejected',       label: 'Не согл.' },
   { value: 'cancelled',      label: 'Отменён' },
 ]
 
@@ -956,6 +956,13 @@ function ProjectFormModal({
     location:         project?.location         ?? '',
     postProduction:   project?.postProduction   ?? '',
   })
+  const TV_FORMATS_LIST = ['Трансляция', 'Телерадио', 'Съемки']
+  const DEPT_LIST = ['ТВ', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Радио', 'Не профильный']
+  const initDept    = TV_FORMATS_LIST.includes(project?.format ?? '') ? 'ТВ' : (project?.format ?? '')
+  const initTvFmt   = TV_FORMATS_LIST.includes(project?.format ?? '') ? (project?.format ?? '') : ''
+  const [dept,    setDept]    = useState(initDept)
+  const [tvFormat, setTvFormat] = useState(initTvFmt)
+
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
 
@@ -1004,8 +1011,8 @@ function ProjectFormModal({
 
   const save = useMutation({
     mutationFn: () => {
-      const fmt = form.format.trim()
-      const hasLocation = ['Трансляция', 'Съемки'].includes(fmt)
+      const fmt = (dept === 'ТВ' ? tvFormat : dept).trim()
+      const hasLocation = ['Трансляция', 'Телерадио', 'Съемки'].includes(fmt)
       const body: Record<string, unknown> = {
         name:             isEdit ? (project!.name || fmt || 'Без названия') : (fmt || 'Без названия'),
         notes:            form.notes.trim()           || null,
@@ -1079,7 +1086,7 @@ function ProjectFormModal({
       >
         {/* Header */}
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать смену' : 'Новая смена'}</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b' }}>{isEdit ? 'Редактировать отдел' : 'Новый отдел'}</div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 4px' }}>×</button>
         </div>
 
@@ -1119,10 +1126,33 @@ function ProjectFormModal({
             </select>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {fsel('Формат', 'format', ['Трансляция', 'Моушн', 'Съемки', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн'])}
-            {['Трансляция', 'Съемки'].includes(form.format) && fsel('Локация', 'location', uniqueVals?.locations ?? [])}
+          <div style={{ display: 'grid', gridTemplateColumns: dept === 'ТВ' ? '1fr 1fr' : '1fr', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={ls}>Отдел</div>
+              <select style={fs} value={dept} onChange={(e) => { setDept(e.target.value); setTvFormat('') }}>
+                <option value="">— не выбрано —</option>
+                {DEPT_LIST.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            {dept === 'ТВ' && (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={ls}>Формат</div>
+                <select style={fs} value={tvFormat} onChange={(e) => setTvFormat(e.target.value)}>
+                  <option value="">— не выбрано —</option>
+                  {TV_FORMATS_LIST.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+            )}
           </div>
+          {TV_FORMATS_LIST.includes(dept === 'ТВ' ? tvFormat : dept) && (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={ls}>Локация</div>
+              <select style={fs} value={form.location} onChange={set('location')}>
+                <option value="">— не выбрано —</option>
+                {(uniqueVals?.locations ?? []).map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={ls}>Дата</div>
@@ -1148,7 +1178,14 @@ function ProjectFormModal({
         <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
           <button
-            onClick={() => { setFieldErrors({}); if (!form.format.trim()) { setError('Выберите формат'); return } save.mutate() }}
+            onClick={() => {
+  setFieldErrors({})
+  if (!dept.trim()) { setError('Выберите отдел'); return }
+  if (dept === 'ТВ' && !tvFormat.trim()) { setError('Выберите формат'); return }
+  const resolvedFmt = (dept === 'ТВ' ? tvFormat : dept).trim()
+  if (TV_FORMATS_LIST.includes(resolvedFmt) && !form.location.trim()) { setError('Укажите локацию'); return }
+  save.mutate()
+}}
             disabled={save.isPending}
             style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: 'none', background: save.isPending ? '#93c5fd' : '#2563eb', color: '#fff', cursor: save.isPending ? 'default' : 'pointer', fontWeight: 500 }}
           >
@@ -1186,13 +1223,7 @@ function ProjectsTable({
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(9999)
 
-  const deleteProject = useMutation({
-    mutationFn: (id: string) => api.delete(`/status-rows/${id}`).then((r) => r.data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
-      closeProject()
-    },
-  })
+
 
   function openProject(p: Project) {
     if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null }
@@ -1365,7 +1396,7 @@ function ProjectsTable({
         )
       }
       case 'client':         return p.client ?? '—'
-      case 'name':           return p.name
+      case 'notes':          return p.notes ?? '—'
       case 'execProducer':   return p.execProducer ?? '—'
       case 'lineProducer':   return p.lineProducer ?? '—'
       case 'accountManager': return p.accountManager ?? '—'
@@ -1421,7 +1452,7 @@ function ProjectsTable({
             onClick={() => setFormProject('new')}
             style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
           >
-            + Создать смену
+            + Добавить отдел
           </button>
         </div>
       </div>
@@ -1519,7 +1550,7 @@ function ProjectsTable({
                             background: effectiveBg,
                             color: effectiveFg,
                           }}
-                          title={col.key === 'name' ? p.name : undefined}
+                          title={col.key === 'notes' ? (p.notes ?? undefined) : undefined}
                         >
                           {renderProjCell(col, p, cc)}
                         </td>
@@ -1572,7 +1603,7 @@ function ProjectsTable({
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <MicroProjectTab
               project={selectedProject as any}
-              onDeleted={() => { deleteProject.mutate(selectedProject.id); closeProject() }}
+              onDeleted={() => { qc.invalidateQueries({ queryKey: ['status-rows-sync'] }); closeProject() }}
               onCopied={(newId) => { qc.invalidateQueries({ queryKey: ['status-rows-sync'] }); closeProject() }}
               onUpdated={() => qc.invalidateQueries({ queryKey: ['status-rows-sync'] })}
             />
@@ -2291,7 +2322,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
 
   const TABS: { key: 'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix'; label: string }[] = [
     { key: 'info',        label: 'Инфо' },
-    { key: 'shifts',      label: 'Смены' },
+    { key: 'shifts',      label: 'Отделы' },
     { key: 'gantt',       label: 'Ганта' },
     { key: 'notes',       label: 'Заметки' },
     { key: 'docs',        label: 'Документы' },

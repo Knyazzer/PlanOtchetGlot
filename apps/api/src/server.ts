@@ -23,6 +23,7 @@ import { matrixTemplatesRoutes } from './routes/matrixTemplates'
 import { internalMatrixRoutes } from './routes/internalMatrix'
 import { projectMembersRoutes } from './routes/projectMembers'
 import { matrixExtrasRoutes } from './routes/matrixExtras'
+import { kanbanTasksRoutes } from './routes/kanbanTasks'
 import { runFullSync } from './services/syncService'
 import { prisma } from '@tv-shifts/db'
 
@@ -88,6 +89,7 @@ async function main() {
   await app.register(internalMatrixRoutes, { prefix: '/internal-matrix' })
   await app.register(projectMembersRoutes, { prefix: '/project-members' })
   await app.register(matrixExtrasRoutes, { prefix: '/' })
+  await app.register(kanbanTasksRoutes, { prefix: '/kanban-tasks' })
 
   // Удалить все логи синхронизации при старте (старые данные неактуальны)
   await prisma.syncLog.deleteMany({})
