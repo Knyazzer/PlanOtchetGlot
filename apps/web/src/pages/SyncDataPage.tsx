@@ -945,18 +945,16 @@ function ProjectFormModal({
   const isEdit = !!project
 
   const [form, setForm] = useState({
-    name:             project?.name             ?? '',
+    notes:            (project as any)?.notes   ?? '',
     client:           project?.client           ?? '',
     matrixRegistryId: project?.matrixRegistryId ?? '',
     execProducer:     project?.execProducer     ?? '',
     lineProducer:     project?.lineProducer     ?? '',
     accountManager:   project?.accountManager   ?? '',
     date:             project?.date ? project.date.slice(0, 10) : '',
-    time:             project?.time             ?? '',
     format:           project?.format           ?? '',
     location:         project?.location         ?? '',
     postProduction:   project?.postProduction   ?? '',
-    status:           project?.status           ?? 'request',
   })
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({})
@@ -1006,19 +1004,21 @@ function ProjectFormModal({
 
   const save = useMutation({
     mutationFn: () => {
+      const fmt = form.format.trim()
+      const hasLocation = ['Трансляция', 'Съемки'].includes(fmt)
       const body: Record<string, unknown> = {
-        name:             form.name.trim(),
+        name:             isEdit ? (project!.name || fmt || 'Без названия') : (fmt || 'Без названия'),
+        notes:            form.notes.trim()           || null,
         client:           form.client.trim()          || null,
         matrixRegistryId: form.matrixRegistryId       || null,
         execProducer:     form.execProducer.trim()    || null,
         lineProducer:     form.lineProducer.trim()    || null,
         accountManager:   form.accountManager.trim()  || null,
         date:             form.date ? new Date(form.date).toISOString() : null,
-        time:             form.time.trim()            || null,
-        format:           form.format.trim()          || null,
-        location:         form.location.trim()        || null,
+        format:           fmt                         || null,
+        location:         hasLocation ? (form.location.trim() || null) : null,
         postProduction:   form.postProduction.trim()  || null,
-        status:           form.status                 || 'request',
+        status:           isEdit ? undefined           : 'request',
       }
       return isEdit
         ? api.patch(`/status-rows/${project!.id}`, body).then((r) => r.data)
@@ -1086,17 +1086,25 @@ function ProjectFormModal({
         {/* Body */}
         <div style={{ overflowY: 'auto', padding: '16px 20px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {fsel('Клиент', 'client', kfpdClients)}
+          {/* Status badge — fixed to "Запрос" at creation, editable after */}
+          {!isEdit && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }}>Статус</span>
+              <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}>
+                Запрос
+              </span>
+            </div>
+          )}
+          {isEdit && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={fieldErrors['status'] ? lsErr : ls}>
-                Статус{fieldErrors['status'] ? ` — ${fieldErrors['status'][0]}` : ''}
-              </div>
-              <select style={fieldErrors['status'] ? fsErr : fs} value={form.status} onChange={set('status')}>
+              <div style={fieldErrors['status'] ? lsErr : ls}>Статус{fieldErrors['status'] ? ` — ${fieldErrors['status'][0]}` : ''}</div>
+              <select style={fieldErrors['status'] ? fsErr : fs} value={(form as any).status ?? ''} onChange={set('status')}>
                 {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
-          </div>
+          )}
+
+          {fsel('Клиент', 'client', kfpdClients)}
 
           {/* Matrix dropdown — depends on selected client */}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1111,7 +1119,15 @@ function ProjectFormModal({
             </select>
           </div>
 
-          {fg('Название *', 'name', 'Название проекта')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {fsel('Формат', 'format', ['Трансляция', 'Моушн', 'Съемки', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн'])}
+            {['Трансляция', 'Съемки'].includes(form.format) && fsel('Локация', 'location', uniqueVals?.locations ?? [])}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={ls}>Дата</div>
+            <input type="date" style={fs} value={form.date} onChange={set('date')} />
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             {fsel('Исп. продюсер', 'execProducer', kfpdProducers)}
@@ -1119,21 +1135,7 @@ function ProjectFormModal({
             {fsel('Аккаунт-менеджер', 'accountManager', kfpdProducers)}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={ls}>Дата</div>
-              <input type="date" style={fs} value={form.date} onChange={set('date')} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={ls}>Время</div>
-              <input type="time" style={fs} value={form.time} onChange={set('time')} />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {fsel('Формат', 'format', uniqueVals?.formats ?? [])}
-            {fsel('Локация', 'location', uniqueVals?.locations ?? [])}
-          </div>
+          {fg('Описание', 'notes', 'Краткое описание смены')}
 
           {fg('Постпродакшн', 'postProduction', 'Студия / подрядчик')}
 
@@ -1146,7 +1148,7 @@ function ProjectFormModal({
         <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button onClick={onClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', cursor: 'pointer', color: '#475569' }}>Отмена</button>
           <button
-            onClick={() => { setFieldErrors({}); if (!form.name.trim()) { setError('Название обязательно'); return } save.mutate() }}
+            onClick={() => { setFieldErrors({}); if (!form.format.trim()) { setError('Выберите формат'); return } save.mutate() }}
             disabled={save.isPending}
             style={{ fontSize: 13, padding: '7px 16px', borderRadius: 6, border: 'none', background: save.isPending ? '#93c5fd' : '#2563eb', color: '#fff', cursor: save.isPending ? 'default' : 'pointer', fontWeight: 500 }}
           >

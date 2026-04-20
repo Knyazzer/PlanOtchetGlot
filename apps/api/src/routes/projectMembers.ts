@@ -15,7 +15,7 @@ const shiftValueSchema = z.union([
   }),
 ])
 
-const PAYMENT_TYPES = ['cash', 'card', 'sbp', 'invoice'] as const
+const PAYMENT_TYPES = ['cash', 'card', 'sbp', 'invoice', 'month'] as const
 const PAYMENT_STATUSES = ['unpaid', 'pending', 'paid'] as const
 
 const memberSchema = z.object({

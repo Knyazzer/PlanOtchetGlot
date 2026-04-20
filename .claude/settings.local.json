@@ -112,7 +112,10 @@
       "Bash(pnpm --filter @tv-shifts/api exec tsc --noEmit)",
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
       "Bash(pnpm --filter @tv-shifts/web remove @tanstack/react-router react-hook-form clsx @fullcalendar/interaction @fullcalendar/timegrid)",
-      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma db execute --stdin <<< \"SELECT column_name FROM information_schema.columns WHERE table_name = 'project_days' ORDER BY ordinal_position;\")"
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma db execute --stdin <<< \"SELECT column_name FROM information_schema.columns WHERE table_name = 'project_days' ORDER BY ordinal_position;\")",
+      "Bash(pnpm test *)",
+      "Bash(pnpm --filter @tv-shifts/api test)",
+      "Bash(pnpm --filter @tv-shifts/web test)"
     ]
   },
   "enabledPlugins": {

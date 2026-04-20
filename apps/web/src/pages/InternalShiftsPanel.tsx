@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/rea
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
+import { ShiftPlanner } from './ShiftPlanner'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -206,7 +207,8 @@ const LOCATION_OPTIONS = [
   'Выезд',
 ]
 
-const SHIFT_FORMATS = ['ТВ', 'Радио', 'Телерадио', 'Съёмки', 'Оффлайн', 'Менеджмент']
+const SHIFT_FORMATS = ['Трансляция', 'Моушн', 'Съемки', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн']
+const FORMATS_WITH_LOCATION = ['Трансляция', 'Съемки']
 
 // Which schedule fields each group uses
 const GROUP_FIELDS: Record<string, ('date' | 'time' | 'timeFrom' | 'timeTo' | 'startTime')[]> = {
@@ -445,20 +447,6 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
     if (initialProjectId) setActiveTab(initialProjectId)
   }, [initialProjectId])
   const [creating, setCreating] = useState(false)
-  const [renamingId, setRenamingId] = useState<string | null>(null)
-  const [renameDraft, setRenameDraft] = useState('')
-
-  const renameProject = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      api.patch(`/status-rows/${id}`, { name }).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] }),
-  })
-
-  const commitRename = (id: string) => {
-    const name = renameDraft.trim()
-    if (name) renameProject.mutate({ id, name })
-    setRenamingId(null)
-  }
 
   const { data: projects = [], isLoading } = useQuery<MicroProject[]>({
     queryKey: ['micro-projects', matrixRegistryId],
@@ -502,30 +490,14 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
         </button>
 
         {projects.map((p) => (
-          renamingId === p.id ? (
-            <input
-              key={p.id}
-              autoFocus
-              value={renameDraft}
-              onChange={(e) => setRenameDraft(e.target.value)}
-              onBlur={() => commitRename(p.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commitRename(p.id)
-                if (e.key === 'Escape') setRenamingId(null)
-              }}
-              style={{ fontSize: 12, padding: '4px 8px', border: '1px solid #3b82f6', borderRadius: 4, outline: 'none', maxWidth: 160, fontFamily: 'inherit' }}
-            />
-          ) : (
-            <button
-              key={p.id}
-              style={{ ...tabBtn(activeTab === p.id), maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
-              title={p.name + ' (двойной клик — переименовать)'}
-              onClick={() => { setActiveTab(p.id); setCreating(false) }}
-              onDoubleClick={(e) => { e.preventDefault(); setRenameDraft(p.name); setRenamingId(p.id) }}
-            >
-              {p.name || '(без названия)'}
-            </button>
-          )
+          <button
+            key={p.id}
+            style={{ ...tabBtn(activeTab === p.id), maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis' }}
+            title={p.name}
+            onClick={() => { setActiveTab(p.id); setCreating(false) }}
+          >
+            {p.name || '(без названия)'}
+          </button>
         ))}
 
         <button
@@ -775,7 +747,7 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
   onUpdated: () => void
 }) {
   const qc = useQueryClient()
-  const [microTab, setMicroTab] = useState<'team' | 'expenses' | 'freelancers'>('team')
+  const [microTab, setMicroTab] = useState<'team' | 'planner' | 'expenses' | 'freelancers'>('team')
   const [datePopup, setDatePopup] = useState<DatePopup | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -1147,8 +1119,9 @@ function ProjectInfoPanel({ project, onSave }: {
             </>
           )}
         </div>
-        <ProducerField label="Формат"          fieldKey="format"        value={project.format}        options={SHIFT_FORMATS}      onSave={onSave} isApproved={fieldApprovals['format']}       onApprovalToggle={() => toggleFieldApproval.mutate('format')} />
-        <ProducerField label="Локация"        fieldKey="location"      value={project.location}      options={LOCATION_OPTIONS} onSave={onSave} isApproved={fieldApprovals['location']}     onApprovalToggle={() => toggleFieldApproval.mutate('location')} />
+        {FORMATS_WITH_LOCATION.includes(project.format ?? '') && (
+          <ProducerField label="Локация"        fieldKey="location"      value={project.location}      options={LOCATION_OPTIONS} onSave={onSave} isApproved={fieldApprovals['location']}     onApprovalToggle={() => toggleFieldApproval.mutate('location')} />
+        )}
         <ProducerField label="Исп. продюсер"  fieldKey="execProducer"  value={project.execProducer}  options={producerOptions}    onSave={onSave} isApproved={fieldApprovals['execProducer']} onApprovalToggle={() => toggleFieldApproval.mutate('execProducer')} />
         <ProducerField label="Лайн-продюсер"  fieldKey="lineProducer"  value={project.lineProducer}  options={producerOptions}    onSave={onSave} isApproved={fieldApprovals['lineProducer']} onApprovalToggle={() => toggleFieldApproval.mutate('lineProducer')} />
       </div>
@@ -1347,8 +1320,8 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   members: ProjectMember[]
   loading: boolean
   onUpdated: () => void
-  microTab: 'team' | 'expenses' | 'freelancers'
-  setMicroTab: (t: 'team' | 'expenses' | 'freelancers') => void
+  microTab: 'team' | 'planner' | 'expenses' | 'freelancers'
+  setMicroTab: (t: 'team' | 'planner' | 'expenses' | 'freelancers') => void
   onCopy: () => void
   onDelete: () => void
   copyPending: boolean
@@ -1408,16 +1381,15 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   }
 
   // ── Groups ──────────────────────────────────────────────────────────────────
+  const fmt = project.format ?? ''
   const loc = project.location ?? ''
-  const isViezd = loc.startsWith('Выезд')
-  const isStudio = !isViezd && loc !== ''
-  const isManagement = project.format === 'Менеджмент'
+  const hasLocationPreset = FORMATS_WITH_LOCATION.includes(fmt)
+  const isViezd = hasLocationPreset && loc.startsWith('Выезд')
+  const isStudio = hasLocationPreset && !isViezd && loc !== ''
   const activeGroupDefs = isViezd ? VIEZD_GROUPS : isStudio ? STUDIO_GROUPS : []
-  const hasGroups = activeGroupDefs.length > 0 && !isManagement
+  const hasGroups = activeGroupDefs.length > 0
 
-  const efirLabel = project.format === 'Съёмки' ? 'Съёмки'
-    : project.format === 'Оффлайн' ? 'Мероприятие'
-    : 'Эфир'
+  const efirLabel = fmt === 'Съемки' ? 'Съёмки' : 'Эфир'
 
   const efirCopyIds = useMemo(() =>
     Object.entries(groupSchedule)
@@ -1427,9 +1399,6 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   [groupSchedule])
 
   const groups = useMemo(() => {
-    if (isManagement) {
-      return [{ id: 'default', label: 'Команда', color: '#64748b', members }]
-    }
     if (!hasGroups) {
       return [{ id: 'default', label: 'Команда', color: '#64748b', members }]
     }
@@ -1449,7 +1418,7 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
       result.push({ id: 'ungrouped', label: 'Без группы', color: '#94a3b8', members: ungroupedMembers })
     }
     return result
-  }, [members, hasGroups, isManagement, activeGroupDefs, efirLabel, efirCopyIds])
+  }, [members, hasGroups, activeGroupDefs, efirLabel, efirCopyIds])
 
   const copyEfirGroup = () => {
     const nums = efirCopyIds.map((id) => parseInt(id.replace('efir_', ''), 10))
@@ -1559,6 +1528,10 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
             style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', background: microTab === 'team' ? '#2563eb' : '#fff', color: microTab === 'team' ? '#fff' : '#64748b', fontFamily: 'inherit' }}>
             Команда
           </button>
+          <button onClick={() => setMicroTab('planner')}
+            style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', background: microTab === 'planner' ? '#2563eb' : '#fff', color: microTab === 'planner' ? '#fff' : '#64748b', fontFamily: 'inherit' }}>
+            Планировщик
+          </button>
           <button onClick={() => setMicroTab('freelancers')}
             style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', background: microTab === 'freelancers' ? '#2563eb' : '#fff', color: microTab === 'freelancers' ? '#fff' : '#64748b', fontFamily: 'inherit' }}>
             Фрилы
@@ -1584,7 +1557,20 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
         </div>
       </div>
 
-      <div style={{ flex: 1, overflow: 'auto' }}>
+      {!loading && microTab === 'planner' && (
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <ShiftPlanner
+            projectId={project.id}
+            projectDate={project.date}
+            projectFormat={project.format}
+            groups={groups}
+            groupSchedule={groupSchedule}
+            onGroupScheduleUpdate={onGroupScheduleUpdate}
+          />
+        </div>
+      )}
+
+      <div style={{ flex: 1, overflow: 'auto', display: microTab === 'planner' ? 'none' : undefined }}>
         {loading && <div style={{ padding: 20, color: '#94a3b8', fontSize: 13 }}>Загрузка...</div>}
 
         {!loading && microTab === 'team' && (
@@ -1620,57 +1606,62 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
                   key={group.id}
                   ref={(el) => { groupBodyRefs.current[group.id] = el }}
                   style={{ outline: isDropTarget ? `2px solid ${group.color}` : 'none', outlineOffset: -2, transition: 'outline 0.1s' }}>
-                  {/* Group header row */}
-                  {hasGroups && (
-                    <tr style={{ background: group.color + '0a', borderTop: '2px solid #f1f5f9' }}>
-                      <td colSpan={99} style={{ padding: '4px 10px 3px', borderBottom: '1px solid #e2e8f0' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: group.color, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: group.color }} />
-                            {group.label}
-                          </span>
-                          <input
-                            key={`${group.id}-note`}
-                            placeholder="Пометка..."
-                            defaultValue={(groupSchedule[group.id] as GroupScheduleEntry | null | undefined)?.note ?? ''}
-                            onBlur={(e) => {
-                              const note = e.target.value || undefined
-                              const current = (groupSchedule[group.id] as GroupScheduleEntry | null) ?? {}
-                              onGroupScheduleUpdate({ [group.id]: { ...current, note } })
-                            }}
-                            style={{ fontSize: 11, padding: '2px 7px', border: '1px solid #e2e8f0', borderRadius: 4, color: '#475569', flex: 1, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
-                          />
-                          {group.id === 'efir' && (
-                            <button onClick={copyEfirGroup} title="Копировать блок"
-                              style={{ fontSize: 12, padding: '1px 8px', border: '1px solid #e2e8f0', borderRadius: 4, background: 'none', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, lineHeight: 1.4 }}>
-                              ⎘
-                            </button>
-                          )}
-                          {/^efir_\d+$/.test(group.id) && (
-                            <button onClick={() => deleteEfirCopy(group.id)} title="Удалить копию"
-                              style={{ fontSize: 13, padding: '1px 6px', border: '1px solid #fecaca', borderRadius: 4, background: 'none', color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, lineHeight: 1.4 }}>
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* Member rows — first one gets the date block as rightCell with rowspan */}
                   {(() => {
                     const sched: GroupScheduleEntry = (groupSchedule[group.id] as GroupScheduleEntry | null) ?? {}
                     const saveSched = (patch: Partial<GroupScheduleEntry>) =>
                       onGroupScheduleUpdate({ [group.id]: { ...sched, ...patch } })
-                    const totalRowspan = group.members.length + 1 // members + add row
+                    const startTimeLabel = (group.id === 'efir' || /^efir_\d+$/.test(group.id))
+                      ? (project.format === 'Съемки' ? 'Первый мотор' : 'Начало эфира')
+                      : 'Начало эфира'
+                    // rowSpan covers: (hasGroups ? 1 header row : 0) + members + 1 add row
+                    const dateRowSpan = (hasGroups ? 1 : 0) + group.members.length + 1
                     const dateCell = (
-                      <td rowSpan={totalRowspan}
+                      <td rowSpan={dateRowSpan}
                         style={{ borderLeft: '2px solid #e2e8f0', borderBottom: '1px solid #eef0f4', padding: 0, verticalAlign: 'top', minWidth: 160 }}>
-                        <GroupDateBlock groupId={group.id} color={group.color} sched={sched} onSave={saveSched} startTimeLabel={(group.id === 'efir' || /^efir_\d+$/.test(group.id)) ? (project.format === 'Съёмки' ? 'Первый мотор' : project.format === 'Оффлайн' ? 'Начало мероприятия' : 'Начало эфира') : 'Начало эфира'} />
+                        <GroupDateBlock groupId={group.id} color={group.color} sched={sched} onSave={saveSched} startTimeLabel={startTimeLabel} />
                       </td>
                     )
                     return (
                       <>
+                        {/* Group header row — date cell anchored here with rowSpan */}
+                        {hasGroups ? (
+                          <tr style={{ background: group.color + '0a', borderTop: '2px solid #f1f5f9' }}>
+                            <td colSpan={8} style={{ padding: '4px 10px 3px', borderBottom: '1px solid #e2e8f0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: group.color, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                                  <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: group.color }} />
+                                  {group.label}
+                                </span>
+                                <input
+                                  key={`${group.id}-note`}
+                                  placeholder="Пометка..."
+                                  defaultValue={(groupSchedule[group.id] as GroupScheduleEntry | null | undefined)?.note ?? ''}
+                                  onBlur={(e) => {
+                                    const note = e.target.value || undefined
+                                    const current = (groupSchedule[group.id] as GroupScheduleEntry | null) ?? {}
+                                    onGroupScheduleUpdate({ [group.id]: { ...current, note } })
+                                  }}
+                                  style={{ fontSize: 11, padding: '2px 7px', border: '1px solid #e2e8f0', borderRadius: 4, color: '#475569', flex: 1, fontFamily: 'inherit', outline: 'none', background: 'transparent' }}
+                                />
+                                {group.id === 'efir' && (
+                                  <button onClick={copyEfirGroup} title="Копировать блок"
+                                    style={{ fontSize: 12, padding: '1px 8px', border: '1px solid #e2e8f0', borderRadius: 4, background: 'none', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, lineHeight: 1.4 }}>
+                                    ⎘
+                                  </button>
+                                )}
+                                {/^efir_\d+$/.test(group.id) && (
+                                  <button onClick={() => deleteEfirCopy(group.id)} title="Удалить копию"
+                                    style={{ fontSize: 13, padding: '1px 6px', border: '1px solid #fecaca', borderRadius: 4, background: 'none', color: '#ef4444', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0, lineHeight: 1.4 }}>
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            {dateCell}
+                          </tr>
+                        ) : null}
+
+                        {/* Member rows */}
                         {group.members.map((m, idx) => (
                           <MemberRow
                             key={m.id}
@@ -1681,25 +1672,22 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
                             onFieldApprovalToggle={toggleFieldApproval}
                             onDragStart={startDrag}
                             isDragging={dragMember?.id === m.id}
-                            rightCell={idx === 0 ? dateCell : undefined}
+                            rightCell={!hasGroups && idx === 0 ? dateCell : undefined}
                             inputS={inputS}
                             cellBdr="1px solid #eef0f4"
                           />
                         ))}
-                        {/* + row — date block already spans here via rowspan */}
+
+                        {/* + add row */}
                         <tr style={{ cursor: createMember.isPending ? 'default' : 'pointer', background: 'transparent' }}
                           onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
                           onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                          <td colSpan={7} style={{ padding: '4px 14px', textAlign: 'center', color: isDropTarget ? group.color : '#94a3b8', fontSize: 16, borderBottom: '1px solid #eef0f4', fontWeight: isDropTarget ? 700 : 400, transition: 'color 0.1s' }}
+                          <td colSpan={8} style={{ padding: '4px 14px', textAlign: 'center', color: isDropTarget ? group.color : '#94a3b8', fontSize: 16, borderBottom: '1px solid #eef0f4', fontWeight: isDropTarget ? 700 : 400, transition: 'color 0.1s' }}
                             onClick={() => { if (!createMember.isPending) createMember.mutate(hasGroups && group.id !== 'ungrouped' ? group.id : null) }}>
                             {createMember.isPending ? '…' : '+'}
                           </td>
-                          {/* If no members, date block goes here (rowspan = 1 via parent tbody) */}
-                          {group.members.length === 0 && (
-                            <td style={{ borderLeft: '2px solid #e2e8f0', borderBottom: '1px solid #eef0f4', padding: 0, verticalAlign: 'top', minWidth: 160 }}>
-                              <GroupDateBlock groupId={group.id} color={group.color} sched={sched} onSave={saveSched} startTimeLabel={(group.id === 'efir' || /^efir_\d+$/.test(group.id)) ? (project.format === 'Съёмки' ? 'Первый мотор' : project.format === 'Оффлайн' ? 'Начало мероприятия' : 'Начало эфира') : 'Начало эфира'} />
-                            </td>
-                          )}
+                          {/* no-groups + no members: date cell goes here */}
+                          {!hasGroups && group.members.length === 0 && dateCell}
                         </tr>
                       </>
                     )
@@ -1807,11 +1795,11 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
 
 function FreelancersTab({ members, updateMember, removeMember, addFreelancer }: {
   members: ProjectMember[]
-  updateMember: (data: { id: string; name?: string; position?: string | null; telegramUsername?: string | null; paymentType?: string | null; paymentStatus?: string; paymentAmount?: number | null }) => void
+  updateMember: (data: { id: string; paymentType?: string | null; paymentStatus?: string }) => void
   removeMember: (id: string) => void
   addFreelancer: () => void
 }) {
-  const freelancers = members.filter((m) => m.is_freelancer)
+  const freelancers = members.filter((m) => m.is_freelancer || (m.employment_type && m.employment_type !== 'staff'))
 
   const thS: React.CSSProperties = { padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em', borderBottom: '2px solid #e2e8f0', background: '#f8fafc', textAlign: 'left' }
   const inputS: React.CSSProperties = { fontSize: 12, padding: '3px 7px', border: '1px solid #e2e8f0', borderRadius: 5, color: '#1e293b', background: '#fff', width: '100%' }
@@ -1835,11 +1823,12 @@ function FreelancersTab({ members, updateMember, removeMember, addFreelancer }: 
             <thead>
               <tr>
                 <th style={{ ...thS, minWidth: 150 }}>ФИО</th>
-                <th style={{ ...thS, minWidth: 120 }}>Должность</th>
+                <th style={{ ...thS, minWidth: 90 }}>Формат</th>
+                <th style={{ ...thS, minWidth: 110 }}>Должность</th>
+                <th style={{ ...thS, minWidth: 80, textAlign: 'right' }}>Цена план</th>
+                <th style={{ ...thS, minWidth: 80, textAlign: 'right' }}>Цена факт</th>
                 <th style={{ ...thS, minWidth: 100, fontFamily: 'monospace' }}>Telegram</th>
-                <th style={{ ...thS, minWidth: 90 }}>Способ оплаты</th>
-                <th style={{ ...thS, minWidth: 90, textAlign: 'right' }}>Сумма</th>
-                <th style={{ ...thS, minWidth: 110 }}>Статус</th>
+                <th style={{ ...thS, minWidth: 130 }}>Формат оплаты</th>
                 <th style={{ ...thS, width: 30 }} />
               </tr>
             </thead>
@@ -1858,76 +1847,71 @@ function FreelancersTab({ members, updateMember, removeMember, addFreelancer }: 
 function FreelancerRow({ m, inputS, updateMember, removeMember }: {
   m: ProjectMember
   inputS: React.CSSProperties
-  updateMember: (data: { id: string; name?: string; position?: string | null; telegramUsername?: string | null; paymentType?: string | null; paymentStatus?: string; paymentAmount?: number | null }) => void
+  updateMember: (data: { id: string; paymentType?: string | null; paymentStatus?: string }) => void
   removeMember: (id: string) => void
 }) {
-  const [name, setName] = useState(m.name)
-  const [pos, setPos] = useState(m.position ?? '')
-  const [tg, setTg] = useState(m.telegram_username ?? '')
-  const [amount, setAmount] = useState(m.payment_amount ?? '')
-
-  useEffect(() => { setName(m.name) }, [m.id, m.name])
-  useEffect(() => { setPos(m.position ?? '') }, [m.id, m.position])
-  useEffect(() => { setTg(m.telegram_username ?? '') }, [m.id, m.telegram_username])
-  useEffect(() => { setAmount(m.payment_amount ?? '') }, [m.id, m.payment_amount])
-
   const bdr = '1px solid #f1f5f9'
   const tdS: React.CSSProperties = { padding: '5px 10px', borderBottom: bdr }
+  const roS: React.CSSProperties = { fontSize: 13, color: '#1e293b' }
+
+  const billingMode = m.payment_type === 'month' ? 'month' : 'project'
   const status = m.payment_status ?? 'unpaid'
 
   return (
     <tr>
       <td style={tdS}>
-        <input value={name} onChange={(e) => setName(e.target.value)}
-          onBlur={() => { const v = name.trim() || m.name; if (v !== m.name) updateMember({ id: m.id, name: v }) }}
-          style={{ ...inputS, fontWeight: 600 }} />
+        <span style={{ ...roS, fontWeight: 600 }}>{m.name}</span>
       </td>
       <td style={tdS}>
-        <input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="Должность"
-          onBlur={() => { const v = pos.trim() || null; if (v !== m.position) updateMember({ id: m.id, position: v }) }}
-          style={{ ...inputS, color: '#64748b' }} />
+        <EmpBadge type={m.employment_type} />
       </td>
       <td style={tdS}>
-        <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username"
-          onBlur={() => { const v = tg.trim() || null; if (v !== m.telegram_username) updateMember({ id: m.id, telegramUsername: v }) }}
-          style={{ ...inputS, fontFamily: 'monospace' }} />
-      </td>
-      <td style={tdS}>
-        <select value={m.payment_type ?? ''}
-          onChange={(e) => updateMember({ id: m.id, paymentType: e.target.value || null })}
-          style={{ ...inputS }}>
-          <option value="">—</option>
-          {Object.entries(PAYMENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        <span style={{ ...roS, color: '#64748b' }}>{m.position || '—'}</span>
       </td>
       <td style={{ ...tdS, textAlign: 'right' }}>
-        <input type="text" inputMode="numeric" value={amount}
-          onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
-          onBlur={() => { const v = amount !== '' ? parseFloat(String(amount)) : null; if (v !== (m.payment_amount != null ? parseFloat(String(m.payment_amount)) : null)) updateMember({ id: m.id, paymentAmount: v }) }}
-          placeholder="—" style={{ ...inputS, textAlign: 'right' }} />
+        <span style={{ ...roS, fontVariantNumeric: 'tabular-nums' }}>{m.rate_plan != null ? Number(m.rate_plan).toLocaleString('ru-RU') : '—'}</span>
+      </td>
+      <td style={{ ...tdS, textAlign: 'right' }}>
+        <span style={{ ...roS, fontVariantNumeric: 'tabular-nums' }}>{m.rate_fact != null ? Number(m.rate_fact).toLocaleString('ru-RU') : '—'}</span>
       </td>
       <td style={tdS}>
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 600, color: PAYMENT_STATUS_COLORS[status] ?? '#64748b', whiteSpace: 'nowrap' }}>
-            {PAYMENT_STATUS_LABELS[status] ?? status}
-          </span>
-          {status !== 'pending' && status !== 'paid' && (
-            <button onClick={() => updateMember({ id: m.id, paymentStatus: 'pending' })}
-              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #fde68a', background: '#fffbeb', color: '#92400e', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-              Запросить
-            </button>
+        <span style={{ ...roS, fontFamily: 'monospace', color: '#64748b' }}>{m.telegram_username || '—'}</span>
+      </td>
+      <td style={tdS}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <select value={billingMode}
+            onChange={(e) => updateMember({ id: m.id, paymentType: e.target.value === 'month' ? 'month' : null })}
+            style={{ ...inputS }}>
+            <option value="project">По проекту</option>
+            <option value="month">По месяцу</option>
+          </select>
+          {billingMode === 'project' && (
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: PAYMENT_STATUS_COLORS[status] ?? '#64748b', whiteSpace: 'nowrap' }}>
+                {PAYMENT_STATUS_LABELS[status] ?? status}
+              </span>
+              {status !== 'pending' && status !== 'paid' && (
+                <button onClick={() => updateMember({ id: m.id, paymentStatus: 'pending' })}
+                  style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #fde68a', background: '#fffbeb', color: '#92400e', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  Запросить
+                </button>
+              )}
+              {status === 'pending' && (
+                <button onClick={() => updateMember({ id: m.id, paymentStatus: 'paid' })}
+                  style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#166534', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  Оплачено
+                </button>
+              )}
+              {status === 'paid' && (
+                <button onClick={() => updateMember({ id: m.id, paymentStatus: 'unpaid' })}
+                  style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #e2e8f0', background: 'none', color: '#94a3b8', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+                  Сбросить
+                </button>
+              )}
+            </div>
           )}
-          {status === 'pending' && (
-            <button onClick={() => updateMember({ id: m.id, paymentStatus: 'paid' })}
-              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#166534', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-              Оплачено
-            </button>
-          )}
-          {status === 'paid' && (
-            <button onClick={() => updateMember({ id: m.id, paymentStatus: 'unpaid' })}
-              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #e2e8f0', background: 'none', color: '#94a3b8', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
-              Сбросить
-            </button>
+          {billingMode === 'month' && (
+            <span style={{ fontSize: 11, color: '#94a3b8', fontStyle: 'italic' }}>В разделе Фрилансеры</span>
           )}
         </div>
       </td>
@@ -2173,20 +2157,22 @@ function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
   onCreated: (id: string) => void
   onCancel: () => void
 }) {
-  const [name, setName] = useState('')
-  const [date, setDate] = useState('')
   const [format_, setFormat] = useState('')
   const [location, setLocation] = useState('')
-  const [status, setStatus] = useState('request')
+  const [date, setDate] = useState('')
+  const [notes, setNotes] = useState('')
+
+  const showLocation = FORMATS_WITH_LOCATION.includes(format_)
 
   const create = useMutation({
     mutationFn: () => api.post('/status-rows', {
-      name: name.trim(),
+      name: format_ || 'Без названия',
+      notes: notes.trim() || null,
       date: date ? new Date(date).toISOString() : null,
       format: format_ || null,
-      location: location || null,
+      location: showLocation ? (location || null) : null,
       matrixRegistryId,
-      status,
+      status: 'request',
     }).then((r) => r.data),
     onSuccess: (data) => onCreated(data.id),
   })
@@ -2196,36 +2182,35 @@ function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
 
   return (
     <div style={{ padding: 20, maxWidth: 480 }}>
-      <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 16 }}>Новая смена</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>Новая смена</div>
+        <span style={{ padding: '3px 12px', borderRadius: 20, fontSize: 12, fontWeight: 700, background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}>Запрос</span>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div><span style={label}>Название *</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название смены" style={inputS} autoFocus /></div>
-        <div><span style={label}>Дата</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputS} /></div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: showLocation ? 1 : 2 }}>
             <span style={label}>Формат</span>
-            <select value={format_} onChange={(e) => setFormat(e.target.value)} style={inputS}>
+            <select value={format_} onChange={(e) => { setFormat(e.target.value); setLocation('') }} style={inputS} autoFocus>
               <option value="">— не выбрано —</option>
               {SHIFT_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
           </div>
-          <div style={{ flex: 1 }}>
-            <span style={label}>Локация</span>
-            <select value={location} onChange={(e) => setLocation(e.target.value)} style={inputS}>
-              <option value="">— не выбрано —</option>
-              {LOCATION_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
-          </div>
+          {showLocation && (
+            <div style={{ flex: 1 }}>
+              <span style={label}>Локация</span>
+              <select value={location} onChange={(e) => setLocation(e.target.value)} style={inputS}>
+                <option value="">— не выбрано —</option>
+                {LOCATION_OPTIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+          )}
         </div>
-        <div>
-          <span style={label}>Статус</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputS}>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        </div>
+        <div><span style={label}>Дата</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputS} /></div>
+        <div><span style={label}>Описание</span><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Краткое описание смены" style={inputS} /></div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-        <button onClick={() => { if (name.trim()) create.mutate() }} disabled={!name.trim() || create.isPending}
-          style={{ fontSize: 13, padding: '7px 18px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500 }}>
+        <button onClick={() => { if (format_.trim()) create.mutate() }} disabled={!format_.trim() || create.isPending}
+          style={{ fontSize: 13, padding: '7px 18px', borderRadius: 7, border: 'none', background: !format_.trim() ? '#93c5fd' : '#2563eb', color: '#fff', cursor: format_.trim() ? 'pointer' : 'default', fontWeight: 500 }}>
           {create.isPending ? 'Создание...' : 'Создать'}
         </button>
         <button onClick={onCancel} style={{ fontSize: 13, padding: '7px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer' }}>Отмена</button>
