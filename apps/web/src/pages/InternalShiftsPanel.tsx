@@ -1551,10 +1551,10 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
           </button>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => setCallSheetOpen(true)}
+          {!isCreative && <button onClick={() => setCallSheetOpen(true)}
             style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}>
             Вызывной лист
-          </button>
+          </button>}
           <button onClick={onCopy} disabled={copyPending}
             style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer', fontFamily: 'inherit' }}>
             {copyPending ? '...' : 'Копировать'}
