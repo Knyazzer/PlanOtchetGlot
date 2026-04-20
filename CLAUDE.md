@@ -28,6 +28,9 @@ pnpm dev
 
 # Start DB only for local dev (PostgreSQL exposed on port 5433)
 docker compose -f docker-compose.dev.yml up -d
+
+# After git pull — install new deps, apply migrations, restart app:
+.\update.ps1
 ```
 
 ### Build
@@ -125,7 +128,7 @@ JWT-based. Two httpOnly cookies: `access_token` (15 min, all paths) and `refresh
 Route auth guard lives in `apps/api/src/plugins/auth.ts` — call `request.jwtVerify()` inside route handlers, or use the `authenticate` / `requireRole(...roles)` preHandlers. `requireRole` accepts multiple roles (e.g. `requireRole('admin', 'producer')`).
 
 ### Database Models
-`User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `UserNotificationRead`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`, `MatrixTemplate`, `ProjectMember`, `SheetConfig`
+`User`, `StatusRow`, `ProjectDay`, `MatrixRegistry`, `ProjectAssignment`, `ShiftEntry`, `MonthlySummary`, `Task`, `TaskAssignment`, `Notification`, `UserNotificationRead`, `ChangeLog`, `SyncLog`, `Deal`, `DealStatusRow`, `DealMatrix`, `MatrixTemplate`, `ProjectMember`, `SheetConfig`, `GanttTask`, `MatrixNote`, `MatrixDocument`
 
 Schema: `packages/db/prisma/schema.prisma`
 
@@ -187,7 +190,7 @@ Used by `/internal-matrix` routes to:
 **Sync abort**: `requestSyncAbort()` exported from `syncService.ts` sets `_abortRequested = true`. The matrix loop checks this flag before processing each matrix. `POST /sync/stop` calls it. `_abortRequested` resets to `false` at the start of each new `runFullSync()` call. After abort, `totalMatrices` must be cleared in the frontend to reset `isRunning` state.
 
 ### Matrix Extras
-`apps/api/src/routes/matrixExtras.ts` — four lightweight CRUD resource groups, all using `$queryRawUnsafe` (tables are **not** Prisma models):
+`apps/api/src/routes/matrixExtras.ts` — four lightweight CRUD resource groups, all using `$queryRawUnsafe`. `GanttTask`, `MatrixNote`, and `MatrixDocument` are defined as Prisma models in `schema.prisma` but the routes still access them via raw SQL:
 
 | Route prefix | Table | Scoped by |
 |---|---|---|

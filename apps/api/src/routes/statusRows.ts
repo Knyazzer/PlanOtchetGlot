@@ -251,15 +251,12 @@ export async function statusRowsRoutes(app: FastifyInstance) {
         // Auto-assign next slot (ignore any manually provided blockSlot since we auto-manage)
         const raw = await nextBlockSlot(matrixRegistryId, id)
         resolvedSlot = Number(raw)
-        console.log('[matrix-block] nextBlockSlot raw=', raw, 'typeof=', typeof raw, 'resolvedSlot=', resolvedSlot)
       }
 
-      console.log('[matrix-block] PATCH id=', id, 'matrixRegistryId=', matrixRegistryId, 'resolvedSlot=', resolvedSlot)
       const affected = await prisma.$executeRawUnsafe(
         `UPDATE status_rows SET matrix_registry_id = $1, block_slot = $2, updated_at = NOW() WHERE id = $3`,
         matrixRegistryId, resolvedSlot, id,
       )
-      console.log('[matrix-block] UPDATE affected=', affected)
 
       delete data.matrixRegistryId
       delete data.blockSlot

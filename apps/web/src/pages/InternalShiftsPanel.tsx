@@ -29,6 +29,11 @@ export interface ProjectMember {
   is_approved: boolean
   field_approvals: Record<string, boolean>
   group_name: string | null
+  telegram_username: string | null
+  is_freelancer: boolean
+  payment_type: string | null
+  payment_status: string
+  payment_amount: string | null
 }
 
 interface ProjectDay {
@@ -770,7 +775,7 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
   onUpdated: () => void
 }) {
   const qc = useQueryClient()
-  const [microTab, setMicroTab] = useState<'team' | 'expenses'>('team')
+  const [microTab, setMicroTab] = useState<'team' | 'expenses' | 'freelancers'>('team')
   const [datePopup, setDatePopup] = useState<DatePopup | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
@@ -1231,7 +1236,7 @@ function MemberRow({
 }: {
   m: ProjectMember
   isC: (col: string) => boolean
-  updateMember: (data: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null; isApproved?: boolean; fieldApprovals?: Record<string, boolean>; groupName?: string | null }) => void
+  updateMember: (data: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null; isApproved?: boolean; fieldApprovals?: Record<string, boolean>; groupName?: string | null; telegramUsername?: string | null; isFreelancer?: boolean; paymentType?: string | null; paymentStatus?: string; paymentAmount?: number | null }) => void
   removeMember: (id: string) => void
   onFieldApprovalToggle: (m: ProjectMember, field: string) => void
   onDragStart: (e: React.PointerEvent, m: ProjectMember) => void
@@ -1247,12 +1252,14 @@ function MemberRow({
   const [rateFact, setRateFact] = useState(m.rate_fact ?? '')
   const [ratePlanFocused, setRatePlanFocused] = useState(false)
   const [rateFacrFocused, setRateFacrFocused] = useState(false)
+  const [tg, setTg] = useState(m.telegram_username ?? '')
 
   useEffect(() => { setName(m.name) }, [m.id, m.name])
   useEffect(() => { setPos(m.position ?? '') }, [m.id, m.position])
   useEffect(() => { setEmpType(m.employment_type ?? '') }, [m.id, m.employment_type])
   useEffect(() => { setRatePlan(m.rate_plan ?? '') }, [m.id, m.rate_plan])
   useEffect(() => { setRateFact(m.rate_fact ?? '') }, [m.id, m.rate_fact])
+  useEffect(() => { setTg(m.telegram_username ?? '') }, [m.id, m.telegram_username])
 
   const fa = m.field_approvals ?? {}
   const mkCtx = (field: string) => (e: React.MouseEvent) => { e.preventDefault(); onFieldApprovalToggle(m, field) }
@@ -1318,6 +1325,13 @@ function MemberRow({
             placeholder="—" style={{ ...inputS, ...fieldApprovalStyle(fa['rateFact']), width: '100%', textAlign: 'right', ...(m.employment_type === 'staff' ? { background: '#f1f5f9', color: '#cbd5e1', cursor: 'not-allowed' } : {}) }} />
         </td>
       )}
+      {isC('tg') ? <td style={{ width: 20, borderBottom: cellBdr }} /> : (
+        <td style={{ padding: '4px 10px', borderBottom: cellBdr }}>
+          <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username"
+            onBlur={() => { const v = tg.trim() || null; if (v !== m.telegram_username) updateMember({ id: m.id, telegramUsername: v }) }}
+            style={{ ...inputS, width: '100%', color: '#64748b', fontFamily: 'monospace' }} />
+        </td>
+      )}
       <td style={{ padding: '4px 6px', borderBottom: cellBdr, textAlign: 'center' }}>
         <HoldToDelete onDelete={() => removeMember(m.id)} />
       </td>
@@ -1333,8 +1347,8 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
   members: ProjectMember[]
   loading: boolean
   onUpdated: () => void
-  microTab: 'team' | 'expenses'
-  setMicroTab: (t: 'team' | 'expenses') => void
+  microTab: 'team' | 'expenses' | 'freelancers'
+  setMicroTab: (t: 'team' | 'expenses' | 'freelancers') => void
   onCopy: () => void
   onDelete: () => void
   copyPending: boolean
@@ -1458,8 +1472,17 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
     },
   })
 
+  const createFreelancer = useMutation({
+    mutationFn: () => api.post('/project-members', {
+      projectId: project.id, name: 'Новый фрил', position: null, isFreelancer: true,
+    }).then((r) => r.data),
+    onSuccess: (created: ProjectMember) => {
+      qc.setQueryData(['project-members', project.id], (old: ProjectMember[] | undefined) => [...(old ?? []), created])
+    },
+  })
+
   const updateMember = useMutation({
-    mutationFn: ({ id, ...data }: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null; isApproved?: boolean; fieldApprovals?: Record<string, boolean>; groupName?: string | null }) =>
+    mutationFn: ({ id, ...data }: { id: string; name?: string; position?: string | null; employmentType?: string | null; ratePlan?: number | null; rateFact?: number | null; isApproved?: boolean; fieldApprovals?: Record<string, boolean>; groupName?: string | null; telegramUsername?: string | null; isFreelancer?: boolean; paymentType?: string | null; paymentStatus?: string; paymentAmount?: number | null }) =>
       api.patch(`/project-members/${id}`, data).then((r) => r.data),
     onSuccess: (updated: any) => {
       qc.setQueryData(['project-members', project.id], (old: ProjectMember[] | undefined) =>
@@ -1480,6 +1503,53 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
 
   const inputS: React.CSSProperties = { fontSize: 12, padding: '3px 7px', border: '1px solid #e2e8f0', borderRadius: 5, color: '#1e293b', background: '#fff' }
 
+  const [callSheetOpen, setCallSheetOpen] = useState(false)
+  const [callSheetMode, setCallSheetMode] = useState<'plain' | 'telegram'>('plain')
+
+  const callSheetText = useMemo(() => {
+    const fmtTime = (t?: string) => t ? t.substring(0, 5) : ''
+    const fmtRange = (entry?: GroupScheduleEntry | null) => {
+      if (!entry) return ''
+      const from = fmtTime(entry.timeFrom)
+      const to = fmtTime(entry.timeTo)
+      if (from && to) return `${from}–${to}`
+      if (from) return `с ${from}`
+      return ''
+    }
+    const fmtDate = (entry?: GroupScheduleEntry | null) => {
+      if (!entry?.date) return ''
+      try { return new Date(entry.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) } catch { return '' }
+    }
+
+    const lines: string[] = []
+    lines.push(project.name)
+    lines.push('')
+
+    const allGroups = [...groups, ...efirCopyIds.map((copyId) => {
+      const copyEntry = groupSchedule[copyId]
+      return { id: copyId, label: `${efirLabel} (копия)`, color: '#10b981', members: members.filter((m) => m.group_name === copyId), extra: copyEntry }
+    })]
+
+    for (const g of allGroups) {
+      const gs = groupSchedule[g.id]
+      const dateStr = fmtDate(gs)
+      const timeStr = fmtRange(gs)
+      const header = [g.label, dateStr, timeStr].filter(Boolean).join(' · ')
+      lines.push(`— ${header} —`)
+      for (const m of g.members) {
+        const timeDisplay = timeStr || ''
+        const identity = callSheetMode === 'telegram' && m.telegram_username
+          ? m.telegram_username
+          : m.name
+        const pos = m.position ? ` (${m.position})` : ''
+        lines.push(`${identity}${pos}${timeDisplay ? ` · ${timeDisplay}` : ''}`)
+      }
+      lines.push('')
+    }
+
+    return lines.join('\n').trim()
+  }, [groups, groupSchedule, members, project.name, callSheetMode, efirLabel, efirCopyIds])
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       {/* View toggle bar */}
@@ -1489,12 +1559,20 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
             style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', background: microTab === 'team' ? '#2563eb' : '#fff', color: microTab === 'team' ? '#fff' : '#64748b', fontFamily: 'inherit' }}>
             Команда
           </button>
+          <button onClick={() => setMicroTab('freelancers')}
+            style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', background: microTab === 'freelancers' ? '#2563eb' : '#fff', color: microTab === 'freelancers' ? '#fff' : '#64748b', fontFamily: 'inherit' }}>
+            Фрилы
+          </button>
           <button onClick={() => setMicroTab('expenses')}
             style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', background: microTab === 'expenses' ? '#2563eb' : '#fff', color: microTab === 'expenses' ? '#fff' : '#64748b', fontFamily: 'inherit' }}>
             Производственные расходы
           </button>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={() => setCallSheetOpen(true)}
+            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}>
+            Вызывной лист
+          </button>
           <button onClick={onCopy} disabled={copyPending}
             style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: 'none', color: '#475569', cursor: 'pointer', fontFamily: 'inherit' }}>
             {copyPending ? '...' : 'Копировать'}
@@ -1514,9 +1592,9 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
             <thead>
               <tr style={{ background: '#f8fafc' }}>
                 <th style={{ width: 22, borderBottom: '2px solid #e2e8f0' }} />
-                {(['name','emp','pos','ratePlan','rateFact'] as const).map((col) => {
-                  const labels: Record<string, string> = { name:'ФИО', emp:'Формат', pos:'Должность', ratePlan:'Цена план', rateFact:'Цена факт' }
-                  const minWidths: Record<string, number> = { name:150, emp:80, pos:120, ratePlan:80, rateFact:80 }
+                {(['name','emp','pos','ratePlan','rateFact','tg'] as const).map((col) => {
+                  const labels: Record<string, string> = { name:'ФИО', emp:'Формат', pos:'Должность', ratePlan:'Цена план', rateFact:'Цена факт', tg:'Telegram' }
+                  const minWidths: Record<string, number> = { name:150, emp:80, pos:120, ratePlan:80, rateFact:80, tg:100 }
                   const aligns: Record<string, string> = { ratePlan:'right', rateFact:'right' }
                   const collapsed = isC(col)
                   return (
@@ -1635,6 +1713,10 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
         {!loading && microTab === 'expenses' && (
           <ExpensesTab projectId={project.id} />
         )}
+
+        {!loading && microTab === 'freelancers' && (
+          <FreelancersTab members={members} updateMember={(data) => updateMember.mutate(data)} removeMember={(id) => removeMember.mutate(id)} addFreelancer={() => createFreelancer.mutate()} />
+        )}
       </div>
 
       {/* Footer legend (only for team tab) */}
@@ -1643,6 +1725,36 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
           <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>
             <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#3b82f6', verticalAlign: 'middle', marginRight: 4 }} />Участвует</span>
             <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#e2e8f0', border: '1px solid #cbd5e1', verticalAlign: 'middle', marginRight: 4 }} />Не участвует</span>
+          </div>
+        </div>
+      )}
+
+      {/* Call sheet modal */}
+      {callSheetOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setCallSheetOpen(false)}>
+          <div style={{ background: '#fff', borderRadius: 12, padding: 24, width: 480, maxWidth: '90vw', maxHeight: '80vh', display: 'flex', flexDirection: 'column', gap: 14 }}
+            onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: '#1e293b' }}>Вызывной лист</span>
+              <button onClick={() => setCallSheetOpen(false)} style={{ border: 'none', background: 'none', fontSize: 18, cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 7, overflow: 'hidden', alignSelf: 'flex-start' }}>
+              <button onClick={() => setCallSheetMode('plain')}
+                style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: callSheetMode === 'plain' ? '#2563eb' : '#fff', color: callSheetMode === 'plain' ? '#fff' : '#64748b' }}>
+                Текст
+              </button>
+              <button onClick={() => setCallSheetMode('telegram')}
+                style={{ fontSize: 12, padding: '5px 14px', border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: callSheetMode === 'telegram' ? '#2563eb' : '#fff', color: callSheetMode === 'telegram' ? '#fff' : '#64748b' }}>
+                Telegram
+              </button>
+            </div>
+            <textarea readOnly value={callSheetText}
+              style={{ flex: 1, minHeight: 260, fontFamily: 'monospace', fontSize: 13, border: '1px solid #e2e8f0', borderRadius: 8, padding: '10px 12px', resize: 'none', color: '#1e293b', lineHeight: 1.6 }} />
+            <button onClick={() => navigator.clipboard.writeText(callSheetText)}
+              style={{ fontSize: 13, padding: '8px 0', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
+              Копировать
+            </button>
           </div>
         </div>
       )}
@@ -1678,6 +1790,151 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
         </div>
       )}
     </div>
+  )
+}
+
+// ─── FreelancersTab ───────────────────────────────────────────────────────────
+
+const PAYMENT_TYPE_LABELS: Record<string, string> = {
+  cash: 'Наличные', card: 'Карта', sbp: 'СБП', invoice: 'Счёт',
+}
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  unpaid: 'Не оплачено', pending: 'Ожидает', paid: 'Оплачено',
+}
+const PAYMENT_STATUS_COLORS: Record<string, string> = {
+  unpaid: '#ef4444', pending: '#f59e0b', paid: '#10b981',
+}
+
+function FreelancersTab({ members, updateMember, removeMember, addFreelancer }: {
+  members: ProjectMember[]
+  updateMember: (data: { id: string; name?: string; position?: string | null; telegramUsername?: string | null; paymentType?: string | null; paymentStatus?: string; paymentAmount?: number | null }) => void
+  removeMember: (id: string) => void
+  addFreelancer: () => void
+}) {
+  const freelancers = members.filter((m) => m.is_freelancer)
+
+  const thS: React.CSSProperties = { padding: '8px 10px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em', borderBottom: '2px solid #e2e8f0', background: '#f8fafc', textAlign: 'left' }
+  const inputS: React.CSSProperties = { fontSize: 12, padding: '3px 7px', border: '1px solid #e2e8f0', borderRadius: 5, color: '#1e293b', background: '#fff', width: '100%' }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 13, color: '#64748b' }}>{freelancers.length} фрил{freelancers.length === 1 ? '' : freelancers.length < 5 ? 'а' : 'ов'}</span>
+        <button onClick={addFreelancer}
+          style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: '1px solid #bfdbfe', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', fontFamily: 'inherit' }}>
+          + Добавить фрила
+        </button>
+      </div>
+      {freelancers.length === 0 ? (
+        <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
+          Нет фрилансеров. Нажмите «+ Добавить фрила».
+        </div>
+      ) : (
+        <div style={{ overflow: 'auto', flex: 1 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+            <thead>
+              <tr>
+                <th style={{ ...thS, minWidth: 150 }}>ФИО</th>
+                <th style={{ ...thS, minWidth: 120 }}>Должность</th>
+                <th style={{ ...thS, minWidth: 100, fontFamily: 'monospace' }}>Telegram</th>
+                <th style={{ ...thS, minWidth: 90 }}>Способ оплаты</th>
+                <th style={{ ...thS, minWidth: 90, textAlign: 'right' }}>Сумма</th>
+                <th style={{ ...thS, minWidth: 110 }}>Статус</th>
+                <th style={{ ...thS, width: 30 }} />
+              </tr>
+            </thead>
+            <tbody>
+              {freelancers.map((m) => (
+                <FreelancerRow key={m.id} m={m} inputS={inputS} updateMember={updateMember} removeMember={removeMember} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FreelancerRow({ m, inputS, updateMember, removeMember }: {
+  m: ProjectMember
+  inputS: React.CSSProperties
+  updateMember: (data: { id: string; name?: string; position?: string | null; telegramUsername?: string | null; paymentType?: string | null; paymentStatus?: string; paymentAmount?: number | null }) => void
+  removeMember: (id: string) => void
+}) {
+  const [name, setName] = useState(m.name)
+  const [pos, setPos] = useState(m.position ?? '')
+  const [tg, setTg] = useState(m.telegram_username ?? '')
+  const [amount, setAmount] = useState(m.payment_amount ?? '')
+
+  useEffect(() => { setName(m.name) }, [m.id, m.name])
+  useEffect(() => { setPos(m.position ?? '') }, [m.id, m.position])
+  useEffect(() => { setTg(m.telegram_username ?? '') }, [m.id, m.telegram_username])
+  useEffect(() => { setAmount(m.payment_amount ?? '') }, [m.id, m.payment_amount])
+
+  const bdr = '1px solid #f1f5f9'
+  const tdS: React.CSSProperties = { padding: '5px 10px', borderBottom: bdr }
+  const status = m.payment_status ?? 'unpaid'
+
+  return (
+    <tr>
+      <td style={tdS}>
+        <input value={name} onChange={(e) => setName(e.target.value)}
+          onBlur={() => { const v = name.trim() || m.name; if (v !== m.name) updateMember({ id: m.id, name: v }) }}
+          style={{ ...inputS, fontWeight: 600 }} />
+      </td>
+      <td style={tdS}>
+        <input value={pos} onChange={(e) => setPos(e.target.value)} placeholder="Должность"
+          onBlur={() => { const v = pos.trim() || null; if (v !== m.position) updateMember({ id: m.id, position: v }) }}
+          style={{ ...inputS, color: '#64748b' }} />
+      </td>
+      <td style={tdS}>
+        <input value={tg} onChange={(e) => setTg(e.target.value)} placeholder="@username"
+          onBlur={() => { const v = tg.trim() || null; if (v !== m.telegram_username) updateMember({ id: m.id, telegramUsername: v }) }}
+          style={{ ...inputS, fontFamily: 'monospace' }} />
+      </td>
+      <td style={tdS}>
+        <select value={m.payment_type ?? ''}
+          onChange={(e) => updateMember({ id: m.id, paymentType: e.target.value || null })}
+          style={{ ...inputS }}>
+          <option value="">—</option>
+          {Object.entries(PAYMENT_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+      </td>
+      <td style={{ ...tdS, textAlign: 'right' }}>
+        <input type="text" inputMode="numeric" value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))}
+          onBlur={() => { const v = amount !== '' ? parseFloat(String(amount)) : null; if (v !== (m.payment_amount != null ? parseFloat(String(m.payment_amount)) : null)) updateMember({ id: m.id, paymentAmount: v }) }}
+          placeholder="—" style={{ ...inputS, textAlign: 'right' }} />
+      </td>
+      <td style={tdS}>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: PAYMENT_STATUS_COLORS[status] ?? '#64748b', whiteSpace: 'nowrap' }}>
+            {PAYMENT_STATUS_LABELS[status] ?? status}
+          </span>
+          {status !== 'pending' && status !== 'paid' && (
+            <button onClick={() => updateMember({ id: m.id, paymentStatus: 'pending' })}
+              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #fde68a', background: '#fffbeb', color: '#92400e', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              Запросить
+            </button>
+          )}
+          {status === 'pending' && (
+            <button onClick={() => updateMember({ id: m.id, paymentStatus: 'paid' })}
+              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #bbf7d0', background: '#f0fdf4', color: '#166534', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              Оплачено
+            </button>
+          )}
+          {status === 'paid' && (
+            <button onClick={() => updateMember({ id: m.id, paymentStatus: 'unpaid' })}
+              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: '1px solid #e2e8f0', background: 'none', color: '#94a3b8', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
+              Сбросить
+            </button>
+          )}
+        </div>
+      </td>
+      <td style={{ ...tdS, textAlign: 'center' }}>
+        <HoldToDelete onDelete={() => removeMember(m.id)} />
+      </td>
+    </tr>
   )
 }
 

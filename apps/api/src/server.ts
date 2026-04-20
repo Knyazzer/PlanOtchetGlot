@@ -25,6 +25,7 @@ import { projectMembersRoutes } from './routes/projectMembers'
 import { matrixExtrasRoutes } from './routes/matrixExtras'
 import { runFullSync } from './services/syncService'
 import { prisma } from '@tv-shifts/db'
+import cron from 'node-cron'
 
 const app = Fastify({ logger: true })
 
@@ -96,7 +97,11 @@ async function main() {
   await app.listen({ port, host: '0.0.0.0' })
   console.log(`API running on http://0.0.0.0:${port}`)
 
-
+  cron.schedule('*/30 * * * *', () => {
+    console.log('[cron] Auto-sync started')
+    runFullSync().catch(err => console.error('[cron] Auto-sync failed:', err))
+  })
+  console.log('[cron] Auto-sync scheduled every 30 minutes')
 }
 
 main().catch((err) => {

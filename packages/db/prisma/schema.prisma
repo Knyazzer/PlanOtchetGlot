@@ -140,6 +140,8 @@ model StatusRow {
   googleRowIndex  Int?            @map("google_row_index")
   matrixRegistryId String?        @map("matrix_registry_id")
   blockSlot       Int?            @map("block_slot")
+  fieldApprovals  Json?           @map("field_approvals")
+  groupSchedule   Json?           @map("group_schedule")
   createdAt       DateTime        @default(now()) @map("created_at")
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
@@ -403,13 +405,24 @@ model MatrixTemplate {
 }
 
 model ProjectMember {
-  id        String    @id @default(uuid())
-  projectId String    @map("project_id")
-  name      String
-  position  String?
-  shifts    Json      @default("{}")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id               String    @id @default(uuid())
+  projectId        String    @map("project_id")
+  name             String
+  position         String?
+  shifts           Json      @default("{}")
+  employmentType   String?   @map("employment_type")
+  ratePlan         Decimal?  @map("rate_plan") @db.Decimal(12, 2)
+  rateFact         Decimal?  @map("rate_fact") @db.Decimal(12, 2)
+  isApproved       Boolean   @default(false) @map("is_approved")
+  fieldApprovals   Json?     @map("field_approvals")
+  groupName        String?   @map("group_name")
+  telegramUsername String?   @map("telegram_username")
+  isFreelancer     Boolean   @default(false) @map("is_freelancer")
+  paymentType      String?   @map("payment_type")
+  paymentStatus    String    @default("unpaid") @map("payment_status")
+  paymentAmount    Decimal?  @map("payment_amount") @db.Decimal(12, 2)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   statusRow StatusRow @relation(fields: [projectId], references: [id], onDelete: Cascade)
 

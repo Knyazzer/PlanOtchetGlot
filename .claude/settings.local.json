@@ -109,7 +109,10 @@
       "Bash(pnpm --filter @tv-shifts/api add @fastify/rate-limit@^9.0.0)",
       "Bash(pnpm --filter @tv-shifts/api test -- --reporter=verbose)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3333/matrix-card-v6.html)",
-      "Bash(pnpm --filter @tv-shifts/api exec tsc --noEmit)"
+      "Bash(pnpm --filter @tv-shifts/api exec tsc --noEmit)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(pnpm --filter @tv-shifts/web remove @tanstack/react-router react-hook-form clsx @fullcalendar/interaction @fullcalendar/timegrid)",
+      "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma db execute --stdin <<< \"SELECT column_name FROM information_schema.columns WHERE table_name = 'project_days' ORDER BY ordinal_position;\")"
     ]
   },
   "enabledPlugins": {

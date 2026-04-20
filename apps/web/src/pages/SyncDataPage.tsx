@@ -2206,7 +2206,7 @@ function RegistryChangesTab({ entityId }: { entityId: string }) {
 
 function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, initialProjectId }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; initialProjectId?: string | null }) {
   const [localEntry, setLocalEntry] = useState<RegistryEntry>(entry)
-  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'>(initialProjectId ? 'shifts' : 'info')
+  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix'>(initialProjectId ? 'shifts' : 'info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
   const [customSeps, setCustomSeps] = useState<Map<number, { name: string; date: string }>>(() => {
@@ -2287,13 +2287,14 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
   }
   const statusStyle = localEntry.status ? (statusColors[localEntry.status] ?? { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }) : null
 
-  const TABS: { key: 'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes'; label: string }[] = [
-    { key: 'info',    label: 'Инфо' },
-    { key: 'shifts',  label: 'Смены' },
-    { key: 'gantt',   label: 'Ганта' },
-    { key: 'notes',   label: 'Заметки' },
-    { key: 'docs',    label: 'Документы' },
-    { key: 'changes', label: 'Изменения' },
+  const TABS: { key: 'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix'; label: string }[] = [
+    { key: 'info',        label: 'Инфо' },
+    { key: 'shifts',      label: 'Смены' },
+    { key: 'gantt',       label: 'Ганта' },
+    { key: 'notes',       label: 'Заметки' },
+    { key: 'docs',        label: 'Документы' },
+    { key: 'changes',     label: 'Изменения' },
+    { key: 'svodmatrix',  label: 'Свод матрица' },
   ]
 
   return (
@@ -2496,6 +2497,17 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
         {/* Tab: Changes */}
         {tab === 'changes' && (
           <RegistryChangesTab entityId={entry.id} />
+        )}
+
+        {/* Tab: Свод матрица */}
+        {tab === 'svodmatrix' && (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+            <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Свод матрица</div>
+              <div style={{ fontSize: 13 }}>Появится после подключения базы цен сотрудников</div>
+            </div>
+          </div>
         )}
 
         {/* Sticky footer — source info */}

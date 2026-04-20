@@ -13,8 +13,9 @@ import { AnalyticsPage } from '../pages/AnalyticsPage'
 import { SyncDataPage } from '../pages/SyncDataPage'
 import { DealsPage } from '../pages/DealsPage'
 import { DatabasePage } from '../pages/DatabasePage'
+import { FreelancersPage } from '../pages/FreelancersPage'
 
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'freelancers'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -23,7 +24,7 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database']
+    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'freelancers']
     return saved && valid.includes(saved) ? saved : 'calendar'
   })
 
@@ -32,7 +33,7 @@ export function AppShell() {
     setUser(null)
   }
 
-  const navItems: { id: Page; label: string; adminOnly?: boolean }[] = [
+  const navItems: { id: Page; label: string; adminOnly?: boolean; adminOrProducer?: boolean }[] = [
     { id: 'calendar', label: 'Календарь' },
     { id: 'tasks', label: 'Задачи' },
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
@@ -40,6 +41,7 @@ export function AppShell() {
     { id: 'syncdata', label: 'Таблицы', adminOnly: true },
     { id: 'database', label: 'БД', adminOnly: true },
     { id: 'deals', label: 'Клиенты' },
+    { id: 'freelancers', label: 'Фрилы', adminOrProducer: true },
     { id: 'profile', label: 'Профиль' },
   ]
 
@@ -64,6 +66,7 @@ export function AppShell() {
           <nav style={{ display: 'flex', gap: 4 }}>
             {navItems.map((item) => {
               if (item.adminOnly && !isAdmin) return null
+              if (item.adminOrProducer && !isAdmin && !isProducer) return null
               return (
                 <button
                   key={item.id}
@@ -127,6 +130,7 @@ export function AppShell() {
         {page === 'syncdata' && isAdmin && <SyncDataPage />}
         {page === 'database' && isAdmin && <DatabasePage />}
         {page === 'deals' && <DealsPage />}
+        {page === 'freelancers' && (isAdmin || isProducer) && <FreelancersPage />}
         {page === 'profile' && <ProfilePage />}
       </main>
     </div>

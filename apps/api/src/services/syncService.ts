@@ -274,7 +274,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     const entry = {
       sheetUrl,
       status:        cellStr(cells[0])  || null,  // A
-      unit:          cellStr(cells[4])  || null,  // E
+      unit:          cellStr(cells[4]) ? [cellStr(cells[4])!] : [],  // E
       client:        cellStr(cells[5])  || null,  // F
       name:          cellStr(cells[6])  || null,  // G
       format:        cellStr(cells[7])  || null,  // H
@@ -429,6 +429,14 @@ async function syncMatrix(
       assignment = await prisma.projectAssignment.create({
         data: { projectId, userId: user?.id ?? null, unmatchedName: user ? null : fullName, roleOnSite, employmentType },
       })
+    }
+
+    // Propagate telegram_username to project_members with matching name in this project
+    if (row.telegramUsername) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE project_members SET telegram_username = $1 WHERE LOWER(name) = LOWER($2) AND project_id = $3 AND (telegram_username IS NULL OR telegram_username = '')`,
+        row.telegramUsername, fullName, projectId,
+      )
     }
 
     if (!isStaff || !user) continue
@@ -599,6 +607,7 @@ export interface ShiftEmployee {
   name: string
   role: string | null
   employmentType: string | null
+  telegramUsername: string | null
   shifts: boolean[] // length = dates.length
 }
 
@@ -684,6 +693,7 @@ function parseV41Shifts(rawRows: string[][], sheetTitle: string): MatrixShiftsDa
         name: emp.name,
         role: emp.role,
         employmentType: null,
+        telegramUsername: null,
         shifts: fullShifts,
       })
     }
@@ -773,6 +783,7 @@ export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixS
   for (let ri = 3; ri < rawRows.length; ri++) {
     const row = rawRows[ri]
     const name           = (row[2]  ?? '').trim() // C
+    const colF           = (row[5]  ?? '').trim() // F — phone or @telegram
     const role           = (row[6]  ?? '').trim() // G
     const employmentType = (row[8]  ?? '').trim() // I
     const shiftVals      = Array.from({ length: 7 }, (_, ci) => (row[9 + ci] ?? '').trim())
@@ -782,11 +793,14 @@ export async function fetchMatrixShifts(spreadsheetUrl: string): Promise<MatrixS
     const hasData = name || role || employmentType || shiftVals.some((v) => v === '1')
     if (!hasData) continue
 
+    const telegramUsername = colF.startsWith('@') ? colF : null
+
     rows.push({
       isSeparator: false,
       name,
       role: role || null,
       employmentType: employmentType || null,
+      telegramUsername,
       shifts: shiftVals.map((v) => v === '1'),
     })
   }

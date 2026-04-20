@@ -127,6 +127,12 @@ function TableCard({ table, onPreview }: { table: TableConfig; onPreview: () => 
   const [urlSaved, setUrlSaved] = useState(false)
   const [keySaved, setKeySaved] = useState(false)
   const [showKey, setShowKey] = useState(false)
+  const urlSavedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const keySavedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (urlSavedTimer.current) clearTimeout(urlSavedTimer.current)
+    if (keySavedTimer.current) clearTimeout(keySavedTimer.current)
+  }, [])
 
   useEffect(() => { setUrlDraft(table.sheetUrl ?? '') }, [table.sheetUrl])
   useEffect(() => { setKeyDraft(table.apiKey ?? '') }, [table.apiKey])
@@ -139,13 +145,13 @@ function TableCard({ table, onPreview }: { table: TableConfig; onPreview: () => 
   const saveUrl = useMutation({
     mutationFn: (sheetUrl: string | null) =>
       api.patch(`/database/config/${table.key}`, { sheetUrl }).then((r) => r.data),
-    onSuccess: () => { invalidate(); setUrlSaved(true); setTimeout(() => setUrlSaved(false), 2000) },
+    onSuccess: () => { invalidate(); setUrlSaved(true); urlSavedTimer.current = setTimeout(() => setUrlSaved(false), 2000) },
   })
 
   const saveKey = useMutation({
     mutationFn: (apiKey: string | null) =>
       api.patch(`/database/config/${table.key}`, { apiKey }).then((r) => r.data),
-    onSuccess: () => { invalidate(); setKeySaved(true); setTimeout(() => setKeySaved(false), 2000) },
+    onSuccess: () => { invalidate(); setKeySaved(true); keySavedTimer.current = setTimeout(() => setKeySaved(false), 2000) },
   })
 
   const refresh = useMutation({
@@ -295,8 +301,10 @@ function InternalRegistryCard({ sheetUrl }: { sheetUrl: string | null }) {
   const qc = useQueryClient()
   const [draft, setDraft] = useState(sheetUrl ?? '')
   const [saved, setSaved] = useState(false)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { setDraft(sheetUrl ?? '') }, [sheetUrl])
+  useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current) }, [])
 
   const save = useMutation({
     mutationFn: (url: string | null) =>
@@ -304,7 +312,7 @@ function InternalRegistryCard({ sheetUrl }: { sheetUrl: string | null }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['db-config'] })
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      savedTimer.current = setTimeout(() => setSaved(false), 2000)
     },
   })
 
@@ -485,8 +493,10 @@ function DriveFolderCard({ folderId }: { folderId: string | null }) {
   const qc = useQueryClient()
   const [draft, setDraft] = useState(folderId ?? '')
   const [saved, setSaved] = useState(false)
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { setDraft(folderId ?? '') }, [folderId])
+  useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current) }, [])
 
   const save = useMutation({
     mutationFn: (id: string | null) =>
@@ -494,7 +504,7 @@ function DriveFolderCard({ folderId }: { folderId: string | null }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['db-config'] })
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      savedTimer.current = setTimeout(() => setSaved(false), 2000)
     },
   })
 
