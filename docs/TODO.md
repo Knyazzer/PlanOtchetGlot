@@ -150,6 +150,37 @@
 
 ---
 
+## 🐛 Баги — подтверждены аудитом Journey (2026-04-21)
+
+### 🔴 Критические (потеря данных)
+
+- [ ] **Класс C: `MicroProjectTab` — стейл `selectedProject` → потеря дней проекта**
+  - Файл: `apps/web/src/pages/SyncDataPage.tsx:1604` (`project={selectedProject as any}`)
+  - Симптом: пользователь открывает проект из таблицы, добавляет день A, затем день B — день A пропадает
+  - Причина: `addDateMutation` читает `project.days` из пропса, а `selectedProject` — замороженный `useState` на момент клика; `onUpdated()` инвалидирует кеш, но `selectedProject` не синхронизируется
+  - Фикс: хранить `selectedProjectId: string | null`, читать данные из TanStack Query кеша по ID (не из useState)
+  - Контраст: в `InternalShiftsPanel.tsx:544` `project` берётся из живого `useQuery` — там баг отсутствует
+
+- [ ] **Класс A #6: `updateStatus` / `updateBrief` инвалидируют несуществующий ключ**
+  - Файл: `apps/web/src/pages/SyncDataPage.tsx:1737` и `:1753`
+  - Симптом: смена статуса или брифа внутренней матрицы не отражается в UI до перезагрузки
+  - Причина: `qc.invalidateQueries({ queryKey: ['internal-matrix'] })` — а `useQuery` слушает `['internal-matrices', client]`; разные ключи, инвалидация не доходит
+  - Фикс: заменить на `qc.invalidateQueries({ queryKey: ['internal-matrices'] })`
+
+### 🟠 Важные
+
+- [ ] **Класс A #7: `deleteMatrix` не инвалидирует пикер матриц**
+  - Файл: `apps/web/src/pages/SyncDataPage.tsx:3191`
+  - Симптом: удалённая матрица остаётся в дропдауне привязки `StatusRow`
+  - Фикс: добавить `queryClient.invalidateQueries({ queryKey: ['internal-matrices'] })` в `onSuccess`
+
+- [ ] **Класс A #8: `MatrixFormModal.onSaved` не инвалидирует пикер матриц**
+  - Файл: `apps/web/src/pages/SyncDataPage.tsx:3520`
+  - Симптом: новая/отредактированная матрица не появляется в дропдауне привязки до перезагрузки
+  - Фикс: добавить `queryClient.invalidateQueries({ queryKey: ['internal-matrices'] })` рядом с `['sync-registry']`
+
+---
+
 ## 🟡 Технический долг
 
 - [ ] **Два ключа для одних и тех же данных** — `['micro-projects', matrixRegistryId]` и `['micro-projects-info', entry.id]` запрашивают один и тот же `GET /status-rows?matrixRegistryId=...`. Унифицировать в один ключ или удалить дублирующий.
@@ -181,4 +212,4 @@
 ---
 
 > Текущий счёт тестов: **163 теста, 0 провалов** (`pnpm test`).
-> Последнее обновление: 2026-04-20
+> Последнее обновление: 2026-04-21
