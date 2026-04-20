@@ -64,8 +64,9 @@ export function requirePermission(permission: Permission) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await request.jwtVerify()
-      const user = request.user as { id: string; role: Role }
-      if (!hasPermission(user.role, permission)) {
+      const { id, role } = request.user as { id: string; role: Role }
+      request.log.setBindings?.({ userId: id, role })
+      if (!hasPermission(role, permission)) {
         reply.code(403).send({ error: 'Forbidden' })
       }
     } catch {
