@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { Prisma, prisma } from '@tv-shifts/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 import { logChanges } from '../services/changeLog'
 import { syncProjectBlock, nextBlockSlot, unlinkAndShiftBlocks } from '../services/matrixBlockSync'
 
@@ -45,7 +46,7 @@ const updateStatusRowSchema = createStatusRowSchema.partial().extend({
 
 export async function statusRowsRoutes(app: FastifyInstance) {
   // GET /status-rows/unique-values — distinct format & location values for dropdowns
-  app.get('/unique-values', { preHandler: requireRole('admin') }, async () => {
+  app.get('/unique-values', { preHandler: requirePermission('projects:write') }, async () => {
     const [formats, locations] = await Promise.all([
       prisma.$queryRawUnsafe<{ format: string }[]>(
         `SELECT DISTINCT format FROM status_rows WHERE format IS NOT NULL AND format <> '' AND source <> 'separator' ORDER BY format`,
@@ -152,7 +153,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // POST /status-rows — ручное создание (admin only)
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const body = createStatusRowSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -194,7 +195,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // PATCH /status-rows/:id
-  app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const me = request.user as { id: string }
     const body = updateStatusRowSchema.safeParse(request.body)
@@ -282,7 +283,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // GET /status-rows/:id/approvals
-  app.get('/:id/approvals', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.get('/:id/approvals', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ field_approvals: Record<string, boolean> }[]>(
       `SELECT field_approvals FROM status_rows WHERE id = $1`, id
@@ -292,7 +293,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // PATCH /status-rows/:id/approvals — merge field approvals
-  app.patch('/:id/approvals', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id/approvals', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const patch = request.body as Record<string, boolean>
     if (!patch || typeof patch !== 'object') return reply.code(400).send({ error: 'Invalid body' })
@@ -305,7 +306,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // GET /status-rows/:id/group-schedule
-  app.get('/:id/group-schedule', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.get('/:id/group-schedule', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ group_schedule: Record<string, unknown> }[]>(
       `SELECT group_schedule FROM status_rows WHERE id = $1`, id
@@ -315,7 +316,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // PATCH /status-rows/:id/group-schedule — merge group schedule
-  app.patch('/:id/group-schedule', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id/group-schedule', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const patch = request.body as Record<string, unknown>
     if (!patch || typeof patch !== 'object') return reply.code(400).send({ error: 'Invalid body' })
@@ -328,7 +329,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // POST /status-rows/:id/sync-block — manual trigger of matrix block sync
-  app.post('/:id/sync-block', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/:id/sync-block', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     try {
       await syncProjectBlock(id)
@@ -339,7 +340,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // DELETE /status-rows/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request) => {
+  app.delete('/:id', { preHandler: requirePermission('projects:write') }, async (request) => {
     const { id } = request.params as { id: string }
 
     // If project had a linked matrix block — delete it and shift remaining projects

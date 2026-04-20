@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '@tv-shifts/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 
 interface KanbanTask {
   id: string
@@ -98,7 +99,7 @@ export async function kanbanTasksRoutes(app: FastifyInstance) {
   })
 
   // DELETE /kanban-tasks/:id
-  app.delete('/:id', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requirePermission('kanban:delete') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     await prisma.$executeRawUnsafe(`DELETE FROM kanban_tasks WHERE id = $1::uuid`, id)
     return { ok: true }

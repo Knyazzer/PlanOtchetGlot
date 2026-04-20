@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { requireRole } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 // syncProjectBlock removed — sync is now manual via POST /internal-matrix/sync-to-drive
 
 // shifts value: строка (legacy) или объект { type, confirmed, timeStart, timeEnd }
@@ -59,7 +59,7 @@ interface MemberRow {
 export async function projectMembersRoutes(app: FastifyInstance) {
 
   // GET /project-members?projectId=...  OR  ?freelancers=true[&status=...][&month=YYYY-MM]
-  app.get('/', { preHandler: requireRole('admin', 'producer') }, async (request) => {
+  app.get('/', { preHandler: requirePermission('members:read') }, async (request) => {
     const { projectId, freelancers, status, month } = request.query as {
       projectId?: string; freelancers?: string; status?: string; month?: string
     }
@@ -92,7 +92,7 @@ export async function projectMembersRoutes(app: FastifyInstance) {
   })
 
   // POST /project-members
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('members:write') }, async (request, reply) => {
     const body = memberSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные', details: body.error.flatten() })
 
@@ -119,7 +119,7 @@ export async function projectMembersRoutes(app: FastifyInstance) {
   })
 
   // PATCH /project-members/:id
-  app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id', { preHandler: requirePermission('members:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = memberSchema.omit({ projectId: true }).partial().safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
@@ -154,7 +154,7 @@ export async function projectMembersRoutes(app: FastifyInstance) {
   })
 
   // POST /project-members/bulk-status — массовое обновление payment_status
-  app.post('/bulk-status', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.post('/bulk-status', { preHandler: requirePermission('members:bulk') }, async (request, reply) => {
     const { ids, paymentStatus } = request.body as { ids: string[]; paymentStatus: string }
     if (!Array.isArray(ids) || !ids.length || !paymentStatus) return reply.code(400).send({ error: 'Неверные данные' })
     await prisma.$executeRawUnsafe(
@@ -165,7 +165,7 @@ export async function projectMembersRoutes(app: FastifyInstance) {
   })
 
   // DELETE /project-members/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requirePermission('members:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ id: string; project_id: string }[]>(
       `DELETE FROM project_members WHERE id = $1 RETURNING id, project_id`, id

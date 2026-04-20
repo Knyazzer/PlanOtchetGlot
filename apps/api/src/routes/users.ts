@@ -2,7 +2,8 @@ import { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { requireRole, authenticate } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 
 const createUserSchema = z.object({
   fullName: z.string().min(1),
@@ -25,7 +26,7 @@ const updateUserSchema = z.object({
 
 export async function usersRoutes(app: FastifyInstance) {
   // GET /users — список (admin only)
-  app.get('/', { preHandler: requireRole('admin') }, async (request) => {
+  app.get('/', { preHandler: requirePermission('users:manage') }, async (request) => {
     const query = request.query as { search?: string; role?: string }
 
     return prisma.user.findMany({
@@ -82,7 +83,7 @@ export async function usersRoutes(app: FastifyInstance) {
   })
 
   // POST /users — создание (admin only)
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('users:manage') }, async (request, reply) => {
     const body = createUserSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -163,7 +164,7 @@ export async function usersRoutes(app: FastifyInstance) {
   })
 
   // DELETE /users/:id — деактивация (admin only)
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requirePermission('users:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const me = request.user as { id: string }
 

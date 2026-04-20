@@ -1,10 +1,10 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '@tv-shifts/db'
-import { requireRole } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 
 export async function analyticsRoutes(app: FastifyInstance) {
   // GET /analytics/shifts — смены по сотрудникам за период
-  app.get('/shifts', { preHandler: requireRole('admin', 'producer') }, async (request) => {
+  app.get('/shifts', { preHandler: requirePermission('analytics:read') }, async (request) => {
     const query = request.query as { dateFrom?: string; dateTo?: string; userId?: string }
 
     const dateFrom = query.dateFrom ? new Date(query.dateFrom) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
@@ -56,7 +56,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
   })
 
   // GET /analytics/projects — проекты с составом команды за период
-  app.get('/projects', { preHandler: requireRole('admin', 'producer') }, async (request) => {
+  app.get('/projects', { preHandler: requirePermission('analytics:read') }, async (request) => {
     const query = request.query as { dateFrom?: string; dateTo?: string }
 
     const dateFrom = query.dateFrom ? new Date(query.dateFrom) : new Date(new Date().getFullYear(), new Date().getMonth(), 1)
@@ -77,7 +77,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
   })
 
   // GET /analytics/tasks — задачи с исполнителями
-  app.get('/tasks', { preHandler: requireRole('admin', 'producer') }, async () => {
+  app.get('/tasks', { preHandler: requirePermission('analytics:read') }, async () => {
     const tasks = await prisma.task.findMany({
       include: {
         creator: { select: { id: true, fullName: true } },

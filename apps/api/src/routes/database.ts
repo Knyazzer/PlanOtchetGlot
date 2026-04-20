@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { requireRole } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 import {
   refreshSheetData,
   allSheetConfigs,
@@ -17,7 +17,7 @@ import {
 export async function databaseRoutes(app: FastifyInstance) {
 
   // GET /database/config — состояние всех таблиц
-  app.get('/config', { preHandler: requireRole('admin') }, async () => {
+  app.get('/config', { preHandler: requirePermission('database:manage') }, async () => {
     const base = 'https://docs.google.com/spreadsheets/d'
 
     const [projectsCount, registryCount, configs] = await Promise.all([
@@ -82,7 +82,7 @@ export async function databaseRoutes(app: FastifyInstance) {
   })
 
   // PATCH /database/config/:key — обновить URL и/или API-ключ таблицы
-  app.patch('/config/:key', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/config/:key', { preHandler: requirePermission('database:manage') }, async (request, reply) => {
     const { key } = request.params as { key: string }
     if (!ALL_CONFIG_KEYS.includes(key as any)) {
       return reply.code(400).send({ error: 'Неизвестный ключ таблицы' })
@@ -103,7 +103,7 @@ export async function databaseRoutes(app: FastifyInstance) {
   })
 
   // POST /database/refresh/:key — загрузить данные из Google Sheets
-  app.post('/refresh/:key', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/refresh/:key', { preHandler: requirePermission('database:manage') }, async (request, reply) => {
     const { key } = request.params as { key: string }
     if (!TABLE_KEYS.includes(key as TableKey)) {
       return reply.code(400).send({ error: 'Неизвестный ключ таблицы' })
@@ -118,7 +118,7 @@ export async function databaseRoutes(app: FastifyInstance) {
   })
 
   // GET /database/preview/:key — просмотр загруженных данных
-  app.get('/preview/:key', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.get('/preview/:key', { preHandler: requirePermission('database:manage') }, async (request, reply) => {
     const { key } = request.params as { key: string }
     const LIMIT = 200
 

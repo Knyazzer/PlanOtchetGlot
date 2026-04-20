@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 import { logChanges } from '../services/changeLog'
 
 const createShiftSchema = z.object({
@@ -44,7 +45,7 @@ export async function shiftsRoutes(app: FastifyInstance) {
   })
 
   // POST /shifts — ручное создание (admin only)
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('shifts:write') }, async (request, reply) => {
     const body = createShiftSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -62,7 +63,7 @@ export async function shiftsRoutes(app: FastifyInstance) {
   })
 
   // PATCH /shifts/:id/confirm — подтвердить смену (admin only)
-  app.patch('/:id/confirm', { preHandler: requireRole('admin') }, async (request) => {
+  app.patch('/:id/confirm', { preHandler: requirePermission('shifts:write') }, async (request) => {
     const { id } = request.params as { id: string }
     const me = request.user as { id: string }
 
@@ -77,7 +78,7 @@ export async function shiftsRoutes(app: FastifyInstance) {
   })
 
   // PATCH /shifts/:id — редактирование (admin only)
-  app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id', { preHandler: requirePermission('shifts:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = createShiftSchema.partial().safeParse(request.body)
     if (!body.success) {
@@ -126,7 +127,7 @@ export async function shiftsRoutes(app: FastifyInstance) {
   // PATCH /shifts/monthly-summary/:userId/:year/:month/vacation — добавить отпуск (admin)
   app.patch(
     '/monthly-summary/:userId/:year/:month/vacation',
-    { preHandler: requireRole('admin') },
+    { preHandler: requirePermission('shifts:write') },
     async (request) => {
       const { userId, year, month } = request.params as {
         userId: string; year: string; month: string

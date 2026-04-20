@@ -2,7 +2,8 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { Prisma } from '@tv-shifts/db'
 import { prisma } from '@tv-shifts/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 
 const createDealSchema = z.object({
   name: z.string().nullable().optional(),
@@ -38,7 +39,7 @@ export async function dealsRoutes(app: FastifyInstance) {
   })
 
   // GET /deals/potential — StatusRow с sheetMatrixId совпадающим в MatrixRegistry, без привязки к Deal
-  app.get('/potential', { preHandler: requireRole('admin') }, async () => {
+  app.get('/potential', { preHandler: requirePermission('deals:write') }, async () => {
     // Все StatusRow с sheetMatrixId
     const rowsWithMatrix = await prisma.statusRow.findMany({
       where: {
@@ -86,7 +87,7 @@ export async function dealsRoutes(app: FastifyInstance) {
   })
 
   // POST /deals
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('deals:write') }, async (request, reply) => {
     const body = createDealSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
 
@@ -109,7 +110,7 @@ export async function dealsRoutes(app: FastifyInstance) {
   })
 
   // PATCH /deals/:id
-  app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id', { preHandler: requirePermission('deals:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = updateDealSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -149,7 +150,7 @@ export async function dealsRoutes(app: FastifyInstance) {
   })
 
   // DELETE /deals/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requirePermission('deals:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     await prisma.deal.delete({ where: { id } })
     return { ok: true }

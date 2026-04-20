@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '@tv-shifts/db'
-import { requireRole } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 import { runFullSync, fetchMatrixPreview, fetchMatrixShifts, requestSyncAbort, isSyncActive } from '../services/syncService'
 
 export async function syncRoutes(app: FastifyInstance) {
   // POST /sync/trigger — ручной запуск (admin или producer)
-  app.post('/trigger', { preHandler: requireRole('admin', 'producer') }, async (_request, reply) => {
+  app.post('/trigger', { preHandler: requirePermission('sync:trigger') }, async (_request, reply) => {
     // Считаем матрицы заранее чтобы вернуть total фронтенду
     const totalMatrices = await prisma.matrixRegistry.count({ where: { sheetUrl: { not: null } } })
 
@@ -27,13 +27,13 @@ export async function syncRoutes(app: FastifyInstance) {
   })
 
   // POST /sync/stop — остановить синхронизацию матриц
-  app.post('/stop', { preHandler: requireRole('admin', 'producer') }, async (_request, reply) => {
+  app.post('/stop', { preHandler: requirePermission('sync:trigger') }, async (_request, reply) => {
     requestSyncAbort()
     return reply.send({ message: 'Abort requested' })
   })
 
   // GET /sync/sheet-urls — публичные URL исходных Google Sheets
-  app.get('/sheet-urls', { preHandler: requireRole('admin') }, async () => {
+  app.get('/sheet-urls', { preHandler: requirePermission('sync:admin') }, async () => {
     const base = 'https://docs.google.com/spreadsheets/d'
     return {
       projectsSheetUrl: process.env.GOOGLE_PROJECTS_SHEET_ID
@@ -46,7 +46,7 @@ export async function syncRoutes(app: FastifyInstance) {
   })
 
   // GET /sync/registry — все записи реестра матриц (в порядке как в таблице)
-  app.get('/registry', { preHandler: requireRole('admin') }, async () => {
+  app.get('/registry', { preHandler: requirePermission('sync:admin') }, async () => {
     const rows = await prisma.$queryRawUnsafe<any[]>(`
       SELECT mr.*,
              mr.has_shifts_data AS "hasShiftsData"
@@ -80,7 +80,7 @@ export async function syncRoutes(app: FastifyInstance) {
   })
 
   // POST /sync/reset — удалить все импортированные данные
-  app.post('/reset', { preHandler: requireRole('admin') }, async (_request, reply) => {
+  app.post('/reset', { preHandler: requirePermission('sync:admin') }, async (_request, reply) => {
     // Удаляем в нужном порядке из-за foreign keys
     // source: 'separator' не знает устаревший Prisma-клиент — используем raw SQL
     const shifts   = await prisma.shiftEntry.deleteMany({ where: { source: 'matrix' } })
@@ -99,7 +99,7 @@ export async function syncRoutes(app: FastifyInstance) {
   })
 
   // GET /sync/matrix-preview/:matrixId — просмотр содержимого матрицы
-  app.get('/matrix-preview/:matrixId', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.get('/matrix-preview/:matrixId', { preHandler: requirePermission('sync:admin') }, async (request, reply) => {
     const { matrixId } = request.params as { matrixId: string }
     const { sheet } = request.query as { sheet?: string }
 
@@ -116,7 +116,7 @@ export async function syncRoutes(app: FastifyInstance) {
   })
 
   // GET /sync/matrix-shifts/:matrixId — смены из матрицы (из кэша БД или Google Sheets)
-  app.get('/matrix-shifts/:matrixId', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.get('/matrix-shifts/:matrixId', { preHandler: requirePermission('sync:admin') }, async (request, reply) => {
     const { matrixId } = request.params as { matrixId: string }
     const { refresh } = request.query as { refresh?: string }
 
@@ -151,7 +151,7 @@ export async function syncRoutes(app: FastifyInstance) {
   })
 
   // GET /sync/logs — история синхронизаций
-  app.get('/logs', { preHandler: requireRole('admin', 'producer') }, async (request) => {
+  app.get('/logs', { preHandler: requirePermission('sync:logs') }, async (request) => {
     const query = request.query as { limit?: string; type?: string }
     const limit = Math.min(Number(query.limit ?? 50), 200)
 

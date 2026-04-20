@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 
 const createTaskSchema = z.object({
   title: z.string().min(1),
@@ -27,7 +28,7 @@ export async function tasksRoutes(app: FastifyInstance) {
   })
 
   // POST /tasks — создание (admin only)
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('tasks:write') }, async (request, reply) => {
     const body = createTaskSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -83,7 +84,7 @@ export async function tasksRoutes(app: FastifyInstance) {
   })
 
   // DELETE /tasks/:id (admin only)
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request) => {
+  app.delete('/:id', { preHandler: requirePermission('tasks:write') }, async (request) => {
     const { id } = request.params as { id: string }
     await prisma.task.delete({ where: { id } })
     return { ok: true }
