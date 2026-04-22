@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { OrgChartTab } from './OrgChartTab'
 
 interface User {
   id: string
@@ -15,6 +16,7 @@ interface User {
 
 export function UsersPage() {
   const qc = useQueryClient()
+  const [tab, setTab] = useState<'list' | 'structure'>('list')
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
 
@@ -37,37 +39,49 @@ export function UsersPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Сотрудники</h2>
-        <button
-          onClick={() => setShowForm(true)}
-          style={{
-            background: '#2563eb',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '8px 16px',
-            cursor: 'pointer',
-            fontWeight: 500,
-          }}
-        >
-          + Добавить
-        </button>
+        {tab === 'list' && (
+          <button
+            onClick={() => setShowForm(true)}
+            style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontWeight: 500 }}
+          >
+            + Добавить
+          </button>
+        )}
       </div>
 
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 2, borderBottom: '2px solid #e2e8f0', marginBottom: 20 }}>
+        {(['list', 'structure'] as const).map(t => (
+          <div
+            key={t}
+            onClick={() => setTab(t)}
+            style={{
+              padding: '7px 20px', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+              color: tab === t ? '#2563eb' : '#64748b',
+              borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent',
+              marginBottom: -2,
+            }}
+          >
+            {t === 'list' ? 'Список' : 'Структура'}
+          </div>
+        ))}
+      </div>
+
+      {/* Structure tab */}
+      {tab === 'structure' && <OrgChartTab />}
+
+      {/* List tab */}
+      {tab === 'list' && <>
       <div style={{ marginBottom: 16 }}>
         <input
           type="text"
           placeholder="Поиск по имени или email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{
-            padding: '8px 12px',
-            border: '1px solid #d1d5db',
-            borderRadius: 8,
-            fontSize: 14,
-            width: 300,
-          }}
+          style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14, width: 300 }}
         />
       </div>
 
@@ -136,6 +150,7 @@ export function UsersPage() {
       </div>
 
       {showForm && <CreateUserModal onClose={() => setShowForm(false)} />}
+      </>}
     </div>
   )
 }
