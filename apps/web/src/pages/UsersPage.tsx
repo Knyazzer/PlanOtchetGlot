@@ -22,9 +22,25 @@ interface StaffRow {
   subDept: string
 }
 
+function parseTabNumber(s: string): number {
+  const m = s.match(/\d+$/)
+  return m ? parseInt(m[0], 10) : Infinity
+}
+
+function sortStaffRows(rows: StaffRow[]): StaffRow[] {
+  return [...rows].sort((a, b) => {
+    const aHas = !!a.tabNumber
+    const bHas = !!b.tabNumber
+    if (aHas && !bHas) return -1
+    if (!aHas && bHas) return 1
+    if (aHas && bHas) return parseTabNumber(a.tabNumber) - parseTabNumber(b.tabNumber)
+    return a.name.localeCompare(b.name, 'ru')
+  })
+}
+
 export function UsersPage() {
   const qc = useQueryClient()
-  const [tab, setTab] = useState<'list' | 'structure'>('list')
+  const [tab, setTab] = useState<'list' | 'freelancers' | 'structure'>('list')
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [registerTarget, setRegisterTarget] = useState<StaffRow | null>(null)
@@ -78,7 +94,7 @@ export function UsersPage() {
     <div>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Сотрудники</h2>
+        <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Персонал</h2>
         {tab === 'list' && (
           <button
             onClick={() => setShowForm(true)}
@@ -91,24 +107,31 @@ export function UsersPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 2, borderBottom: '2px solid #e2e8f0', marginBottom: 20 }}>
-        {(['list', 'structure'] as const).map(t => (
+        {([
+          { id: 'list',        label: 'Штат' },
+          { id: 'freelancers', label: 'Фрилансеры' },
+          { id: 'structure',   label: 'Структура' },
+        ] as const).map(t => (
           <div
-            key={t}
-            onClick={() => setTab(t)}
+            key={t.id}
+            onClick={() => setTab(t.id)}
             style={{
               padding: '7px 20px', fontSize: 14, fontWeight: 500, cursor: 'pointer',
-              color: tab === t ? '#2563eb' : '#64748b',
-              borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent',
+              color: tab === t.id ? '#2563eb' : '#64748b',
+              borderBottom: tab === t.id ? '2px solid #2563eb' : '2px solid transparent',
               marginBottom: -2,
             }}
           >
-            {t === 'list' ? 'Список' : 'Структура'}
+            {t.label}
           </div>
         ))}
       </div>
 
       {/* Structure tab */}
       {tab === 'structure' && <OrgChartTab />}
+
+      {/* Freelancers tab */}
+      {tab === 'freelancers' && <FreelancersImportTab />}
 
       {/* List tab */}
       {tab === 'list' && (
@@ -257,7 +280,7 @@ export function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((r, i) => (
+                {sortStaffRows(filteredRows).map((r, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ ...td, color: '#64748b', fontFamily: 'monospace' }}>{r.tabNumber || '—'}</td>
                     <td style={td}>{r.name}</td>
@@ -475,3 +498,112 @@ function RegisterModal({ staff, onClose, onSuccess }: {
 
 const labelSt: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4, color: '#374151' }
 const inputSt: React.CSSProperties = { width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14, boxSizing: 'border-box' }
+
+// ── Freelancers import tab ────────────────────────────────────────────────────
+interface FreelancerRow { number: string; name: string; position: string }
+
+function sortFreelancerRows(rows: FreelancerRow[]): FreelancerRow[] {
+  return [...rows].sort((a, b) => {
+    const aHas = !!a.number
+    const bHas = !!b.number
+    if (aHas && !bHas) return -1
+    if (!aHas && bHas) return 1
+    if (aHas && bHas) {
+      const aNum = parseInt(a.number.replace(/\D/g, ''), 10)
+      const bNum = parseInt(b.number.replace(/\D/g, ''), 10)
+      return aNum - bNum
+    }
+    return a.name.localeCompare(b.name, 'ru')
+  })
+}
+
+function FreelancersImportTab() {
+  const qc = useQueryClient()
+  const [filterPosition, setFilterPosition] = useState('')
+  const [search, setSearch] = useState('')
+
+  const { data: importData, isLoading } = useQuery<{ rows: FreelancerRow[]; lastSyncedAt: string | null }>({
+    queryKey: ['freelancers-import'],
+    queryFn: () => api.get('/users/freelancers-import').then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const refresh = useMutation({
+    mutationFn: () => api.post('/users/freelancers-import/refresh').then(r => r.data),
+    onSuccess: (data) => qc.setQueryData(['freelancers-import'], data),
+  })
+
+  const allRows = importData?.rows ?? []
+  const positions = [...new Set(allRows.map(r => r.position).filter(Boolean))].sort()
+
+  const filtered = allRows.filter(r => {
+    if (filterPosition && r.position !== filterPosition) return false
+    if (search && !r.name.toLowerCase().includes(search.toLowerCase())) return false
+    return true
+  })
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <span style={{ fontSize: 12, color: '#94a3b8' }}>
+          {importData?.lastSyncedAt
+            ? `Обновлено: ${new Date(importData.lastSyncedAt).toLocaleString('ru-RU')}`
+            : 'Данные не загружены'}
+        </span>
+        <button
+          onClick={() => refresh.mutate()}
+          disabled={refresh.isPending}
+          style={{ marginLeft: 'auto', padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 13, color: '#475569' }}
+        >
+          {refresh.isPending ? 'Загрузка...' : '↻ Обновить из таблицы'}
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+        <input
+          placeholder="Поиск по имени..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 7, fontSize: 13, width: 220 }}
+        />
+        <select value={filterPosition} onChange={e => setFilterPosition(e.target.value)} style={selectStyle}>
+          <option value="">Все должности</option>
+          {positions.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <span style={{ fontSize: 13, color: '#64748b', alignSelf: 'center' }}>
+          {filtered.length} из {allRows.length}
+        </span>
+      </div>
+
+      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        {isLoading ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>Загрузка...</div>
+        ) : allRows.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+            Нажмите «Обновить из таблицы» чтобы загрузить реестр фрилансеров
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                {['№', 'ФИО', 'Должность'].map(h => (
+                  <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortFreelancerRows(filtered).map((r, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ ...td, color: '#64748b', fontFamily: 'monospace' }}>{r.number || '—'}</td>
+                  <td style={td}>{r.name}</td>
+                  <td style={{ ...td, color: '#64748b' }}>{r.position || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}

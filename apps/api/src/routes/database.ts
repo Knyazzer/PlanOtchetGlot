@@ -179,10 +179,10 @@ export async function databaseRoutes(app: FastifyInstance) {
       }
 
       if (key === 'freelancers') {
-        const rows = (data.rows ?? []).slice(0, LIMIT)
+        const rows = (data.rows ?? []).slice(0, LIMIT) as { number: string; name: string; position: string }[]
         return {
-          columns: ['ФИО', 'Должность'],
-          rows: rows.map((r) => [r.name, r.position ?? '']),
+          columns: ['№', 'ФИО', 'Должность'],
+          rows: rows.map((r) => [r.number, r.name, r.position]),
         }
       }
 

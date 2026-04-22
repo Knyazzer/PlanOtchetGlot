@@ -157,16 +157,17 @@ export async function refreshSheetData(key: TableKey): Promise<void> {
   } else if (key === 'freelancers') {
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'B3:C',
+      range: 'A3:C',
       valueRenderOption: 'FORMATTED_VALUE',
     })
     const rawRows = resp.data.values ?? []
-    const rows: { name: string; position: string | null }[] = []
+    const rows: { number: string; name: string; position: string }[] = []
     for (const row of rawRows) {
-      const name = (row[0] ?? '').toString().trim()
-      const position = (row[1] ?? '').toString().trim() || null
-      if (!name && !position) continue
-      rows.push({ name, position })
+      const number   = (row[0] ?? '').toString().trim()
+      const name     = (row[1] ?? '').toString().trim()
+      const position = (row[2] ?? '').toString().trim()
+      if (!name) continue
+      rows.push({ number, name, position })
     }
     await saveCachedData(key, { rows })
 

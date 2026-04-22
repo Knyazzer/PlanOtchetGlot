@@ -187,6 +187,27 @@ export async function usersRoutes(app: FastifyInstance) {
     return { rows: data.rows ?? [], lastSyncedAt: cfg.last_synced_at }
   })
 
+  // GET /users/freelancers-import — кэшированный реестр фрилансеров
+  app.get('/freelancers-import', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
+    const cfg = await findSheetConfig('freelancers')
+    if (!cfg?.cached_data) return { rows: [], lastSyncedAt: null }
+    const data = cfg.cached_data as { rows: { number: string; name: string; position: string }[] }
+    return { rows: data.rows ?? [], lastSyncedAt: cfg.last_synced_at }
+  })
+
+  // POST /users/freelancers-import/refresh
+  app.post('/freelancers-import/refresh', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
+    try {
+      await refreshSheetData('freelancers')
+      const cfg = await findSheetConfig('freelancers')
+      const data = cfg?.cached_data as { rows: { number: string; name: string; position: string }[] } | null
+      return { rows: data?.rows ?? [], lastSyncedAt: cfg?.last_synced_at ?? null }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Ошибка загрузки'
+      return reply.code(500).send({ error: msg })
+    }
+  })
+
   // POST /users/staff-import/refresh — обновить кэш из Google Sheets
   app.post('/staff-import/refresh', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
     try {

@@ -13,9 +13,7 @@ import { AnalyticsPage } from '../pages/AnalyticsPage'
 import { SyncDataPage } from '../pages/SyncDataPage'
 import { DealsPage } from '../pages/DealsPage'
 import { DatabasePage } from '../pages/DatabasePage'
-import { FreelancersPage } from '../pages/FreelancersPage'
-
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'freelancers'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -24,7 +22,7 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'freelancers']
+    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database']
     return saved && valid.includes(saved) ? saved : 'calendar'
   })
 
@@ -37,11 +35,10 @@ export function AppShell() {
     { id: 'calendar', label: 'Календарь' },
     { id: 'tasks', label: 'Задачи' },
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
-    { id: 'users', label: 'Сотрудники', adminOnly: true },
+    { id: 'users', label: 'Персонал', adminOnly: true },
     { id: 'syncdata', label: 'Таблицы', adminOnly: true },
     { id: 'database', label: 'БД', adminOnly: true },
     { id: 'deals', label: 'Клиенты' },
-    { id: 'freelancers', label: 'Фрилы', adminOrProducer: true },
     { id: 'profile', label: 'Профиль' },
   ]
 
@@ -130,7 +127,6 @@ export function AppShell() {
         {page === 'syncdata' && isAdmin && <SyncDataPage />}
         {page === 'database' && isAdmin && <DatabasePage />}
         {page === 'deals' && <DealsPage />}
-        {page === 'freelancers' && (isAdmin || isProducer) && <FreelancersPage />}
         {page === 'profile' && <ProfilePage />}
       </main>
     </div>
