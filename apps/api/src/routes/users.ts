@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
 import { authenticate } from '../plugins/auth'
 import { requirePermission } from '../config/permissions'
+import { findSheetConfig, refreshSheetData } from '../services/databaseService'
 
 const createUserSchema = z.object({
   fullName: z.string().min(1),
@@ -174,5 +175,30 @@ export async function usersRoutes(app: FastifyInstance) {
 
     await prisma.user.update({ where: { id }, data: { isActive: false } })
     return { ok: true }
+  })
+
+  // GET /users/staff-import — кэшированный список сотрудников из MAIN 2
+  app.get('/staff-import', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
+    const cfg = await findSheetConfig('employees_buffer')
+    if (!cfg?.cached_data) return { rows: [], lastSyncedAt: null }
+    const data = cfg.cached_data as {
+      rows: { tabNumber: string; name: string; position: string; dept: string; subDept: string }[]
+    }
+    return { rows: data.rows ?? [], lastSyncedAt: cfg.last_synced_at }
+  })
+
+  // POST /users/staff-import/refresh — обновить кэш из Google Sheets
+  app.post('/staff-import/refresh', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
+    try {
+      await refreshSheetData('employees_buffer')
+      const cfg = await findSheetConfig('employees_buffer')
+      const data = cfg?.cached_data as {
+        rows: { tabNumber: string; name: string; position: string; dept: string; subDept: string }[]
+      } | null
+      return { rows: data?.rows ?? [], lastSyncedAt: cfg?.last_synced_at ?? null }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Ошибка загрузки'
+      return reply.code(500).send({ error: msg })
+    }
   })
 }

@@ -1,4 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../lib/api'
+
+interface StaffRow { tabNumber: string; name: string; position: string; dept: string; subDept: string }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Person  { id: string; name: string; role: string }
@@ -181,6 +185,33 @@ export function OrgChartTab() {
     })
   })
 
+  // ── Staff import data ───────────────────────────────────────────────────────
+  const { data: staffImport } = useQuery<{ rows: StaffRow[] }>({
+    queryKey: ['staff-import'],
+    queryFn: () => api.get('/users/staff-import').then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  })
+  const staffRows = staffImport?.rows ?? []
+
+  // Only workers (have tab number) for org chart
+  const activeStaff = staffRows.filter(r => r.tabNumber)
+
+  const deptNames = [...new Set(activeStaff.map(r => r.dept).filter(Boolean))].sort()
+
+  const subDeptNames = (deptName: string) =>
+    [...new Set(activeStaff.filter(r => r.dept === deptName).map(r => r.subDept).filter(Boolean))].sort()
+
+  const autoLeaderDept = (deptName: string) =>
+    activeStaff.find(r => r.dept === deptName && r.position.startsWith('Директор'))?.name ?? ''
+
+  const autoLeaderSub = (deptName: string, subName: string) =>
+    activeStaff.find(r => r.dept === deptName && r.subDept === subName && r.position.startsWith('Руководитель'))?.name ?? ''
+
+  const autoPersonsSub = (deptName: string, subName: string): Person[] =>
+    activeStaff
+      .filter(r => r.dept === deptName && r.subDept === subName && !r.position.startsWith('Руководитель') && !r.position.startsWith('Директор'))
+      .map(r => ({ id: uid(), name: r.name, role: r.position }))
+
   const doZoom = useCallback((delta: number) => {
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
@@ -208,12 +239,14 @@ export function OrgChartTab() {
     const { mode, dept, sub } = modal
 
     if (mode === 'add-dept') {
-      setData(d => [...d, { id: uid(), name, color: formColor, leader: formSub.trim(), subs: [] }])
+      setData(d => [...d, { id: uid(), name, color: formColor, leader: autoLeaderDept(name), subs: [] }])
     } else if (mode === 'edit-dept' && dept) {
       setData(d => d.map(x => x.id === dept.id ? { ...x, name, color: formColor, leader: formSub.trim() } : x))
     } else if (mode === 'add-sub' && dept) {
+      const leader  = autoLeaderSub(dept.name, name)
+      const persons = autoPersonsSub(dept.name, name)
       setData(d => d.map(x => x.id === dept.id
-        ? { ...x, subs: [...x.subs, { id: uid(), name, leader: formSub.trim(), persons: [] }] }
+        ? { ...x, subs: [...x.subs, { id: uid(), name, leader, persons }] }
         : x))
     } else if (mode === 'edit-sub' && dept && sub) {
       setData(d => d.map(x => x.id === dept.id
@@ -421,29 +454,100 @@ export function OrgChartTab() {
           onClick={() => setModal({ mode: null })}
         >
           <div
-            style={{ background: '#fff', borderRadius: 12, padding: 24, width: 340, boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}
+            style={{ background: '#fff', borderRadius: 12, padding: 24, width: 360, boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}
             onClick={e => e.stopPropagation()}
-            onKeyDown={e => { if (e.key === 'Enter') saveModal(); if (e.key === 'Escape') setModal({ mode: null }) }}
+            onKeyDown={e => { if (e.key === 'Escape') setModal({ mode: null }) }}
           >
             <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 18 }}>{cfg.title}</h3>
 
-            {cfg.color && (
+            {/* add-dept: select from staff data */}
+            {modal.mode === 'add-dept' && (() => {
+              const preview = formName ? { leader: autoLeaderDept(formName) } : null
+              return (
+                <>
+                  <div style={labelStyle}>Цвет</div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                    {COLORS.map(c => (
+                      <div key={c} onClick={() => setFormColor(c)}
+                        style={{ width: 26, height: 26, borderRadius: '50%', background: c, cursor: 'pointer', border: `2px solid ${c === formColor ? '#0f172a' : 'transparent'}`, transform: c === formColor ? 'scale(1.15)' : undefined, transition: '.15s' }} />
+                    ))}
+                  </div>
+                  <div style={labelStyle}>Департамент</div>
+                  <select
+                    autoFocus
+                    value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 7, padding: '8px 11px', fontSize: 14, marginBottom: 14, outline: 'none', boxSizing: 'border-box' }}
+                  >
+                    <option value="">— выберите —</option>
+                    {deptNames.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  {preview && (
+                    <div style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>
+                      <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 4 }}>Директор (авто)</div>
+                      <div style={{ fontWeight: 600, color: preview.leader ? '#1e293b' : '#cbd5e1', fontStyle: preview.leader ? 'normal' : 'italic' }}>
+                        {preview.leader || '— не найден в таблице'}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+
+            {/* add-sub: select subdept from staff data */}
+            {modal.mode === 'add-sub' && (() => {
+              const parentDept = modal.dept!
+              const options = subDeptNames(parentDept.name)
+              const leader  = formName ? autoLeaderSub(parentDept.name, formName) : ''
+              const persons = formName ? autoPersonsSub(parentDept.name, formName) : []
+              return (
+                <>
+                  <div style={labelStyle}>Отдел</div>
+                  <select
+                    autoFocus
+                    value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 7, padding: '8px 11px', fontSize: 14, marginBottom: 14, outline: 'none', boxSizing: 'border-box' }}
+                  >
+                    <option value="">— выберите —</option>
+                    {options.length === 0
+                      ? <option disabled value="">Нет данных (обновите импорт)</option>
+                      : options.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  {formName && (
+                    <div style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 14px', marginBottom: 14, fontSize: 13 }}>
+                      <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 4 }}>Руководитель (авто)</div>
+                      <div style={{ fontWeight: 600, color: leader ? '#1e293b' : '#cbd5e1', fontStyle: leader ? 'normal' : 'italic', marginBottom: 8 }}>
+                        {leader || '— не найден в таблице'}
+                      </div>
+                      <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 4 }}>Сотрудники (работают)</div>
+                      <div style={{ color: persons.length ? '#1e293b' : '#cbd5e1', fontStyle: persons.length ? 'normal' : 'italic' }}>
+                        {persons.length ? `${persons.length} чел.: ${persons.slice(0,3).map(p=>p.name).join(', ')}${persons.length > 3 ? '...' : ''}` : '— нет сотрудников'}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
+
+            {/* edit-dept, edit-sub, add-person: manual inputs */}
+            {(modal.mode === 'edit-dept' || modal.mode === 'edit-sub' || modal.mode === 'add-person') && (
               <>
-                <div style={labelStyle}>Цвет</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                  {COLORS.map(c => (
-                    <div
-                      key={c}
-                      onClick={() => setFormColor(c)}
-                      style={{ width: 26, height: 26, borderRadius: '50%', background: c, cursor: 'pointer', border: `2px solid ${c === formColor ? '#0f172a' : 'transparent'}`, transform: c === formColor ? 'scale(1.15)' : undefined, transition: '.15s' }}
-                    />
-                  ))}
-                </div>
+                {cfg.color && (
+                  <>
+                    <div style={labelStyle}>Цвет</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                      {COLORS.map(c => (
+                        <div key={c} onClick={() => setFormColor(c)}
+                          style={{ width: 26, height: 26, borderRadius: '50%', background: c, cursor: 'pointer', border: `2px solid ${c === formColor ? '#0f172a' : 'transparent'}`, transform: c === formColor ? 'scale(1.15)' : undefined, transition: '.15s' }} />
+                      ))}
+                    </div>
+                  </>
+                )}
+                <ModalField label={cfg.l1} value={formName} onChange={setFormName} autoFocus />
+                {cfg.l2 && <ModalField label={cfg.l2} value={formSub} onChange={setFormSub} />}
               </>
             )}
-
-            <ModalField label={cfg.l1} value={formName} onChange={setFormName} autoFocus />
-            {cfg.l2 && <ModalField label={cfg.l2} value={formSub} onChange={setFormSub} />}
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 4 }}>
               <button onClick={() => setModal({ mode: null })} style={btnGhost}>Отмена</button>

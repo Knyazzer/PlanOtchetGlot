@@ -168,7 +168,17 @@ export async function databaseRoutes(app: FastifyInstance) {
         columns?: string[]
       }
 
-      if (key === 'employees_buffer' || key === 'freelancers') {
+      if (key === 'employees_buffer') {
+        const rows = (data.rows ?? []).slice(0, LIMIT) as {
+          tabNumber: string; name: string; position: string; dept: string; subDept: string
+        }[]
+        return {
+          columns: ['Таб. №', 'ФИО', 'Должность', 'Департамент', 'Отдел'],
+          rows: rows.map((r) => [r.tabNumber, r.name, r.position, r.dept, r.subDept]),
+        }
+      }
+
+      if (key === 'freelancers') {
         const rows = (data.rows ?? []).slice(0, LIMIT)
         return {
           columns: ['ФИО', 'Должность'],

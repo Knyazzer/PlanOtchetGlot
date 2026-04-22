@@ -109,7 +109,7 @@ export const TABLE_META: Record<string, { label: string; description: string; ed
   },
   employees_buffer: {
     label: 'Буфер Сотрудники',
-    description: 'Лист MAIN, столбцы A:B — ФИО и должность. Строки, где обе ячейки заполнены.',
+    description: 'Лист «MAIN 2», столбцы A:E — табельный номер, ФИО, должность, департамент, отдел.',
     editable: true,
   },
   freelancers: {
@@ -138,15 +138,19 @@ export async function refreshSheetData(key: TableKey): Promise<void> {
   if (key === 'employees_buffer') {
     const resp = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: 'MAIN!A:B',
+      range: 'MAIN 2!A:E',
       valueRenderOption: 'FORMATTED_VALUE',
     })
     const rawRows = resp.data.values ?? []
-    const rows: { name: string; position: string }[] = []
+    const rows: { tabNumber: string; name: string; position: string; dept: string; subDept: string }[] = []
     for (const row of rawRows) {
-      const name = (row[0] ?? '').toString().trim()
-      const position = (row[1] ?? '').toString().trim()
-      if (name && position) rows.push({ name, position })
+      const tabNumber = (row[0] ?? '').toString().trim()
+      const name      = (row[1] ?? '').toString().trim()
+      const position  = (row[2] ?? '').toString().trim()
+      const dept      = (row[3] ?? '').toString().trim()
+      const subDept   = (row[4] ?? '').toString().trim()
+      if (!name) continue
+      rows.push({ tabNumber, name, position, dept, subDept })
     }
     await saveCachedData(key, { rows })
 
