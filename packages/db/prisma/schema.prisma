@@ -18,6 +18,7 @@ enum Role {
 enum StatusRowStatus {
   request
   negotiation
+  connecting
   preproduction
   production
   postproduction

@@ -5,6 +5,7 @@ import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
 import { InternalShiftsPanel, MicroProjectTab } from './InternalShiftsPanel'
 import { GanttTab, NotesTab, DocumentsTab } from './MatrixTabs'
+import { TaskDetailPanel } from './TaskDetailPanel'
 
 // ─── ConfirmDialog ────────────────────────────────────────────────────────────
 
@@ -1197,431 +1198,6 @@ function ProjectFormModal({
   )
 }
 
-// ─── Projects Table ───────────────────────────────────────────────────────────
-
-function ProjectsTable({
-  projects, loading, sheetUrl,
-  primaryFilters, onOpenMatrix,
-}: {
-  projects: Project[]
-  loading: boolean
-  sheetUrl: string | null
-  primaryFilters: Record<string, string[]>
-  onOpenMatrix?: (registryId: string, projectId: string) => void
-}) {
-  const qc = useQueryClient()
-  const [colFilters, setColFilters] = usePersistedFilters('sync-col-proj')
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'external' | 'internal'>(() => {
-    return (localStorage.getItem('sync-proj-source-filter') as 'all' | 'external' | 'internal') ?? 'all'
-  })
-  const [openDrop, setOpenDrop] = useState<string | null>(null)
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [formProject, setFormProject] = useState<Project | 'new' | null>(null)
-  const [highlightedId, setHighlightedId] = useState<string | null>(null)
-  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [containerWidth, setContainerWidth] = useState(9999)
-
-
-
-  function openProject(p: Project) {
-    if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null }
-    setHighlightedId(p.id)
-    setSelectedProject(p)
-  }
-
-  function closeProject() {
-    setSelectedProject(null)
-    highlightTimer.current = setTimeout(() => { setHighlightedId(null); highlightTimer.current = null }, 1000)
-  }
-
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    const obs = new ResizeObserver((entries) => setContainerWidth(entries[0].contentRect.width))
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
-
-  const hiddenCols = getProjHiddenCols(containerWidth)
-
-  // Close dropdown on scroll
-  useEffect(() => {
-    if (!openDrop) return
-    const el = scrollRef.current
-    const close = () => setOpenDrop(null)
-    el?.addEventListener('scroll', close)
-    window.addEventListener('scroll', close)
-    return () => {
-      el?.removeEventListener('scroll', close)
-      window.removeEventListener('scroll', close)
-    }
-  }, [openDrop])
-
-  const allNonSep = useMemo(() => projects.filter((p) => p.source !== 'separator'), [projects])
-
-  const allNonSepFiltered = useMemo(() => {
-    if (sourceFilter === 'external') return allNonSep.filter((p) => p.source === 'projects_table')
-    if (sourceFilter === 'internal') return allNonSep.filter((p) => p.source === 'manual')
-    return allNonSep
-  }, [allNonSep, sourceFilter])
-
-  const monthMap = useMemo(() => buildMonthMap(projects), [projects])
-
-  // Ordered list of block names (separator names) as they appear in the table
-  const blockOrder = useMemo(() => {
-    const seen = new Set<string>()
-    const result: string[] = []
-    for (const p of projects) {
-      if (p.source === 'separator' && p.name && !seen.has(p.name)) {
-        seen.add(p.name)
-        result.push(p.name)
-      }
-    }
-    return result
-  }, [projects])
-
-  const afterPrimary = useMemo(() => {
-    return allNonSepFiltered.filter((p) => {
-      for (const [col, sel] of Object.entries(primaryFilters)) {
-        if (sel.length === 0) continue
-        if (!sel.includes(getProjValue(p, col))) return false
-      }
-      return true
-    })
-  }, [allNonSepFiltered, primaryFilters])
-
-  const colValues = useMemo(() => {
-    // For date: only show blocks that actually have rows in afterPrimary
-    const activeBlocks = new Set(afterPrimary.map((p) => monthMap[p.id]).filter(Boolean))
-    return {
-      status:         uniq(afterPrimary.map((p) => STATUS_LABELS[p.status] ?? p.status)),
-      client:         uniq(afterPrimary.map((p) => p.client)),
-      execProducer:   uniq(afterPrimary.map((p) => p.execProducer)),
-      lineProducer:   uniq(afterPrimary.map((p) => p.lineProducer)),
-      accountManager: uniq(afterPrimary.map((p) => p.accountManager)),
-      date:           blockOrder.filter((b) => activeBlocks.has(b)),
-      format:         uniq(afterPrimary.map((p) => p.format)),
-      location:       uniq(afterPrimary.map((p) => p.location)),
-      matrixId:       ['Есть ID', 'Нет ID'] as string[],
-    }
-  }, [afterPrimary, monthMap, blockOrder])
-
-  const afterSecondary = useMemo(() => {
-    return afterPrimary.filter((p) => {
-      for (const [col, sel] of Object.entries(colFilters)) {
-        if (sel.length === 0) return false
-        if (col === 'date') {
-          if (!sel.includes(monthMap[p.id] ?? '')) return false
-          continue
-        }
-        if (col === 'matrixId') {
-          const hasId = !!(p.sheetMatrixId ?? p.linkedMatrix?.matrixId)
-          const wantHas = sel.includes('Есть ID')
-          const wantNot = sel.includes('Нет ID')
-          if (wantHas && !wantNot && !hasId) return false
-          if (!wantHas && wantNot && hasId) return false
-          continue
-        }
-        const val = getProjValue(p, col)
-        if (!sel.includes(val)) return false
-      }
-      return true
-    })
-  }, [afterPrimary, colFilters, monthMap])
-  const visibleIds = useMemo(() => new Set(afterSecondary.map((p) => p.id)), [afterSecondary])
-
-  const rows = useMemo(() => {
-    const byDate = (a: Project, b: Project) => {
-      if (!a.date && !b.date) return 0
-      if (!a.date) return 1
-      if (!b.date) return -1
-      return new Date(a.date).getTime() - new Date(b.date).getTime()
-    }
-
-    const separators = projects.filter((p) => p.source === 'separator')
-
-    // Group visible non-separator projects by their sheet block (monthMap), not by parsed date
-    const byBlock = new Map<string, Project[]>()
-    const noBlock: Project[] = []
-    for (const p of projects) {
-      if (p.source === 'separator' || !visibleIds.has(p.id)) continue
-      const block = monthMap[p.id]
-      if (block) {
-        if (!byBlock.has(block)) byBlock.set(block, [])
-        byBlock.get(block)!.push(p)
-      } else {
-        noBlock.push(p)
-      }
-    }
-    // Sort within each block by date
-    for (const arr of byBlock.values()) arr.sort(byDate)
-
-    const result: Project[] = []
-    const seenBlocks = new Set<string>()
-
-    for (const sep of separators) {
-      if (!sep.name || seenBlocks.has(sep.name)) continue
-      seenBlocks.add(sep.name)
-      const bucket = byBlock.get(sep.name) ?? []
-      if (bucket.length > 0) {
-        result.push(sep)
-        result.push(...bucket)
-      }
-    }
-
-    // Projects with no block (manual, no preceding separator) — at the end
-    if (noBlock.length > 0) result.push(...noBlock)
-
-    return result
-  }, [projects, visibleIds, monthMap])
-
-  const visibleCols = PROJ_COLS.filter((c) => !hiddenCols.has(c.key))
-  const colSpanCount = visibleCols.length + 1 // +1 for source icon column
-  const totalColFilters = Object.values(colFilters).reduce((s, a) => s + a.length, 0)
-
-
-  function renderProjCell(col: ColDef, p: Project, cc?: CellColor) {
-    switch (col.key) {
-      case 'status': {
-        // Если есть цвет из таблицы — просто текст (td уже покрашен)
-        if (cc?.bg || cc?.fg) {
-          return <span style={{ fontSize: 11, fontWeight: 600 }}>{STATUS_LABELS[p.status] ?? p.status}</span>
-        }
-        return (
-          <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: `${STATUS_COLORS[p.status] ?? '#94a3b8'}22`, color: STATUS_COLORS[p.status] ?? '#94a3b8' }}>
-            {STATUS_LABELS[p.status] ?? p.status}
-          </span>
-        )
-      }
-      case 'client':         return p.client ?? '—'
-      case 'notes':          return p.notes ?? '—'
-      case 'execProducer':   return p.execProducer ?? '—'
-      case 'lineProducer':   return p.lineProducer ?? '—'
-      case 'accountManager': return p.accountManager ?? '—'
-      case 'date':           return p.dateApproximate ?? fmtDate(p.date)
-      case 'time':           return fmtTime(p.time)
-      case 'format':         return p.format ?? '—'
-      case 'location':       return p.location ?? '—'
-      case 'matrixId': {
-        const mid = p.sheetMatrixId ?? p.linkedMatrix?.matrixId ?? null
-        return <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#475569' }}>{mid ?? '—'}</span>
-      }
-      default:               return null
-    }
-  }
-
-  return (
-    <>
-    <div ref={containerRef} style={panelStyle}>
-      <div style={panelHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b', whiteSpace: 'nowrap' }}>
-            <a href={sheetUrl ?? '#'} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', borderBottom: '1px dashed #94a3b8' }}>
-              Проекты из таблицы
-            </a>
-            <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 400, color: '#64748b' }}>
-              {afterSecondary.length} / {allNonSep.length}
-            </span>
-          </span>
-          <div style={{ display: 'flex', gap: 3 }}>
-            {(['all', 'external', 'internal'] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => { setSourceFilter(v); localStorage.setItem('sync-proj-source-filter', v) }}
-                style={{
-                  fontSize: 11, padding: '3px 9px', borderRadius: 5, border: `1px solid ${sourceFilter === v ? '#3b82f6' : '#e2e8f0'}`,
-                  background: sourceFilter === v ? '#eff6ff' : '#f8fafc',
-                  color: sourceFilter === v ? '#2563eb' : '#94a3b8',
-                  cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap',
-                }}
-              >
-                {v === 'all' ? 'Все' : v === 'external' ? 'Внешние' : 'Внутренние'}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {totalColFilters > 0 && (
-            <button onClick={() => setColFilters({})} style={resetBtn}>
-              Сбросить ({totalColFilters})
-            </button>
-          )}
-          <button
-            onClick={() => setFormProject('new')}
-            style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
-          >
-            + Добавить отдел
-          </button>
-        </div>
-      </div>
-
-      <div ref={scrollRef} style={{ overflowX: 'hidden', overflowY: 'auto', flex: 1 }}>
-        {loading ? (
-          <div style={emptyMsg}>Загрузка...</div>
-        ) : projects.length === 0 ? (
-          <div style={emptyMsg}>Данные не загружены — запустите синхронизацию</div>
-        ) : (
-          <table style={{ borderCollapse: 'separate', borderSpacing: '0 4px', fontSize: 13, width: '100%' }}>
-            <thead>
-              <tr>
-                <th style={{ ...thBase, width: 28, padding: '6px 4px 6px 8px' }} />
-                {visibleCols.map((col) => {
-                  const allVals = (colValues as Record<string, string[]>)[col.key] ?? []
-                  const activeSel = colFilters[col.key]
-                  const hiddenCount = activeSel != null ? allVals.filter((v) => !activeSel.includes(v)).length : 0
-                  const hasFilter = hiddenCount > 0
-                  const isOpen = openDrop === col.key
-                  return (
-                    <th key={col.key} style={{ ...thBase, overflow: 'visible' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
-                        <span style={thLabel}>{col.label}</span>
-                        {col.filterable && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setOpenDrop(isOpen ? null : col.key) }}
-                            style={filterDropBtn(hasFilter)}
-                            title={hasFilter ? `Скрыто: ${hiddenCount}` : 'Фильтр'}
-                          >
-                            {hasFilter ? `-${hiddenCount}` : '▾'}
-                          </button>
-                        )}
-                      </div>
-                      {isOpen && (
-                        <ColDropdown
-                          values={(colValues as Record<string, string[]>)[col.key] ?? []}
-                          selected={activeSel ?? allVals}
-                          onToggle={(v) => setColFilters((f) => {
-                            const cur = f[col.key] ?? allVals
-                            const next = cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]
-                            if (next.length >= allVals.length && allVals.every((av) => next.includes(av))) {
-                              const n = { ...f }; delete n[col.key]; return n
-                            }
-                            return { ...f, [col.key]: next }
-                          })}
-                          onClear={() => setColFilters((f) => ({ ...f, [col.key]: [] }))}
-                          onSelectAll={() => setColFilters((f) => { const n = { ...f }; delete n[col.key]; return n })}
-                          onClose={() => setOpenDrop(null)}
-                        />
-                      )}
-                    </th>
-                  )
-                })}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr><td colSpan={colSpanCount} style={{ padding: 24, textAlign: 'center', color: '#94a3b8' }}>Нет строк по выбранным фильтрам</td></tr>
-              ) : rows.map((p, i) => {
-                if (p.source === 'separator') {
-                  return (
-                    <tr key={p.id}>
-                      <td colSpan={colSpanCount} style={separatorTd}>{p.name}</td>
-                    </tr>
-                  )
-                }
-                const cellColors = parseUncertainColors(p.uncertainFields ?? [])
-                const rowBg = i % 2 === 0 ? '#fff' : '#f8fafc'
-                const noMatrix = !p.sheetMatrixId && !p.linkedMatrix?.matrixId
-                return (
-                  <tr
-                    key={p.id}
-                    style={{ cursor: 'pointer', outline: noMatrix && highlightedId !== p.id ? '2px solid #f87171' : undefined, outlineOffset: '-1px', borderSpacing: 0 }}
-                    onClick={() => openProject(p)}
-                    title="Нажмите для просмотра деталей"
-                  >
-                    <td style={{ ...tdStyle, width: 28, padding: '4px 4px 4px 8px', background: highlightedId === p.id ? `linear-gradient(rgba(147,197,253,0.35),rgba(147,197,253,0.35)),${rowBg}` : rowBg }}>
-                      <SourceBadge source={p.source} />
-                    </td>
-                    {visibleCols.map((col) => {
-                      const isHighlighted = highlightedId === p.id
-                      const chipBg = getValueChipColor(col.key, p)
-                      const cc = chipBg ? { bg: chipBg } : cellColors[col.key]
-                      const baseBg = cc?.bg ?? rowBg
-                      const effectiveBg = isHighlighted
-                        ? `linear-gradient(rgba(147,197,253,0.35), rgba(147,197,253,0.35)), ${baseBg}`
-                        : baseBg
-                      const effectiveFg = cc?.fg ?? (cc?.bg ? contrastColor(cc.bg) : undefined)
-                      return (
-                        <td
-                          key={col.key}
-                          style={{
-                            ...tdStyle,
-                            background: effectiveBg,
-                            color: effectiveFg,
-                          }}
-                          title={col.key === 'notes' ? (p.notes ?? undefined) : undefined}
-                        >
-                          {renderProjCell(col, p, cc)}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
-
-    {selectedProject && (
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
-        onMouseDown={() => {
-          const el = document.activeElement
-          if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) {
-            (el as HTMLElement).blur()
-            return
-          }
-          closeProject()
-        }}
-      >
-        <div
-          style={{ background: '#f8fafc', borderRadius: 16, boxShadow: '0 24px 80px rgba(0,0,0,0.25)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #1e3a5f 100%)', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedProject.name}</div>
-              {selectedProject.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 2 }}>{selectedProject.client}</div>}
-            </div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-              {selectedProject.matrixRegistryId && onOpenMatrix && (
-                <button
-                  onClick={() => { onOpenMatrix(selectedProject.matrixRegistryId!, selectedProject.id); closeProject() }}
-                  style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.5)', color: '#93c5fd', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 7, fontWeight: 500, fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                  title="Открыть в матрице">
-                  Открыть в проекте
-                </button>
-              )}
-              <button onClick={closeProject} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 10px', borderRadius: 8 }} title="Закрыть (Esc)">×</button>
-            </div>
-          </div>
-          {/* Body */}
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <MicroProjectTab
-              project={selectedProject as any}
-              onDeleted={() => { qc.invalidateQueries({ queryKey: ['status-rows-sync'] }); closeProject() }}
-              onCopied={(newId) => { qc.invalidateQueries({ queryKey: ['status-rows-sync'] }); closeProject() }}
-              onUpdated={() => qc.invalidateQueries({ queryKey: ['status-rows-sync'] })}
-            />
-          </div>
-        </div>
-      </div>
-    )}
-    {formProject != null && (
-      <ProjectFormModal
-        project={formProject === 'new' ? undefined : formProject}
-        onClose={() => setFormProject(null)}
-        onSaved={() => { qc.invalidateQueries({ queryKey: ['status-rows-sync'] }); setFormProject(null) }}
-      />
-    )}
-    </>
-  )
-}
-
 // ─── Registry Detail Modal ───────────────────────────────────────────────────
 
 interface ShiftRow { isSeparator: true; text: string }
@@ -2235,11 +1811,106 @@ function RegistryChangesTab({ entityId }: { entityId: string }) {
   )
 }
 
+// ─── Registry Tasks Tab ───────────────────────────────────────────────────────
+
+interface LinkedTask {
+  id: string
+  name: string
+  client: string | null
+  status: string
+  execProducer: string | null
+  date: string | null
+  dateApproximate: string | null
+  format: string | null
+}
+
+const TASK_STATUS_LABELS: Record<string, string> = {
+  request: 'Запрос', negotiation: 'На согл.', connecting: 'Подключение',
+  preproduction: 'Препрод.', production: 'Продакшн', postproduction: 'Постпрод.',
+  delivered: 'Сдан', rejected: 'Не согл.', cancelled: 'Отменён',
+}
+
+const TASK_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
+  request:        { bg: '#dbeafe', color: '#1d4ed8' },
+  negotiation:    { bg: '#e0f2fe', color: '#0369a1' },
+  connecting:     { bg: '#fef3c7', color: '#92400e' },
+  preproduction:  { bg: '#fef9c3', color: '#a16207' },
+  production:     { bg: '#dcfce7', color: '#15803d' },
+  postproduction: { bg: '#f0fdf4', color: '#16a34a' },
+  delivered:      { bg: '#f5f3ff', color: '#6d28d9' },
+  rejected:       { bg: '#fee2e2', color: '#b91c1c' },
+  cancelled:      { bg: '#f1f5f9', color: '#64748b' },
+}
+
+function RegistryTasksTab({ matrixRegistryId }: { matrixRegistryId: string }) {
+  const [detailRowId, setDetailRowId] = useState<string | null>(null)
+
+  const { data: tasks = [], isLoading } = useQuery<LinkedTask[]>({
+    queryKey: ['registry-tasks', matrixRegistryId],
+    queryFn: () => api.get('/status-rows', { params: { matrixRegistryId } }).then((r) => r.data),
+    staleTime: 30_000,
+  })
+
+  if (isLoading) return <div style={{ padding: '20px 24px', color: '#94a3b8', fontSize: 14 }}>Загрузка...</div>
+
+  return (
+    <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>
+      {tasks.length === 0 ? (
+        <div style={{ color: '#94a3b8', fontSize: 14, padding: '20px 0' }}>
+          Нет задач, привязанных к этому проекту.<br />
+          <span style={{ fontSize: 12, color: '#cbd5e1' }}>Привязать задачу можно в Workflow через «Подключить проект».</span>
+        </div>
+      ) : (
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              {['Статус', 'Задача', 'Клиент', 'Продюсер', 'Дата', 'Формат'].map((h) => (
+                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {tasks.map((t) => {
+              const sc = TASK_STATUS_COLORS[t.status] ?? { bg: '#f1f5f9', color: '#64748b' }
+              return (
+                <tr
+                  key={t.id}
+                  onClick={() => setDetailRowId(t.id)}
+                  style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background .1s' }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = '#f8fafc')}
+                  onMouseOut={(e) => (e.currentTarget.style.background = '')}
+                >
+                  <td style={{ padding: '8px 12px' }}>
+                    <span style={{ ...sc, display: 'inline-block', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      {TASK_STATUS_LABELS[t.status] ?? t.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 500, color: '#1e293b' }}>{t.name}</td>
+                  <td style={{ padding: '8px 12px', fontSize: 13, color: '#64748b' }}>{t.client || '—'}</td>
+                  <td style={{ padding: '8px 12px', fontSize: 13, color: '#64748b' }}>{t.execProducer || '—'}</td>
+                  <td style={{ padding: '8px 12px', fontSize: 13, color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>
+                    {t.date ? new Date(t.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : t.dateApproximate || '—'}
+                  </td>
+                  <td style={{ padding: '8px 12px', fontSize: 13, color: '#64748b' }}>{t.format || '—'}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {detailRowId && (
+        <TaskDetailPanel rowId={detailRowId} onClose={() => setDetailRowId(null)} />
+      )}
+    </div>
+  )
+}
+
 // ─── Registry Detail Modal ────────────────────────────────────────────────────
 
 function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, initialProjectId }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; initialProjectId?: string | null }) {
   const [localEntry, setLocalEntry] = useState<RegistryEntry>(entry)
-  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix'>(initialProjectId ? 'shifts' : 'info')
+  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix' | 'tasks'>(initialProjectId ? 'shifts' : 'info')
   const storageKey = `matrix-seps-${entry.matrixId}`
 
   const [customSeps, setCustomSeps] = useState<Map<number, { name: string; date: string }>>(() => {
@@ -2320,8 +1991,9 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
   }
   const statusStyle = localEntry.status ? (statusColors[localEntry.status] ?? { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }) : null
 
-  const TABS: { key: 'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix'; label: string }[] = [
+  const TABS: { key: 'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix' | 'tasks'; label: string }[] = [
     { key: 'info',        label: 'Инфо' },
+    { key: 'tasks',       label: 'Задачи' },
     { key: 'shifts',      label: 'Отделы' },
     { key: 'gantt',       label: 'Ганта' },
     { key: 'notes',       label: 'Заметки' },
@@ -2396,6 +2068,11 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
             ganttTasks={ganttTasks}
             onStatusChanged={(newStatus) => setLocalEntry((prev) => ({ ...prev, status: newStatus }))}
           />
+        )}
+
+        {/* Tab: Tasks */}
+        {tab === 'tasks' && (
+          <RegistryTasksTab matrixRegistryId={entry.id} />
         )}
 
         {/* Tab: Shifts */}
@@ -3531,20 +3208,8 @@ export function SyncDataPage() {
   const qc = useQueryClient()
   const [resetResult, setResetResult] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [showProj, setShowProj] = useState(true)
-  const [showReg, setShowReg]  = useState(true)
-  const [splitPct, setSplitPct] = useState(50)  // % ширины левой панели
-  const containerRef = useRef<HTMLDivElement>(null)
-  const dragging = useRef(false)
-
-  const [projFilters, setProjFilters] = usePersistedFilters('sync-primary-proj')
   const [regFilters, setRegFilters] = usePersistedFilters('sync-primary-reg')
   const [openMatrixTarget, setOpenMatrixTarget] = useState<{ registryId: string; projectId: string } | null>(null)
-
-  const { data: allProjects = [], isLoading: projLoading } = useQuery<Project[]>({
-    queryKey: ['status-rows-sync'],
-    queryFn: () => api.get('/status-rows?withSeparators=true').then((r) => r.data),
-  })
 
   const { data: sheetUrls } = useQuery<{ projectsSheetUrl: string | null; registrySheetUrl: string | null }>({
     queryKey: ['sync-sheet-urls'],
@@ -3555,75 +3220,30 @@ export function SyncDataPage() {
   const { data: registry = [], isLoading: regLoading } = useQuery<RegistryEntry[]>({
     queryKey: ['sync-registry'],
     queryFn: () => api.get('/sync/registry').then((r) => r.data),
-    refetchInterval: 5000, // обновляем каждые 5с — видим подсветку сразу по мере синка
+    refetchInterval: 5000,
   })
 
   const reset = useMutation({
     mutationFn: () => api.post('/sync/reset'),
     onSuccess: (res) => {
       const d = res.data.deleted
-      setResetResult(`Удалено: ${d.projects} проектов, ${d.registryEntries} записей реестра, ${d.shiftEntries} смен`)
-      qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
+      setResetResult(`Удалено: ${d.registryEntries} записей реестра, ${d.shiftEntries} смен`)
       qc.invalidateQueries({ queryKey: ['sync-registry'] })
     },
   })
 
-  const projects = useMemo(
-    () => [...allProjects].sort((a, b) => (a.googleRowIndex ?? 0) - (b.googleRowIndex ?? 0)),
-    [allProjects],
-  )
-
-  // Options for settings popup (full dataset, no filters applied)
-  const allNonSepProj = useMemo(() => projects.filter((p) => p.source !== 'separator'), [projects])
-  const projOpts = useMemo(() => ({
-    status:   uniq(allNonSepProj.map((p) => STATUS_LABELS[p.status] ?? p.status)),
-    format:   uniq(allNonSepProj.map((p) => p.format)),
-    location: uniq(allNonSepProj.map((p) => p.location)),
-  }), [allNonSepProj])
   const regOpts = useMemo(() => ({
     status: uniq(registry.map((r) => r.status)),
     unit:   uniq(registry.flatMap((r) => r.unit)),
     format: uniq(registry.map((r) => r.format)),
   }), [registry])
 
-  const totalPrimary =
-    Object.values(projFilters).reduce((s, a) => s + a.length, 0) +
-    Object.values(regFilters).reduce((s, a) => s + a.length, 0)
-
-  const both = showProj && showReg
-
-  function onDividerMouseDown(e: React.MouseEvent) {
-    e.preventDefault()
-    dragging.current = true
-    const onMove = (ev: MouseEvent) => {
-      if (!dragging.current || !containerRef.current) return
-      const rect = containerRef.current.getBoundingClientRect()
-      const pct = Math.min(85, Math.max(15, ((ev.clientX - rect.left) / rect.width) * 100))
-      setSplitPct(pct)
-    }
-    const onUp = () => {
-      dragging.current = false
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }
-
-  const toggleBtnStyle = (active: boolean): React.CSSProperties => ({
-    padding: '5px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500,
-    border: `1px solid ${active ? '#3b82f6' : '#e2e8f0'}`,
-    background: active ? '#eff6ff' : '#f8fafc',
-    color: active ? '#2563eb' : '#94a3b8',
-    cursor: 'pointer',
-  })
+  const totalPrimary = Object.values(regFilters).reduce((s, a) => s + (a as string[]).length, 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 104px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexShrink: 0 }}>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>
-          Данные из Google Sheets
-        </h2>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1e293b' }}>Реестр проектов</h2>
         <button
           onClick={() => setSettingsOpen(true)}
           style={{
@@ -3653,79 +3273,25 @@ export function SyncDataPage() {
           {reset.isPending ? 'Удаление...' : 'Сбросить импорт'}
         </button>
         {resetResult && <span style={{ fontSize: 13, color: '#16a34a' }}>{resetResult}</span>}
-
-        {/* Переключатели видимости таблиц */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-          <button onClick={() => setShowProj((v) => !v)} style={toggleBtnStyle(showProj)}>
-            Проекты
-          </button>
-          <button onClick={() => setShowReg((v) => !v)} style={toggleBtnStyle(showReg)}>
-            Реестр
-          </button>
-        </div>
       </div>
 
       {settingsOpen && (
         <GlobalSettingsPopup
-          projFilters={projFilters} onProjFilters={setProjFilters}
+          projFilters={{}} onProjFilters={() => {}}
           regFilters={regFilters} onRegFilters={setRegFilters}
-          projOpts={projOpts} regOpts={regOpts}
+          projOpts={{ status: [], format: [], location: [] }} regOpts={regOpts}
           onClose={() => setSettingsOpen(false)}
         />
       )}
 
-      <div ref={containerRef} style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
-        {!showProj && !showReg ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: 14 }}>
-            Выберите таблицу для отображения
-          </div>
-        ) : both ? (
-          <>
-            <div style={{ width: `${splitPct}%`, minWidth: 0, display: 'flex' }}>
-              <ProjectsTable
-                projects={projects} loading={projLoading}
-                sheetUrl={sheetUrls?.projectsSheetUrl ?? null}
-                primaryFilters={projFilters}
-                onOpenMatrix={(regId, projId) => setOpenMatrixTarget({ registryId: regId, projectId: projId })}
-              />
-            </div>
-            <div
-              onMouseDown={onDividerMouseDown}
-              style={{ width: 8, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-            >
-              <div style={{ width: 2, height: 40, borderRadius: 2, background: '#cbd5e1' }} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0, display: 'flex' }}>
-              <RegistryTable
-                registry={registry} loading={regLoading}
-                sheetUrl={sheetUrls?.registrySheetUrl ?? null}
-                primaryFilters={regFilters}
-                externalOpenTarget={openMatrixTarget}
-                onExternalOpenConsumed={() => setOpenMatrixTarget(null)}
-              />
-            </div>
-          </>
-        ) : (
-          <div style={{ flex: 1, minWidth: 0, display: 'flex' }}>
-            {showProj && (
-              <ProjectsTable
-                projects={projects} loading={projLoading}
-                sheetUrl={sheetUrls?.projectsSheetUrl ?? null}
-                primaryFilters={projFilters}
-                onOpenMatrix={(regId, projId) => setOpenMatrixTarget({ registryId: regId, projectId: projId })}
-              />
-            )}
-            {showReg && (
-              <RegistryTable
-                registry={registry} loading={regLoading}
-                sheetUrl={sheetUrls?.registrySheetUrl ?? null}
-                primaryFilters={regFilters}
-                externalOpenTarget={openMatrixTarget}
-                onExternalOpenConsumed={() => setOpenMatrixTarget(null)}
-              />
-            )}
-          </div>
-        )}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <RegistryTable
+          registry={registry} loading={regLoading}
+          sheetUrl={sheetUrls?.registrySheetUrl ?? null}
+          primaryFilters={regFilters}
+          externalOpenTarget={openMatrixTarget}
+          onExternalOpenConsumed={() => setOpenMatrixTarget(null)}
+        />
       </div>
     </div>
   )

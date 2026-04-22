@@ -33,12 +33,12 @@ const createStatusRowSchema = z.object({
   postProduction: z.string().nullable().optional(),
   matrixRegistryId: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
-  status: z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
+  status: z.enum(['request','negotiation','connecting','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   days: z.array(daySchema).optional(),
 })
 
 const updateStatusRowSchema = createStatusRowSchema.partial().extend({
-  status:          z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
+  status:          z.enum(['request','negotiation','connecting','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   dateConfirmed:   z.boolean().optional(),
   matrixRegistryId: z.string().uuid().nullable().optional(),
   blockSlot:       z.number().int().nullable().optional(),
@@ -68,6 +68,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       dateTo?: string
       dateNull?: string
       status?: string
+      source?: string
       search?: string
       withSeparators?: string
       slim?: string
@@ -76,6 +77,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
 
     const where = {
       ...(query.withSeparators !== 'true' && { NOT: { source: 'separator' as any } }),
+      ...(query.source && { source: query.source as any }),
       ...(query.dateNull === 'true' && { date: null }),
       ...(query.dateFrom && { date: { gte: new Date(query.dateFrom) } }),
       ...(query.dateTo && { date: { lte: new Date(query.dateTo) } }),

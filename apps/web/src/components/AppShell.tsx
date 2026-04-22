@@ -13,7 +13,8 @@ import { AnalyticsPage } from '../pages/AnalyticsPage'
 import { SyncDataPage } from '../pages/SyncDataPage'
 import { DealsPage } from '../pages/DealsPage'
 import { DatabasePage } from '../pages/DatabasePage'
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database'
+import { WorkflowPage } from '../pages/WorkflowPage'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -22,7 +23,7 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database']
+    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'workflow']
     return saved && valid.includes(saved) ? saved : 'calendar'
   })
 
@@ -36,7 +37,8 @@ export function AppShell() {
     { id: 'tasks', label: 'Задачи' },
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
     { id: 'users', label: 'Персонал', adminOnly: true },
-    { id: 'syncdata', label: 'Таблицы', adminOnly: true },
+    { id: 'workflow', label: 'Workflow', adminOrProducer: true },
+    { id: 'syncdata', label: 'Проекты', adminOnly: true },
     { id: 'database', label: 'БД', adminOnly: true },
     { id: 'deals', label: 'Клиенты' },
     { id: 'profile', label: 'Профиль' },
@@ -121,6 +123,7 @@ export function AppShell() {
       {/* Main */}
       <main style={{ flex: 1, padding: '20px 16px' }}>
         {page === 'calendar' && <CalendarPage />}
+        {page === 'workflow' && (isAdmin || isProducer) && <WorkflowPage />}
         {page === 'tasks' && <TasksPage />}
         {page === 'analytics' && (isAdmin || isProducer) && <AnalyticsPage />}
         {page === 'users' && isAdmin && <UsersPage />}
