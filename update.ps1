@@ -23,7 +23,13 @@ if (-not $dockerRunning) {
 
 # -- 2. Ustanovit novye pakety esli izmenilsya lockfile --
 Write-Host "[2/4] Proverka zavisimostey..." -ForegroundColor Cyan
-$lockChanged = git -C $projectRoot diff "HEAD@{1}" --name-only 2>$null | Select-String "pnpm-lock.yaml"
+$gitCmd = Get-Command git -ErrorAction SilentlyContinue
+if ($gitCmd) {
+    $lockChanged = & git -C $projectRoot diff "HEAD@{1}" --name-only 2>$null | Select-String "pnpm-lock.yaml"
+} else {
+    $lockChanged = $null
+    Write-Host "      git ne najden v PATH, propusku proverku lockfile" -ForegroundColor DarkGray
+}
 if ($lockChanged) {
     Write-Host "      Obnaruzheny novye pakety, ustanavlivayu..." -ForegroundColor DarkGray
     pnpm install --dir $projectRoot

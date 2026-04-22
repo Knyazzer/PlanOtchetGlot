@@ -23,6 +23,9 @@ describe('PATCH /status-rows/:id', () => {
   beforeAll(async () => {
     app = await buildApp()
 
+    // Clean up any stale records left by interrupted previous runs
+    await prisma.$executeRawUnsafe(`DELETE FROM matrix_registry WHERE matrix_id LIKE 'patch-test-matrix-%'`).catch(() => {})
+
     const admin = await createTestUser({ role: 'admin' })
     adminId = admin.id
     adminToken = await getAccessToken(app, admin.email, 'testpassword123')

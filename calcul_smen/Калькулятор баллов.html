@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор баллов — ТВ и тех-команда</title>
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --bg: #FAFAF7;
+    --surface: #FFFFFF;
+    --surface-2: #F1EFE8;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.22);
+    --text: #1A1A17;
+    --text-2: #5F5E5A;
+    --text-3: #888780;
+    --info-bg: #E6F1FB;
+    --info-text: #0C447C;
+    --info-border: #378ADD;
+    --success-text: #0F6E56;
+    --warn-bg: #FAEEDA;
+    --warn-text: #412402;
+    --warn-accent: #EF9F27;
+    --green: #97C459;
+    --danger-text: #A32D2D;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .app {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+  }
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 1.5rem;
+  }
+  .brand { font-size: 15px; font-weight: 500; }
+  .brand span { color: var(--text-3); font-weight: 400; margin-left: 8px; }
+  nav.pages { display: flex; gap: 2px; background: var(--surface-2); padding: 3px; border-radius: var(--radius-md); }
+  nav.pages button {
+    padding: 6px 14px; font-size: 13px; font-weight: 500;
+    background: transparent; border: none; border-radius: calc(var(--radius-md) - 3px);
+    color: var(--text-2); cursor: pointer;
+  }
+  nav.pages button.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  .page { display: none; }
+  .page.active { display: block; }
+  .sec-title { font-size: 16px; font-weight: 500; margin: 1.5rem 0 0.75rem; }
+  .sec-title:first-child { margin-top: 0; }
+  .hint { font-size: 12px; color: var(--text-3); font-family: var(--mono); }
+  .muted { color: var(--text-2); font-size: 12px; }
+  .row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .row-label { font-size: 13px; color: var(--text-2); min-width: 140px; }
+  input[type="range"] { flex: 1; accent-color: var(--text); height: 6px; }
+  input[type="number"], input[type="text"], select {
+    font-family: var(--font); font-size: 13px; color: var(--text);
+    background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-md);
+    padding: 0 10px; height: 32px;
+  }
+  input[type="number"]:focus, input[type="text"]:focus, select:focus {
+    outline: none; border-color: var(--text); box-shadow: 0 0 0 2px rgba(0,0,0,0.06);
+  }
+  button {
+    font-family: var(--font); font-size: 13px; color: var(--text);
+    background: transparent; border: 0.5px solid var(--border);
+    border-radius: var(--radius-md); padding: 6px 12px; cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+  }
+  button:hover { background: var(--surface-2); border-color: var(--border-strong); }
+  button:active { transform: scale(0.98); }
+  .value-num { font-size: 14px; font-weight: 500; min-width: 28px; text-align: right; }
+
+  /* Project cards */
+  .pcard {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 12px 14px; margin-bottom: 10px;
+  }
+  .pcard.ext { border-left: 3px solid var(--warn-accent); }
+  .phead { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .pname { flex: 1; }
+  .pbadge { font-size: 10px; padding: 3px 7px; border-radius: 3px; font-weight: 500; font-family: var(--mono); }
+  .pbadge.own { background: var(--info-bg); color: var(--info-text); }
+  .pbadge.ext { background: var(--warn-bg); color: var(--warn-text); }
+  .rm { width: 28px; height: 28px; padding: 0; font-size: 15px; color: var(--text-2); flex: none; }
+  .grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .gl { font-size: 11px; color: var(--text-2); display: block; margin-bottom: 4px; }
+  .gs { width: 100%; }
+  .grade-tag { font-size: 11px; padding: 2px 6px; border-radius: 3px; font-weight: 500; font-family: var(--mono); }
+  .g-S { background: #E1F5EE; color: #04342C; }
+  .g-M { background: var(--info-bg); color: var(--info-text); }
+  .g-L { background: var(--warn-bg); color: var(--warn-text); }
+  .g-XL { background: #FAECE7; color: #4A1B0C; }
+  .g-EXT { background: var(--surface-2); color: var(--text-2); }
+
+  /* Team assignment table */
+  .team-block { margin-top: 8px; padding-top: 8px; border-top: 0.5px dashed var(--border); }
+  .team-block-title { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .member-assign { display: grid; grid-template-columns: 140px 1fr; gap: 10px; align-items: start; padding: 4px 0; font-size: 12px; }
+  .member-assign .m-name { color: var(--text); font-weight: 500; padding-top: 5px; }
+  .member-assign .m-name .role { display: block; font-size: 10px; color: var(--text-3); font-weight: 400; margin-top: 1px; }
+  .shift-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11px; padding: 4px 9px; border-radius: 999px;
+    cursor: pointer; user-select: none;
+    background: var(--surface); border: 0.5px solid var(--border);
+    color: var(--text-3); font-family: var(--mono);
+    transition: background 0.1s, border-color 0.1s, color 0.1s;
+  }
+  .chip:hover { border-color: var(--border-strong); }
+  .chip.on { background: var(--info-bg); border-color: var(--info-border); color: var(--info-text); }
+  .chip.on.ext { background: var(--warn-bg); border-color: var(--warn-accent); color: var(--warn-text); }
+  .chip.disabled { opacity: 0.3; cursor: not-allowed; }
+  .chip.disabled:hover { border-color: var(--border); }
+
+  /* Summary page */
+  .tabs { display: flex; border-bottom: 0.5px solid var(--border); margin-bottom: 1rem; }
+  .tab {
+    flex: 1; padding: 10px; font-size: 13px; font-weight: 500;
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    color: var(--text-2); cursor: pointer; border-radius: 0;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); }
+  .tab:hover { background: transparent; }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 1.25rem; }
+  .stat-card { background: var(--surface-2); border-radius: var(--radius-md); padding: 12px 14px; }
+  .stat-label { font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+  .person-card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 10px;
+  }
+  .person-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .person-name { font-size: 14px; font-weight: 500; }
+  .person-name .role { font-size: 11px; color: var(--text-3); font-weight: 400; margin-left: 8px; }
+  .person-total { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .person-total .of-thr { font-size: 13px; color: var(--text-3); font-weight: 400; }
+  .person-total.over { color: var(--success-text); }
+
+  .bar-track { height: 10px; background: var(--surface-2); border-radius: 5px; position: relative; overflow: hidden; margin: 10px 0 4px; }
+  .bar-seg { height: 100%; position: absolute; top: 0; }
+  .bar-thr { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text); }
+
+  .breakdown {
+    font-size: 12px; color: var(--text-2); font-family: var(--mono);
+    line-height: 1.7; padding: 8px 0;
+  }
+  .breakdown strong.over { color: var(--success-text); font-weight: 500; }
+  .legend { font-size: 11px; color: var(--text-2); display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+  .leg-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+
+  .detail-section { margin-top: 12px; padding-top: 10px; border-top: 0.5px dashed var(--border); }
+  .detail-title { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .detail-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; padding: 4px 0; border-bottom: 0.5px solid rgba(0,0,0,0.04);
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-name { color: var(--text); }
+  .detail-name .meta { color: var(--text-3); font-size: 11px; margin-left: 6px; font-family: var(--mono); }
+  .detail-val { font-family: var(--mono); font-weight: 500; }
+
+  .nonproj-row { display: flex; align-items: center; gap: 10px; font-size: 12px; margin-bottom: 6px; }
+  .nonproj-label { flex: 1; color: var(--text-2); }
+  .nonproj-num { width: 52px; height: 28px; font-size: 12px; text-align: center; padding: 0 4px; }
+
+  details { margin-top: 1rem; }
+  details summary {
+    cursor: pointer; padding: 8px 0; font-size: 13px; color: var(--text-2);
+    list-style: none; user-select: none;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸"; display: inline-block; margin-right: 6px; color: var(--text-3); transition: transform 0.15s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  .formulas {
+    font-size: 12px; color: var(--text-2); font-family: var(--mono);
+    line-height: 1.8; padding: 4px 0 0 16px;
+  }
+  .formulas strong { font-weight: 500; color: var(--text); }
+
+  /* Settings block */
+  .settings-block {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 12px;
+  }
+  .settings-header { display: flex; justify-content: space-between; align-items: center; }
+  .settings-title { font-size: 13px; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.3px; }
+  .settings-body { display: none; margin-top: 14px; }
+  .settings-body.open { display: block; }
+  .settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .settings-col-title { font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .coef-row {
+    display: grid; grid-template-columns: 1fr 70px 44px;
+    gap: 8px; align-items: center;
+    padding: 4px 0;
+    font-size: 12px;
+  }
+  .coef-label { color: var(--text-2); }
+  .coef-input { height: 28px; font-size: 12px; text-align: center; padding: 0 6px; font-family: var(--mono); }
+  .coef-cost-badge { font-size: 11px; color: var(--text-3); font-family: var(--mono); text-align: right; }
+  .grade-coef-row {
+    display: grid; grid-template-columns: 40px 1fr 70px;
+    gap: 8px; align-items: center;
+    padding: 4px 0; font-size: 12px;
+  }
+  .grade-coef-label { font-weight: 500; font-family: var(--mono); text-align: center; padding: 2px 0; border-radius: 3px; }
+  .settings-subtitle { font-size: 11px; color: var(--text-3); margin: 12px 0 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .settings-subtitle:first-child { margin-top: 0; }
+  .settings-actions { display: flex; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 0.5px solid var(--border); }
+  .settings-actions button { font-size: 12px; }
+
+  .footer-tools {
+    margin-top: 2rem; padding-top: 1rem; border-top: 0.5px solid var(--border);
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .footer-tools button { font-size: 12px; }
+  .footer-tools .spacer { flex: 1; }
+  .footer-tools .danger { color: var(--danger-text); }
+  .footer-tools .hint-text { font-size: 11px; color: var(--text-3); align-self: center; }
+
+  @media (max-width: 640px) {
+    .app { padding: 1rem 0.75rem 2rem; }
+    .member-assign { grid-template-columns: 1fr; gap: 4px; }
+    .member-assign .m-name { padding-top: 0; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .grade2 { grid-template-columns: 1fr; }
+    .settings-grid { grid-template-columns: 1fr; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="top">
+    <div class="brand">Калькулятор баллов <span>ТВ и тех-команда</span></div>
+    <nav class="pages">
+      <button id="nav-input" class="active" data-page="input">Проекты</button>
+      <button id="nav-summary" data-page="summary">Сводка</button>
+    </nav>
+  </header>
+
+  <!-- ============== PAGE 1: INPUT ============== -->
+  <section class="page active" id="page-input">
+
+    <div class="sec-title">Параметры месяца</div>
+    <div class="row">
+      <span class="row-label">Рабочих дней</span>
+      <input type="range" id="wd" min="15" max="23" value="21" step="1" />
+      <span class="value-num" id="wd-o">21</span>
+    </div>
+    <div class="row">
+      <span class="row-label">Порог переработки</span>
+      <span class="value-num" id="thr-o" style="font-size: 16px; min-width: 50px; text-align: left;">16.0</span>
+      <span class="hint">рабочие дни × <span id="thr-mult">0.76</span></span>
+    </div>
+
+    <div class="sec-title">Настройка коэффициентов</div>
+    <p class="muted" style="margin: -4px 0 10px;">Базовые коэффициенты смен и множители грейдов. Можно задать разные для ТВ и тех-команды.</p>
+    <div class="settings-block">
+      <div class="settings-header">
+        <span class="settings-title">Коэффициенты</span>
+        <button id="toggle-settings" style="font-size: 12px;">Показать</button>
+      </div>
+      <div class="settings-body" id="settings-body">
+
+        <div class="settings-subtitle">Множитель порога переработки</div>
+        <div class="coef-row">
+          <span class="coef-label">Доля рабочих дней на проектах (коэф. порога)</span>
+          <input type="number" class="coef-input" id="thr-mult-input" min="0.1" max="2" step="0.01" />
+          <span class="coef-cost-badge">дней × k</span>
+        </div>
+
+        <div class="settings-subtitle">Множители грейдов своих проектов</div>
+        <div id="grades-settings"></div>
+
+        <div class="settings-grid" style="margin-top: 16px;">
+          <div>
+            <div class="settings-col-title">ТВ-команда</div>
+            <div id="tv-coefs"></div>
+          </div>
+          <div>
+            <div class="settings-col-title">Тех-департамент</div>
+            <div id="tech-coefs"></div>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button id="reset-coefs">Сбросить коэффициенты к дефолту</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">Свои проекты</div>
+    <p class="muted" style="margin: -4px 0 10px;">Проекты с грейдом ТВ/тех — умножаются на коэффициент сложности для каждого отдела.</p>
+    <div id="own-projs"></div>
+    <button id="add-own" style="width: 100%; margin-top: 4px;">+ Добавить свой проект</button>
+
+    <div class="sec-title">Внешние проекты</div>
+    <p class="muted" style="margin: -4px 0 10px;">Проекты для других отделов / клиентов — без грейда, по базовым коэффициентам смен.</p>
+    <div id="ext-projs"></div>
+    <button id="add-ext" style="width: 100%; margin-top: 4px;">+ Добавить внешний проект</button>
+
+    <details>
+      <summary>Состав команд</summary>
+      <div class="formulas" style="font-family: var(--font); padding-left: 0;">
+        <p style="margin: 8px 0;"><strong>ТВ-команда:</strong> режиссёр, звукорежиссёр, видеоинженер, оператор</p>
+        <p style="margin: 8px 0;"><strong>Тех-департамент:</strong> руководитель, инженеры (можно добавить несколько)</p>
+        <p class="muted">Состав команд редактируется в коде (в переменной state.tvTeam и state.techTeam). В текущей версии — через UI пока не редактируется, чтобы сохранить простоту.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Как работает математика</summary>
+      <div class="formulas">
+        <strong>Формулы:</strong><br/>
+        свой проект: базовый коэф. смены × грейд проекта<br/>
+        внешний проект: базовый коэф. смены (без умножения)<br/>
+        внепроектная работа: коэф. активности × число дней<br/>
+        порог переработки: рабочие дни × множитель порога<br/><br/>
+        <strong>Конкретные коэффициенты</strong> настраиваются в блоке «Настройка коэффициентов» выше и могут отличаться для ТВ и тех-команды.
+      </div>
+    </details>
+
+    <div class="footer-tools">
+      <button onclick="exportData()">Экспорт JSON</button>
+      <button onclick="importData()">Импорт JSON</button>
+      <span class="spacer"></span>
+      <span class="hint-text">Данные сохраняются в этом браузере</span>
+      <button class="danger" onclick="resetData()">Сбросить всё</button>
+    </div>
+
+  </section>
+
+  <!-- ============== PAGE 2: SUMMARY ============== -->
+  <section class="page" id="page-summary">
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Рабочих дней</div>
+        <div class="stat-value" id="stat-wd">21</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Порог переработки</div>
+        <div class="stat-value" id="stat-thr">16.0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Своих проектов</div>
+        <div class="stat-value" id="stat-own">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Внешних проектов</div>
+        <div class="stat-value" id="stat-ext">0</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-dept="tv">ТВ-команда</button>
+      <button class="tab" data-dept="tech">Тех-департамент</button>
+    </div>
+
+    <div id="summary-body"></div>
+
+    <details>
+      <summary>Внепроектная работа (офис, саунд-дизайн, склад)</summary>
+      <div id="nonproj-body" style="padding-top: 10px;"></div>
+    </details>
+
+  </section>
+
+</div>
+
+<script>
+'use strict';
+
+// ================== CONFIG ==================
+
+// Базовые константы: структура смен по ролям (ключи, названия, разрешён ли проектный/внешний режим).
+// Числовые коэффициенты переносятся в state.coefs, чтобы их можно было настраивать через UI.
+const ROLE_SHIFT_STRUCT = {
+  'Режиссёр': [
+    { k: 'bld',  n: 'застройка', inProject: true, external: true  },
+    { k: 'air',  n: 'эфир',      inProject: true, external: true  },
+    { k: 'dem',  n: 'демонтаж',  inProject: true, external: true  },
+  ],
+  'Звукорежиссёр': [
+    { k: 'bld',  n: 'застройка', inProject: true, external: true  },
+    { k: 'air',  n: 'эфир',      inProject: true, external: true  },
+    { k: 'dem',  n: 'демонтаж',  inProject: true, external: true  },
+  ],
+  'Видеоинженер': [
+    { k: 'bld',  n: 'застройка', inProject: true, external: true  },
+    { k: 'air',  n: 'эфир',      inProject: true, external: true  },
+    { k: 'dem',  n: 'демонтаж',  inProject: true, external: true  },
+  ],
+  'Оператор': [
+    { k: 'bld',   n: 'застройка', inProject: true, external: true  },
+    { k: 'air',   n: 'эфир',      inProject: true, external: true  },
+    { k: 'shoot', n: 'съёмка',    inProject: true, external: true  },
+    { k: 'dem',   n: 'демонтаж',  inProject: true, external: true  },
+  ],
+  'Рук. тех': [
+    { k: 'bld',    n: 'застройка',   inProject: true, external: true  },
+    { k: 'air',    n: 'эфир',        inProject: true, external: true  },
+    { k: 'gather', n: 'сбор обор.',  inProject: true, external: true  },
+    { k: 'trans',  n: 'транспорт.',  inProject: true, external: true  },
+    { k: 'dem',    n: 'демонтаж',    inProject: true, external: true  },
+  ],
+  'Инженер': [
+    { k: 'bld',    n: 'застройка',   inProject: true, external: true  },
+    { k: 'air',    n: 'эфир',        inProject: true, external: true  },
+    { k: 'gather', n: 'сбор обор.',  inProject: true, external: true  },
+    { k: 'trans',  n: 'транспорт.',  inProject: true, external: true  },
+    { k: 'dem',    n: 'демонтаж',    inProject: true, external: true  },
+  ],
+};
+
+const ROLE_NONPROJ_STRUCT = {
+  'Режиссёр':      [ { k: 'office', n: 'работа в офисе' } ],
+  'Звукорежиссёр': [ { k: 'office', n: 'работа в офисе' }, { k: 'sound', n: 'саунд-дизайн' } ],
+  'Видеоинженер':  [ { k: 'office', n: 'работа в офисе' } ],
+  'Оператор':      [ { k: 'office', n: 'работа в офисе' } ],
+  'Рук. тех':      [ { k: 'office', n: 'работа в офисе' }, { k: 'sort', n: 'сортировка склада' } ],
+  'Инженер':       [ { k: 'sort',   n: 'сортировка склада' } ],
+};
+
+// Дефолтные коэффициенты — то же самое для ТВ и тех (начальное состояние)
+const DEFAULT_COEFS = {
+  thresholdMult: 0.76,
+  grades: { S: 0.7, M: 1.0, L: 1.5, XL: 2.5 },
+  tv: {
+    shifts: {
+      bld: 1.0, air: 1.0, dem: 1.0, shoot: 1.0, gather: 0.7, trans: 1.0,
+    },
+    nonproj: { office: 0.7, sound: 0.7, sort: 0.5 },
+  },
+  tech: {
+    shifts: {
+      bld: 1.0, air: 1.0, dem: 1.0, shoot: 1.0, gather: 0.7, trans: 1.0,
+    },
+    nonproj: { office: 0.7, sound: 0.7, sort: 0.5 },
+  },
+};
+
+// Названия смен/активностей в человеко-читаемом виде — для редактора коэффициентов
+const SHIFT_DISPLAY_NAMES = {
+  bld: 'застройка', air: 'эфир', dem: 'демонтаж', shoot: 'съёмка',
+  gather: 'сбор оборудования', trans: 'транспортировка',
+};
+const NONPROJ_DISPLAY_NAMES = {
+  office: 'работа в офисе', sound: 'саунд-дизайн', sort: 'сортировка склада',
+};
+
+// ================== STATE ==================
+
+const DEFAULT_STATE = {
+  workdays: 21,
+  coefs: JSON.parse(JSON.stringify(DEFAULT_COEFS)),
+  ownProjects: [
+    { id: 1, name: 'Подкаст',        tvGrade: 'S', techGrade: 'M' },
+    { id: 2, name: 'Конференция',    tvGrade: 'L', techGrade: 'XL' },
+  ],
+  extProjects: [
+    { id: 101, name: 'Студия для SMM' },
+  ],
+  tvTeam: [
+    { name: 'Режиссёр 1',      role: 'Режиссёр' },
+    { name: 'Звукорежиссёр 1', role: 'Звукорежиссёр' },
+    { name: 'Видеоинженер 1',  role: 'Видеоинженер' },
+    { name: 'Оператор 1',      role: 'Оператор' },
+  ],
+  techTeam: [
+    { name: 'Руководитель', role: 'Рук. тех' },
+    { name: 'Инженер 1',    role: 'Инженер' },
+    { name: 'Инженер 2',    role: 'Инженер' },
+  ],
+  participation: {},
+  nonProj: {},
+  activeDept: 'tv',
+  nextOwnId: 3,
+  nextExtId: 102,
+};
+
+let state;
+
+// Хелперы для чтения коэффициентов из state (dept: 'tv' | 'tech')
+function getGradeMult(gradeKey) {
+  return state.coefs.grades[gradeKey] ?? DEFAULT_COEFS.grades[gradeKey] ?? 1.0;
+}
+function getShiftBase(dept, shiftKey) {
+  return state.coefs[dept].shifts[shiftKey] ?? DEFAULT_COEFS[dept].shifts[shiftKey] ?? 1.0;
+}
+function getNonProjCoef(dept, activityKey) {
+  return state.coefs[dept].nonproj[activityKey] ?? DEFAULT_COEFS[dept].nonproj[activityKey] ?? 0.5;
+}
+function getThresholdMult() {
+  return state.coefs.thresholdMult ?? DEFAULT_COEFS.thresholdMult;
+}
+
+// Возвращает структуру смен с подтянутыми коэффициентами для данного отдела
+function getShiftsFor(role, dept) {
+  return (ROLE_SHIFT_STRUCT[role] || []).map(s => ({
+    ...s,
+    base: getShiftBase(dept, s.k),
+  }));
+}
+function getNonProjFor(role, dept) {
+  return (ROLE_NONPROJ_STRUCT[role] || []).map(a => ({
+    ...a,
+    c: getNonProjCoef(dept, a.k),
+  }));
+}
+
+// Миграция старого state, если в localStorage лежит версия без coefs
+function migrateState(s) {
+  if (!s.coefs) {
+    s.coefs = JSON.parse(JSON.stringify(DEFAULT_COEFS));
+  }
+  // Убедиться, что все ключи присутствуют
+  if (!s.coefs.grades) s.coefs.grades = { ...DEFAULT_COEFS.grades };
+  if (!s.coefs.tv) s.coefs.tv = JSON.parse(JSON.stringify(DEFAULT_COEFS.tv));
+  if (!s.coefs.tech) s.coefs.tech = JSON.parse(JSON.stringify(DEFAULT_COEFS.tech));
+  if (s.coefs.thresholdMult == null) s.coefs.thresholdMult = DEFAULT_COEFS.thresholdMult;
+  ['tv','tech'].forEach(d => {
+    if (!s.coefs[d].shifts) s.coefs[d].shifts = { ...DEFAULT_COEFS[d].shifts };
+    if (!s.coefs[d].nonproj) s.coefs[d].nonproj = { ...DEFAULT_COEFS[d].nonproj };
+  });
+  return s;
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('score-calc-state');
+    if (raw) {
+      state = JSON.parse(raw);
+      if (!state.ownProjects || !state.tvTeam) throw new Error('bad state');
+      state = migrateState(state);
+      return;
+    }
+  } catch (e) {
+    console.warn('Reset state:', e);
+  }
+  state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  // Auto-assign all own projects to all members
+  ['tv','tech'].forEach(dept => {
+    const team = dept === 'tv' ? state.tvTeam : state.techTeam;
+    team.forEach((m, mi) => {
+      state.ownProjects.forEach(p => {
+        (ROLE_SHIFT_STRUCT[m.role] || []).forEach(s => {
+          if (s.inProject) setPart(dept, mi, p.id, s.k, true);
+        });
+      });
+    });
+  });
+  saveState();
+}
+
+function saveState() {
+  try { localStorage.setItem('score-calc-state', JSON.stringify(state)); } catch (e) {}
+}
+
+function setPart(dept, mi, pid, sk, val) {
+  state.participation[dept] = state.participation[dept] || {};
+  state.participation[dept][mi] = state.participation[dept][mi] || {};
+  state.participation[dept][mi][pid] = state.participation[dept][mi][pid] || {};
+  state.participation[dept][mi][pid][sk] = val;
+}
+function getPart(dept, mi, pid, sk) {
+  return !!(state.participation[dept] && state.participation[dept][mi] && state.participation[dept][mi][pid] && state.participation[dept][mi][pid][sk]);
+}
+function setNonProj(dept, mi, ak, val) {
+  state.nonProj[dept] = state.nonProj[dept] || {};
+  state.nonProj[dept][mi] = state.nonProj[dept][mi] || {};
+  state.nonProj[dept][mi][ak] = val;
+}
+function getNonProj(dept, mi, ak) {
+  return (state.nonProj[dept] && state.nonProj[dept][mi] && state.nonProj[dept][mi][ak]) || 0;
+}
+
+// ================== CALCULATION ==================
+
+function calcThreshold() { return state.workdays * getThresholdMult(); }
+
+function calcPerson(dept, mi) {
+  const team = dept === 'tv' ? state.tvTeam : state.techTeam;
+  const m = team[mi];
+  const shifts = getShiftsFor(m.role, dept);
+  const nonproj = getNonProjFor(m.role, dept);
+  const gradeKey = dept === 'tv' ? 'tvGrade' : 'techGrade';
+
+  let ownPts = 0, extPts = 0, nonPts = 0;
+  const ownDet = [], extDet = [], nonDet = [];
+
+  state.ownProjects.forEach(p => {
+    const mult = getGradeMult(p[gradeKey]);
+    let s = 0;
+    const activeShifts = [];
+    shifts.forEach(sh => {
+      if (sh.inProject && getPart(dept, mi, p.id, sh.k)) {
+        s += sh.base * mult;
+        activeShifts.push(sh.n);
+      }
+    });
+    if (s > 0) ownDet.push({ p, sum: s, shifts: activeShifts, grade: p[gradeKey], gMult: mult });
+    ownPts += s;
+  });
+
+  state.extProjects.forEach(p => {
+    let s = 0;
+    const activeShifts = [];
+    shifts.forEach(sh => {
+      if (sh.external && getPart(dept, mi, p.id, sh.k)) {
+        s += sh.base;
+        activeShifts.push(sh.n);
+      }
+    });
+    if (s > 0) extDet.push({ p, sum: s, shifts: activeShifts });
+    extPts += s;
+  });
+
+  nonproj.forEach(a => {
+    const days = getNonProj(dept, mi, a.k);
+    if (days > 0) {
+      nonPts += days * a.c;
+      nonDet.push({ a, days, pts: days * a.c });
+    }
+  });
+
+  return { ownPts, extPts, nonPts, total: ownPts + extPts + nonPts, ownDet, extDet, nonDet };
+}
+
+// ================== RENDER: INPUT PAGE ==================
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[c]);
+}
+
+function renderOwnProjects() {
+  const c = document.getElementById('own-projs');
+  c.innerHTML = '';
+  if (state.ownProjects.length === 0) {
+    c.innerHTML = '<p class="muted" style="padding: 16px 0; text-align: center;">Нет проектов. Добавьте первый →</p>';
+    return;
+  }
+  state.ownProjects.forEach((p, idx) => {
+    const card = document.createElement('div');
+    card.className = 'pcard';
+
+    const members = [];
+    ['tv','tech'].forEach(dept => {
+      const team = dept === 'tv' ? state.tvTeam : state.techTeam;
+      team.forEach((m, mi) => {
+        members.push({ dept, mi, m });
+      });
+    });
+
+    const memberRows = members.map(({ dept, mi, m }) => {
+      const shifts = getShiftsFor(m.role, dept);
+      const chips = shifts.map(s => {
+        if (!s.inProject) return `<span class="chip disabled">${s.n}</span>`;
+        const on = getPart(dept, mi, p.id, s.k);
+        return `<span class="chip ${on ? 'on' : ''}" data-p="${p.id}" data-dept="${dept}" data-mi="${mi}" data-sk="${s.k}">${s.n} ×${s.base}</span>`;
+      }).join('');
+      const deptLabel = dept === 'tv' ? 'ТВ' : 'Тех';
+      return `
+        <div class="member-assign">
+          <div class="m-name">${escapeHtml(m.name)}<span class="role">${deptLabel} · ${m.role}</span></div>
+          <div class="shift-chips">${chips}</div>
+        </div>
+      `;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="phead">
+        <span class="pbadge own">свой</span>
+        <input class="pname" type="text" value="${escapeHtml(p.name)}" data-idx="${idx}" data-f="name" placeholder="Название проекта" />
+        <button class="rm" data-rm-own="${idx}" title="Удалить проект">×</button>
+      </div>
+      <div class="grade2">
+        <div>
+          <label class="gl">ТВ-грейд</label>
+          <select class="gs" data-idx="${idx}" data-f="tvGrade">
+            ${['S','M','L','XL'].map(g => `<option value="${g}" ${p.tvGrade===g?'selected':''}>${g} — ×${getGradeMult(g)}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="gl">Тех-грейд</label>
+          <select class="gs" data-idx="${idx}" data-f="techGrade">
+            ${['S','M','L','XL'].map(g => `<option value="${g}" ${p.techGrade===g?'selected':''}>${g} — ×${getGradeMult(g)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="team-block">
+        <div class="team-block-title">Кто участвует в проекте</div>
+        ${memberRows}
+      </div>
+    `;
+    c.appendChild(card);
+  });
+  wireProjectEvents(c, 'own');
+}
+
+function renderExtProjects() {
+  const c = document.getElementById('ext-projs');
+  c.innerHTML = '';
+  if (state.extProjects.length === 0) {
+    c.innerHTML = '<p class="muted" style="padding: 16px 0; text-align: center;">Нет внешних проектов.</p>';
+    return;
+  }
+  state.extProjects.forEach((p, idx) => {
+    const card = document.createElement('div');
+    card.className = 'pcard ext';
+
+    const members = [];
+    ['tv','tech'].forEach(dept => {
+      const team = dept === 'tv' ? state.tvTeam : state.techTeam;
+      team.forEach((m, mi) => {
+        members.push({ dept, mi, m });
+      });
+    });
+
+    const memberRows = members.map(({ dept, mi, m }) => {
+      const shifts = getShiftsFor(m.role, dept);
+      const chips = shifts.map(s => {
+        if (!s.external) return `<span class="chip disabled">${s.n}</span>`;
+        const on = getPart(dept, mi, p.id, s.k);
+        return `<span class="chip ${on ? 'on ext' : ''}" data-p="${p.id}" data-dept="${dept}" data-mi="${mi}" data-sk="${s.k}">${s.n} ×${s.base}</span>`;
+      }).join('');
+      const deptLabel = dept === 'tv' ? 'ТВ' : 'Тех';
+      return `
+        <div class="member-assign">
+          <div class="m-name">${escapeHtml(m.name)}<span class="role">${deptLabel} · ${m.role}</span></div>
+          <div class="shift-chips">${chips}</div>
+        </div>
+      `;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="phead">
+        <span class="pbadge ext">внешний</span>
+        <input class="pname" type="text" value="${escapeHtml(p.name)}" data-idx="${idx}" data-f="name" placeholder="Название внешнего проекта" />
+        <button class="rm" data-rm-ext="${idx}" title="Удалить проект">×</button>
+      </div>
+      <div class="team-block">
+        <div class="team-block-title">Кто участвует в проекте</div>
+        ${memberRows}
+      </div>
+    `;
+    c.appendChild(card);
+  });
+  wireProjectEvents(c, 'ext');
+}
+
+function wireProjectEvents(container, kind) {
+  container.querySelectorAll('input[data-f="name"]').forEach(el => {
+    el.addEventListener('input', e => {
+      const list = kind === 'own' ? state.ownProjects : state.extProjects;
+      list[+e.target.dataset.idx].name = e.target.value;
+      saveState();
+    });
+  });
+  container.querySelectorAll('select').forEach(el => {
+    el.addEventListener('change', e => {
+      state.ownProjects[+e.target.dataset.idx][e.target.dataset.f] = e.target.value;
+      saveState();
+    });
+  });
+  container.querySelectorAll('button[data-rm-own]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (!confirm('Удалить проект?')) return;
+      state.ownProjects.splice(+e.target.dataset.rmOwn, 1);
+      saveState();
+      renderOwnProjects();
+    });
+  });
+  container.querySelectorAll('button[data-rm-ext]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (!confirm('Удалить внешний проект?')) return;
+      state.extProjects.splice(+e.target.dataset.rmExt, 1);
+      saveState();
+      renderExtProjects();
+    });
+  });
+  container.querySelectorAll('.chip[data-p]').forEach(el => {
+    el.addEventListener('click', e => {
+      const t = e.currentTarget;
+      if (t.classList.contains('disabled')) return;
+      const pid = +t.dataset.p;
+      const dept = t.dataset.dept;
+      const mi = +t.dataset.mi;
+      const sk = t.dataset.sk;
+      const cur = getPart(dept, mi, pid, sk);
+      setPart(dept, mi, pid, sk, !cur);
+      saveState();
+      // Toggle class without full re-render for instant feel
+      t.classList.toggle('on');
+      if (kind === 'ext') t.classList.toggle('ext');
+    });
+  });
+}
+
+function renderThresholdInputs() {
+  document.getElementById('wd-o').textContent = state.workdays;
+  document.getElementById('thr-o').textContent = calcThreshold().toFixed(1);
+  const tmEl = document.getElementById('thr-mult');
+  if (tmEl) tmEl.textContent = getThresholdMult().toFixed(2);
+}
+
+// ================== RENDER: SETTINGS ==================
+
+function renderSettings() {
+  // threshold multiplier input
+  const tmInput = document.getElementById('thr-mult-input');
+  if (tmInput && document.activeElement !== tmInput) {
+    tmInput.value = getThresholdMult();
+  }
+
+  // grades
+  const gradesEl = document.getElementById('grades-settings');
+  if (gradesEl) {
+    gradesEl.innerHTML = ['S','M','L','XL'].map(g => `
+      <div class="grade-coef-row">
+        <span class="grade-coef-label g-${g}">${g}</span>
+        <span class="coef-label">${
+          g === 'S' ? 'простой' : g === 'M' ? 'стандартный' : g === 'L' ? 'сложный' : 'экстремальный'
+        }</span>
+        <input type="number" class="coef-input" min="0.1" max="10" step="0.1"
+               data-coef-grade="${g}" value="${getGradeMult(g)}" />
+      </div>
+    `).join('');
+    gradesEl.querySelectorAll('input').forEach(el => {
+      el.addEventListener('input', e => {
+        const g = e.target.dataset.coefGrade;
+        const v = parseFloat(e.target.value);
+        if (isFinite(v) && v > 0) {
+          state.coefs.grades[g] = v;
+          saveState();
+          renderOwnProjects();
+          renderExtProjects();
+          renderSummary();
+        }
+      });
+    });
+  }
+
+  // per-department shift and non-proj coefficients
+  ['tv', 'tech'].forEach(dept => {
+    const container = document.getElementById(dept + '-coefs');
+    if (!container) return;
+
+    const shiftKeys = Object.keys(SHIFT_DISPLAY_NAMES);
+    const nonProjKeys = Object.keys(NONPROJ_DISPLAY_NAMES);
+
+    let html = '<div class="settings-subtitle">Смены</div>';
+    shiftKeys.forEach(k => {
+      html += `
+        <div class="coef-row">
+          <span class="coef-label">${SHIFT_DISPLAY_NAMES[k]}</span>
+          <input type="number" class="coef-input" min="0" max="5" step="0.1"
+                 data-coef-dept="${dept}" data-coef-type="shifts" data-coef-key="${k}"
+                 value="${getShiftBase(dept, k)}" />
+          <span class="coef-cost-badge">×грейд</span>
+        </div>
+      `;
+    });
+    html += '<div class="settings-subtitle">Внепроектная работа</div>';
+    nonProjKeys.forEach(k => {
+      html += `
+        <div class="coef-row">
+          <span class="coef-label">${NONPROJ_DISPLAY_NAMES[k]}</span>
+          <input type="number" class="coef-input" min="0" max="5" step="0.1"
+                 data-coef-dept="${dept}" data-coef-type="nonproj" data-coef-key="${k}"
+                 value="${getNonProjCoef(dept, k)}" />
+          <span class="coef-cost-badge">/день</span>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+    container.querySelectorAll('input').forEach(el => {
+      el.addEventListener('input', e => {
+        const d = e.target.dataset.coefDept;
+        const t = e.target.dataset.coefType;
+        const k = e.target.dataset.coefKey;
+        const v = parseFloat(e.target.value);
+        if (isFinite(v) && v >= 0) {
+          state.coefs[d][t][k] = v;
+          saveState();
+          renderOwnProjects();
+          renderExtProjects();
+          renderSummary();
+        }
+      });
+    });
+  });
+}
+
+// ================== RENDER: SUMMARY PAGE ==================
+
+function renderSummary() {
+  document.getElementById('stat-wd').textContent = state.workdays;
+  document.getElementById('stat-thr').textContent = calcThreshold().toFixed(1);
+  document.getElementById('stat-own').textContent = state.ownProjects.length;
+  document.getElementById('stat-ext').textContent = state.extProjects.length;
+
+  const dept = state.activeDept;
+  const team = dept === 'tv' ? state.tvTeam : state.techTeam;
+  const thr = calcThreshold();
+
+  const body = document.getElementById('summary-body');
+  let html = '';
+
+  team.forEach((m, mi) => {
+    const r = calcPerson(dept, mi);
+    const over = r.total > thr;
+    const maxVis = Math.max(r.total, thr) * 1.2 || 10;
+    const pctOwn = (r.ownPts / maxVis) * 100;
+    const pctExt = (r.extPts / maxVis) * 100;
+    const pctNon = (r.nonPts / maxVis) * 100;
+    const pctThr = (thr / maxVis) * 100;
+
+    const ownDetails = r.ownDet.map(d => `
+      <div class="detail-row">
+        <span class="detail-name">${escapeHtml(d.p.name)}
+          <span class="meta">
+            <span class="grade-tag g-${d.grade}">${d.grade} ×${d.gMult}</span>
+            ${d.shifts.join(', ')}
+          </span>
+        </span>
+        <span class="detail-val">${d.sum.toFixed(1)}</span>
+      </div>
+    `).join('');
+
+    const extDetails = r.extDet.map(d => `
+      <div class="detail-row">
+        <span class="detail-name">${escapeHtml(d.p.name)}
+          <span class="meta">${d.shifts.join(', ')}</span>
+        </span>
+        <span class="detail-val">${d.sum.toFixed(1)}</span>
+      </div>
+    `).join('');
+
+    const nonDetails = r.nonDet.map(d => `
+      <div class="detail-row">
+        <span class="detail-name">${d.a.n}
+          <span class="meta">${d.days} д × ${d.a.c}</span>
+        </span>
+        <span class="detail-val">${d.pts.toFixed(1)}</span>
+      </div>
+    `).join('');
+
+    html += `
+      <div class="person-card">
+        <div class="person-head">
+          <div class="person-name">${escapeHtml(m.name)}<span class="role">${m.role}</span></div>
+          <div class="person-total ${over ? 'over' : ''}">${r.total.toFixed(1)}<span class="of-thr"> / ${thr.toFixed(1)}</span></div>
+        </div>
+        <div class="bar-track">
+          <div class="bar-seg" style="left: 0; width: ${pctOwn}%; background: var(--info-border);"></div>
+          <div class="bar-seg" style="left: ${pctOwn}%; width: ${pctExt}%; background: var(--warn-accent);"></div>
+          <div class="bar-seg" style="left: ${pctOwn + pctExt}%; width: ${pctNon}%; background: var(--green);"></div>
+          <div class="bar-thr" style="left: ${pctThr}%;"></div>
+        </div>
+        <div class="legend">
+          <span><span class="leg-dot" style="background: var(--info-border);"></span>свои ${r.ownPts.toFixed(1)}</span>
+          <span><span class="leg-dot" style="background: var(--warn-accent);"></span>внешние ${r.extPts.toFixed(1)}</span>
+          <span><span class="leg-dot" style="background: var(--green);"></span>внепроект ${r.nonPts.toFixed(1)}</span>
+          <span style="margin-left: auto;">
+            ${over
+              ? `<strong class="over">переработка: +${(r.total - thr).toFixed(1)}</strong>`
+              : `до порога: ${(thr - r.total).toFixed(1)}`}
+          </span>
+        </div>
+        ${r.ownDet.length > 0 ? `<div class="detail-section"><div class="detail-title">Свои проекты</div>${ownDetails}</div>` : ''}
+        ${r.extDet.length > 0 ? `<div class="detail-section"><div class="detail-title">Внешние проекты</div>${extDetails}</div>` : ''}
+        ${r.nonDet.length > 0 ? `<div class="detail-section"><div class="detail-title">Внепроектная работа</div>${nonDetails}</div>` : ''}
+      </div>
+    `;
+  });
+
+  body.innerHTML = html;
+
+  // Non-project editor
+  renderNonProj();
+}
+
+function renderNonProj() {
+  const dept = state.activeDept;
+  const team = dept === 'tv' ? state.tvTeam : state.techTeam;
+  let html = '';
+  team.forEach((m, mi) => {
+    const nonproj = getNonProjFor(m.role, dept);
+    if (nonproj.length === 0) return;
+    html += `<div style="margin-bottom: 14px;">
+      <div class="detail-title" style="margin-bottom: 6px;">${escapeHtml(m.name)} · ${m.role}</div>`;
+    nonproj.forEach(a => {
+      const v = getNonProj(dept, mi, a.k);
+      html += `
+        <div class="nonproj-row">
+          <span class="nonproj-label">${a.n} (× ${a.c})</span>
+          <input type="number" class="nonproj-num" min="0" max="25" value="${v}"
+                 data-dept="${dept}" data-mi="${mi}" data-ak="${a.k}" />
+          <span style="font-size: 12px; font-weight: 500; min-width: 44px; text-align: right; font-family: var(--mono);">= ${(v * a.c).toFixed(1)}</span>
+        </div>
+      `;
+    });
+    html += '</div>';
+  });
+  const c = document.getElementById('nonproj-body');
+  c.innerHTML = html;
+  c.querySelectorAll('input[type="number"]').forEach(el => {
+    el.addEventListener('input', e => {
+      let v = parseInt(e.target.value) || 0;
+      if (v < 0) v = 0; if (v > 25) v = 25;
+      setNonProj(e.target.dataset.dept, +e.target.dataset.mi, e.target.dataset.ak, v);
+      saveState();
+      renderSummary();
+    });
+  });
+}
+
+// ================== EXPORT / IMPORT / RESET ==================
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `score-calc-${date}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'application/json,.json';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if (!parsed.ownProjects || !parsed.tvTeam) throw new Error('Неверный формат файла');
+        state = parsed;
+        saveState();
+        renderAll();
+        alert('Данные загружены');
+      } catch (err) {
+        alert('Ошибка импорта: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function resetData() {
+  if (!confirm('Сбросить все данные и вернуться к примеру?')) return;
+  localStorage.removeItem('score-calc-state');
+  loadState();
+  renderAll();
+}
+
+// ================== PAGE NAVIGATION ==================
+
+function switchPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav.pages button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  document.getElementById('nav-' + pageId).classList.add('active');
+  if (pageId === 'summary') renderSummary();
+  window.scrollTo(0, 0);
+}
+
+// ================== INIT ==================
+
+function renderAll() {
+  renderThresholdInputs();
+  renderSettings();
+  renderOwnProjects();
+  renderExtProjects();
+  renderSummary();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadState();
+
+  document.getElementById('wd').value = state.workdays;
+  document.getElementById('wd').addEventListener('input', e => {
+    state.workdays = +e.target.value;
+    saveState();
+    renderThresholdInputs();
+    renderSummary();
+  });
+
+  // Settings toggle
+  const toggleBtn = document.getElementById('toggle-settings');
+  const settingsBody = document.getElementById('settings-body');
+  toggleBtn.addEventListener('click', () => {
+    const open = settingsBody.classList.toggle('open');
+    toggleBtn.textContent = open ? 'Скрыть' : 'Показать';
+  });
+
+  // Threshold multiplier
+  document.getElementById('thr-mult-input').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    if (isFinite(v) && v > 0) {
+      state.coefs.thresholdMult = v;
+      saveState();
+      renderThresholdInputs();
+      renderSummary();
+    }
+  });
+
+  // Reset coefficients only
+  document.getElementById('reset-coefs').addEventListener('click', () => {
+    if (!confirm('Сбросить все коэффициенты к дефолту? Проекты и данные о сменах останутся.')) return;
+    state.coefs = JSON.parse(JSON.stringify(DEFAULT_COEFS));
+    saveState();
+    renderAll();
+  });
+
+  document.getElementById('add-own').addEventListener('click', () => {
+    const pid = state.nextOwnId++;
+    state.ownProjects.push({ id: pid, name: 'Новый проект', tvGrade: 'M', techGrade: 'M' });
+    // Auto-assign everyone's inProject shifts
+    ['tv','tech'].forEach(dept => {
+      const team = dept === 'tv' ? state.tvTeam : state.techTeam;
+      team.forEach((m, mi) => {
+        (ROLE_SHIFT_STRUCT[m.role] || []).forEach(s => {
+          if (s.inProject) setPart(dept, mi, pid, s.k, true);
+        });
+      });
+    });
+    saveState();
+    renderOwnProjects();
+  });
+
+  document.getElementById('add-ext').addEventListener('click', () => {
+    const pid = state.nextExtId++;
+    state.extProjects.push({ id: pid, name: 'Новый внешний проект' });
+    saveState();
+    renderExtProjects();
+  });
+
+  document.querySelectorAll('nav.pages button').forEach(b => {
+    b.addEventListener('click', e => switchPage(e.target.dataset.page));
+  });
+
+  document.querySelectorAll('.tab[data-dept]').forEach(t => {
+    t.addEventListener('click', e => {
+      document.querySelectorAll('.tab[data-dept]').forEach(x => x.classList.remove('active'));
+      e.target.classList.add('active');
+      state.activeDept = e.target.dataset.dept;
+      saveState();
+      renderSummary();
+    });
+  });
+
+  renderAll();
+});
+</script>
+
+</body>
+</html>
