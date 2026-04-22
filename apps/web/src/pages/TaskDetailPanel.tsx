@@ -22,19 +22,17 @@ interface FullStatusRow {
   matrixRegistry: { name: string | null; matrixId: string } | null
 }
 
-interface Member {
-  id: string
-  project_id: string
-  name: string
-  position: string | null
-  employment_type: string | null
-  rate_plan: string | null
-  group_name: string | null
-}
+type GroupSchedule = Record<string, { date: string | null; notes: string | null } | null>
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const DEPT_LIST = ['ТВ', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Радио', 'Не профильный']
+
+// Sub-types for departments that have format variants
+const DEPT_SUB_TYPES: Record<string, string[]> = {
+  'ТВ': ['Съёмка', 'Трансляция', 'Телерадио'],
+}
+
 const FORMATS   = ['ТВ', 'Радио', 'Телерадио', 'Продакшн', 'Дизайн', 'Оффлайн', 'Виртуальный', 'Менеджмент']
 const LOCATIONS = ['Знаменка', 'Крыша Чёрный', 'Камин', 'Романов', 'Выезд']
 const STATUS_LABELS: Record<string, string> = {
@@ -45,16 +43,26 @@ const STATUS_LABELS: Record<string, string> = {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: () => void }) {
+export function TaskDetailPanel({
+  rowId,
+  onClose,
+  defaultTab = 'info',
+}: {
+  rowId: string
+  onClose: () => void
+  defaultTab?: 'info' | 'departments'
+}) {
   const qc = useQueryClient()
-  const [tab, setTab] = useState<'info' | 'departments'>('info')
+  const [tab, setTab] = useState<'info' | 'departments'>(defaultTab)
 
-  // Departments tab state
-  const [localGroups, setLocalGroups] = useState<string[]>([])
+  // "Новый отдел" form state
   const [newDeptOpen, setNewDeptOpen] = useState(false)
-  const [newDeptName, setNewDeptName] = useState('')
+  const [newDeptBase, setNewDeptBase] = useState('')
+  const [newDeptSub, setNewDeptSub] = useState('')
   const [newDeptDate, setNewDeptDate] = useState('')
   const [newDeptDesc, setNewDeptDesc] = useState('')
+
+  // ── Queries ────────────────────────────────────────────────────────────────
 
   const { data: row, isLoading: rowLoading } = useQuery<FullStatusRow>({
     queryKey: ['task-detail', rowId],
@@ -62,12 +70,14 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
     staleTime: 30_000,
   })
 
-  const { data: members = [], isLoading: membersLoading } = useQuery<Member[]>({
-    queryKey: ['task-members', rowId],
-    queryFn: () => api.get('/project-members', { params: { projectId: rowId } }).then((r) => r.data),
+  const { data: groupSchedule = {}, isLoading: gsLoading } = useQuery<GroupSchedule>({
+    queryKey: ['group-schedule', rowId],
+    queryFn: () => api.get(`/status-rows/${rowId}/group-schedule`).then((r) => r.data),
     staleTime: 30_000,
     enabled: tab === 'departments',
   })
+
+  // ── Mutations ──────────────────────────────────────────────────────────────
 
   const patchRow = useMutation({
     mutationFn: (data: Record<string, unknown>) => api.patch(`/status-rows/${rowId}`, data),
@@ -80,49 +90,58 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
   const patchGroupSchedule = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       api.patch(`/status-rows/${rowId}/group-schedule`, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['group-schedule', rowId] })
+      qc.invalidateQueries({ queryKey: ['workflow-rows'] })
+    },
   })
 
-  const addMember = useMutation({
-    mutationFn: ({ name, groupName }: { name: string; groupName: string }) =>
-      api.post('/project-members', { projectId: rowId, name, groupName }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['task-members', rowId] }),
+  // ── Derived ────────────────────────────────────────────────────────────────
+
+  // Active depts: keys in group_schedule where value is non-null
+  const activeDeptKeys = Object.entries(groupSchedule)
+    .filter(([, v]) => v !== null)
+    .map(([k]) => k)
+
+  const subTypes = DEPT_SUB_TYPES[newDeptBase] ?? []
+  const fullDeptName =
+    newDeptBase === 'ТВ' && subTypes.length > 0
+      ? newDeptSub ? `ТВ — ${newDeptSub}` : ''
+      : newDeptBase
+
+  // Available base depts: non-TV ones that aren't already active; TV is always available
+  const availableDepts = DEPT_LIST.filter((d) => {
+    if (d === 'ТВ') return true
+    return !activeDeptKeys.includes(d)
   })
 
-  const deleteMember = useMutation({
-    mutationFn: (id: string) => api.delete(`/project-members/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['task-members', rowId] }),
-  })
-
-  // Group members by group_name
-  const grouped = members.reduce<Record<string, Member[]>>((acc, m) => {
-    const key = m.group_name ?? '—'
-    if (!acc[key]) acc[key] = []
-    acc[key].push(m)
-    return acc
-  }, {})
-
-  // Departments to show: DEPT_LIST ones that have members or were locally added
-  const memberGroupNames = members.map((m) => m.group_name).filter(Boolean) as string[]
-  const uniqueMemberGroups = [...new Set(memberGroupNames)]
-  const activeDepts = DEPT_LIST.filter(
-    (g) => uniqueMemberGroups.includes(g) || localGroups.includes(g),
-  )
-  // Any member groups outside DEPT_LIST
-  const extraDepts = uniqueMemberGroups.filter((g) => !DEPT_LIST.includes(g) && g !== '—')
-  const allDepts = [...activeDepts, ...extraDepts]
-  const availableDepts = DEPT_LIST.filter((g) => !allDepts.includes(g))
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const handleCreateDept = () => {
-    if (!newDeptName) return
+    if (!fullDeptName) return
     patchGroupSchedule.mutate({
-      [newDeptName]: { date: newDeptDate || null, notes: newDeptDesc || null },
+      [fullDeptName]: { date: newDeptDate || null, notes: newDeptDesc || null },
     })
-    setLocalGroups((prev) => [...prev, newDeptName])
     setNewDeptOpen(false)
-    setNewDeptName('')
+    setNewDeptBase('')
+    setNewDeptSub('')
     setNewDeptDate('')
     setNewDeptDesc('')
   }
+
+  const handleDeleteDept = (key: string) => {
+    patchGroupSchedule.mutate({ [key]: null })
+  }
+
+  const resetNewDept = () => {
+    setNewDeptOpen(false)
+    setNewDeptBase('')
+    setNewDeptSub('')
+    setNewDeptDate('')
+    setNewDeptDesc('')
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div
@@ -189,39 +208,56 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
         {/* Body */}
         <div style={{ flex: 1, overflow: 'auto' }}>
           {tab === 'info' && (
-            <InfoTab row={row ?? null} isLoading={rowLoading} onPatch={(data) => patchRow.mutate(data)} />
+            <InfoTab
+              row={row ?? null}
+              isLoading={rowLoading}
+              onPatch={(data) => patchRow.mutate(data)}
+            />
           )}
 
           {tab === 'departments' && (
             <div style={{ padding: '16px 20px' }}>
-              {membersLoading ? (
+              {gsLoading ? (
                 <div style={{ color: '#94a3b8', fontSize: 13, padding: '20px 0' }}>Загрузка...</div>
               ) : (
                 <>
-                  {allDepts.length === 0 && (
-                    <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 16 }}>
-                      Отделов пока нет.
+                  {/* Active department chips */}
+                  {activeDeptKeys.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                      {activeDeptKeys.map((key) => (
+                        <div
+                          key={key}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '5px 10px 5px 14px', borderRadius: 20,
+                            background: '#eff6ff', border: '1px solid #bfdbfe',
+                            color: '#1d4ed8', fontSize: 13, fontWeight: 500,
+                          }}
+                        >
+                          <span>{key}</span>
+                          <button
+                            onClick={() => handleDeleteDept(key)}
+                            disabled={patchGroupSchedule.isPending}
+                            style={{
+                              background: 'none', border: 'none', cursor: 'pointer',
+                              color: '#93c5fd', fontSize: 14, lineHeight: 1, padding: '0 2px',
+                              borderRadius: '50%',
+                            }}
+                            onMouseOver={(e) => (e.currentTarget.style.color = '#1d4ed8')}
+                            onMouseOut={(e) => (e.currentTarget.style.color = '#93c5fd')}
+                            title="Удалить отдел"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {allDepts.map((deptName) => (
-                    <DepartmentBlock
-                      key={deptName}
-                      groupName={deptName}
-                      members={grouped[deptName] ?? []}
-                      onAddMember={(name) => addMember.mutate({ name, groupName: deptName })}
-                      onDeleteMember={(id) => deleteMember.mutate(id)}
-                    />
-                  ))}
-
-                  {/* Members without group */}
-                  {(grouped['—']?.length ?? 0) > 0 && (
-                    <DepartmentBlock
-                      groupName="Без группы"
-                      members={grouped['—']}
-                      onAddMember={(name) => addMember.mutate({ name, groupName: '—' })}
-                      onDeleteMember={(id) => deleteMember.mutate(id)}
-                    />
+                  {activeDeptKeys.length === 0 && !newDeptOpen && (
+                    <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 16 }}>
+                      Отделов пока нет.
+                    </div>
                   )}
 
                   {/* Add department */}
@@ -229,7 +265,7 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
                     <button
                       onClick={() => setNewDeptOpen(true)}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: 8, marginTop: 12,
+                        display: 'flex', alignItems: 'center', gap: 8,
                         border: '1px dashed #cbd5e1', borderRadius: 8, background: 'none',
                         padding: '8px 14px', color: '#64748b', fontSize: 13, cursor: 'pointer', width: '100%',
                       }}
@@ -238,18 +274,19 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
                     </button>
                   ) : (
                     <div style={{
-                      marginTop: 12, border: '1px solid #e2e8f0', borderRadius: 10, padding: 16,
+                      border: '1px solid #e2e8f0', borderRadius: 10, padding: 16,
                     }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 14 }}>
                         Новый отдел
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* ОТДЕЛ */}
                         <div>
                           <label style={labelStyle}>ОТДЕЛ</label>
                           <select
-                            value={newDeptName}
-                            onChange={(e) => setNewDeptName(e.target.value)}
+                            value={newDeptBase}
+                            onChange={(e) => { setNewDeptBase(e.target.value); setNewDeptSub('') }}
                             style={fieldStyle}
                           >
                             <option value="">— выберите отдел —</option>
@@ -259,6 +296,24 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
                           </select>
                         </div>
 
+                        {/* ТИП (sub-type) — only for depts with sub-types */}
+                        {subTypes.length > 0 && (
+                          <div>
+                            <label style={labelStyle}>ТИП</label>
+                            <select
+                              value={newDeptSub}
+                              onChange={(e) => setNewDeptSub(e.target.value)}
+                              style={fieldStyle}
+                            >
+                              <option value="">— выберите тип —</option>
+                              {subTypes.map((s) => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {/* ДАТА */}
                         <div>
                           <label style={labelStyle}>ДАТА</label>
                           <input
@@ -269,6 +324,7 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
                           />
                         </div>
 
+                        {/* ОПИСАНИЕ */}
                         <div>
                           <label style={labelStyle}>ОПИСАНИЕ</label>
                           <input
@@ -282,12 +338,7 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
 
                       <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
                         <button
-                          onClick={() => {
-                            setNewDeptOpen(false)
-                            setNewDeptName('')
-                            setNewDeptDate('')
-                            setNewDeptDesc('')
-                          }}
+                          onClick={resetNewDept}
                           style={{
                             padding: '7px 14px', borderRadius: 7, border: '1px solid #e2e8f0',
                             background: '#f8fafc', color: '#64748b', fontSize: 13, cursor: 'pointer',
@@ -297,15 +348,16 @@ export function TaskDetailPanel({ rowId, onClose }: { rowId: string; onClose: ()
                         </button>
                         <button
                           onClick={handleCreateDept}
-                          disabled={!newDeptName}
+                          disabled={!fullDeptName || patchGroupSchedule.isPending}
                           style={{
                             padding: '7px 16px', borderRadius: 7, border: 'none',
-                            background: newDeptName ? '#2563eb' : '#e2e8f0',
-                            color: newDeptName ? '#fff' : '#94a3b8',
-                            fontSize: 13, fontWeight: 600, cursor: newDeptName ? 'pointer' : 'default',
+                            background: fullDeptName ? '#2563eb' : '#e2e8f0',
+                            color: fullDeptName ? '#fff' : '#94a3b8',
+                            fontSize: 13, fontWeight: 600,
+                            cursor: fullDeptName ? 'pointer' : 'default',
                           }}
                         >
-                          Создать
+                          {patchGroupSchedule.isPending ? 'Сохранение...' : 'Создать'}
                         </button>
                       </div>
                     </div>
@@ -377,7 +429,7 @@ function InfoTab({ row, isLoading, onPatch }: {
         />
       </InfoField>
 
-      <InfoField label="Дата (приблиз.)">
+      <InfoField label="Дата">
         <input
           defaultValue={row.dateApproximate ?? ''}
           onBlur={(e) => { if (e.target.value !== (row.dateApproximate ?? '')) onPatch({ dateApproximate: e.target.value || null }) }}
@@ -436,127 +488,6 @@ function InfoField({ label, children }: { label: string; children: React.ReactNo
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
       {children}
-    </div>
-  )
-}
-
-// ── DepartmentBlock ───────────────────────────────────────────────────────────
-
-function DepartmentBlock({ groupName, members, onAddMember, onDeleteMember }: {
-  groupName: string
-  members: Member[]
-  onAddMember: (name: string) => void
-  onDeleteMember: (id: string) => void
-}) {
-  const [expanded, setExpanded] = useState(true)
-  const [addingMember, setAddingMember] = useState(false)
-  const [memberName, setMemberName] = useState('')
-
-  const submitMember = () => {
-    const trimmed = memberName.trim()
-    if (!trimmed) return
-    onAddMember(trimmed)
-    setMemberName('')
-    setAddingMember(false)
-  }
-
-  return (
-    <div style={{ marginBottom: 10, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
-      <div
-        onClick={() => setExpanded((v) => !v)}
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 14px', background: '#f8fafc', cursor: 'pointer',
-          borderBottom: expanded ? '1px solid #e2e8f0' : 'none',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            fontSize: 12, color: '#94a3b8', display: 'inline-block',
-            transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform .15s',
-          }}>▶</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>{groupName}</span>
-          <span style={{ fontSize: 11, background: '#e2e8f0', color: '#64748b', borderRadius: 10, padding: '1px 7px' }}>
-            {members.length}
-          </span>
-        </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); setAddingMember(true); setExpanded(true) }}
-          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 12, cursor: 'pointer', padding: '2px 6px' }}
-        >
-          + участник
-        </button>
-      </div>
-
-      {expanded && (
-        <div>
-          {members.length === 0 && !addingMember ? (
-            <div style={{ padding: '10px 14px', fontSize: 12, color: '#94a3b8' }}>Нет участников</div>
-          ) : (
-            members.map((m) => (
-              <div
-                key={m.id}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '7px 14px', borderBottom: '1px solid #f8fafc',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 13, color: '#1e293b' }}>{m.name}</div>
-                  {m.position && <div style={{ fontSize: 11, color: '#94a3b8' }}>{m.position}</div>}
-                </div>
-                <button
-                  onClick={() => onDeleteMember(m.id)}
-                  style={{ background: 'none', border: 'none', color: '#e2e8f0', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}
-                  onMouseOver={(e) => (e.currentTarget.style.color = '#ef4444')}
-                  onMouseOut={(e) => (e.currentTarget.style.color = '#e2e8f0')}
-                  title="Удалить участника"
-                >
-                  ×
-                </button>
-              </div>
-            ))
-          )}
-
-          {addingMember && (
-            <div style={{
-              padding: '8px 14px', display: 'flex', gap: 8, alignItems: 'center',
-              background: '#f8fafc', borderTop: members.length > 0 ? '1px solid #f1f5f9' : 'none',
-            }}>
-              <input
-                autoFocus
-                value={memberName}
-                onChange={(e) => setMemberName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') submitMember()
-                  if (e.key === 'Escape') { setAddingMember(false); setMemberName('') }
-                }}
-                placeholder="ФИО участника..."
-                style={{ flex: 1, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, outline: 'none' }}
-              />
-              <button
-                onClick={submitMember}
-                disabled={!memberName.trim()}
-                style={{
-                  padding: '6px 12px', borderRadius: 6, background: '#2563eb', color: '#fff',
-                  border: 'none', fontSize: 13, cursor: 'pointer', fontWeight: 600, flexShrink: 0,
-                }}
-              >
-                Добавить
-              </button>
-              <button
-                onClick={() => { setAddingMember(false); setMemberName('') }}
-                style={{
-                  padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e8f0',
-                  background: '#fff', color: '#64748b', fontSize: 13, cursor: 'pointer', flexShrink: 0,
-                }}
-              >
-                Отмена
-              </button>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }

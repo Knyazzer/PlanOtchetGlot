@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { TaskDetailPanel } from './TaskDetailPanel'
@@ -121,6 +121,8 @@ export function WorkflowPage() {
   const [connectModal, setConnectModal] = useState<{ rowId: string; client: string | null } | null>(null)
   const [createProjectModal, setCreateProjectModal] = useState<{ rowId: string; client: string | null } | null>(null)
   const [detailRowId, setDetailRowId] = useState<string | null>(null)
+  const [detailRowTab, setDetailRowTab] = useState<'info' | 'departments'>('info')
+  const [draggingRowId, setDraggingRowId] = useState<string | null>(null)
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -182,11 +184,15 @@ export function WorkflowPage() {
   const dragging = useRef<{ rowId: string; fromStage: WfStage } | null>(null)
   const ghostRef = useRef<HTMLDivElement>(null)
   const stageRefs = useRef<Map<WfStage, HTMLElement>>(new Map())
+  // Keep a ref to activeStage so onUp closure can restore correct styles
+  const activeStageRef = useRef(activeStage)
+  useEffect(() => { activeStageRef.current = activeStage }, [activeStage])
 
   const handleDragStart = useCallback((e: React.MouseEvent, row: StatusRow) => {
     e.preventDefault()
     const fromStage = statusToStage(row.status)
     dragging.current = { rowId: row.id, fromStage }
+    setDraggingRowId(row.id)
 
     if (ghostRef.current) {
       ghostRef.current.textContent = `${row.client || '—'} · ${row.name}`
@@ -201,7 +207,19 @@ export function WorkflowPage() {
       ghostRef.current.style.top = ev.clientY - 18 + 'px'
       stageRefs.current.forEach((el) => {
         const r = el.getBoundingClientRect()
-        el.dataset.dragover = (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) ? '1' : '0'
+        const isOver = ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom
+        el.dataset.dragover = isOver ? '1' : '0'
+        if (isOver) {
+          el.style.background = '#fef3c7'
+          el.style.borderColor = '#f59e0b'
+          el.style.color = '#92400e'
+          el.style.transform = 'scale(1.04)'
+        } else {
+          el.style.background = ''
+          el.style.borderColor = ''
+          el.style.color = ''
+          el.style.transform = ''
+        }
       })
     }
 
@@ -209,10 +227,18 @@ export function WorkflowPage() {
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
       if (ghostRef.current) ghostRef.current.style.opacity = '0'
+      setDraggingRowId(null)
 
       let targetStage: WfStage | null = null
       stageRefs.current.forEach((el, stage) => {
         el.dataset.dragover = '0'
+        el.style.transform = ''
+        // Restore React-managed colors (clearing to '' leaves element unstyled until next render)
+        const c = STAGE_COLORS[stage]
+        const isStageActive = stage === activeStageRef.current
+        el.style.background = isStageActive ? c.activeBg : c.bg
+        el.style.borderColor = isStageActive ? c.activeBg : c.border
+        el.style.color = isStageActive ? '#fff' : c.color
         const r = el.getBoundingClientRect()
         if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) {
           targetStage = stage
@@ -351,7 +377,7 @@ export function WorkflowPage() {
         {isLoading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Загрузка...</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1000 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: activeStage === 'request' ? 1000 : 1100 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                 <th style={th}></th>
@@ -364,14 +390,15 @@ export function WorkflowPage() {
                 <th style={th}>Дата</th>
                 <th style={th}>Формат</th>
                 <th style={th}>Локация</th>
-                <th style={th}>Проект</th>
+                {activeStage !== 'request' && <th style={th}>Проект</th>}
+                <th style={th}>Отделы</th>
                 <th style={{ ...th, width: 36 }}></th>
               </tr>
             </thead>
             <tbody>
               {stageRows.length === 0 && (
                 <tr>
-                  <td colSpan={12} style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+                  <td colSpan={activeStage === 'request' ? 12 : 13} style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
                     {activeStage === 'request' ? 'Нажмите «+» ниже, чтобы добавить задачу.' : 'Нет задач в этом этапе.'}
                   </td>
                 </tr>
@@ -383,8 +410,10 @@ export function WorkflowPage() {
                   onDragStart={handleDragStart}
                   onPatch={(field, value) => patchField.mutate({ id: row.id, field, value })}
                   activeStage={activeStage}
+                  isDragging={draggingRowId === row.id}
                   onConnectProject={() => setConnectModal({ rowId: row.id, client: row.client })}
-                  onInfo={() => setDetailRowId(row.id)}
+                  onInfo={() => { setDetailRowId(row.id); setDetailRowTab('info') }}
+                  onOpenDepts={() => { setDetailRowId(row.id); setDetailRowTab('departments') }}
                   clients={clients}
                   producers={producers}
                 />
@@ -480,7 +509,7 @@ export function WorkflowPage() {
           rowId={connectModal.rowId}
           client={connectModal.client}
           onClose={() => setConnectModal(null)}
-          onConnected={(rowId) => { setConnectModal(null); doMove(rowId, 'production') }}
+          onConnected={() => setConnectModal(null)}
           onCreateProject={() => { setConnectModal(null); setCreateProjectModal({ rowId: connectModal.rowId, client: connectModal.client }) }}
         />
       )}
@@ -499,7 +528,11 @@ export function WorkflowPage() {
 
       {/* ── Task detail modal ── */}
       {detailRowId && (
-        <TaskDetailPanel rowId={detailRowId} onClose={() => setDetailRowId(null)} />
+        <TaskDetailPanel
+          rowId={detailRowId}
+          onClose={() => setDetailRowId(null)}
+          defaultTab={detailRowTab}
+        />
       )}
     </div>
   )
@@ -508,14 +541,16 @@ export function WorkflowPage() {
 // ── WorkflowRow ───────────────────────────────────────────────────────────────
 
 function WorkflowRow({
-  row, onDragStart, onPatch, activeStage, onConnectProject, onInfo, clients, producers,
+  row, onDragStart, onPatch, activeStage, isDragging, onConnectProject, onInfo, onOpenDepts, clients, producers,
 }: {
   row: StatusRow
   onDragStart: (e: React.MouseEvent, row: StatusRow) => void
   onPatch: (field: string, value: unknown) => void
   activeStage: WfStage
+  isDragging: boolean
   onConnectProject: () => void
   onInfo: () => void
+  onOpenDepts: () => void
   clients: string[]
   producers: string[]
 }) {
@@ -523,9 +558,17 @@ function WorkflowRow({
   const projectName = row.matrixRegistry?.name || (row.matrixRegistryId ? '✓ Подключён' : null)
 
   return (
-    <tr style={{ borderBottom: '1px solid #f1f5f9' }}
-      onMouseOver={(e) => (e.currentTarget.style.background = '#fafbff')}
-      onMouseOut={(e) => (e.currentTarget.style.background = '')}
+    <tr
+      style={{
+        borderBottom: '1px solid #f1f5f9',
+        opacity: isDragging ? 0.35 : 1,
+        background: isDragging ? '#fef9c3' : undefined,
+        boxShadow: isDragging ? 'inset 0 0 0 2px #f59e0b' : undefined,
+        transition: 'opacity .12s',
+        pointerEvents: isDragging ? 'none' : undefined,
+      }}
+      onMouseOver={(e) => { if (!isDragging) e.currentTarget.style.background = '#fafbff' }}
+      onMouseOut={(e) => { if (!isDragging) e.currentTarget.style.background = '' }}
     >
       {/* Drag handle */}
       <td style={{ ...td, width: 28, paddingRight: 0 }}>
@@ -630,11 +673,17 @@ function WorkflowRow({
         )}
       </td>
 
-      {/* Date */}
-      <td style={{ ...td, minWidth: 90 }}>
-        <span style={{ fontSize: 13, color: '#0369a1' }}>
-          {smartDate(row.date) || row.dateApproximate || '—'}
-        </span>
+      {/* Date — free text: one date, range, month, etc. */}
+      <td style={{ ...td, minWidth: 110 }}>
+        <input
+          defaultValue={row.dateApproximate ?? (row.date ? smartDate(row.date) : '')}
+          onBlur={(e) => {
+            if (e.target.value !== (row.dateApproximate ?? ''))
+              onPatch('dateApproximate', e.target.value || null)
+          }}
+          placeholder="дата / период"
+          style={cellInput}
+        />
       </td>
 
       {/* Format */}
@@ -653,22 +702,41 @@ function WorkflowRow({
         </select>
       </td>
 
-      {/* Project */}
-      <td style={{ ...td, minWidth: 140 }}>
-        {activeStage === 'connecting' && !row.matrixRegistryId ? (
-          <button
-            onClick={onConnectProject}
-            style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #fde68a', background: '#fffbeb', color: '#b45309', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
-          >
-            ⚠ Подключить
-          </button>
-        ) : projectName ? (
-          <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 500 }} title={projectName}>
-            {projectName.length > 18 ? projectName.slice(0, 18) + '…' : projectName}
-          </span>
-        ) : (
-          <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
-        )}
+      {/* Project — only for non-request stages */}
+      {activeStage !== 'request' && (
+        <td style={{ ...td, minWidth: 140 }}>
+          {activeStage === 'connecting' && !row.matrixRegistryId ? (
+            <button
+              onClick={onConnectProject}
+              style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #fde68a', background: '#fffbeb', color: '#b45309', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+            >
+              ⚠ Подключить
+            </button>
+          ) : projectName ? (
+            <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 500 }} title={projectName}>
+              {projectName.length > 18 ? projectName.slice(0, 18) + '…' : projectName}
+            </span>
+          ) : (
+            <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
+          )}
+        </td>
+      )}
+
+      {/* Departments button */}
+      <td style={{ ...td, minWidth: 90 }}>
+        <button
+          onClick={onOpenDepts}
+          title="Отделы по задаче"
+          style={{
+            padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0',
+            background: '#f8fafc', color: '#374151', fontSize: 12, cursor: 'pointer',
+            fontWeight: 500, whiteSpace: 'nowrap',
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; e.currentTarget.style.color = '#2563eb' }}
+          onMouseOut={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#374151' }}
+        >
+          Отделы →
+        </button>
       </td>
 
       {/* Info button */}
@@ -695,7 +763,7 @@ function WorkflowRow({
 
 function ConnectProjectModal({ rowId, client, onClose, onConnected, onCreateProject }: {
   rowId: string; client: string | null
-  onClose: () => void; onConnected: (rowId: string) => void; onCreateProject: () => void
+  onClose: () => void; onConnected: () => void; onCreateProject: () => void
 }) {
   const qc = useQueryClient()
   const [selectedId, setSelectedId] = useState('')
@@ -706,14 +774,14 @@ function ConnectProjectModal({ rowId, client, onClose, onConnected, onCreateProj
   })
   const link = useMutation({
     mutationFn: () => api.patch(`/status-rows/${rowId}`, { matrixRegistryId: selectedId }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['workflow-rows'] }); onConnected(rowId) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['workflow-rows'] }); onConnected() },
   })
   const clientMatrices = client ? matrices.filter((m) => m.client?.toLowerCase().includes(client.toLowerCase())) : matrices
 
   return (
     <Modal onClose={onClose}>
-      <h3 style={mh3}>⚠ Проект не привязан</h3>
-      <p style={mp}>Чтобы перенести задачу в производство, нужно подключить её к проекту.</p>
+      <h3 style={mh3}>Подключить к проекту</h3>
+      <p style={mp}>Выберите проект из реестра или создайте новый.</p>
       {clientMatrices.length > 0 ? (
         <>
           <label style={mlabel}>Выберите проект{client ? ` клиента «${client}»` : ''}</label>
@@ -733,7 +801,7 @@ function ConnectProjectModal({ rowId, client, onClose, onConnected, onCreateProj
         <button style={{ ...btnSecondary, borderColor: '#fde68a', color: '#b45309' }} onClick={onCreateProject}>+ Создать проект</button>
         {clientMatrices.length > 0 && (
           <button style={btnPrimary} disabled={!selectedId || link.isPending} onClick={() => link.mutate()}>
-            {link.isPending ? 'Привязка...' : 'Привязать и перенести'}
+            {link.isPending ? 'Привязка...' : 'Привязать'}
           </button>
         )}
       </div>
