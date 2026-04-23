@@ -1,0 +1,177 @@
+<h2>Вкладка «Задачи» — выберите компоновку</h2>
+<p class="subtitle">Внутри каждой задачи — несколько отделов. Как должна выглядеть вкладка?</p>
+
+<div class="cards">
+
+  <!-- Option A: List + expand -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="card-image" style="padding:16px;background:#f8fafc;border-radius:8px;font-size:12px;font-family:system-ui">
+      <div style="display:flex;flex-direction:column;gap:6px">
+
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden">
+          <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:10px;background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-weight:600">Производство</span>
+              <strong style="font-size:12px">36,6: Вечернее шоу</strong>
+            </div>
+            <div style="display:flex;gap:4px">
+              <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:2px 7px;border-radius:10px;font-size:10px">ТВ — Съёмка</span>
+              <span style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:2px 7px;border-radius:10px;font-size:10px">Моушн</span>
+              <span style="color:#64748b;font-size:11px;padding:2px 5px">▾</span>
+            </div>
+          </div>
+          <!-- expanded -->
+          <div style="border-top:1px solid #f1f5f9;padding:10px 14px;background:#fafbff;display:flex;gap:16px">
+            <div style="flex:1">
+              <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:4px">Исп. продюсер</div>
+              <div style="font-size:11px;color:#334155">Вадим Степанов</div>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:4px">Дата</div>
+              <div style="font-size:11px;color:#334155">14 мая</div>
+            </div>
+            <div style="flex:2">
+              <div style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-bottom:6px">Отделы</div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:8px;font-size:10px;border:1px solid #bfdbfe">ТВ — Съёмка</span>
+                  <span style="font-size:10px;color:#64748b">14 мая · ТВ-группа готова</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:8px;font-size:10px;border:1px solid #bbf7d0">Моушн</span>
+                  <span style="font-size:10px;color:#64748b">16 мая</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:10px;font-weight:600">Запрос</span>
+            <strong style="font-size:12px">СТС: Утренняя программа</strong>
+          </div>
+          <div style="display:flex;gap:4px">
+            <span style="background:#fdf4ff;color:#9333ea;border:1px solid #f3e8ff;padding:2px 7px;border-radius:10px;font-size:10px">Дизайн</span>
+            <span style="color:#64748b;font-size:11px;padding:2px 5px">▸</span>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:10px;background:#dcfce7;color:#15803d;padding:2px 7px;border-radius:10px;font-weight:600">Сдан</span>
+            <strong style="font-size:12px">Первый: Итоги года</strong>
+          </div>
+          <div style="display:flex;gap:4px">
+            <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:2px 7px;border-radius:10px;font-size:10px">ТВ — Трансляция</span>
+            <span style="color:#64748b;font-size:11px;padding:2px 5px">▸</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Список с раскрытием</h3>
+      <p>Задачи строками, клик — раскрывает блок с отделами и деталями. Компактно, много задач на экране.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Two panel -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="card-image" style="padding:16px;background:#f8fafc;border-radius:8px;font-size:12px;font-family:system-ui">
+      <div style="display:flex;gap:10px;height:200px">
+        <!-- left list -->
+        <div style="width:42%;display:flex;flex-direction:column;gap:4px">
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 10px">
+            <div style="font-size:10px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:8px;display:inline-block;margin-bottom:4px;font-weight:600">Производство</div>
+            <div style="font-size:11px;font-weight:600;color:#1e293b">36,6: Вечернее шоу</div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">ТВ — Съёмка · Моушн</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px">
+            <div style="font-size:10px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:8px;display:inline-block;margin-bottom:4px;font-weight:600">Запрос</div>
+            <div style="font-size:11px;font-weight:600;color:#1e293b">СТС: Утренняя программа</div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">Дизайн</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px">
+            <div style="font-size:10px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:8px;display:inline-block;margin-bottom:4px;font-weight:600">Сдан</div>
+            <div style="font-size:11px;font-weight:600;color:#1e293b">Первый: Итоги года</div>
+            <div style="font-size:10px;color:#64748b;margin-top:2px">ТВ — Трансляция</div>
+          </div>
+        </div>
+        <!-- right detail -->
+        <div style="flex:1;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px;overflow:hidden">
+          <div style="font-size:11px;font-weight:700;color:#1e293b;margin-bottom:8px">36,6: Вечернее шоу</div>
+          <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;margin-bottom:4px">Отделы</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:8px;font-size:10px;border:1px solid #bfdbfe;font-weight:600">ТВ — Съёмка</span>
+                <span style="font-size:10px;color:#64748b">14 мая</span>
+              </div>
+              <div style="font-size:10px;color:#64748b">ТВ-группа готова к съёмке</div>
+            </div>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <span style="background:#f0fdf4;color:#16a34a;padding:2px 8px;border-radius:8px;font-size:10px;border:1px solid #bbf7d0;font-weight:600">Моушн</span>
+                <span style="font-size:10px;color:#64748b">16 мая</span>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;font-weight:600;margin-top:8px;margin-bottom:4px">Продюсер</div>
+          <div style="font-size:11px;color:#334155">Вадим Степанов</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Две панели</h3>
+      <p>Слева список задач, справа — детали выбранной: отделы, участники, заметки. Подходит когда задач много.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Kanban by status -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="card-image" style="padding:16px;background:#f8fafc;border-radius:8px;font-size:12px;font-family:system-ui">
+      <div style="display:flex;gap:8px;height:200px;overflow:hidden">
+        <!-- Запрос -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:10px;font-weight:700;color:#92400e;background:#fef3c7;border-radius:6px;padding:4px 8px;text-align:center">Запрос</div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px">
+            <div style="font-size:10px;font-weight:600;color:#1e293b;margin-bottom:4px">СТС: Утренняя</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px">
+              <span style="background:#fdf4ff;color:#9333ea;border:1px solid #f3e8ff;padding:1px 5px;border-radius:6px;font-size:9px">Дизайн</span>
+            </div>
+          </div>
+        </div>
+        <!-- Производство -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:10px;font-weight:700;color:#15803d;background:#dcfce7;border-radius:6px;padding:4px 8px;text-align:center">Производство</div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px">
+            <div style="font-size:10px;font-weight:600;color:#1e293b;margin-bottom:4px">36,6: Вечернее</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px">
+              <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:1px 5px;border-radius:6px;font-size:9px">ТВ — Съёмка</span>
+              <span style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;padding:1px 5px;border-radius:6px;font-size:9px">Моушн</span>
+            </div>
+          </div>
+        </div>
+        <!-- Сдан -->
+        <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:10px;font-weight:700;color:#6d28d9;background:#f5f3ff;border-radius:6px;padding:4px 8px;text-align:center">Сдан</div>
+          <div style="background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px">
+            <div style="font-size:10px;font-weight:600;color:#1e293b;margin-bottom:4px">Первый: Итоги</div>
+            <div style="display:flex;flex-wrap:wrap;gap:3px">
+              <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:1px 5px;border-radius:6px;font-size:9px">ТВ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Канбан по этапам</h3>
+      <p>Колонки = этапы задачи, карточки показывают отделы. Хорошо для обзора статусов, хуже для деталей.</p>
+    </div>
+  </div>
+
+</div>

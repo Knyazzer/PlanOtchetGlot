@@ -179,6 +179,15 @@ export function WorkflowPage() {
     return allRows.filter((r) => statusToStage(r.status) === stage).length
   }
 
+  // Dept keys for visible rows — batch fetch when stage rows change
+  const stageRowIds = stageRows.map((r) => r.id).join(',')
+  const { data: rowDepts = {} } = useQuery<Record<string, string[]>>({
+    queryKey: ['workflow-depts', stageRowIds],
+    queryFn: () => api.get('/status-rows/group-schedule-batch', { params: { ids: stageRowIds } }).then((r) => r.data),
+    enabled: stageRows.length > 0,
+    staleTime: 30_000,
+  })
+
   // ── Drag state ─────────────────────────────────────────────────────────────
 
   const dragging = useRef<{ rowId: string; fromStage: WfStage } | null>(null)
@@ -411,6 +420,7 @@ export function WorkflowPage() {
                   onPatch={(field, value) => patchField.mutate({ id: row.id, field, value })}
                   activeStage={activeStage}
                   isDragging={draggingRowId === row.id}
+                  deptKeys={rowDepts[row.id] ?? []}
                   onConnectProject={() => setConnectModal({ rowId: row.id, client: row.client })}
                   onInfo={() => { setDetailRowId(row.id); setDetailRowTab('info') }}
                   onOpenDepts={() => { setDetailRowId(row.id); setDetailRowTab('departments') }}
@@ -541,13 +551,14 @@ export function WorkflowPage() {
 // ── WorkflowRow ───────────────────────────────────────────────────────────────
 
 function WorkflowRow({
-  row, onDragStart, onPatch, activeStage, isDragging, onConnectProject, onInfo, onOpenDepts, clients, producers,
+  row, onDragStart, onPatch, activeStage, isDragging, deptKeys, onConnectProject, onInfo, onOpenDepts, clients, producers,
 }: {
   row: StatusRow
   onDragStart: (e: React.MouseEvent, row: StatusRow) => void
   onPatch: (field: string, value: unknown) => void
   activeStage: WfStage
   isDragging: boolean
+  deptKeys: string[]
   onConnectProject: () => void
   onInfo: () => void
   onOpenDepts: () => void
@@ -722,21 +733,46 @@ function WorkflowRow({
         </td>
       )}
 
-      {/* Departments button */}
-      <td style={{ ...td, minWidth: 90 }}>
-        <button
-          onClick={onOpenDepts}
-          title="Отделы по задаче"
-          style={{
-            padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0',
-            background: '#f8fafc', color: '#374151', fontSize: 12, cursor: 'pointer',
-            fontWeight: 500, whiteSpace: 'nowrap',
-          }}
-          onMouseOver={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; e.currentTarget.style.color = '#2563eb' }}
-          onMouseOut={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#374151' }}
-        >
-          Отделы →
-        </button>
+      {/* Departments cell — shows chips if depts selected, otherwise button */}
+      <td style={{ ...td, minWidth: 110 }}>
+        {deptKeys.length > 0 ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+            {deptKeys.slice(0, 3).map((k) => (
+              <span
+                key={k}
+                style={{
+                  padding: '2px 7px', borderRadius: 10, fontSize: 11, fontWeight: 500,
+                  background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe',
+                  whiteSpace: 'nowrap',
+                }}
+              >{k}</span>
+            ))}
+            {deptKeys.length > 3 && (
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>+{deptKeys.length - 3}</span>
+            )}
+            <button
+              onClick={onOpenDepts}
+              title="Управлять отделами"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 13, lineHeight: 1, padding: '0 2px' }}
+              onMouseOver={(e) => (e.currentTarget.style.color = '#2563eb')}
+              onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
+            >✎</button>
+          </div>
+        ) : (
+          <button
+            onClick={onOpenDepts}
+            title="Добавить отделы"
+            style={{
+              padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0',
+              background: '#f8fafc', color: '#374151', fontSize: 12, cursor: 'pointer',
+              fontWeight: 500, whiteSpace: 'nowrap',
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; e.currentTarget.style.color = '#2563eb' }}
+            onMouseOut={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#374151' }}
+          >
+            Отделы →
+          </button>
+        )}
       </td>
 
       {/* Info button */}

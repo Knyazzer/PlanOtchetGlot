@@ -2019,47 +2019,56 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
         style={{ background: '#f8fafc', borderRadius: 16, boxShadow: '0 24px 80px rgba(0,0,0,0.25)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #1e3a5f 100%)', padding: '18px 24px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexShrink: 0 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-              {statusStyle && (
-                <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}`, letterSpacing: '0.03em' }}>
-                  {STATUS_LABELS[localEntry.status!] ?? localEntry.status}
-                </span>
+        {/* Header + Tabs */}
+        <div style={{ background: 'linear-gradient(135deg, #1e293b 0%, #1e3a5f 100%)', flexShrink: 0 }}>
+          {/* Top row: title + buttons */}
+          <div style={{ padding: '18px 24px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                {statusStyle && (
+                  <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: statusStyle.bg, color: statusStyle.color, border: `1px solid ${statusStyle.border}`, letterSpacing: '0.03em' }}>
+                    {STATUS_LABELS[localEntry.status!] ?? localEntry.status}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {localEntry.client
+                  ? <><span style={{ color: '#94a3b8' }}>{localEntry.client}:</span>{' '}{localEntry.projectName ?? localEntry.name ?? localEntry.matrixId}</>
+                  : (localEntry.projectName ?? localEntry.name ?? localEntry.matrixId)
+                }
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              {onDelete && (
+                <button onClick={onDelete} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}>
+                  Удалить
+                </button>
               )}
+              <button
+                onClick={onClose}
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 10px', borderRadius: 8 }}
+                title="Закрыть (Esc)"
+              >×</button>
             </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {localEntry.projectName ?? localEntry.name ?? localEntry.matrixId}
-            </div>
-            {localEntry.client && <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 3 }}>{localEntry.client}</div>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {onDelete && (
-              <button onClick={onDelete} style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', cursor: 'pointer', fontSize: 12, padding: '5px 12px', borderRadius: 8, fontWeight: 500 }}>
-                Удалить
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#cbd5e1', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '4px 10px', borderRadius: 8 }}
-              title="Закрыть (Esc)"
-            >×</button>
-          </div>
-        </div>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', background: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, overflowX: 'auto', paddingLeft: 4 }}>
-          {TABS.map(({ key, label }) => (
-            <button key={key} onClick={() => setTab(key)} style={{
-              padding: '10px 20px', fontSize: 13, border: 'none', cursor: 'pointer', background: 'none',
-              borderBottom: tab === key ? '2px solid #3b82f6' : '2px solid transparent',
-              color: tab === key ? '#3b82f6' : '#64748b', fontWeight: tab === key ? 600 : 400,
-              whiteSpace: 'nowrap', flexShrink: 0,
-            }}>
-              {label}
-            </button>
-          ))}
+          {/* Tabs row — inside the dark header */}
+          <div style={{ display: 'flex', overflowX: 'auto', paddingLeft: 20 }}>
+            {TABS.map(({ key, label }) => (
+              <button key={key} onClick={() => setTab(key)} style={{
+                padding: '8px 18px', fontSize: 13, border: 'none', cursor: 'pointer', background: 'none',
+                borderBottom: tab === key ? '2px solid #60a5fa' : '2px solid transparent',
+                color: tab === key ? '#f0f9ff' : '#94a3b8',
+                fontWeight: tab === key ? 600 : 400,
+                whiteSpace: 'nowrap', flexShrink: 0, transition: 'color .12s',
+              }}
+              onMouseOver={(e) => { if (tab !== key) e.currentTarget.style.color = '#cbd5e1' }}
+              onMouseOut={(e) => { if (tab !== key) e.currentTarget.style.color = '#94a3b8' }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         {/* Tab: Info */}
         {tab === 'info' && (

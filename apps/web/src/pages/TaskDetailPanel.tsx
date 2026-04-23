@@ -131,6 +131,14 @@ export function TaskDetailPanel({
     onSuccess: () => qc.invalidateQueries({ queryKey: ['task-members', rowId] }),
   })
 
+  const deleteRow = useMutation({
+    mutationFn: () => api.delete(`/status-rows/${rowId}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['workflow-rows'] })
+      onClose()
+    },
+  })
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   // Active depts from group_schedule (non-null values)
@@ -189,7 +197,7 @@ export function TaskDetailPanel({
   }
 
   // Modal width depends on stage
-  const modalWidth = isEarlyStage ? 820 : 1020
+  const modalWidth = isEarlyStage ? 1000 : 1200
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -224,12 +232,23 @@ export function TaskDetailPanel({
                 </span>
               )}
             </div>
-            <button
-              onClick={onClose}
-              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 6px', marginTop: -2 }}
-            >
-              ×
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => { if (window.confirm('Удалить задачу?')) deleteRow.mutate() }}
+                disabled={deleteRow.isPending}
+                style={{ background: 'none', border: '1px solid #ef4444', borderRadius: 6, color: '#ef4444', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: '3px 10px', opacity: deleteRow.isPending ? 0.6 : 1 }}
+                onMouseOver={(e) => { e.currentTarget.style.background = '#ef4444'; e.currentTarget.style.color = '#fff' }}
+                onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#ef4444' }}
+              >
+                Удалить
+              </button>
+              <button
+                onClick={onClose}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '2px 6px', marginTop: -2 }}
+              >
+                ×
+              </button>
+            </div>
           </div>
           <div style={{ fontSize: 17, fontWeight: 700, color: '#fff', lineHeight: 1.3, marginBottom: 4 }}>
             {rowLoading ? '...' : (row?.name || 'Без названия')}
@@ -258,8 +277,8 @@ export function TaskDetailPanel({
         {/* Body — two columns: main content + notes sidebar */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-          {/* Left: scrollable content */}
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          {/* Left: scrollable content — fixed narrow width */}
+          <div style={{ width: 420, flexShrink: 0, overflowY: 'auto', borderRight: '1px solid #e2e8f0' }}>
             {tab === 'info' && (
               <InfoTab row={row ?? null} isLoading={rowLoading} onPatch={(data) => patchRow.mutate(data)} />
             )}
@@ -319,10 +338,10 @@ export function TaskDetailPanel({
             )}
           </div>
 
-          {/* Right: notes sidebar — always visible */}
+          {/* Right: notes sidebar — takes remaining space */}
           <div style={{
-            width: 220, flexShrink: 0, borderLeft: '1px solid #e2e8f0',
-            display: 'flex', flexDirection: 'column', padding: '16px 14px',
+            flex: 1, minWidth: 0,
+            display: 'flex', flexDirection: 'column', padding: '16px 20px',
             background: '#fafbff',
           }}>
             <div style={{
@@ -467,13 +486,9 @@ function EarlyDeptsTab(p: EarlyDeptsTabProps) {
   if (p.isLoading) return <div style={{ padding: '20px 20px', color: '#94a3b8', fontSize: 13 }}>Загрузка...</div>
 
   return (
-    <div style={{ padding: '16px 20px' }}>
-      {p.activeDeptKeys.length === 0 && !p.newDeptOpen && (
-        <div style={{ color: '#94a3b8', fontSize: 13, marginBottom: 16 }}>Отделов пока нет.</div>
-      )}
-
+    <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {p.activeDeptKeys.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {p.activeDeptKeys.map((key) => (
             <div key={key} style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -494,13 +509,7 @@ function EarlyDeptsTab(p: EarlyDeptsTabProps) {
         </div>
       )}
 
-      {!p.newDeptOpen ? (
-        <button onClick={p.onOpenNew} style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px dashed #cbd5e1', borderRadius: 8, background: 'none', padding: '8px 14px', color: '#64748b', fontSize: 13, cursor: 'pointer', width: '100%' }}>
-          + Новый отдел
-        </button>
-      ) : (
-        <NewDeptForm {...p} />
-      )}
+      <NewDeptForm {...p} />
     </div>
   )
 }
@@ -543,13 +552,7 @@ function ProductionDeptsTab(p: ProductionDeptsTabProps) {
         />
       )}
 
-      {!p.newDeptOpen ? (
-        <button onClick={p.onOpenNew} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, border: '1px dashed #cbd5e1', borderRadius: 8, background: 'none', padding: '8px 14px', color: '#64748b', fontSize: 13, cursor: 'pointer', width: '100%' }}>
-          + Новый отдел
-        </button>
-      ) : (
-        <div style={{ marginTop: 8 }}><NewDeptForm {...p} /></div>
-      )}
+      <div style={{ marginTop: 8 }}><NewDeptForm {...p} /></div>
     </div>
   )
 }
@@ -586,10 +589,7 @@ function NewDeptForm(p: EarlyDeptsTabProps) {
           <input value={p.newDeptDesc} onChange={(e) => p.onSetDesc(e.target.value)} placeholder="Краткое описание..." style={fieldStyle} />
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-        <button onClick={p.onCancel} style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', fontSize: 13, cursor: 'pointer' }}>
-          Отмена
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
         <button
           onClick={p.onCreate}
           disabled={!p.fullDeptName || p.isPending}

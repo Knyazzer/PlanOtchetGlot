@@ -307,6 +307,24 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     return rows[0].field_approvals ?? {}
   })
 
+  // GET /status-rows/group-schedule-batch?ids=id1,id2,...
+  // Returns { [rowId]: string[] } — active dept keys per row
+  app.get('/group-schedule-batch', { preHandler: authenticate }, async (request) => {
+    const { ids } = request.query as { ids?: string }
+    const idList = (ids ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+    if (idList.length === 0) return {}
+    const rows = await prisma.$queryRawUnsafe<{ id: string; group_schedule: Record<string, unknown> | null }[]>(
+      `SELECT id, group_schedule FROM status_rows WHERE id = ANY($1::uuid[])`,
+      idList,
+    )
+    const result: Record<string, string[]> = {}
+    for (const row of rows) {
+      const gs = row.group_schedule ?? {}
+      result[row.id] = Object.entries(gs).filter(([, v]) => v !== null).map(([k]) => k)
+    }
+    return result
+  })
+
   // GET /status-rows/:id/group-schedule
   app.get('/:id/group-schedule', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
