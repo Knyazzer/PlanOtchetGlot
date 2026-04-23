@@ -1956,13 +1956,21 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
         </div>
       </div>
 
-      {/* ── RIGHT: InternalShiftsPanel showing departments of the selected task ── */}
+      {/* ── RIGHT: InternalShiftsPanel for selected task's departments ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <InternalShiftsPanel
-          matrixRegistryId={matrixRegistryId}
-          initialProjectId={selectedTaskId}
-          parentTaskId={selectedTaskId}
-        />
+        {selectedTaskId ? (
+          <InternalShiftsPanel
+            matrixRegistryId={matrixRegistryId}
+            initialProjectId={selectedTaskId}
+            parentTaskId={selectedTaskId}
+          />
+        ) : (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8, color: '#94a3b8' }}>
+            <div style={{ fontSize: 32 }}>←</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Выберите задачу</div>
+            <div style={{ fontSize: 12 }}>Отделы задачи появятся здесь</div>
+          </div>
+        )}
       </div>
     </div>
   )
