@@ -1848,7 +1848,7 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
 
   const { data: tasks = [], isLoading } = useQuery<LinkedTask[]>({
     queryKey: ['registry-tasks', matrixRegistryId],
-    queryFn: () => api.get('/status-rows', { params: { matrixRegistryId } }).then((r) => r.data),
+    queryFn: () => api.get('/status-rows', { params: { matrixRegistryId, topLevelOnly: 'true' } }).then((r) => r.data),
     staleTime: 30_000,
   })
 
@@ -1950,11 +1950,12 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
         </div>
       </div>
 
-      {/* ── RIGHT: InternalShiftsPanel (same as former Отделы tab) ── */}
+      {/* ── RIGHT: InternalShiftsPanel showing departments of the selected task ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <InternalShiftsPanel
           matrixRegistryId={matrixRegistryId}
           initialProjectId={selectedTaskId}
+          parentTaskId={selectedTaskId}
         />
       </div>
     </div>

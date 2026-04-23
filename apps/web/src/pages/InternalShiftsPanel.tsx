@@ -443,7 +443,7 @@ function ProducerField({ label, fieldKey, value, options, onSave, isApproved, on
 
 // ─── InternalShiftsPanel ─────────────────────────────────────────────────────
 
-export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { matrixRegistryId: string; initialProjectId?: string | null }) {
+export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parentTaskId }: { matrixRegistryId: string; initialProjectId?: string | null; parentTaskId?: string | null }) {
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'summary' | string>('summary')
 
@@ -452,14 +452,24 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
   }, [initialProjectId])
   const [creating, setCreating] = useState(false)
 
+  // When parentTaskId is provided, load departments belonging to that specific task.
+  // Otherwise fall back to loading all projects for the matrix (legacy behaviour).
+  const queryKey = parentTaskId
+    ? ['micro-projects', 'task', parentTaskId]
+    : ['micro-projects', matrixRegistryId]
+  const queryUrl = parentTaskId
+    ? `/status-rows?parentTaskId=${parentTaskId}`
+    : `/status-rows?matrixRegistryId=${matrixRegistryId}`
+
   const { data: projects = [], isLoading } = useQuery<MicroProject[]>({
-    queryKey: ['micro-projects', matrixRegistryId],
-    queryFn: () => api.get(`/status-rows?matrixRegistryId=${matrixRegistryId}`).then((r) => r.data),
+    queryKey,
+    queryFn: () => api.get(queryUrl).then((r) => r.data),
+    enabled: parentTaskId ? !!parentTaskId : !!matrixRegistryId,
     staleTime: 30_000,
   })
 
   const invalidateMicroProjects = () => {
-    qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    qc.invalidateQueries({ queryKey })
     qc.invalidateQueries({ queryKey: ['micro-projects-info', matrixRegistryId] })
     qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
   }
@@ -481,7 +491,7 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
   }
 
   const handleUpdated = () => {
-    qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    qc.invalidateQueries({ queryKey })
   }
 
   const tabBtn = (active: boolean): React.CSSProperties => ({
@@ -490,6 +500,10 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
     color: active ? '#3b82f6' : '#64748b', fontWeight: active ? 600 : 400,
     whiteSpace: 'nowrap', flexShrink: 0,
   })
+
+  if (parentTaskId === null || parentTaskId === undefined) {
+    // No task selected yet — show a prompt
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -531,7 +545,8 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
 
         {!isLoading && creating && activeTab === 'new' && (
           <CreateMicroProjectForm
-            matrixRegistryId={matrixRegistryId}
+            matrixRegistryId={parentTaskId ? undefined : matrixRegistryId}
+            parentTaskId={parentTaskId ?? undefined}
             onCreated={handleCreated}
             onCancel={() => { setCreating(false); setActiveTab('summary') }}
           />
@@ -2452,8 +2467,9 @@ function KanbanTaskModal({ task, members, onSave, onDelete, onClose }: {
 
 // ─── CreateMicroProjectForm ───────────────────────────────────────────────────
 
-function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
-  matrixRegistryId: string
+function CreateMicroProjectForm({ matrixRegistryId, parentTaskId, onCreated, onCancel }: {
+  matrixRegistryId?: string
+  parentTaskId?: string
   onCreated: (id: string) => void
   onCancel: () => void
 }) {
@@ -2476,7 +2492,7 @@ function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
       date: date ? new Date(date).toISOString() : null,
       format: resolvedFormat || null,
       location: showLocation ? (location || null) : null,
-      matrixRegistryId,
+      ...(parentTaskId ? { parentTaskId } : { matrixRegistryId }),
       status: 'request',
     }).then((r) => r.data),
     onSuccess: (data) => onCreated(data.id),

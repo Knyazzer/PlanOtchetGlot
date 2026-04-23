@@ -73,9 +73,11 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       withSeparators?: string
       slim?: string
       matrixRegistryId?: string
+      parentTaskId?: string
+      topLevelOnly?: string
     }
 
-    const where = {
+    const where: Record<string, any> = {
       ...(query.withSeparators !== 'true' && { NOT: { source: 'separator' as any } }),
       ...(query.source && { source: query.source as any }),
       ...(query.dateNull === 'true' && { date: null }),
@@ -89,6 +91,20 @@ export async function statusRowsRoutes(app: FastifyInstance) {
           { client: { contains: query.search, mode: Prisma.QueryMode.insensitive } },
         ],
       }),
+    }
+
+    // parent_task_id is not in Prisma schema — filter via raw SQL then pass IDs to Prisma
+    if (query.parentTaskId) {
+      const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+        `SELECT id FROM status_rows WHERE parent_task_id = $1`, query.parentTaskId
+      )
+      where.id = { in: rows.map((r) => r.id) }
+    } else if (query.topLevelOnly === 'true' && query.matrixRegistryId) {
+      const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+        `SELECT id FROM status_rows WHERE matrix_registry_id = $1 AND parent_task_id IS NULL`,
+        query.matrixRegistryId
+      )
+      where.id = { in: rows.map((r) => r.id) }
     }
 
     // slim=true — без join'ов (для страниц которым не нужны вложенные данные)
@@ -156,6 +172,9 @@ export async function statusRowsRoutes(app: FastifyInstance) {
 
   // POST /status-rows — ручное создание (admin only)
   app.post('/', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
+    const rawBody = request.body as Record<string, unknown>
+    const parentTaskId = typeof rawBody?.parentTaskId === 'string' ? rawBody.parentTaskId : null
+
     const body = createStatusRowSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -172,9 +191,9 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       ? allDays.reduce((min, d) => d.date < min ? d.date : min, allDays[0].date)
       : rowData.date ? new Date(rowData.date) : undefined
 
-    // Auto-assign block slot if matrix is provided
+    // Auto-assign block slot if matrix is provided (departments linked via parentTaskId skip this)
     let blockSlotForCreate: number | null = null
-    if (matrixRegistryId) {
+    if (matrixRegistryId && !parentTaskId) {
       blockSlotForCreate = Number(await nextBlockSlot(matrixRegistryId))
     }
 
@@ -192,6 +211,13 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       },
       include: { days: { orderBy: { date: 'asc' } } },
     })
+
+    if (parentTaskId) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE status_rows SET parent_task_id = $1 WHERE id = $2`,
+        parentTaskId, row.id
+      )
+    }
 
     return reply.code(201).send(row)
   })
