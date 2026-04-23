@@ -211,6 +211,7 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
   const [hasBlocks, setHasBlocks] = useState(false)
   const presetApplied = useRef(false)
   const initialScrollDone = useRef(false)
+  const afterDragRef = useRef(false)
 
   // ── Layout math ─────────────────────────────────────────────────────────────
 
@@ -449,7 +450,10 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
     function onUp(ev: PointerEvent) {
       document.body.style.cursor = ''; document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); hideTip()
       if (moved) {
+        // Один рендер как в мокапе — диапазон пересчитывается, скролл сохраняется.
+        // afterDragRef не даст useEffect-у сдвинуть диапазон повторно при ответе сервера.
         render()
+        afterDragRef.current = true
         const existing = groupSchedule[block.id] ?? {}
         onGroupScheduleUpdate({ [block.id]: { ...existing, date: absToDateStr(anchorRef.current, block.absFrom), timeFrom: minsToTime(block.absFrom), timeTo: minsToTime(block.absTo) } })
       } else { setPopup({ bid, x: ev.clientX, y: ev.clientY }) }
@@ -480,6 +484,7 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
         })
       })
       render()
+      afterDragRef.current = true
       const existing = groupSchedule[block.id] ?? {}
       onGroupScheduleUpdate({ [block.id]: { ...existing, date: absToDateStr(anchorRef.current, block.absFrom), timeFrom: minsToTime(block.absFrom), timeTo: minsToTime(block.absTo) } })
     }
@@ -554,18 +559,23 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
     if (empty) initialScrollDone.current = false
     setHasBlocks(!empty)
     if (!empty) {
-      // requestAnimationFrame ensures React has committed the grid DOM before we write into it
       requestAnimationFrame(() => {
-        const prevRangeStart = rangeRef.current.start
-        render()
         if (!initialScrollDone.current) {
-          // Первый показ блоков — скролим к левому краю
+          // Первый показ: вычислить диапазон и проскролить к первому блоку
+          render()
           initialScrollDone.current = true
           const x = Math.max(0, minToPx(Math.min(...blocksRef.current.map(b => b.absFrom))) - 80)
           if (tracksScrollRef.current) tracksScrollRef.current.scrollLeft = x
           if (headerScrollRef.current) headerScrollRef.current.scrollLeft = x
+        } else if (afterDragRef.current) {
+          // После drag/resize: диапазон и скролл уже правильные (render() вызван в onUp).
+          // Только перерисовываем DOM с данными от сервера, не трогая диапазон и позицию.
+          afterDragRef.current = false
+          render(true, true)
         } else {
-          // Блоки уже были видны — компенсируем скрол при изменении диапазона
+          // Внешнее изменение (дата в «Команда»): пересчитать диапазон, скомпенсировать скролл
+          const prevRangeStart = rangeRef.current.start
+          render()
           const rangeShiftPx = (rangeRef.current.start - prevRangeStart) * ppm()
           if (rangeShiftPx !== 0 && tracksScrollRef.current) {
             const adj = Math.max(0, tracksScrollRef.current.scrollLeft - rangeShiftPx)
