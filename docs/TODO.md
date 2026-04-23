@@ -12,7 +12,9 @@
 
 ## 🟠 Важно (функциональность / надёжность)
 
-### Баги — подтверждены аудитом 2026-04-21
+### Баги — подтверждены аудитом 2026-04-21 / 2026-04-23
+
+- [x] **Класс A #9: `workflow-children` — несовпадение ключей кеша** _(исправлено 2026-04-23)_
 
 - [ ] **Класс C: `MicroProjectTab` — стейл `selectedProject` → потеря дней проекта**
   - Файл: `apps/web/src/pages/SyncDataPage.tsx:1604` (`project={selectedProject as any}`)
@@ -43,6 +45,8 @@
 ---
 
 ## 🟡 Технический долг
+
+- [x] **Орфанный импорт `TaskDetailPanel`** — был в `SyncDataPage.tsx:8`, удалён 2026-04-23.
 
 - [ ] **Дублирование `DEFAULT_GROUP_TIMES`** — константа определена в `InternalShiftsPanel.tsx` и в `TaskDetailPanel.tsx`. Вынести в `apps/web/src/lib/groupDefaults.ts`.
 

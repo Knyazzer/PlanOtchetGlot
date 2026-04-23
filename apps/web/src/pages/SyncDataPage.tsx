@@ -5,7 +5,6 @@ import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
 import { InternalShiftsPanel, MicroProjectTab } from './InternalShiftsPanel'
 import { GanttTab, NotesTab, DocumentsTab } from './MatrixTabs'
-import { TaskDetailPanel } from './TaskDetailPanel'
 
 // ─── ConfirmDialog ────────────────────────────────────────────────────────────
 

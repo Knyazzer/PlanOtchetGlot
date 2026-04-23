@@ -290,7 +290,7 @@ function EarlyDeptsPanel({ taskId }: { taskId: string }) {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['task-depts', taskId] })
-    qc.invalidateQueries({ queryKey: ['workflow-children', taskId] })
+    qc.invalidateQueries({ queryKey: ['workflow-children'] })
   }
 
   const deleteDept = useMutation({
