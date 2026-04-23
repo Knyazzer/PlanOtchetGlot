@@ -77,7 +77,7 @@ function canMove(from: WfStage, to: WfStage): 'allowed' | 'exit' | 'blocked' | '
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const FORMATS   = ['ТВ', 'Радио', 'Телерадио', 'Продакшн', 'Дизайн', 'Оффлайн', 'Виртуальный', 'Менеджмент']
-const LOCATIONS = ['Знаменка', 'Крыша Чёрный', 'Камин', 'Романов', 'Выезд']
+const LOCATIONS = ['Знаменка крыша', 'Знаменка чёрная', 'Знаменка камин', 'Романов', 'Выезд']
 
 // ── Smart date ────────────────────────────────────────────────────────────────
 
@@ -121,7 +121,6 @@ export function WorkflowPage() {
   const [connectModal, setConnectModal] = useState<{ rowId: string; client: string | null } | null>(null)
   const [createProjectModal, setCreateProjectModal] = useState<{ rowId: string; client: string | null } | null>(null)
   const [detailRowId, setDetailRowId] = useState<string | null>(null)
-  const [detailRowTab, setDetailRowTab] = useState<'info' | 'departments'>('info')
   const [draggingRowId, setDraggingRowId] = useState<string | null>(null)
 
   // ── Data fetching ──────────────────────────────────────────────────────────
@@ -182,8 +181,8 @@ export function WorkflowPage() {
   // Dept keys for visible rows — batch fetch when stage rows change
   const stageRowIds = stageRows.map((r) => r.id).join(',')
   const { data: rowDepts = {} } = useQuery<Record<string, string[]>>({
-    queryKey: ['workflow-depts', stageRowIds],
-    queryFn: () => api.get('/status-rows/group-schedule-batch', { params: { ids: stageRowIds } }).then((r) => r.data),
+    queryKey: ['workflow-children', stageRowIds],
+    queryFn: () => api.get('/status-rows/children-summary', { params: { parentIds: stageRowIds } }).then((r) => r.data),
     enabled: stageRows.length > 0,
     staleTime: 30_000,
   })
@@ -422,8 +421,8 @@ export function WorkflowPage() {
                   isDragging={draggingRowId === row.id}
                   deptKeys={rowDepts[row.id] ?? []}
                   onConnectProject={() => setConnectModal({ rowId: row.id, client: row.client })}
-                  onInfo={() => { setDetailRowId(row.id); setDetailRowTab('info') }}
-                  onOpenDepts={() => { setDetailRowId(row.id); setDetailRowTab('departments') }}
+                  onInfo={() => setDetailRowId(row.id)}
+                  onOpenDepts={() => setDetailRowId(row.id)}
                   clients={clients}
                   producers={producers}
                 />
@@ -541,7 +540,6 @@ export function WorkflowPage() {
         <TaskDetailPanel
           rowId={detailRowId}
           onClose={() => setDetailRowId(null)}
-          defaultTab={detailRowTab}
         />
       )}
     </div>

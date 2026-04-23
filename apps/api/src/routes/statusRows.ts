@@ -333,6 +333,25 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     return rows[0].field_approvals ?? {}
   })
 
+  // GET /status-rows/children-summary?parentIds=id1,id2,...
+  // Returns { [parentTaskId]: string[] } — dept names (format|name) per parent task
+  app.get('/children-summary', { preHandler: authenticate }, async (request) => {
+    const { parentIds } = request.query as { parentIds?: string }
+    const idList = (parentIds ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+    if (idList.length === 0) return {}
+    const rows = await prisma.$queryRawUnsafe<{ parent_task_id: string; format: string | null; name: string }[]>(
+      `SELECT parent_task_id, format, name FROM status_rows WHERE parent_task_id = ANY($1::text[])`,
+      idList,
+    )
+    const result: Record<string, string[]> = {}
+    for (const row of rows) {
+      const pid = row.parent_task_id
+      if (!result[pid]) result[pid] = []
+      result[pid].push(row.format || row.name || '—')
+    }
+    return result
+  })
+
   // GET /status-rows/group-schedule-batch?ids=id1,id2,...
   // Returns { [rowId]: string[] } — active dept keys per row
   app.get('/group-schedule-batch', { preHandler: authenticate }, async (request) => {

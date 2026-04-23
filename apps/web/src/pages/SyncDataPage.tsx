@@ -1819,9 +1819,14 @@ interface LinkedTask {
   client: string | null
   status: string
   execProducer: string | null
+  lineProducer: string | null
+  accountManager: string | null
   date: string | null
   dateApproximate: string | null
   format: string | null
+  location: string | null
+  notes: string | null
+  matrixRegistry: { name: string | null; matrixId: string } | null
 }
 
 const TASK_STATUS_LABELS: Record<string, string> = {
@@ -1923,24 +1928,25 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
                 }}>
                   <div style={{ overflow: 'hidden' }}>
                     <div style={{ padding: isOpen ? '8px 14px 12px' : '0 14px', transition: 'padding .25s cubic-bezier(.4,0,.2,1)' }}>
-                      {task.client && (
-                        <div style={{ paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #f1f5f9' }}>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Клиент</div>
-                          <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 500 }}>{task.client}</div>
-                        </div>
-                      )}
-                      {task.execProducer && (
-                        <div style={{ paddingBottom: 6, marginBottom: 6, borderBottom: dateStr ? '1px solid #f1f5f9' : 'none' }}>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Исп. продюсер</div>
-                          <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 500 }}>{task.execProducer}</div>
-                        </div>
-                      )}
-                      {dateStr && (
-                        <div>
-                          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Дата</div>
-                          <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 500 }}>{dateStr}</div>
-                        </div>
-                      )}
+                      {(() => {
+                        const row: Array<[string, string | null | undefined]> = [
+                          ['Клиент', task.client],
+                          ['Формат', task.format],
+                          ['Локация', task.location],
+                          ['Исп. продюсер', task.execProducer],
+                          ['Лайн-продюсер', task.lineProducer],
+                          ['Аккаунт менеджер', task.accountManager],
+                          ['Дата', dateStr],
+                          ['Проект', task.matrixRegistry ? (task.matrixRegistry.name || task.matrixRegistry.matrixId) : null],
+                          ['Заметки', task.notes],
+                        ].filter(([, v]) => v)
+                        return row.map(([label, value], i) => (
+                          <div key={label as string} style={{ paddingBottom: 5, marginBottom: 5, borderBottom: i < row.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>{label as string}</div>
+                            <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 500, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value as string}</div>
+                          </div>
+                        ))
+                      })()}
                     </div>
                   </div>
                 </div>

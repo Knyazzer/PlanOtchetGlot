@@ -443,7 +443,7 @@ function ProducerField({ label, fieldKey, value, options, onSave, isApproved, on
 
 // ─── InternalShiftsPanel ─────────────────────────────────────────────────────
 
-export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parentTaskId }: { matrixRegistryId: string; initialProjectId?: string | null; parentTaskId?: string | null }) {
+export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parentTaskId }: { matrixRegistryId?: string | null; initialProjectId?: string | null; parentTaskId?: string | null }) {
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'summary' | string>('summary')
 
@@ -578,7 +578,7 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parent
 
 // ─── ShiftsSummaryTab ─────────────────────────────────────────────────────────
 
-function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId: string; projects: MicroProject[] }) {
+function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId?: string | null; projects: MicroProject[] }) {
   const memberQueries = useQueries({
     queries: projects.map((p) => ({
       queryKey: ['project-members', p.id],
