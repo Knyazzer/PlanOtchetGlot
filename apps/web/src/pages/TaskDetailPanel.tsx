@@ -287,7 +287,10 @@ function EarlyDeptsPanel({ taskId }: { taskId: string }) {
     onSuccess: invalidate,
   })
 
-  const deptLabel = (d: DeptRow) => d.format || d.name || '—'
+  const deptLabel = (d: DeptRow) => {
+    const fmt = d.format || d.name || '—'
+    return TV_FORMATS.includes(fmt) ? `ТВ:${fmt}` : fmt
+  }
 
   return (
     <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
