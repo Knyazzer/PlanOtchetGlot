@@ -102,7 +102,7 @@ tv-shifts/
 ## Навигация (фронтенд)
 
 Нет React Router. Навигация реализована через:
-- `useState<Page>` в `AppShell.tsx` — страницы: `calendar | analytics | users | tasks | profile | syncdata | deals | database`
+- `useState<Page>` в `AppShell.tsx` — страницы: `calendar | workflow | analytics | users | tasks | profile | syncdata | deals | database`
 - Активная страница сохраняется в `localStorage` (ключ `app-page`)
 - Часть вкладок скрыта по роли: `users`, `syncdata`, `database` — только admin; `deals` — admin + producer
 
@@ -141,7 +141,7 @@ tv-shifts/
 
 ## Синхронизация (`syncService.ts`)
 
-Полный цикл запускается по cron (каждые 30 мин) или вручную (`POST /sync/trigger`).
+Полный цикл запускается **только вручную** (`POST /sync/trigger`). `node-cron` установлен, но не активирован (осознанное решение, пока проект активно развивается).
 
 ```
 runFullSync():

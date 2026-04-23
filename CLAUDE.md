@@ -28,7 +28,7 @@
 1. **Перед крупным архитектурным решением** (новая таблица, изменение auth, интеграция) — используй `sequentialthinking` MCP. Это проект масштаба 60 пользователей / 10–15 ролей / внешние интеграции, одношаговые ответы здесь почти всегда неполные.
 2. **Актуальную документацию библиотек** (Fastify, Prisma, TanStack Query, FullCalendar и т.д.) бери через `context7` MCP, а не из памяти — версии в проекте свежие (React 19, Fastify v4, Prisma v5).
 3. **Архитектурные решения, которые уже приняты** — храни в `memory` MCP под ключами `tv-shifts:decision:*`. Если собираешься предложить решение, которое противоречит уже записанному — явно это отметь в ответе.
-4. **Фазы развития проекта (Ф0→Ф4)** из `docs/10-roles-and-scale.md` — это последовательность. Не предлагай Ф2 (RBAC), если Ф0 (изоляция тест-БД, `permissions.ts`) ещё не сделаны.
+4. **Фазы развития проекта (Ф0→Ф4)** из `docs/10-roles-and-scale.md` — это последовательность. Не предлагай Ф2 (RBAC), если Ф0 (изоляция тест-БД) ещё не сделана. `permissions.ts` и structured logging из Ф0 уже реализованы.
 5. **Не предлагай решения, которые уже отвергнуты** в пользу осознанных компромиссов. См. блок «Принятые компромиссы» ниже.
 6. **Не трогай `docs/DONE.md`** — это лог, не план.
 7. **При работе с кодом — всегда проверяй тесты.** Цель: `pnpm test` → `163 теста, 0 провалов` (на 2026-04-20). Если падает больше — что-то сломано.
@@ -113,7 +113,7 @@ Auth guard: `apps/api/src/plugins/auth.ts` — либо `request.jwtVerify()` в
 - **Zustand** — только auth (`stores/auth.ts`). Хелперы: `useAuthInit()` (грузит `/auth/me` при старте), `useCurrentUser()`, `useIsAdmin()`, `useIsProducer()` в `apps/web/src/hooks/useAuth.ts`
 - **Inline styles** — UI-библиотеки нет (ни shadcn/ui, ни MUI, ни Tailwind)
 - **FullCalendar** — только в `CalendarPage.tsx`
-- **Навигация** — `useState<Page>` в `AppShell.tsx` (React Router нет). Текущая страница — в `localStorage` под ключом `app-page`. Некоторые пункты `adminOnly`. Гард проверяет роль, так что манипуляция localStorage не поможет обойти защиту.
+- **Навигация** — `useState<Page>` в `AppShell.tsx` (React Router нет). Страницы: `calendar | workflow | analytics | users | tasks | profile | syncdata | deals | database`. Текущая страница — в `localStorage` под ключом `app-page`. Гард проверяет роль, так что манипуляция localStorage не поможет обойти защиту.
 - Auth-gate в `App.tsx`: не залогинен → `LoginPage`, залогинен → `AppShell`
 
 ### API-роуты (регистрируются в корне, без префикса `/api`)
@@ -155,7 +155,7 @@ Auth guard: `apps/api/src/plugins/auth.ts` — либо `request.jwtVerify()` в
 - **Навигация через `useState<Page>`, а не React Router.** Deep links и браузерная история не нужны сейчас. В `docs/TODO.md` → «Пожелания» есть пункт миграции на React Router v6 — когда понадобятся deep links.
 - **Role как enum из 3 значений.** Будет мигрировано на таблицу `roles` + `user_roles` + `role_permissions` в Фазе 2 плана масштабирования. До тех пор — используй существующий `requireRole`.
 - **Инлайн-стили вместо UI-библиотеки.** Сознательно. Не предлагай shadcn/ui / MUI / Tailwind.
-- **Sync только вручную.** Автокрон осознанно выключен — проект активно развивается, и ручной контроль важен. Документация в `05-architecture.md` говорит «каждые 30 мин» — это устаревший текст (есть пункт в TODO → «Технический долг»).
+- **Sync только вручную.** Автокрон осознанно выключен — проект активно развивается, и ручной контроль важен. `node-cron` установлен но не зарегистрирован в `server.ts`. Есть пункт в TODO → «Пожелания».
 - **`pg-boss` для очередей, не BullMQ.** Чтобы не тянуть Redis. Будет пересмотрено, если Redis появится по другой причине.
 - **Google Sheets — read-only.** Запись — только через Drive API для внутренних матриц. Не предлагай писать обратно в исходные Sheets.
 
@@ -166,7 +166,7 @@ Auth guard: `apps/api/src/plugins/auth.ts` — либо `request.jwtVerify()` в
 `ProjectMember` и `StatusRow` в `schema.prisma` **не содержат** полей, добавленных через raw SQL миграции. Prisma-клиент про них не знает, весь доступ — через `$queryRawUnsafe`:
 
 - `project_members`: `employment_type`, `rate_plan`, `rate_fact`, `is_approved`, `field_approvals` (JSONB), `group_name`
-- `status_rows`: `field_approvals` (JSONB), `group_schedule` (JSONB)
+- `status_rows`: `field_approvals` (JSONB), `group_schedule` (JSONB), `parent_task_id` (TEXT, FK → `status_rows.id` CASCADE DELETE)
 
 **При регенерации Prisma-клиента эти поля исчезнут из рантайма, но останутся в БД.** Задача на рефакторинг (отдельная Prisma-модель или view) — в `docs/TODO.md` → «Технический долг».
 
@@ -212,17 +212,19 @@ await prisma.$executeRawUnsafe(
 
 ---
 
-## 🐛 Известные баги cache-invalidation (TanStack Query)
+## 📐 Архитектура WorkflowPage + TaskDetailPanel
 
-Подтверждены на аудите 2026-04-20 — трекинг в `docs/TODO.md`:
+`WorkflowPage.tsx` (~1000 строк) — воронка задач. Два вида контента:
+- **Pipeline-бар**: Запрос → Подключение к проекту → Производство → Сдан + [Не согласован] [Отменён]
+- **Таблица задач**: `GET /status-rows?source=manual&topLevelOnly=true` — показывает только верхнеуровневые задачи, без отделов-детей
 
-| Баг | Место | Причина |
-|-----|-------|---------|
-| Двойное сохранение в KanbanTaskModal | `InternalShiftsPanel.tsx:2354` | `invalidate()` вызывается в `onClose` до того, как `patchTask` зарезолвится |
-| Открытая карточка отдела показывает устаревшие значения | `InternalShiftsPanel.tsx:781` | `updateProject.onSuccess` инвалидирует только список, без `setQueryData` для открытого объекта |
-| Счётчик Gantt в Инфо-табе не обновляется | `SyncDataPage.tsx:2297` vs `MatrixTabs.tsx:66` | Mismatch ключей: `'matrix-gantt'` vs `'gantt-tasks'` |
-| Новые отделы отсутствуют в таблице проектов | `InternalShiftsPanel.tsx:462` | `handleCreated` не инвалидирует `['status-rows-sync']` |
-| Финансы в Инфо-табе устаревают после правки отделов | `SyncDataPage.tsx:1671` | Ключ `['micro-projects-info']` никогда не инвалидируется из `InternalShiftsPanel` |
+**Drag-and-drop** — pointer events, ghost-карточка. Правило: только один шаг вперёд; в Не согласован/Отменён — из любого. Переход connecting→production требует привязанной матрицы (guard-попап с дропдауном или формой создания).
+
+**Иерархия задача → отдел**: `StatusRow.parent_task_id` (TEXT, CASCADE DELETE). Отделы — дочерние `StatusRow` с `parent_task_id = taskId`. `GET /status-rows/children-summary?parentIds=...` — батч-эндпоинт для чипов на карточках. `topLevelOnly=true` — фильтрует только корневые задачи.
+
+`TaskDetailPanel.tsx` (~450 строк) — боковая панель задачи:
+- Левая колонка: все поля задачи (клиент, продюсеры, дата, формат, локация, проект) + заметки
+- Правая колонка: ранние стадии (request/negotiation/connecting) → `EarlyDeptsPanel` (чипы + форма); производство → `InternalShiftsPanel` с `parentTaskId`
 
 ---
 
@@ -245,7 +247,7 @@ await prisma.$executeRawUnsafe(
 
 **Удаление ключа в `group_schedule`** — установка ключа в `null` удаляет копию: `PATCH /status-rows/:id/group-schedule` с `{ "efir_2": null }` мержит null в JSONB; фронтенд фильтрует null при чтении.
 
-**KanbanBoard.** Для `CREATIVE_FORMATS` (Моушн, Постпродакшн, Дизайн, Саунд-дизайн, Не профильный) саб-таб «Планировщик» показывает `KanbanBoard` вместо `ShiftPlanner`. Три колонки: request / in_progress / done. Таблица `kanban_tasks`, роуты `/kanban-tasks`. Drag-n-drop через pointer events. `KanbanTaskModal` редактирует title, assignee (из `ProjectMember`), даты.
+**KanbanBoard.** Для `CREATIVE_FORMATS` (Моушн, Постпродакшн, Дизайн, Саунд-дизайн, Не профильный, **Радио**) саб-таб «Планировщик» показывает `KanbanBoard` вместо `ShiftPlanner`. Три колонки: request / in_progress / done. Таблица `kanban_tasks`, роуты `/kanban-tasks`. Drag-n-drop через pointer events. `KanbanTaskModal` редактирует title, assignee (из `ProjectMember`), даты.
 
 ---
 
@@ -340,6 +342,8 @@ Nginx-конфиг в `nginx/`. Скрипт `migrate:deploy` в `packages/db` �
 |----------|------|--------|
 | Login | `LoginPage.tsx` | ✅ |
 | Calendar | `CalendarPage.tsx` | ✅ |
+| Workflow | `WorkflowPage.tsx` | ✅ (admin+producer) |
+| Task Card | `TaskDetailPanel.tsx` | ✅ (открывается из Workflow) |
 | Sync Data | `SyncDataPage.tsx` | ✅ (+ внутренние матрицы, project members, привязка) |
 | Users | `UsersPage.tsx` | ✅ |
 | Deals | `DealsPage.tsx` | ✅ |
