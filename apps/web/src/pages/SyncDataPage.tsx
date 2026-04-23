@@ -1842,8 +1842,9 @@ const TASK_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   cancelled:      { bg: '#f1f5f9', color: '#64748b' },
 }
 
-function RegistryTasksTab({ matrixRegistryId }: { matrixRegistryId: string }) {
-  const [detailRowId, setDetailRowId] = useState<string | null>(null)
+function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegistryId: string; initialProjectId?: string | null }) {
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialProjectId ?? null)
+  const [openTaskId, setOpenTaskId] = useState<string | null>(initialProjectId ?? null)
 
   const { data: tasks = [], isLoading } = useQuery<LinkedTask[]>({
     queryKey: ['registry-tasks', matrixRegistryId],
@@ -1851,57 +1852,111 @@ function RegistryTasksTab({ matrixRegistryId }: { matrixRegistryId: string }) {
     staleTime: 30_000,
   })
 
-  if (isLoading) return <div style={{ padding: '20px 24px', color: '#94a3b8', fontSize: 14 }}>Загрузка...</div>
+  const handleTaskClick = (taskId: string) => {
+    setOpenTaskId((prev) => (prev === taskId ? null : taskId))
+    setSelectedTaskId(taskId)
+  }
 
   return (
-    <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>
-      {tasks.length === 0 ? (
-        <div style={{ color: '#94a3b8', fontSize: 14, padding: '20px 0' }}>
-          Нет задач, привязанных к этому проекту.<br />
-          <span style={{ fontSize: 12, color: '#cbd5e1' }}>Привязать задачу можно в Workflow через «Подключить проект».</span>
+    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      {/* ── LEFT: task accordion list ── */}
+      <div style={{ width: 290, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '10px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Задачи</span>
         </div>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-              {['Статус', 'Задача', 'Клиент', 'Продюсер', 'Дата', 'Формат'].map((h) => (
-                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {tasks.map((t) => {
-              const sc = TASK_STATUS_COLORS[t.status] ?? { bg: '#f1f5f9', color: '#64748b' }
-              return (
-                <tr
-                  key={t.id}
-                  onClick={() => setDetailRowId(t.id)}
-                  style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background .1s' }}
-                  onMouseOver={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                  onMouseOut={(e) => (e.currentTarget.style.background = '')}
-                >
-                  <td style={{ padding: '8px 12px' }}>
-                    <span style={{ ...sc, display: 'inline-block', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {TASK_STATUS_LABELS[t.status] ?? t.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '8px 12px', fontSize: 13, fontWeight: 500, color: '#1e293b' }}>{t.name}</td>
-                  <td style={{ padding: '8px 12px', fontSize: 13, color: '#64748b' }}>{t.client || '—'}</td>
-                  <td style={{ padding: '8px 12px', fontSize: 13, color: '#64748b' }}>{t.execProducer || '—'}</td>
-                  <td style={{ padding: '8px 12px', fontSize: 13, color: '#64748b', fontVariantNumeric: 'tabular-nums' }}>
-                    {t.date ? new Date(t.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : t.dateApproximate || '—'}
-                  </td>
-                  <td style={{ padding: '8px 12px', fontSize: 13, color: '#64748b' }}>{t.format || '—'}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      )}
 
-      {detailRowId && (
-        <TaskDetailPanel rowId={detailRowId} onClose={() => setDetailRowId(null)} />
-      )}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {isLoading && (
+            <div style={{ padding: '20px 16px', color: '#94a3b8', fontSize: 13 }}>Загрузка...</div>
+          )}
+
+          {!isLoading && tasks.length === 0 && (
+            <div style={{ padding: '20px 16px', color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>
+              Нет задач.<br />
+              <span style={{ fontSize: 12, color: '#cbd5e1' }}>Привязать задачу можно в Workflow.</span>
+            </div>
+          )}
+
+          {tasks.map((task) => {
+            const isOpen = openTaskId === task.id
+            const isSelected = selectedTaskId === task.id
+            const sc = TASK_STATUS_COLORS[task.status] ?? { bg: '#f1f5f9', color: '#64748b' }
+            const label = task.format || task.name || '(без названия)'
+            const dateStr = task.date
+              ? new Date(task.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+              : task.dateApproximate || null
+
+            return (
+              <div key={task.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <div
+                  onClick={() => handleTaskClick(task.id)}
+                  style={{
+                    padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8,
+                    cursor: 'pointer', background: isSelected ? '#eff6ff' : 'transparent',
+                    transition: 'background .15s',
+                  }}
+                  onMouseOver={(e) => { if (!isSelected) e.currentTarget.style.background = '#f8fafc' }}
+                  onMouseOut={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
+                >
+                  <span style={{
+                    fontSize: 10, color: isSelected ? '#2563eb' : '#94a3b8',
+                    transition: 'transform .22s', display: 'inline-block',
+                    transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                    flexShrink: 0,
+                  }}>▶</span>
+                  <span style={{
+                    fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    color: isSelected ? '#1d4ed8' : '#1e293b',
+                  }}>{label}</span>
+                  <span style={{ ...sc, padding: '2px 7px', borderRadius: 8, fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
+                    {TASK_STATUS_LABELS[task.status] ?? task.status}
+                  </span>
+                </div>
+
+                {/* Accordion body — grid-template-rows for smooth animation */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateRows: isOpen ? '1fr' : '0fr',
+                  transition: 'grid-template-rows .25s cubic-bezier(.4,0,.2,1)',
+                  background: '#fafbff',
+                }}>
+                  <div style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: isOpen ? '8px 14px 12px' : '0 14px', transition: 'padding .25s cubic-bezier(.4,0,.2,1)' }}>
+                      {task.client && (
+                        <div style={{ paddingBottom: 6, marginBottom: 6, borderBottom: '1px solid #f1f5f9' }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Клиент</div>
+                          <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 500 }}>{task.client}</div>
+                        </div>
+                      )}
+                      {task.execProducer && (
+                        <div style={{ paddingBottom: 6, marginBottom: 6, borderBottom: dateStr ? '1px solid #f1f5f9' : 'none' }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Исп. продюсер</div>
+                          <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 500 }}>{task.execProducer}</div>
+                        </div>
+                      )}
+                      {dateStr && (
+                        <div>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Дата</div>
+                          <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 500 }}>{dateStr}</div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── RIGHT: InternalShiftsPanel (same as former Отделы tab) ── */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <InternalShiftsPanel
+          matrixRegistryId={matrixRegistryId}
+          initialProjectId={selectedTaskId}
+        />
+      </div>
     </div>
   )
 }
@@ -1910,42 +1965,7 @@ function RegistryTasksTab({ matrixRegistryId }: { matrixRegistryId: string }) {
 
 function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete, initialProjectId }: { entry: RegistryEntry; onClose: () => void; onShiftsLoaded: (matrixId: string, hasShifts: boolean) => void; onEdit?: () => void; onDelete?: () => void; initialProjectId?: string | null }) {
   const [localEntry, setLocalEntry] = useState<RegistryEntry>(entry)
-  const [tab, setTab] = useState<'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix' | 'tasks'>(initialProjectId ? 'shifts' : 'info')
-  const storageKey = `matrix-seps-${entry.matrixId}`
-
-  const [customSeps, setCustomSeps] = useState<Map<number, { name: string; date: string }>>(() => {
-    try {
-      const raw = localStorage.getItem(storageKey)
-      if (raw) return new Map(JSON.parse(raw) as [number, { name: string; date: string }][])
-    } catch {}
-    return new Map()
-  })
-  const [editingSep, setEditingSep] = useState<{ ri: number; name: string; date: string } | null>(null)
-
-  const persistSeps = (next: Map<number, { name: string; date: string }>) => {
-    localStorage.setItem(storageKey, JSON.stringify([...next.entries()]))
-    setCustomSeps(next)
-  }
-
-  const handleRowCtrlClick = (e: React.MouseEvent, ri: number, defaultName: string) => {
-    if (!e.ctrlKey) return
-    e.preventDefault()
-    const existing = customSeps.get(ri)
-    setEditingSep({ ri, name: existing?.name ?? defaultName, date: existing?.date ?? '' })
-  }
-
-  const saveCustomSep = () => {
-    if (!editingSep) return
-    persistSeps(new Map(customSeps).set(editingSep.ri, { name: editingSep.name, date: editingSep.date }))
-    setEditingSep(null)
-  }
-
-  const removeCustomSep = (ri: number) => {
-    const next = new Map(customSeps)
-    next.delete(ri)
-    persistSeps(next)
-    setEditingSep(null)
-  }
+  const [tab, setTab] = useState<'info' | 'tasks' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix'>(initialProjectId ? 'tasks' : 'info')
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -1954,29 +1974,13 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
   }, [onClose])
 
   const qc = useQueryClient()
-  const [refreshKey, setRefreshKey] = useState(0)
   const isInternal = localEntry.source === 'internal'
-
-  const { data: shiftsData, isLoading: shiftsLoading, error: shiftsError, isFetching: shiftsFetching } = useQuery<MatrixShiftsData>({
-    queryKey: ['matrix-shifts', entry.matrixId, refreshKey],
-    queryFn: () => api.get(`/sync/matrix-shifts/${encodeURIComponent(entry.matrixId)}${refreshKey > 0 ? '?refresh=true' : ''}`).then((r) => r.data),
-    enabled: tab === 'shifts' && !isInternal,
-    staleTime: 10 * 60 * 1000,
-  })
 
   const { data: ganttTasks } = useQuery<GanttTaskInfo[]>({
     queryKey: ['gantt-tasks', entry.id],
     queryFn: () => api.get(`/matrix-gantt?matrixId=${entry.id}`).then((r) => r.data),
     staleTime: 30_000,
   })
-
-  useEffect(() => {
-    if (!shiftsData) return
-    onShiftsLoaded(entry.matrixId, shiftsData.activeCols.length > 0)
-    if (refreshKey > 0) {
-      qc.setQueryData(['matrix-shifts', entry.matrixId, 0], shiftsData)
-    }
-  }, [shiftsData])
 
   const statusColors: Record<string, { bg: string; color: string; border: string }> = {
     request:        { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe' },
@@ -1991,10 +1995,9 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
   }
   const statusStyle = localEntry.status ? (statusColors[localEntry.status] ?? { bg: '#f1f5f9', color: '#475569', border: '#cbd5e1' }) : null
 
-  const TABS: { key: 'info' | 'shifts' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix' | 'tasks'; label: string }[] = [
+  const TABS: { key: 'info' | 'tasks' | 'gantt' | 'notes' | 'docs' | 'changes' | 'svodmatrix'; label: string }[] = [
     { key: 'info',        label: 'Инфо' },
     { key: 'tasks',       label: 'Задачи' },
-    { key: 'shifts',      label: 'Отделы' },
     { key: 'gantt',       label: 'Ганта' },
     { key: 'notes',       label: 'Заметки' },
     { key: 'docs',        label: 'Документы' },
@@ -2081,115 +2084,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
 
         {/* Tab: Tasks */}
         {tab === 'tasks' && (
-          <RegistryTasksTab matrixRegistryId={entry.id} />
-        )}
-
-        {/* Tab: Shifts */}
-        {tab === 'shifts' && isInternal && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <InternalShiftsPanel matrixRegistryId={entry.id} initialProjectId={initialProjectId} />
-          </div>
-        )}
-        {tab === 'shifts' && !isInternal && (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {shiftsData && shiftsData.activeCols.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 20px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-                <div style={{ fontSize: 12, color: '#94a3b8' }}>Лист: {shiftsData.sheetTitle}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ fontSize: 11, color: '#cbd5e1' }}>Ctrl+клик по строке — сделать разделителем</div>
-                  <button
-                    onClick={() => setRefreshKey((k) => k + 1)}
-                    disabled={shiftsFetching}
-                    title="Обновить из Google Sheets"
-                    style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
-                  >
-                    {shiftsFetching ? '...' : '↻ Обновить'}
-                  </button>
-                </div>
-              </div>
-            )}
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 20px 16px' }}>
-              {shiftsLoading && <div style={{ color: '#64748b', fontSize: 14, padding: '16px 0' }}>Загрузка...</div>}
-              {shiftsError && <div style={{ color: '#ef4444', fontSize: 14, padding: '16px 0' }}>Ошибка: {(shiftsError as any)?.response?.data?.error ?? (shiftsError as any)?.message}</div>}
-              {shiftsData && shiftsData.activeCols.length === 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0' }}>
-                  <span style={{ color: '#94a3b8', fontSize: 14 }}>Нет проставленных смен</span>
-                  <button
-                    onClick={() => setRefreshKey((k) => k + 1)}
-                    disabled={shiftsFetching}
-                    title="Обновить из Google Sheets"
-                    style={{ background: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', fontSize: 11, color: '#64748b', cursor: shiftsFetching ? 'default' : 'pointer', opacity: shiftsFetching ? 0.5 : 1 }}
-                  >
-                    {shiftsFetching ? '...' : '↻ Обновить'}
-                  </button>
-                </div>
-              )}
-              {shiftsData && shiftsData.activeCols.length > 0 && (
-                <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%' }}>
-                  <thead>
-                    <tr style={{ background: '#f1f5f9' }}>
-                      <th style={{ ...shiftTh, textAlign: 'left', minWidth: 160 }}>ФИО</th>
-                      <th style={{ ...shiftTh, textAlign: 'left', minWidth: 100, maxWidth: 220, whiteSpace: 'normal', wordBreak: 'break-word' }}>Функция</th>
-                      <th style={{ ...shiftTh, textAlign: 'left', minWidth: 70 }}>Тип</th>
-                      {shiftsData.activeCols.map((ci) => (
-                        <th key={ci} style={{ ...shiftTh, textAlign: 'center', minWidth: 36 }}>
-                          {shiftsData.dates[ci] || String(ci + 1)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shiftsData.rows.map((row, ri) => {
-                      const rowText = row.isSeparator ? (row.text ?? '') : (row.name ?? '')
-                      if (row.isSeparator && !rowText.trim()) return null
-                      const customSep = customSeps.get(ri)
-                      const colSpanCount = 3 + shiftsData.activeCols.length
-
-                      if (customSep) {
-                        return (
-                          <tr key={ri} onClick={(e) => handleRowCtrlClick(e, ri, rowText)} title="Ctrl+клик — изменить разделитель" style={{ cursor: 'default' }}>
-                            <td colSpan={colSpanCount} style={{
-                              padding: '6px 10px', background: '#f1f5f9',
-                              borderTop: '2px solid #cbd5e1', borderBottom: '1px solid #e2e8f0',
-                              borderLeft: '3px solid #3b82f6', fontSize: 12, fontWeight: 600, color: '#334155',
-                            }}>
-                              {customSep.name}{customSep.date ? <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 8 }}>{customSep.date}</span> : null}
-                            </td>
-                          </tr>
-                        )
-                      }
-
-                      if (row.isSeparator) {
-                        return (
-                          <tr key={ri} onClick={(e) => handleRowCtrlClick(e, ri, rowText)} title="Ctrl+клик — сделать разделителем"
-                            style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'default' }}>
-                            <td style={shiftTd}>{row.text}</td>
-                            <td style={shiftTd} colSpan={colSpanCount - 1} />
-                          </tr>
-                        )
-                      }
-
-                      return (
-                        <tr key={ri} onClick={(e) => handleRowCtrlClick(e, ri, rowText)} title="Ctrl+клик — сделать разделителем"
-                          style={{ background: ri % 2 === 0 ? '#fff' : '#f8fafc', cursor: 'default' }}>
-                          <td style={shiftTd}>{row.name}</td>
-                          <td style={{ ...shiftTd, color: '#64748b', whiteSpace: 'normal', maxWidth: 220, wordBreak: 'break-word' }}>{row.role ?? '—'}</td>
-                          <td style={{ ...shiftTd, color: '#64748b' }}>{row.employmentType ?? '—'}</td>
-                          {shiftsData.activeCols.map((ci) => (
-                            <td key={ci} style={{ ...shiftTd, textAlign: 'center' }}>
-                              {row.shifts[ci]
-                                ? <span style={{ display: 'inline-block', width: 18, height: 18, borderRadius: 4, background: '#3b82f6' }} />
-                                : null}
-                            </td>
-                          ))}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </div>
+          <RegistryTasksTab matrixRegistryId={entry.id} initialProjectId={initialProjectId} />
         )}
 
         {/* Tab: Gantt */}
@@ -2248,56 +2143,6 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
       </div>
     </div>
 
-    {/* Custom separator config popup */}
-    {editingSep !== null && (
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        onMouseDown={() => setEditingSep(null)}
-      >
-        <div
-          style={{ background: '#fff', borderRadius: 10, padding: 20, width: 320, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          <div style={{ fontSize: 14, fontWeight: 600, color: '#1e293b', marginBottom: 14 }}>Настройка разделителя</div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 4 }}>Название</label>
-            <input
-              autoFocus
-              value={editingSep.name}
-              onChange={(e) => setEditingSep({ ...editingSep, name: e.target.value })}
-              onKeyDown={(e) => { if (e.key === 'Enter') saveCustomSep(); if (e.key === 'Escape') setEditingSep(null) }}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, outline: 'none' }}
-            />
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 12, color: '#64748b', display: 'block', marginBottom: 4 }}>Дата</label>
-            <input
-              value={editingSep.date}
-              onChange={(e) => setEditingSep({ ...editingSep, date: e.target.value })}
-              onKeyDown={(e) => { if (e.key === 'Enter') saveCustomSep(); if (e.key === 'Escape') setEditingSep(null) }}
-              placeholder="напр. 12.04.2026"
-              style={{ width: '100%', boxSizing: 'border-box', padding: '6px 8px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13, outline: 'none' }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            {customSeps.has(editingSep.ri) && (
-              <button onClick={() => removeCustomSep(editingSep!.ri)}
-                style={{ padding: '6px 12px', fontSize: 12, border: '1px solid #fee2e2', borderRadius: 6, background: '#fef2f2', color: '#ef4444', cursor: 'pointer', marginRight: 'auto' }}>
-                Убрать
-              </button>
-            )}
-            <button onClick={() => setEditingSep(null)}
-              style={{ padding: '6px 12px', fontSize: 12, border: '1px solid #e2e8f0', borderRadius: 6, background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}>
-              Отмена
-            </button>
-            <button onClick={saveCustomSep}
-              style={{ padding: '6px 12px', fontSize: 12, border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
-              Сохранить
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
     </>
   )
 }
