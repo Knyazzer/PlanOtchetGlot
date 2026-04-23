@@ -1078,7 +1078,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
   return (
     <div style={{ flex: 1 }}>
       <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 3 }}>{label}</label>
-      <input type="time" value={value} onChange={(e) => onChange(e.target.value)}
+      <input type="time" step={1800} value={value} onChange={(e) => onChange(e.target.value)}
         style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', fontSize: 12, color: '#1e293b', fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' as const }} />
     </div>
   )
@@ -1208,23 +1208,23 @@ function GroupDateBlock({ groupId, color, sched, onSave, startTimeLabel = 'На�
       {fields.includes('time') && (
         <div style={rowS}>
           <span style={lblS}>Время</span>
-          <input type="time" value={sched.time ?? ''} onChange={(e) => onSave({ time: e.target.value || undefined })} style={inpS} />
+          <input type="time" step={1800} value={sched.time ?? ''} onChange={(e) => onSave({ time: e.target.value || undefined })} style={inpS} />
         </div>
       )}
       {fields.includes('timeFrom') && (
         <div style={rowS}>
           <span style={lblS}>Время</span>
           <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            <input type="time" value={sched.timeFrom ?? ''} onChange={(e) => onSave({ timeFrom: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
+            <input type="time" step={1800} value={sched.timeFrom ?? ''} onChange={(e) => onSave({ timeFrom: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
             <span style={{ color: '#94a3b8', fontSize: 10, flexShrink: 0 }}>—</span>
-            <input type="time" value={sched.timeTo ?? ''} onChange={(e) => onSave({ timeTo: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
+            <input type="time" step={1800} value={sched.timeTo ?? ''} onChange={(e) => onSave({ timeTo: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
           </div>
         </div>
       )}
       {fields.includes('startTime') && (
         <div style={rowS}>
           <span style={lblS}>{startTimeLabel}</span>
-          <input type="time" value={sched.startTime ?? ''} onChange={(e) => onSave({ startTime: e.target.value || undefined })} style={inpS} />
+          <input type="time" step={1800} value={sched.startTime ?? ''} onChange={(e) => onSave({ startTime: e.target.value || undefined })} style={inpS} />
         </div>
       )}
     </div>
