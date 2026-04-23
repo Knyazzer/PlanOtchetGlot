@@ -211,7 +211,7 @@ const LOCATION_OPTIONS = [
 const SHIFT_FORMATS = ['Трансляция', 'Телерадио', 'Съемки', 'Радио', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн']
 const FORMATS_WITH_LOCATION = ['Трансляция', 'Телерадио', 'Съемки']
 const DEPARTMENTS = ['ТВ', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Радио', 'Не профильный']
-const CREATIVE_FORMATS = ['Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Не профильный']
+const CREATIVE_FORMATS = ['Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Не профильный', 'Радио']
 const TV_FORMATS = ['Трансляция', 'Телерадио', 'Съемки']
 
 // Which schedule fields each group uses
@@ -2485,16 +2485,42 @@ function CreateMicroProjectForm({ matrixRegistryId, parentTaskId, onCreated, onC
   const showLocation = FORMATS_WITH_LOCATION.includes(resolvedFormat)
   const canCreate = dept.trim() !== '' && (!isTv || tvFormat.trim() !== '') && (!showLocation || location.trim() !== '')
 
+  const DEFAULT_GROUP_TIMES: Record<string, { timeFrom: string; timeTo: string; startTime?: string }> = {
+    sbor:      { timeFrom: '07:00', timeTo: '10:00' },
+    zavoz:     { timeFrom: '10:00', timeTo: '11:00' },
+    montazh:   { timeFrom: '11:00', timeTo: '16:00' },
+    efir:      { timeFrom: '16:00', timeTo: '18:00', startTime: '16:30' },
+    demontazh: { timeFrom: '18:00', timeTo: '20:00' },
+    vyvoz:     { timeFrom: '20:00', timeTo: '21:00' },
+  }
+
   const create = useMutation({
-    mutationFn: () => api.post('/status-rows', {
-      name: resolvedFormat || dept || 'Без названия',
-      notes: notes.trim() || null,
-      date: date ? new Date(date).toISOString() : null,
-      format: resolvedFormat || null,
-      location: showLocation ? (location || null) : null,
-      ...(parentTaskId ? { parentTaskId } : { matrixRegistryId }),
-      status: 'request',
-    }).then((r) => r.data),
+    mutationFn: async () => {
+      const r = await api.post('/status-rows', {
+        name: resolvedFormat || dept || 'Без названия',
+        notes: notes.trim() || null,
+        date: date ? new Date(date).toISOString() : null,
+        format: resolvedFormat || null,
+        location: showLocation ? (location || null) : null,
+        ...(parentTaskId ? { parentTaskId } : { matrixRegistryId }),
+        status: 'request',
+      })
+      const newId: string = r.data.id
+
+      if (showLocation && location) {
+        const today = new Date().toISOString().slice(0, 10)
+        const isViezd = location.startsWith('Выезд')
+        const groups = isViezd ? VIEZD_GROUPS : STUDIO_GROUPS
+        const schedule: Record<string, unknown> = {}
+        for (const g of groups) {
+          const t = DEFAULT_GROUP_TIMES[g.id]
+          if (t) schedule[g.id] = { date: today, ...t }
+        }
+        await api.patch(`/status-rows/${newId}/group-schedule`, schedule)
+      }
+
+      return r.data
+    },
     onSuccess: (data) => onCreated(data.id),
   })
 

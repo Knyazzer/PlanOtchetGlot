@@ -1,0 +1,112 @@
+<h2>Вкладка «Задачи» — правильная структура</h2>
+<p class="subtitle">Задачи как суб-вкладки → внутри каждой задачи — отделы с полным InternalShiftsPanel</p>
+
+<div class="mockup" style="max-width:900px;margin:0 auto">
+  <div class="mockup-header">Карточка проекта — вкладка «Задачи»</div>
+  <div class="mockup-body" style="padding:0;font-family:system-ui;font-size:12px;overflow:hidden">
+
+    <!-- Project header -->
+    <div style="background:linear-gradient(135deg,#1e293b,#1e3a5f);padding:14px 20px">
+      <div style="font-size:15px;font-weight:700;color:#f8fafc">36,6: Вечернее шоу</div>
+      <!-- main tabs -->
+      <div style="display:flex;gap:0;margin-top:10px;border-bottom:1px solid rgba(255,255,255,0.1)">
+        <div style="padding:6px 16px;color:#94a3b8;font-size:11px">Инфо</div>
+        <div style="padding:6px 16px;color:#f0f9ff;font-size:11px;border-bottom:2px solid #60a5fa;font-weight:600">Задачи</div>
+        <div style="padding:6px 16px;color:#94a3b8;font-size:11px">Отделы</div>
+        <div style="padding:6px 16px;color:#94a3b8;font-size:11px">Ганта</div>
+        <div style="padding:6px 16px;color:#94a3b8;font-size:11px">Документы</div>
+      </div>
+    </div>
+
+    <!-- Task sub-tabs (level 2) -->
+    <div style="background:#f1f5f9;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:0;padding:0 16px;overflow-x:auto">
+      <div style="padding:8px 14px;font-size:11px;font-weight:700;color:#2563eb;border-bottom:2px solid #2563eb;white-space:nowrap;background:#fff;margin-top:1px">
+        📋 36,6: Вечернее шоу
+      </div>
+      <div style="padding:8px 14px;font-size:11px;color:#64748b;white-space:nowrap;border-bottom:2px solid transparent">
+        📋 СТС: Утреннее
+      </div>
+      <div style="padding:8px 14px;font-size:11px;color:#64748b;white-space:nowrap;border-bottom:2px solid transparent">
+        📋 Первый: Итоги
+      </div>
+      <div style="margin-left:auto;padding:0 8px">
+        <div style="font-size:10px;background:#e2e8f0;color:#64748b;padding:3px 8px;border-radius:4px;cursor:pointer">+ Добавить задачу</div>
+      </div>
+    </div>
+
+    <!-- Inside selected task: task info strip -->
+    <div style="background:#fff;padding:8px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:12px">
+      <span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600">Производство</span>
+      <span style="font-size:11px;color:#64748b">Исп. продюсер: <strong style="color:#1e293b">Вадим Степанов</strong></span>
+      <span style="font-size:11px;color:#64748b">Дата: <strong style="color:#1e293b">14–18 мая</strong></span>
+    </div>
+
+    <!-- Dept tabs inside task (level 3) -->
+    <div style="background:#fff;border-bottom:2px solid #e2e8f0;display:flex;gap:0;padding:0 16px">
+      <div style="padding:7px 14px;font-size:11px;font-weight:700;color:#1d4ed8;border-bottom:2px solid #1d4ed8;white-space:nowrap">
+        ТВ — Съёмка
+      </div>
+      <div style="padding:7px 14px;font-size:11px;color:#64748b;border-bottom:2px solid transparent;white-space:nowrap">
+        Моушн
+      </div>
+      <div style="padding:7px 14px;font-size:11px;color:#64748b;border-bottom:2px solid transparent;white-space:nowrap">
+        Дизайн
+      </div>
+    </div>
+
+    <!-- InternalShiftsPanel sub-tabs (level 4: Команда / Планировщик / Фрилы...) -->
+    <div style="background:#fafbff;border-bottom:1px solid #e2e8f0;display:flex;gap:0;padding:0 16px">
+      <div style="padding:5px 12px;font-size:10px;font-weight:600;color:#0f172a;border-bottom:2px solid #0f172a;white-space:nowrap">Команда</div>
+      <div style="padding:5px 12px;font-size:10px;color:#94a3b8;border-bottom:2px solid transparent;white-space:nowrap">Планировщик</div>
+      <div style="padding:5px 12px;font-size:10px;color:#94a3b8;border-bottom:2px solid transparent;white-space:nowrap">Фрилансеры</div>
+      <div style="padding:5px 12px;font-size:10px;color:#94a3b8;border-bottom:2px solid transparent;white-space:nowrap">Расходы</div>
+      <div style="padding:5px 12px;font-size:10px;color:#94a3b8;border-bottom:2px solid transparent;white-space:nowrap">Вызывной лист</div>
+    </div>
+
+    <!-- Content: team table -->
+    <div style="padding:12px 16px;background:#fff">
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <thead>
+          <tr style="background:#f8fafc">
+            <th style="padding:6px 10px;text-align:left;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0">ФИО</th>
+            <th style="padding:6px 10px;text-align:left;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0">Должность</th>
+            <th style="padding:6px 10px;text-align:left;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0">Тип занятости</th>
+            <th style="padding:6px 10px;text-align:left;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0">Ставка план</th>
+            <th style="padding:6px 10px;text-align:center;color:#64748b;font-weight:600;border-bottom:1px solid #e2e8f0">Утверждён</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:7px 10px;font-weight:500;color:#1e293b">Иванов Дмитрий</td>
+            <td style="padding:7px 10px;color:#64748b">Оператор</td>
+            <td style="padding:7px 10px;color:#64748b">Штат</td>
+            <td style="padding:7px 10px;color:#64748b">25 000</td>
+            <td style="padding:7px 10px;text-align:center"><span style="color:#16a34a;font-size:14px">✓</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9">
+            <td style="padding:7px 10px;font-weight:500;color:#1e293b">Петрова Анна</td>
+            <td style="padding:7px 10px;color:#64748b">Режиссёр</td>
+            <td style="padding:7px 10px;color:#64748b">ИП</td>
+            <td style="padding:7px 10px;color:#64748b">40 000</td>
+            <td style="padding:7px 10px;text-align:center"><span style="color:#e2e8f0;font-size:14px">○</span></td>
+          </tr>
+          <tr>
+            <td style="padding:7px 10px;font-weight:500;color:#1e293b">Смирнов Кирилл</td>
+            <td style="padding:7px 10px;color:#64748b">Звукорежиссёр</td>
+            <td style="padding:7px 10px;color:#64748b">Штат</td>
+            <td style="padding:7px 10px;color:#64748b">20 000</td>
+            <td style="padding:7px 10px;text-align:center"><span style="color:#16a34a;font-size:14px">✓</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:8px">
+        <button style="font-size:10px;padding:4px 10px;border:1px dashed #cbd5e1;border-radius:6px;background:none;color:#64748b;cursor:pointer">+ Добавить участника</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="subtitle" style="text-align:center;margin-top:20px">
+  Уровни навигации: <strong>Главные вкладки</strong> → <strong>Задачи (суб-вкладки)</strong> → <strong>Отделы (уровень 3)</strong> → <strong>Команда/Планировщик/... (уровень 4)</strong>
+</p>
