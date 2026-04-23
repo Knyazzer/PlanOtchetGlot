@@ -218,17 +218,19 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
   function minToPx(m: number) { return (m - rangeRef.current.start) * ppm() }
   function totalW() { return (rangeRef.current.end - rangeRef.current.start) * ppm() }
 
-  function computeAll() {
+  function computeAll(keepRange = false) {
     const blocks = blocksRef.current
     if (blocks.length === 0) {
-      rangeRef.current = { start: 0, end: 1440 }
+      if (!keepRange) rangeRef.current = { start: 0, end: 1440 }
       blockTracksRef.current = {}
       numBlockTracksRef.current = 1
     } else {
-      const mins = blocks.flatMap(b => [b.absFrom, b.absTo])
-      rangeRef.current = {
-        start: Math.floor((Math.min(...mins) - 90) / STEP) * STEP,
-        end: Math.ceil((Math.max(...mins) + 90) / STEP) * STEP,
+      if (!keepRange) {
+        const mins = blocks.flatMap(b => [b.absFrom, b.absTo])
+        rangeRef.current = {
+          start: Math.floor((Math.min(...mins) - 90) / STEP) * STEP,
+          end: Math.ceil((Math.max(...mins) + 90) / STEP) * STEP,
+        }
       }
       const sorted = [...blocks].sort((a, b) => a.absFrom - b.absFrom)
       const trackEnds: number[] = []
@@ -252,8 +254,8 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
-  function render(preserveScroll = true) {
-    computeAll()
+  function render(preserveScroll = true, keepRange = false) {
+    computeAll(keepRange)
     const W = totalW(), H = totalH(), hh = headerHRef.current
     if (plannerRef.current) plannerRef.current.style.gridTemplateRows = `${hh}px 1fr`
     if (cornerRef.current) cornerRef.current.style.height = `${hh}px`
@@ -554,12 +556,22 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
     if (!empty) {
       // requestAnimationFrame ensures React has committed the grid DOM before we write into it
       requestAnimationFrame(() => {
+        const prevRangeStart = rangeRef.current.start
         render()
         if (!initialScrollDone.current) {
+          // Первый показ блоков — скролим к левому краю
           initialScrollDone.current = true
           const x = Math.max(0, minToPx(Math.min(...blocksRef.current.map(b => b.absFrom))) - 80)
           if (tracksScrollRef.current) tracksScrollRef.current.scrollLeft = x
           if (headerScrollRef.current) headerScrollRef.current.scrollLeft = x
+        } else {
+          // Блоки уже были видны — компенсируем скрол при изменении диапазона
+          const rangeShiftPx = (rangeRef.current.start - prevRangeStart) * ppm()
+          if (rangeShiftPx !== 0 && tracksScrollRef.current) {
+            const adj = Math.max(0, tracksScrollRef.current.scrollLeft - rangeShiftPx)
+            tracksScrollRef.current.scrollLeft = adj
+            if (headerScrollRef.current) headerScrollRef.current.scrollLeft = adj
+          }
         }
       })
     }
