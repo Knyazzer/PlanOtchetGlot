@@ -2019,7 +2019,7 @@ function RegistryDetailModal({ entry, onClose, onShiftsLoaded, onEdit, onDelete,
       }}
     >
       <div
-        style={{ background: '#f8fafc', borderRadius: 16, boxShadow: '0 24px 80px rgba(0,0,0,0.25)', width: '97vw', maxWidth: 1300, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        style={{ background: '#f8fafc', borderRadius: 16, boxShadow: '0 24px 80px rgba(0,0,0,0.25)', width: '98vw', maxWidth: 1600, height: '95vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header + Tabs */}
