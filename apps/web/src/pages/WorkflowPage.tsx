@@ -127,7 +127,7 @@ export function WorkflowPage() {
 
   const { data: allRows = [], isLoading } = useQuery<StatusRow[]>({
     queryKey: ['workflow-rows'],
-    queryFn: () => api.get('/status-rows', { params: { source: 'manual' } }).then((r) => r.data),
+    queryFn: () => api.get('/status-rows', { params: { source: 'manual', topLevelOnly: 'true' } }).then((r) => r.data),
     staleTime: 30_000,
   })
 

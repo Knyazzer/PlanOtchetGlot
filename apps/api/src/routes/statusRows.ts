@@ -99,11 +99,18 @@ export async function statusRowsRoutes(app: FastifyInstance) {
         `SELECT id FROM status_rows WHERE parent_task_id = $1`, query.parentTaskId
       )
       where.id = { in: rows.map((r) => r.id) }
-    } else if (query.topLevelOnly === 'true' && query.matrixRegistryId) {
-      const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
-        `SELECT id FROM status_rows WHERE matrix_registry_id = $1 AND parent_task_id IS NULL`,
-        query.matrixRegistryId
-      )
+    } else if (query.topLevelOnly === 'true') {
+      // Exclude rows that are department children of another row
+      const baseClause = query.matrixRegistryId
+        ? `matrix_registry_id = $1 AND parent_task_id IS NULL`
+        : `parent_task_id IS NULL`
+      const rows = query.matrixRegistryId
+        ? await prisma.$queryRawUnsafe<{ id: string }[]>(
+            `SELECT id FROM status_rows WHERE ${baseClause}`, query.matrixRegistryId
+          )
+        : await prisma.$queryRawUnsafe<{ id: string }[]>(
+            `SELECT id FROM status_rows WHERE parent_task_id IS NULL`
+          )
       where.id = { in: rows.map((r) => r.id) }
     }
 
