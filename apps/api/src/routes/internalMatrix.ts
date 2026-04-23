@@ -126,10 +126,25 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
   // DELETE /internal-matrix/:id
   app.delete('/:id', { preHandler: requirePermission('internal-matrix:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
+
+    // Capture linked workflow tasks before FK cascade nullifies their matrix_registry_id
+    const linkedTasks = await prisma.$queryRawUnsafe<{ id: string }[]>(
+      `SELECT id FROM status_rows WHERE matrix_registry_id = $1 AND parent_task_id IS NULL AND source = 'manual'`, id
+    )
+
     const result = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `DELETE FROM matrix_registry WHERE id = $1 AND source = 'internal' RETURNING id`, id
     )
     if (!result[0]) return reply.code(404).send({ error: 'Матрица не найдена или не внутренняя' })
+
+    // Move orphaned tasks back to "connecting" stage so they appear in Workflow
+    if (linkedTasks.length > 0) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE status_rows SET status = 'connecting', updated_at = NOW() WHERE id = ANY($1::text[])`,
+        linkedTasks.map((r) => r.id),
+      )
+    }
+
     return { ok: true }
   })
 
