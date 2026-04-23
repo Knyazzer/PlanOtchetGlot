@@ -140,6 +140,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       where: { id },
       include: {
         matrixRegistry: true,
+        linkedMatrix: { select: { matrixId: true, name: true, projectName: true } },
         assignments: {
           include: {
             user: { select: { id: true, fullName: true, role: true } },

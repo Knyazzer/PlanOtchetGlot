@@ -27,6 +27,15 @@ export function AppShell() {
     return saved && valid.includes(saved) ? saved : 'calendar'
   })
 
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const p = (e as CustomEvent<{ page: Page }>).detail?.page
+      if (p) { setPage(p); localStorage.setItem('app-page', p) }
+    }
+    window.addEventListener('tvshifts:navigate', handler)
+    return () => window.removeEventListener('tvshifts:navigate', handler)
+  }, [])
+
   async function handleLogout() {
     await api.post('/auth/logout')
     setUser(null)

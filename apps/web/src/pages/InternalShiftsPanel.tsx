@@ -1163,7 +1163,7 @@ function ProjectInfoPanel({ project, onSave }: {
       {/* Block 2: Описание */}
       <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <div style={{ padding: '9px 12px 8px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание задачи для отдела</span>
         </div>
         <textarea
           value={notesDraft}

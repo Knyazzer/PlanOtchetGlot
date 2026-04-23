@@ -210,6 +210,7 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
   const [popup, setPopup] = useState<{ bid: string; x: number; y: number } | null>(null)
   const [hasBlocks, setHasBlocks] = useState(false)
   const presetApplied = useRef(false)
+  const initialScrollDone = useRef(false)
 
   // ── Layout math ─────────────────────────────────────────────────────────────
 
@@ -548,14 +549,18 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
     blocksRef.current = newBlocks
     rowsRef.current = buildRows(groups, newBlocks)
     const empty = newBlocks.length === 0
+    if (empty) initialScrollDone.current = false
     setHasBlocks(!empty)
     if (!empty) {
       // requestAnimationFrame ensures React has committed the grid DOM before we write into it
       requestAnimationFrame(() => {
         render()
-        const x = Math.max(0, minToPx(Math.min(...blocksRef.current.map(b => b.absFrom))) - 80)
-        if (tracksScrollRef.current) tracksScrollRef.current.scrollLeft = x
-        if (headerScrollRef.current) headerScrollRef.current.scrollLeft = x
+        if (!initialScrollDone.current) {
+          initialScrollDone.current = true
+          const x = Math.max(0, minToPx(Math.min(...blocksRef.current.map(b => b.absFrom))) - 80)
+          if (tracksScrollRef.current) tracksScrollRef.current.scrollLeft = x
+          if (headerScrollRef.current) headerScrollRef.current.scrollLeft = x
+        }
       })
     }
   }, [JSON.stringify(groupSchedule), JSON.stringify(groups.map(g => g.id)), projectDate])

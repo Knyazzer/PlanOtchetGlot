@@ -261,7 +261,7 @@ const REG_COLS: ColDef[] = [
   { key: 'sheetUrl', label: 'B Проект' },
   { key: 'matrixId', label: 'C ID' },
   { key: 'unit',     label: 'E Юнит',     filterable: true },
-  { key: 'client',   label: 'F Заказчик', filterable: true },
+  { key: 'client',   label: 'F Клиент', filterable: true },
   { key: 'name',     label: 'G Название' },
   { key: 'format',   label: 'H Формат' },
   { key: 'date',     label: 'I Дата' },
@@ -1937,7 +1937,6 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
                           ['Аккаунт менеджер', task.accountManager],
                           ['Дата', dateStr],
                           ['Проект', task.matrixRegistry ? (task.matrixRegistry.name || task.matrixRegistry.matrixId) : null],
-                          ['Заметки', task.notes],
                         ].filter(([, v]) => v)
                         return row.map(([label, value], i) => (
                           <div key={label as string} style={{ paddingBottom: 5, marginBottom: 5, borderBottom: i < row.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
@@ -1946,6 +1945,7 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
                           </div>
                         ))
                       })()}
+                      <TaskNotesEditor taskId={task.id} initialNotes={task.notes} matrixRegistryId={matrixRegistryId} />
                     </div>
                   </div>
                 </div>
@@ -1971,6 +1971,35 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// ─── TaskNotesEditor ──────────────────────────────────────────────────────────
+
+function TaskNotesEditor({ taskId, initialNotes, matrixRegistryId }: { taskId: string; initialNotes: string | null; matrixRegistryId: string }) {
+  const qc = useQueryClient()
+  const [notes, setNotes] = useState(initialNotes ?? '')
+
+  useEffect(() => { setNotes(initialNotes ?? '') }, [initialNotes])
+
+  const save = (value: string) => {
+    if (value === (initialNotes ?? '')) return
+    api.patch(`/status-rows/${taskId}`, { notes: value || null })
+      .then(() => qc.invalidateQueries({ queryKey: ['registry-tasks', matrixRegistryId] }))
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Описание задачи</div>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; save(e.target.value) }}
+        onFocus={(e) => (e.target.style.borderColor = '#93c5fd')}
+        placeholder="Добавьте описание..."
+        style={{ width: '100%', height: 68, resize: 'none', border: '1px solid #e2e8f0', borderRadius: 6, padding: '6px 8px', fontSize: 12, fontFamily: 'inherit', color: '#1e293b', background: '#fff', outline: 'none', lineHeight: 1.5, boxSizing: 'border-box' }}
+      />
     </div>
   )
 }
@@ -2753,14 +2782,14 @@ function RegistryTable({
   // External open (from "Открыть в проекте" button in ProjectsTable)
   const [initialProjectId, setInitialProjectId] = useState<string | null>(null)
   useEffect(() => {
-    if (!externalOpenTarget) return
+    if (!externalOpenTarget || registry.length === 0) return
     const entry = registry.find((r) => r.id === externalOpenTarget.registryId)
     if (entry) {
       openEntry(entry)
       setInitialProjectId(externalOpenTarget.projectId)
+      onExternalOpenConsumed?.()
     }
-    onExternalOpenConsumed?.()
-  }, [externalOpenTarget])
+  }, [externalOpenTarget, registry])
 
   const [shiftsStatus, setShiftsStatus] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem('matrix-shifts-status') ?? '{}') } catch { return {} }
@@ -2892,7 +2921,7 @@ function RegistryTable({
       )
       case 'unit':     return Array.isArray(r.unit) && r.unit.length ? r.unit.join(', ') : '—'
       case 'client':   return r.client ?? '—'
-      case 'name':     return r.name ?? '—'
+      case 'name':     return r.projectName ?? r.name ?? '—'
       case 'format':   return r.format ?? '—'
       case 'date':     return fmtDate(r.date)
       case 'producer': return r.producer ?? '—'
@@ -3078,6 +3107,16 @@ export function SyncDataPage() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [regFilters, setRegFilters] = usePersistedFilters('sync-primary-reg')
   const [openMatrixTarget, setOpenMatrixTarget] = useState<{ registryId: string; projectId: string } | null>(null)
+
+  useEffect(() => {
+    const id = sessionStorage.getItem('open-matrix-id')
+    if (id) {
+      const projectId = sessionStorage.getItem('open-matrix-project-id') ?? ''
+      sessionStorage.removeItem('open-matrix-id')
+      sessionStorage.removeItem('open-matrix-project-id')
+      setOpenMatrixTarget({ registryId: id, projectId })
+    }
+  }, [])
 
   const { data: sheetUrls } = useQuery<{ projectsSheetUrl: string | null; registrySheetUrl: string | null }>({
     queryKey: ['sync-sheet-urls'],
