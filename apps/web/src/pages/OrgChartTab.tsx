@@ -37,7 +37,7 @@ function loadData(): Dept[] {
     if (!s) return SAMPLE
     const parsed: Dept[] = JSON.parse(s)
     // migrate old records that lack the leader field
-    return parsed.map(d => ({ leader: '', ...d }))
+    return parsed.map(d => ({ ...d, leader: d.leader ?? '' }))
   } catch { return SAMPLE }
 }
 

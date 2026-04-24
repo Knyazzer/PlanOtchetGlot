@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 

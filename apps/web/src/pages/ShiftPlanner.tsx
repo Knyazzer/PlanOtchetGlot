@@ -438,6 +438,7 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
       r.type === 'person' ? r.entries.filter(e => e.blockId === bid).map(e => ({ ...e, of: e.absFrom, ot: e.absTo, entryRef: e })) : []
     )
     function onMove(ev: PointerEvent) {
+      if (!block) return
       const dx = ev.clientX - startX
       if (!moved && Math.abs(dx) > 5) { moved = true; document.body.style.cursor = 'grabbing' }
       if (!moved) return
@@ -448,6 +449,7 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
       showTip(ev, `${dateLabel(anchorRef.current, block.absFrom)}  ${minsToTime(block.absFrom)} – ${minsToTime(block.absTo)}`)
     }
     function onUp(ev: PointerEvent) {
+      if (!block) return
       document.body.style.cursor = ''; document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); hideTip()
       if (moved) {
         // Один рендер как в мокапе — диапазон пересчитывается, скролл сохраняется.
@@ -468,6 +470,7 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
     const block = blocksRef.current.find(b => b.id === bid); if (!block) return
     const startX = pe.clientX, origVal = block[side]
     function onMove(ev: PointerEvent) {
+      if (!block) return
       const dx = ev.clientX - startX
       let v = Math.round((origVal + dx / ppm()) / STEP) * STEP
       if (side === 'absFrom') v = Math.max(block.absTo - 20 * 60, Math.min(v, block.absTo - STEP))
@@ -475,6 +478,7 @@ export function ShiftPlanner({ projectId, projectDate, projectFormat, groups, gr
       block[side] = v; updateHbarDOM(block); updateTbgDOM(block); showTip(ev, minsToTime(v))
     }
     function onUp() {
+      if (!block) return
       document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); hideTip()
       rowsRef.current.forEach(r => {
         if (r.type !== 'person') return

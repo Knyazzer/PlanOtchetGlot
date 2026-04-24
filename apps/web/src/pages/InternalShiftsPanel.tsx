@@ -550,7 +550,7 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parent
 
         {!isLoading && creating && activeTab === 'new' && (
           <CreateMicroProjectForm
-            matrixRegistryId={parentTaskId ? undefined : matrixRegistryId}
+            matrixRegistryId={parentTaskId ? undefined : matrixRegistryId ?? undefined}
             parentTaskId={parentTaskId ?? undefined}
             onCreated={handleCreated}
             onCancel={() => { setCreating(false); setActiveTab('summary') }}
@@ -774,7 +774,7 @@ function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId?: s
 
 // ─── MicroProjectTab ──────────────────────────────────────────────────────────
 
-export { MicroProject }
+export type { MicroProject }
 
 export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated, parentExecProducer, parentLineProducer }: {
   project: MicroProject
@@ -2427,9 +2427,9 @@ function KanbanTaskModal({ task, members, onSave, onDelete, onClose }: {
   const save = () => {
     onSave({
       title: title.trim() || 'Новая задача',
-      assigneeId: (assigneeId || null) as any,
-      dateStart: (dateStart || null) as any,
-      dateEnd: (dateEnd || null) as any,
+      assignee_id: (assigneeId || null) as any,
+      date_start: (dateStart || null) as any,
+      date_end: (dateEnd || null) as any,
     })
     onClose()
   }

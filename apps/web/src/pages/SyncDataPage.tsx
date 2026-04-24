@@ -1433,10 +1433,10 @@ function RegistryInfoTab({
             <span style={fLbl}>Юнит</span>
             {isInternal ? (
               <MultiSelect
+                label="Не выбрано"
                 options={unitOptions}
                 value={fields.unit}
                 onChange={(v) => { setFields((p) => ({ ...p, unit: v })); saveField('unit', v) }}
-                placeholder="Не выбрано"
               />
             ) : (
               <span style={fVal}>{Array.isArray(entry.unit) && entry.unit.length ? entry.unit.join(', ') : '—'}</span>
@@ -1928,7 +1928,7 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
                   <div style={{ overflow: 'hidden' }}>
                     <div style={{ padding: isOpen ? '8px 14px 12px' : '0 14px', transition: 'padding .25s cubic-bezier(.4,0,.2,1)' }}>
                       {(() => {
-                        const row: Array<[string, string | null | undefined]> = [
+                        const row = [
                           ['Клиент', task.client],
                           ['Формат', task.format],
                           ['Локация', task.location],

@@ -166,7 +166,7 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
                       type="date"
                       value={t.start_date ? t.start_date.slice(0, 10) : ''}
                       onChange={(e) =>
-                        updateTask.mutate({ id: t.id, startDate: e.target.value ? new Date(e.target.value).toISOString() : null })
+                        updateTask.mutate({ id: t.id, start_date: e.target.value ? new Date(e.target.value).toISOString() : null })
                       }
                       style={{ ...inputS, width: '100%' }}
                     />
@@ -246,7 +246,7 @@ export function GanttTab({ matrixId }: { matrixId: string }) {
             tasks={tasks}
             minDate={minDate}
             totalDays={totalDays}
-            onUpdate={(id, startDate, deadline) => updateTask.mutate({ id, startDate, deadline })}
+            onUpdate={(id, startDate, deadline) => updateTask.mutate({ id, start_date: startDate, deadline })}
           />
         )}
       </div>
