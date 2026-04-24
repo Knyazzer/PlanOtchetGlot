@@ -219,6 +219,42 @@ export async function usersRoutes(app: FastifyInstance) {
     }
   })
 
+  // GET /users/roles — список всех доступных ролей (admin only)
+  app.get('/roles', { preHandler: requirePermission('users:manage') }, async () => {
+    return prisma.appRole.findMany({ orderBy: { name: 'asc' } })
+  })
+
+  // GET /users/:id/roles — роли конкретного пользователя
+  app.get('/:id/roles', { preHandler: requirePermission('users:manage') }, async (request) => {
+    const { id } = request.params as { id: string }
+    const rows = await prisma.userAppRole.findMany({
+      where: { userId: id },
+      include: { role: true },
+    })
+    return rows.map((r) => ({ id: r.roleId, name: r.role.name, description: r.role.description }))
+  })
+
+  // POST /users/:id/roles — назначить роль пользователю
+  app.post('/:id/roles', { preHandler: requirePermission('users:manage') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const { roleId } = request.body as { roleId: string }
+    if (!roleId) return reply.code(400).send({ error: 'roleId required' })
+
+    await prisma.userAppRole.upsert({
+      where: { userId_roleId: { userId: id, roleId } },
+      update: {},
+      create: { userId: id, roleId },
+    })
+    return { ok: true }
+  })
+
+  // DELETE /users/:id/roles/:roleId — снять роль
+  app.delete('/:id/roles/:roleId', { preHandler: requirePermission('users:manage') }, async (request) => {
+    const { id, roleId } = request.params as { id: string; roleId: string }
+    await prisma.userAppRole.deleteMany({ where: { userId: id, roleId } })
+    return { ok: true }
+  })
+
   // POST /users/staff-import/refresh — обновить кэш из Google Sheets
   app.post('/staff-import/refresh', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
     try {

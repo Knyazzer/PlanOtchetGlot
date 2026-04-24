@@ -1,13 +1,29 @@
 import { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
-import { prisma } from '@tv-shifts/db'
+import { prisma, Role } from '@tv-shifts/db'
 import { logEvent } from '../services/changeLog'
+import { getUserPermissions } from '../config/permissions'
 
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 })
+
+async function buildJwtPayload(userId: string, user: { id: string; email: string; role: Role; fullName: string }) {
+  const [permissions, roleRows] = await Promise.all([
+    getUserPermissions(userId),
+    prisma.userAppRole.findMany({ where: { userId }, include: { role: true } }),
+  ])
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,   // legacy field — kept for backward compat with old tokens
+    fullName: user.fullName,
+    roles: roleRows.map((r) => r.role.name),
+    permissions,
+  }
+}
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /auth/login — max 10 попыток/мин с одного IP (защита от брутфорса)
@@ -27,9 +43,7 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: body.data.email },
-    })
+    const user = await prisma.user.findUnique({ where: { email: body.data.email } })
 
     if (!user || !user.isActive) {
       return reply.code(401).send({ error: 'Invalid credentials' })
@@ -40,23 +54,12 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'Invalid credentials' })
     }
 
-    const token = app.jwt.sign(
-      { id: user.id, email: user.email, role: user.role, fullName: user.fullName },
-      { expiresIn: '15m' }
-    )
-
-    const refreshToken = app.jwt.sign(
-      { id: user.id, type: 'refresh' },
-      { expiresIn: '7d' }
-    )
+    const payload = await buildJwtPayload(user.id, user)
+    const token = app.jwt.sign(payload, { expiresIn: '15m' })
+    const refreshToken = app.jwt.sign({ id: user.id, type: 'refresh' }, { expiresIn: '7d' })
 
     reply
-      .setCookie('access_token', token, {
-        httpOnly: true,
-        path: '/',
-        maxAge: 60 * 15,
-        sameSite: 'lax',
-      })
+      .setCookie('access_token', token, { httpOnly: true, path: '/', maxAge: 60 * 15, sameSite: 'lax' })
       .setCookie('refresh_token', refreshToken, {
         httpOnly: true,
         path: '/auth/refresh',
@@ -72,6 +75,8 @@ export async function authRoutes(app: FastifyInstance) {
         email: user.email,
         fullName: user.fullName,
         role: user.role,
+        roles: payload.roles,
+        permissions: payload.permissions,
       },
     }
   })
@@ -84,25 +89,18 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     try {
-      const payload = app.jwt.verify<{ id: string; type: string }>(refreshToken)
-      if (payload.type !== 'refresh') throw new Error('Invalid token type')
+      const decoded = app.jwt.verify<{ id: string; type: string }>(refreshToken)
+      if (decoded.type !== 'refresh') throw new Error('Invalid token type')
 
-      const user = await prisma.user.findUnique({ where: { id: payload.id } })
+      const user = await prisma.user.findUnique({ where: { id: decoded.id } })
       if (!user || !user.isActive) {
         return reply.code(401).send({ error: 'User not found' })
       }
 
-      const token = app.jwt.sign(
-        { id: user.id, email: user.email, role: user.role, fullName: user.fullName },
-        { expiresIn: '15m' }
-      )
+      const payload = await buildJwtPayload(user.id, user)
+      const token = app.jwt.sign(payload, { expiresIn: '15m' })
 
-      reply.setCookie('access_token', token, {
-        httpOnly: true,
-        path: '/',
-        maxAge: 60 * 15,
-        sameSite: 'lax',
-      })
+      reply.setCookie('access_token', token, { httpOnly: true, path: '/', maxAge: 60 * 15, sameSite: 'lax' })
 
       return { ok: true }
     } catch {
@@ -135,7 +133,17 @@ export async function authRoutes(app: FastifyInstance) {
         select: { id: true, email: true, fullName: true, role: true, tabNumber: true, isStaff: true },
       })
       if (!user) return reply.code(404).send({ error: 'User not found' })
-      return user
+
+      const [permissions, roleRows] = await Promise.all([
+        getUserPermissions(user.id),
+        prisma.userAppRole.findMany({ where: { userId: user.id }, include: { role: true } }),
+      ])
+
+      return {
+        ...user,
+        roles: roleRows.map((r) => r.role.name),
+        permissions,
+      }
     } catch {
       return reply.code(401).send({ error: 'Unauthorized' })
     }

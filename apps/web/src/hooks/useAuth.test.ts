@@ -43,6 +43,8 @@ describe('useAuthInit', () => {
       fullName: 'Admin User',
       role: 'admin' as const,
       isStaff: true,
+      roles: ['admin'],
+      permissions: ['users:manage', 'database:manage'],
     }
 
     server.use(

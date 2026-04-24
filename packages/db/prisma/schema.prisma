@@ -114,6 +114,7 @@ model User {
   notificationReads      UserNotificationRead[]
   changeLogs             ChangeLog[]
   matrixNotes            MatrixNote[]
+  userRoles              UserAppRole[]
 
   @@map("users")
 }
@@ -489,6 +490,51 @@ model MatrixDocument {
 
   @@map("matrix_documents")
 }
+
+// ─── RBAC ─────────────────────────────────────────────────────────────────────
+
+model AppRole {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  userRoles       UserAppRole[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model UserAppRole {
+  userId String  @map("user_id")
+  roleId String  @map("role_id")
+
+  user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role AppRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model AppPermission {
+  id          String @id @default(uuid())
+  name        String @unique
+  description String?
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId     String @map("role_id")
+  permission String
+
+  role AppRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permission])
+  @@map("role_permissions")
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 
 model SyncLog {
   id           String     @id @default(uuid())

@@ -8,7 +8,14 @@ export function useAuthInit() {
   useEffect(() => {
     api
       .get('/auth/me')
-      .then((res) => setUser(res.data))
+      .then((res) => {
+        const data = res.data
+        setUser({
+          ...data,
+          roles: data.roles ?? [],
+          permissions: data.permissions ?? [],
+        })
+      })
       .catch(() => setUser(null))
       .finally(() => setLoading(false))
   }, [])
@@ -19,9 +26,16 @@ export function useCurrentUser() {
 }
 
 export function useIsAdmin() {
-  return useAuthStore((s) => s.user?.role === 'admin')
+  return useAuthStore((s) => s.user?.roles?.includes('admin') ?? s.user?.role === 'admin')
 }
 
 export function useIsProducer() {
-  return useAuthStore((s) => s.user?.role === 'producer' || s.user?.role === 'admin')
+  return useAuthStore((s) =>
+    s.user?.roles?.some((r) => r === 'producer' || r === 'admin') ??
+    (s.user?.role === 'producer' || s.user?.role === 'admin')
+  )
+}
+
+export function useHasPermission(permission: string) {
+  return useAuthStore((s) => s.user?.permissions?.includes(permission) ?? false)
 }

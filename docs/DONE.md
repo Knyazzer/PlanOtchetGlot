@@ -40,6 +40,31 @@
 
 ---
 
+## Этап 17 — Фаза 1 (завершение) + Фаза 2 RBAC (сессия 2026-04-24)
+
+### Фаза 1 — Audit log
+
+- [x] **`logEvent` в `changeLog.ts`** — новая функция `logEvent(event, entityId, changedBy, meta)` для событийного логирования; события хранятся в `change_logs` с `entityType = 'user_event'`
+- [x] **Логирование входа/выхода** — `POST /auth/login` пишет `login` с IP; `POST /auth/logout` пишет `logout` (если токен не истёк)
+- [x] **Логирование смены роли** — `PATCH /users/:id` при изменении `role` пишет `role_change` со старым и новым значением
+- [x] **Логирование деактивации** — `DELETE /users/:id` пишет `delete` с email и fullName цели
+
+### Фаза 2 — RBAC (инфраструктура)
+
+- [x] **4 новые таблицы** — `roles`, `user_roles`, `permissions`, `role_permissions`; миграция `20260424100000_rbac_roles_permissions`
+- [x] **Prisma-модели** — `AppRole`, `UserAppRole`, `AppPermission`, `RolePermission`; `User` получил связь `userRoles UserAppRole[]`
+- [x] **`getUserPermissions(userId)`** — читает разрешения из `user_roles → role_permissions`; добавлен в `config/permissions.ts`
+- [x] **`requirePermission` — dual-mode** — если JWT содержит `roles[]` → используются `permissions[]`; иначе fallback на legacy `ROLE_PERMISSIONS[role]` (backward compat)
+- [x] **JWT расширен** — `{ roles: string[], permissions: string[] }` добавлены в payload при `login` и `refresh`; `/auth/me` возвращает оба поля
+- [x] **`fastify.d.ts` обновлён** — `FastifyJWT.payload` включает `roles?` и `permissions?`
+- [x] **API управления ролями** — `GET /users/roles`, `GET /users/:id/roles`, `POST /users/:id/roles`, `DELETE /users/:id/roles/:roleId`
+- [x] **Seed** — автоматически создаёт 3 роли + 18 permissions + привязывает всех существующих пользователей по legacy `User.role`
+- [x] **Фронтенд** — `AuthUser` расширен (`roles`, `permissions`); `useIsAdmin`/`useIsProducer` читают из `roles[]`; добавлен `useHasPermission(permission)`
+
+**Счёт тестов после сессии: 163 теста, 0 провалов**
+
+---
+
 ## Этап 1 — Фундамент
 
 ### Инфраструктура

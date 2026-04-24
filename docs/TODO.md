@@ -99,17 +99,29 @@
 
 > Подробная схема ролей — в [10-roles-and-scale.md](10-roles-and-scale.md).
 
-- [ ] **Мигрировать `Role` enum → таблица `roles`**
-  - Сейчас: `Role` enum в Prisma (3 значения) — каждая новая роль требует `ALTER TYPE` + миграцию
-  - Цель: таблица `roles (id, name, description)` + `user_roles (userId, roleId)` + `role_permissions (roleId, permission)`
+- [x] **Мигрировать `Role` enum → таблица `roles`** _(реализовано 2026-04-24)_
+  - Таблицы: `roles`, `user_roles`, `permissions`, `role_permissions` (миграция `20260424100000_rbac_roles_permissions`)
+  - Модели Prisma: `AppRole`, `UserAppRole`, `AppPermission`, `RolePermission`
+  - `enum Role` сохранён как legacy поле `User.role` — backward compat с существующими токенами
+  - Seed автоматически создаёт 3 роли + 18 permissions + привязывает всех пользователей по legacy role
 
-- [ ] **Таблица permissions и route guard**
-  - `permissions (id, name, description)` — список всех действий
-  - `requirePermission(permissionName)` — уже реализован в `config/permissions.ts`, но опирается на enum-роли. Переключить на таблицу.
+- [x] **Таблица permissions и route guard** _(реализовано 2026-04-24)_
+  - `getUserPermissions(userId)` — читает из `user_roles → role_permissions`
+  - `requirePermission` — если JWT имеет `roles[]` → использует `permissions[]`; иначе fallback на enum
+  - JWT payload расширен: `{ roles: string[], permissions: string[] }`
+  - `/auth/me` возвращает `roles` и `permissions`
+  - Новые эндпоинты: `GET/POST /users/:id/roles`, `DELETE /users/:id/roles/:roleId`, `GET /users/roles`
 
-- [ ] **Фронтенд — ролевой рендеринг**
-  - Хук `usePermissions()` — список permissions из `/auth/me`
-  - Компонент `<CanDo permission="sync:trigger">` — оборачивает UI-элементы
+- [x] **Фронтенд — ролевой рендеринг** _(реализовано 2026-04-24)_
+  - `AuthUser` расширен: `roles: string[]`, `permissions: string[]`
+  - `useIsAdmin()` / `useIsProducer()` читают из `user.roles[]` (fallback на `user.role`)
+  - Добавлен хук `useHasPermission(permission: string)`
+
+- [ ] **UI управления ролями в UsersPage** — выпадающий список ролей, кнопки назначить/снять
+
+- [ ] **Компонент `<CanDo permission="...">` на фронте** — оборачивает UI-элементы
+
+- [ ] **Удалить `enum Role` и `User.role`** — только после того как все старые JWT протухли и все пользователи переведены на RBAC
 
 - [ ] **Тесты auth guards матрица** — `apps/api/src/routes/auth.guards.test.ts`
 

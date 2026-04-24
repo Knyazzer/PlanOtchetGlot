@@ -6,7 +6,9 @@ export interface AuthUser {
   id: string
   email: string
   fullName: string
-  role: UserRole
+  role: UserRole          // legacy enum — kept for backward compat
+  roles: string[]         // RBAC roles from new system
+  permissions: string[]   // resolved permissions from RBAC
   tabNumber?: string | null
   isStaff: boolean
 }

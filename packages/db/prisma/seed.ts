@@ -125,6 +125,76 @@ async function main() {
     )
   }
 
+  // ── RBAC: роли, permissions, user_roles ────────────────────────────────────
+
+  const ALL_PERMISSIONS = [
+    { name: 'analytics:read', description: 'Просмотр аналитики' },
+    { name: 'sync:trigger', description: 'Запуск синхронизации' },
+    { name: 'sync:logs', description: 'Просмотр логов синхронизации' },
+    { name: 'sync:admin', description: 'Управление синхронизацией (admin)' },
+    { name: 'projects:write', description: 'Создание и редактирование проектов' },
+    { name: 'projects:config', description: 'Настройка конфигурации проектов' },
+    { name: 'deals:write', description: 'Управление сделками' },
+    { name: 'shifts:write', description: 'Редактирование смен' },
+    { name: 'tasks:write', description: 'Управление задачами' },
+    { name: 'matrix:write', description: 'Редактирование матриц' },
+    { name: 'matrix-templates:manage', description: 'Управление шаблонами матриц' },
+    { name: 'internal-matrix:manage', description: 'Управление внутренними матрицами' },
+    { name: 'members:read', description: 'Просмотр участников проекта' },
+    { name: 'members:write', description: 'Редактирование участников проекта' },
+    { name: 'members:bulk', description: 'Массовые операции с участниками' },
+    { name: 'users:manage', description: 'Управление пользователями' },
+    { name: 'database:manage', description: 'Доступ к панели БД' },
+    { name: 'kanban:delete', description: 'Удаление задач в Kanban' },
+  ]
+
+  for (const p of ALL_PERMISSIONS) {
+    await prisma.appPermission.upsert({
+      where: { name: p.name },
+      update: { description: p.description },
+      create: p,
+    })
+  }
+
+  const ROLE_PERMISSIONS: Record<string, string[]> = {
+    admin: ALL_PERMISSIONS.map((p) => p.name),
+    producer: [
+      'analytics:read', 'sync:trigger', 'sync:logs', 'matrix:write',
+      'members:read', 'members:bulk', 'kanban:delete',
+    ],
+    employee: [],
+  }
+
+  const roleMap: Record<string, string> = {}
+  for (const [roleName, perms] of Object.entries(ROLE_PERMISSIONS)) {
+    const role = await prisma.appRole.upsert({
+      where: { name: roleName },
+      update: {},
+      create: { name: roleName, description: `Стандартная роль: ${roleName}` },
+    })
+    roleMap[roleName] = role.id
+
+    for (const perm of perms) {
+      await prisma.rolePermission.upsert({
+        where: { roleId_permission: { roleId: role.id, permission: perm } },
+        update: {},
+        create: { roleId: role.id, permission: perm },
+      })
+    }
+  }
+
+  // Привязываем существующих пользователей к ролям на основе legacy role поля
+  const allUsers = await prisma.user.findMany({ select: { id: true, role: true } })
+  for (const u of allUsers) {
+    const roleId = roleMap[u.role]
+    if (!roleId) continue
+    await prisma.userAppRole.upsert({
+      where: { userId_roleId: { userId: u.id, roleId } },
+      update: {},
+      create: { userId: u.id, roleId },
+    })
+  }
+
   // Тестовые задачи
   await prisma.task.upsert({
     where: { id: '00000000-0000-0000-0000-000000000010' },
