@@ -5,6 +5,7 @@ import { prisma } from '@tv-shifts/db'
 import { authenticate } from '../plugins/auth'
 import { requirePermission } from '../config/permissions'
 import { findSheetConfig, refreshSheetData } from '../services/databaseService'
+import { logEvent } from '../services/changeLog'
 
 const createUserSchema = z.object({
   fullName: z.string().min(1),
@@ -147,6 +148,10 @@ export async function usersRoutes(app: FastifyInstance) {
       delete data.isStaff
     }
 
+    const existing = data.role
+      ? await prisma.user.findUnique({ where: { id }, select: { role: true } })
+      : null
+
     const user = await prisma.user.update({
       where: { id },
       data,
@@ -161,6 +166,10 @@ export async function usersRoutes(app: FastifyInstance) {
       },
     })
 
+    if (existing && existing.role !== user.role) {
+      logEvent('role_change', id, me.id, { oldRole: existing.role, newRole: user.role }).catch(() => {})
+    }
+
     return user
   })
 
@@ -173,7 +182,9 @@ export async function usersRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Cannot deactivate yourself' })
     }
 
+    const target = await prisma.user.findUnique({ where: { id }, select: { email: true, fullName: true } })
     await prisma.user.update({ where: { id }, data: { isActive: false } })
+    logEvent('delete', id, me.id, { email: target?.email, fullName: target?.fullName }).catch(() => {})
     return { ok: true }
   })
 

@@ -2,6 +2,27 @@ import { prisma } from '@tv-shifts/db'
 
 type ChangeSource = 'manual' | 'sync'
 
+type AuditEvent = 'login' | 'logout' | 'role_change' | 'delete'
+
+export async function logEvent(
+  event: AuditEvent,
+  entityId: string,
+  changedBy: string | null,
+  meta?: Record<string, unknown>
+) {
+  await prisma.changeLog.create({
+    data: {
+      entityType: 'user_event',
+      entityId,
+      field: event,
+      oldValue: null,
+      newValue: meta ? JSON.stringify(meta) : null,
+      changedBy,
+      source: 'manual',
+    },
+  })
+}
+
 /**
  * Записывает изменения поля в change_logs.
  * Сравнивает oldData и newData по ключам из newData, логирует отличия.

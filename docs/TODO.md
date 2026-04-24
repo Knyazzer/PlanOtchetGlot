@@ -90,8 +90,10 @@
   - `scripts/safe-migrate.sh` — pg_dump → `prisma migrate deploy` → лог; при ошибке — инструкция по откату
   - Никаких `DROP COLUMN` без предварительного периода deprecation
 
-- [ ] **Audit log — расширить `change_logs`** — сейчас не логируются: вход/выход пользователя, смена роли, удаление записей.
-  - `logEvent(type: 'login' | 'logout' | 'role_change' | 'delete', userId, meta)`
+- [x] **Audit log — расширить `change_logs`** _(реализовано 2026-04-24)_
+  - `logEvent('login' | 'logout' | 'role_change' | 'delete', entityId, changedBy, meta)` добавлен в `changeLog.ts`
+  - `login` и `logout` логируются в `auth.ts`; `role_change` и `delete` — в `users.ts`
+  - Записи хранятся в `change_logs` с `entityType = 'user_event'`
 
 ### Фаза 2 — Система ролей (RBAC)
 

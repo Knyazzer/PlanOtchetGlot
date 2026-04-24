@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
+import { logEvent } from '../services/changeLog'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -63,6 +64,8 @@ export async function authRoutes(app: FastifyInstance) {
         sameSite: 'lax',
       })
 
+    logEvent('login', user.id, user.id, { email: user.email, ip: request.ip }).catch(() => {})
+
     return {
       user: {
         id: user.id,
@@ -108,7 +111,14 @@ export async function authRoutes(app: FastifyInstance) {
   })
 
   // POST /auth/logout
-  app.post('/logout', async (_request, reply) => {
+  app.post('/logout', async (request, reply) => {
+    try {
+      await request.jwtVerify()
+      const payload = request.user as { id: string }
+      logEvent('logout', payload.id, payload.id).catch(() => {})
+    } catch {
+      // expired or missing token — logout proceeds without logging
+    }
     reply
       .clearCookie('access_token', { path: '/' })
       .clearCookie('refresh_token', { path: '/auth/refresh' })
