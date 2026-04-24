@@ -10,37 +10,7 @@
 
 ---
 
-## 🟠 Важно (функциональность / надёжность)
-
-### Баги — подтверждены аудитом 2026-04-21 / 2026-04-23
-
-- [x] **Класс A #9: `workflow-children` — несовпадение ключей кеша** _(исправлено 2026-04-23)_
-
-- [x] **Класс C: `MicroProjectTab` — стейл `selectedProject` → потеря дней проекта** _(исправлено 2026-04-24)_
-  - Фикс: `patchDaysCache(updated)` через `qc.setQueriesData(['micro-projects'])` в `onSuccess` всех трёх date-мутаций; кеш обновляется синхронно до следующего действия пользователя
-
-- [x] **Класс A #6: `updateStatus` / `updateBrief` инвалидируют несуществующий ключ** _(исправлено 2026-04-24)_
-
-- [x] **Класс A #7: `deleteMatrix` не инвалидирует пикер матриц** _(исправлено 2026-04-24)_
-
-- [x] **Класс A #8: `MatrixFormModal.onSaved` не инвалидирует пикер матриц** _(исправлено 2026-04-24)_
-
-### Workflow — производительность при росте данных
-
-- [x] **`topLevelOnly` без `matrixRegistryId` — нет source-фильтра** _(исправлено 2026-04-24)_
-  - Добавлен `AND source = 'manual'` в SQL-запрос `topLevelOnly` без `matrixRegistryId`
-
----
-
 ## 🟡 Технический долг
-
-- [x] **Орфанный импорт `TaskDetailPanel`** — был в `SyncDataPage.tsx:8`, удалён 2026-04-23.
-
-- [x] **Дублирование `DEFAULT_GROUP_TIMES`** _(исправлено 2026-04-24)_ — вынесено в `apps/web/src/lib/groupDefaults.ts` вместе с `TV_FORMATS` и `FORMATS_WITH_LOCATION`; удалено из `InternalShiftsPanel.tsx` (было внутри компонента — пересоздавалось на каждом рендере) и `TaskDetailPanel.tsx`.
-
-- [x] **`parent_task_id` не в Zod-схеме `createStatusRowSchema`** _(исправлено 2026-04-24)_ — поле добавлено в схему, извлекается из `body.data` вместо `rawBody`.
-
-- [x] **Два ключа для одних и тех же данных** _(исправлено 2026-04-24)_ — `['micro-projects-info', entry.id]` → `['micro-projects', entry.id]`; лишний `invalidate` в `invalidateMicroProjects` удалён.
 
 - [ ] **Schema drift `ProjectMember` / `StatusRow`** — колонки `employment_type`, `rate_plan`, `rate_fact`, `is_approved`, `field_approvals`, `group_name`, `group_schedule`, `parent_task_id` добавлены raw SQL, Prisma-клиент их не знает. Весь доступ через `$queryRawUnsafe`. При регенерации клиента — потеря типизации. Нужна отдельная Prisma-модель или view.
 
@@ -65,57 +35,7 @@
 > Проект готовится к: ~60 пользователей / 15 одновременно / 10–15 ролей / внешние интеграции.
 > Подробности — в [10-roles-and-scale.md](10-roles-and-scale.md).
 
-### Фаза 0 — Тестовая инфраструктура
-
-- [x] **Изолированная test-база** _(реализовано 2026-04-24)_
-  - `TEST_DATABASE_URL` добавлен в `.env` и `.env.example`; `postgres_test` поднят на порту 5434
-  - `vitest.config.ts` уже подменял `DATABASE_URL → TEST_DATABASE_URL`; миграции накатаны на тест-БД
-  - `db:migrate:test` переписан на кросс-платформенный `node scripts/migrate-test.cjs` (был `bash -c 'source .env...'`, не работал на Windows)
-  - Flaky-тест `syncService.integration.test.ts` устранён: добавлен `prisma.syncLog.deleteMany()` в `beforeAll` — stale-записи от прерванных прогонов больше не мешают
-  - Проверка: dev-БД не получает ни одной записи от `pnpm test`
-
-### Фаза 1 — CI/CD и безопасность данных
-
-- [x] **GitHub Actions — базовый пайплайн** _(реализовано 2026-04-24)_
-  - Файл: `.github/workflows/ci.yml`
-  - Jobs: `lint → tsc → test (test DB в Docker service) → build`
-  - Триггер: `push` на любой ветке, `pull_request` → main
-
-- [x] **Staging-окружение** _(реализовано 2026-04-24)_
-  - `docker-compose.staging.yml` — изолированная staging-БД, nginx на порту 8080, HTTP (без SSL)
-  - `nginx/nginx.staging.conf` — упрощённый nginx без HTTPS и certbot
-  - `.env.staging.example` — шаблон переменных для staging
-
-- [x] **Процедура безопасных миграций** _(реализовано 2026-04-24)_
-  - `scripts/safe-migrate.sh` — pg_dump → `prisma migrate deploy` → лог; при ошибке — инструкция по откату
-  - Никаких `DROP COLUMN` без предварительного периода deprecation
-
-- [x] **Audit log — расширить `change_logs`** _(реализовано 2026-04-24)_
-  - `logEvent('login' | 'logout' | 'role_change' | 'delete', entityId, changedBy, meta)` добавлен в `changeLog.ts`
-  - `login` и `logout` логируются в `auth.ts`; `role_change` и `delete` — в `users.ts`
-  - Записи хранятся в `change_logs` с `entityType = 'user_event'`
-
-### Фаза 2 — Система ролей (RBAC)
-
-> Подробная схема ролей — в [10-roles-and-scale.md](10-roles-and-scale.md).
-
-- [x] **Мигрировать `Role` enum → таблица `roles`** _(реализовано 2026-04-24)_
-  - Таблицы: `roles`, `user_roles`, `permissions`, `role_permissions` (миграция `20260424100000_rbac_roles_permissions`)
-  - Модели Prisma: `AppRole`, `UserAppRole`, `AppPermission`, `RolePermission`
-  - `enum Role` сохранён как legacy поле `User.role` — backward compat с существующими токенами
-  - Seed автоматически создаёт 3 роли + 18 permissions + привязывает всех пользователей по legacy role
-
-- [x] **Таблица permissions и route guard** _(реализовано 2026-04-24)_
-  - `getUserPermissions(userId)` — читает из `user_roles → role_permissions`
-  - `requirePermission` — если JWT имеет `roles[]` → использует `permissions[]`; иначе fallback на enum
-  - JWT payload расширен: `{ roles: string[], permissions: string[] }`
-  - `/auth/me` возвращает `roles` и `permissions`
-  - Новые эндпоинты: `GET/POST /users/:id/roles`, `DELETE /users/:id/roles/:roleId`, `GET /users/roles`
-
-- [x] **Фронтенд — ролевой рендеринг** _(реализовано 2026-04-24)_
-  - `AuthUser` расширен: `roles: string[]`, `permissions: string[]`
-  - `useIsAdmin()` / `useIsProducer()` читают из `user.roles[]` (fallback на `user.role`)
-  - Добавлен хук `useHasPermission(permission: string)`
+### Фаза 2 — Система ролей (RBAC, продолжение)
 
 - [ ] **UI управления ролями в UsersPage** — выпадающий список ролей, кнопки назначить/снять
 
@@ -123,7 +43,7 @@
 
 - [ ] **Удалить `enum Role` и `User.role`** — только после того как все старые JWT протухли и все пользователи переведены на RBAC
 
-- [ ] **Тесты auth guards матрица** — `apps/api/src/routes/auth.guards.test.ts`
+- [ ] **Тесты auth guards** — `apps/api/src/routes/auth.guards.test.ts`
 
 ### Фаза 3 — Интеграции
 
@@ -188,10 +108,5 @@
 
 ---
 
-> Текущий счёт тестов: **163 теста, 0 провалов** (`pnpm test`), стабильно (flaky sync-тест устранён).
-> Последнее обновление: 2026-04-24 (Фаза 0 + Фаза 1 CI/CD завершены)
-
-
-
-
-проверув
+> Текущий счёт тестов: **163 теста, 0 провалов** (`pnpm test`), стабильно.
+> Последнее обновление: 2026-04-24 (Фаза 1 завершена полностью, Фаза 2 RBAC инфраструктура готова)
