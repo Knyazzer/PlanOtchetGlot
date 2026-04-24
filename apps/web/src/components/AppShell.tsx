@@ -451,8 +451,6 @@ function SyncButton() {
   // Таблицы завершены когда оба лога есть и не running
   // (registry может появиться с задержкой — не блокируем матрицы на это)
   const projectsDone    = !!projectsLog && projectsLog.status !== 'running'
-  const registryDone    = !!registryLog && registryLog.status !== 'running'
-  const tablesDone      = projectsDone && registryDone
   const showMatricesRow = matrixLogs.length > 0 || (projectsDone && matricesPending && matrixTotal !== null)
   const canStop         = projectsDone && (anyLogRunning || matricesPending)
 
