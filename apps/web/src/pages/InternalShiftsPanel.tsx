@@ -468,6 +468,13 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parent
     staleTime: 30_000,
   })
 
+  const { data: parentTask } = useQuery<MicroProject>({
+    queryKey: ['status-row', parentTaskId],
+    queryFn: () => api.get(`/status-rows/${parentTaskId}`).then((r) => r.data),
+    enabled: !!parentTaskId,
+    staleTime: 60_000,
+  })
+
   const invalidateMicroProjects = () => {
     qc.invalidateQueries({ queryKey })
     qc.invalidateQueries({ queryKey: ['micro-projects-info', matrixRegistryId] })
@@ -562,6 +569,8 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parent
               onDeleted={() => handleDeleted(project.id)}
               onCopied={handleCopied}
               onUpdated={handleUpdated}
+              parentExecProducer={parentTask?.execProducer ?? null}
+              parentLineProducer={parentTask?.lineProducer ?? null}
             />
           )
         })()}
@@ -769,11 +778,13 @@ function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId?: s
 
 export { MicroProject }
 
-export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
+export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated, parentExecProducer, parentLineProducer }: {
   project: MicroProject
   onDeleted: () => void
   onCopied: (newId: string) => void
   onUpdated: () => void
+  parentExecProducer?: string | null
+  parentLineProducer?: string | null
 }) {
   const qc = useQueryClient()
   const [microTab, setMicroTab] = useState<'team' | 'planner' | 'expenses' | 'freelancers'>('team')
@@ -915,7 +926,7 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Content — left info panel always visible */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <ProjectInfoPanel project={project} onSave={saveField} />
+        <ProjectInfoPanel project={project} onSave={saveField} parentExecProducer={parentExecProducer} parentLineProducer={parentLineProducer} />
         <TeamTable
           project={project}
           members={members}
@@ -1084,9 +1095,11 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
   )
 }
 
-function ProjectInfoPanel({ project, onSave }: {
+function ProjectInfoPanel({ project, onSave, parentExecProducer, parentLineProducer }: {
   project: MicroProject
   onSave: (key: string, value: unknown) => void
+  parentExecProducer?: string | null
+  parentLineProducer?: string | null
 }) {
   const qc = useQueryClient()
   const [editingStatus, setEditingStatus] = useState(false)
@@ -1156,8 +1169,8 @@ function ProjectInfoPanel({ project, onSave }: {
         {FORMATS_WITH_LOCATION.includes(project.format ?? '') && (
           <ProducerField label="Локация"        fieldKey="location"      value={project.location}      options={LOCATION_OPTIONS} onSave={onSave} isApproved={fieldApprovals['location']}     onApprovalToggle={() => toggleFieldApproval.mutate('location')} />
         )}
-        <ProducerField label="Исп. продюсер"  fieldKey="execProducer"  value={project.execProducer}  options={producerOptions}    onSave={onSave} isApproved={fieldApprovals['execProducer']} onApprovalToggle={() => toggleFieldApproval.mutate('execProducer')} />
-        <ProducerField label="Лайн-продюсер"  fieldKey="lineProducer"  value={project.lineProducer}  options={producerOptions}    onSave={onSave} isApproved={fieldApprovals['lineProducer']} onApprovalToggle={() => toggleFieldApproval.mutate('lineProducer')} />
+        <ProducerField label="Исп. продюсер"  fieldKey="execProducer"  value={project.execProducer ?? parentExecProducer ?? null}  options={producerOptions}    onSave={onSave} isApproved={fieldApprovals['execProducer']} onApprovalToggle={() => toggleFieldApproval.mutate('execProducer')} />
+        <ProducerField label="Лайн-продюсер"  fieldKey="lineProducer"  value={project.lineProducer ?? parentLineProducer ?? null}  options={producerOptions}    onSave={onSave} isApproved={fieldApprovals['lineProducer']} onApprovalToggle={() => toggleFieldApproval.mutate('lineProducer')} />
       </div>
 
       {/* Block 2: Описание */}

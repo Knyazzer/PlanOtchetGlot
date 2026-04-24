@@ -247,6 +247,8 @@ await prisma.$executeRawUnsafe(
 
 **Удаление ключа в `group_schedule`** — установка ключа в `null` удаляет копию: `PATCH /status-rows/:id/group-schedule` с `{ "efir_2": null }` мержит null в JSONB; фронтенд фильтрует null при чтении.
 
+**Micro-tabs.** У каждой матрицы в `InternalShiftsPanel` — 4 саб-таба: `team` (команда + группы), `planner` (шедулер/канбан), `expenses` (расходы), `freelancers` (фрилансеры — внешний компонент `FreelancersPage.tsx`). `FreelancersPage` — не самостоятельная страница навигации, только саб-таб.
+
 **KanbanBoard.** Для `CREATIVE_FORMATS` (Моушн, Постпродакшн, Дизайн, Саунд-дизайн, Не профильный, **Радио**) саб-таб «Планировщик» показывает `KanbanBoard` вместо `ShiftPlanner`. Три колонки: request / in_progress / done. Таблица `kanban_tasks`, роуты `/kanban-tasks`. Drag-n-drop через pointer events. `KanbanTaskModal` редактирует title, assignee (из `ProjectMember`), даты.
 
 ---
@@ -262,6 +264,8 @@ await prisma.$executeRawUnsafe(
 - Dropdown колонок (`ColDropdown`) рендерится **внутри `<th>` через `position: absolute; top: 100%`** (не как floating overlay), чтобы скроллиться вместе с содержимым. Backdrop `position: fixed; inset: 0` ловит клик вне dropdown. Закрытие по скроллу — через `useEffect`.
 - `FilterGroup` определён на **уровне модуля** (не внутри других компонентов) — иначе React пересоздаёт его на каждом рендере, и скролл сбрасывается.
 - **Sticky-заголовки:** `thBase` использует `position: sticky; top: 0`. Не переопределяй `position` на отдельных `<th>` — `sticky` также даёт positioning context для абсолютно позиционированных dropdown'ов. Обёртка использует `overflow: clip`, а не `overflow: hidden` — `hidden` создаёт scroll container, который ломает sticky.
+
+**MatrixTabs.tsx** — выделенный файл с компонентами `GanttTab`, `NotesTab`, `DocumentsTab`. Используются внутри `RegistryDetailModal` в `SyncDataPage.tsx`. Все три работают с `/matrix-gantt`, `/matrix-notes`, `/matrix-documents` соответственно.
 
 Также в `SyncDataPage.tsx` содержится UI для:
 - **Управления внутренними матрицами** (`/internal-matrix/*`) — создание, редактирование, привязка, проверка наличия в Drive
@@ -349,8 +353,9 @@ Nginx-конфиг в `nginx/`. Скрипт `migrate:deploy` в `packages/db` �
 | Deals | `DealsPage.tsx` | ✅ |
 | Database | `DatabasePage.tsx` | ✅ (admin, «БД» в навигации) |
 | Notifications | `NotificationBell` в `AppShell.tsx` | ✅ |
-| Shift Planner | `ShiftPlanner.tsx` | ✅ |
-| Freelancers | `FreelancersPage.tsx` | ✅ |
+| Shift Planner | `ShiftPlanner.tsx` | ✅ (саб-таб «Планировщик» в InternalShiftsPanel) |
+| Freelancers | `FreelancersPage.tsx` | ✅ (саб-таб «Фрилансеры» в InternalShiftsPanel) |
+| OrgChart | `OrgChartTab.tsx` | ✅ (саб-таб «Структура» в UsersPage; состояние в localStorage `tv-shifts-org-chart`) |
 | Tasks | `TasksPage.tsx` | 🚧 (API готов) |
 | Analytics | `AnalyticsPage.tsx` | 🚧 (API готов) |
 | Profile | `ProfilePage.tsx` | 🚧 (API готов) |

@@ -118,7 +118,7 @@ export function WorkflowPage() {
   const [activeStage, setActiveStage] = useState<WfStage>('request')
   const [showGSheets, setShowGSheets] = useState(false)
   const [confirmModal, setConfirmModal] = useState<{ rowId: string; targetStage: WfStage; label: string } | null>(null)
-  const [connectModal, setConnectModal] = useState<{ rowId: string; client: string | null } | null>(null)
+  const [connectModal, setConnectModal] = useState<{ rowId: string } | null>(null)
   const [createProjectModal, setCreateProjectModal] = useState<{ rowId: string; client: string | null } | null>(null)
   const [detailRowId, setDetailRowId] = useState<string | null>(null)
   const [draggingRowId, setDraggingRowId] = useState<string | null>(null)
@@ -262,16 +262,19 @@ export function WorkflowPage() {
       if (permission === 'exit') { setConfirmModal({ rowId, targetStage, label: STAGE_LABELS[targetStage] }); return }
 
       const row = allRows.find((r) => r.id === rowId)
-      if (fromStage === 'connecting' && targetStage === 'production' && !row?.matrixRegistryId) {
-        setConnectModal({ rowId, client: row?.client ?? null })
-        return
+      if (fromStage === 'connecting' && targetStage === 'production') {
+        const hasDepts = (rowDepts[rowId] ?? []).length > 0
+        if (!row?.matrixRegistryId || !row?.client || !hasDepts) {
+          setConnectModal({ rowId })
+          return
+        }
       }
       doMove(rowId, targetStage)
     }
 
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }, [allRows])
+  }, [allRows, rowDepts])
 
   function doMove(rowId: string, targetStage: WfStage) {
     patchStatus.mutate({ id: rowId, status: STAGE_STATUSES[targetStage][0] })
@@ -288,6 +291,19 @@ export function WorkflowPage() {
     tip.innerHTML = `<b>Нельзя</b> перенести из «${STAGE_LABELS[from]}» в «${STAGE_LABELS[to]}»<br><span style="font-size:12px;color:#94a3b8">Этапы проходятся по порядку</span>`
     document.body.appendChild(tip)
     setTimeout(() => tip.remove(), 2000)
+  }
+
+  function showError(message: string) {
+    const tip = document.createElement('div')
+    Object.assign(tip.style, {
+      position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+      background: '#1e293b', color: '#fff', padding: '14px 22px', borderRadius: '10px',
+      fontSize: '13px', zIndex: '9999', pointerEvents: 'none',
+      boxShadow: '0 8px 24px rgba(0,0,0,.3)', textAlign: 'center',
+    })
+    tip.innerHTML = `<b>Невозможно перевести в Производство</b><br><span style="font-size:12px;color:#fca5a5">${message}</span>`
+    document.body.appendChild(tip)
+    setTimeout(() => tip.remove(), 2500)
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -420,7 +436,7 @@ export function WorkflowPage() {
                   activeStage={activeStage}
                   isDragging={draggingRowId === row.id}
                   deptKeys={rowDepts[row.id] ?? []}
-                  onConnectProject={() => setConnectModal({ rowId: row.id, client: row.client })}
+                  onConnectProject={() => setConnectModal({ rowId: row.id })}
                   onInfo={() => setDetailRowId(row.id)}
                   onOpenDepts={() => setDetailRowId(row.id)}
                   clients={clients}
@@ -516,10 +532,9 @@ export function WorkflowPage() {
       {connectModal && (
         <ConnectProjectModal
           rowId={connectModal.rowId}
-          client={connectModal.client}
           onClose={() => setConnectModal(null)}
-          onConnected={() => setConnectModal(null)}
-          onCreateProject={() => { setConnectModal(null); setCreateProjectModal({ rowId: connectModal.rowId, client: connectModal.client }) }}
+          onProceed={() => { doMove(connectModal.rowId, 'production'); setConnectModal(null) }}
+          onCreateProject={(client) => { setConnectModal(null); setCreateProjectModal({ rowId: connectModal.rowId, client }) }}
         />
       )}
 
@@ -795,49 +810,191 @@ function WorkflowRow({
 
 // ── ConnectProjectModal ───────────────────────────────────────────────────────
 
-function ConnectProjectModal({ rowId, client, onClose, onConnected, onCreateProject }: {
-  rowId: string; client: string | null
-  onClose: () => void; onConnected: () => void; onCreateProject: () => void
+const DEPT_OPTIONS = ['ТВ', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Радио', 'Не профильный', 'Трансляция', 'Телерадио', 'Съемки']
+
+function ConnectProjectModal({ rowId, onClose, onProceed, onCreateProject }: {
+  rowId: string
+  onClose: () => void
+  onProceed: () => void
+  onCreateProject: (client: string | null) => void
 }) {
   const qc = useQueryClient()
-  const [selectedId, setSelectedId] = useState('')
+
+  const { data: row } = useQuery<StatusRow>({
+    queryKey: ['connect-modal-row', rowId],
+    queryFn: () => api.get(`/status-rows/${rowId}`).then((r) => r.data),
+    staleTime: 5_000,
+  })
+
+  const { data: depts = [], refetch: refetchDepts } = useQuery<{ id: string; name: string; format: string | null }[]>({
+    queryKey: ['connect-modal-depts', rowId],
+    queryFn: () => api.get('/status-rows', { params: { parentTaskId: rowId } }).then((r) => r.data),
+    staleTime: 5_000,
+  })
+
   const { data: matrices = [] } = useQuery<{ id: string; name: string | null; matrixId: string; client: string | null }[]>({
     queryKey: ['matrix-registry-list'],
     queryFn: () => api.get('/sync/registry').then((r) => r.data).catch(() => []),
     staleTime: 60_000,
   })
-  const link = useMutation({
-    mutationFn: () => api.patch(`/status-rows/${rowId}`, { matrixRegistryId: selectedId }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['workflow-rows'] }); onConnected() },
+
+  // ── Client ──
+  const [clientDraft, setClientDraft] = useState(row?.client ?? '')
+  useEffect(() => { if (row?.client) setClientDraft(row.client) }, [row?.client])
+
+  const saveClient = useMutation({
+    mutationFn: () => api.patch(`/status-rows/${rowId}`, { client: clientDraft.trim() || null }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['connect-modal-row', rowId] }),
   })
-  const clientMatrices = client ? matrices.filter((m) => m.client?.toLowerCase().includes(client.toLowerCase())) : matrices
+
+  // ── Matrix ──
+  const [selectedId, setSelectedId] = useState('')
+  const clientMatrices = row?.client
+    ? matrices.filter((m) => m.client?.toLowerCase().includes((row.client ?? '').toLowerCase()))
+    : matrices
+
+  const linkMatrix = useMutation({
+    mutationFn: () => api.patch(`/status-rows/${rowId}`, { matrixRegistryId: selectedId }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['connect-modal-row', rowId] }); qc.invalidateQueries({ queryKey: ['workflow-rows'] }) },
+  })
+
+  // ── Depts ──
+  const [newDept, setNewDept] = useState('')
+  const addDept = useMutation({
+    mutationFn: () => api.post('/status-rows', { name: newDept, format: newDept, parentTaskId: rowId, status: 'request' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['connect-modal-depts', rowId] })
+      qc.invalidateQueries({ queryKey: ['workflow-children'] })
+      setNewDept('')
+      refetchDepts()
+    },
+  })
+  const deleteDept = useMutation({
+    mutationFn: (id: string) => api.delete(`/status-rows/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['connect-modal-depts', rowId] })
+      qc.invalidateQueries({ queryKey: ['workflow-children'] })
+    },
+  })
+
+  const hasClient = !!(row?.client)
+  const hasMatrix = !!(row?.matrixRegistryId)
+  const hasDepts = depts.length > 0
+  const allDone = hasClient && hasMatrix && hasDepts
+
+  const sectionS: React.CSSProperties = {
+    border: '1px solid #e2e8f0', borderRadius: 10, padding: '14px 16px', marginBottom: 12,
+  }
+  const sectionTitle = (done: boolean): React.CSSProperties => ({
+    fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+    color: done ? '#16a34a' : '#64748b', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
+  })
+  const check = (done: boolean) => (
+    <span style={{
+      width: 18, height: 18, borderRadius: '50%', flexShrink: 0, display: 'inline-flex',
+      alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700,
+      background: done ? '#16a34a' : '#e2e8f0', color: done ? '#fff' : '#94a3b8',
+    }}>{done ? '✓' : '!'}</span>
+  )
 
   return (
     <Modal onClose={onClose}>
-      <h3 style={mh3}>Подключить к проекту</h3>
-      <p style={mp}>Выберите проект из реестра или создайте новый.</p>
-      {clientMatrices.length > 0 ? (
-        <>
-          <label style={mlabel}>Выберите проект{client ? ` клиента «${client}»` : ''}</label>
-          <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} style={mselect}>
-            <option value="">— выберите —</option>
-            {clientMatrices.map((m) => <option key={m.id} value={m.id}>{m.name || m.matrixId}{m.client ? ` (${m.client})` : ''}</option>)}
+      <h3 style={{ ...mh3, marginBottom: 4 }}>Перевод в Производство</h3>
+      <p style={{ ...mp, marginBottom: 16 }}>Заполните все условия для перевода задачи.</p>
+
+      {/* ── Клиент ── */}
+      <div style={sectionS}>
+        <div style={sectionTitle(hasClient)}>{check(hasClient)} Клиент</div>
+        {hasClient ? (
+          <div style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>{row?.client}</div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={clientDraft}
+              onChange={(e) => setClientDraft(e.target.value)}
+              placeholder="Введите клиента"
+              style={{ ...mselect, flex: 1, margin: 0 }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && clientDraft.trim()) saveClient.mutate() }}
+            />
+            <button
+              style={{ ...btnPrimary, padding: '7px 14px' }}
+              disabled={!clientDraft.trim() || saveClient.isPending}
+              onClick={() => saveClient.mutate()}
+            >Сохранить</button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Подключение к проекту ── */}
+      <div style={sectionS}>
+        <div style={sectionTitle(hasMatrix)}>{check(hasMatrix)} Подключение к проекту</div>
+        {hasMatrix ? (
+          <div style={{ fontSize: 13, color: '#1e293b', fontWeight: 500 }}>
+            {row?.matrixRegistry?.name || '✓ Проект подключён'}
+          </div>
+        ) : (
+          <>
+            {clientMatrices.length > 0 ? (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)} style={{ ...mselect, flex: 1, margin: 0 }}>
+                  <option value="">— выберите проект —</option>
+                  {clientMatrices.map((m) => <option key={m.id} value={m.id}>{m.name || m.matrixId}{m.client ? ` (${m.client})` : ''}</option>)}
+                </select>
+                <button
+                  style={{ ...btnPrimary, padding: '7px 14px' }}
+                  disabled={!selectedId || linkMatrix.isPending}
+                  onClick={() => linkMatrix.mutate()}
+                >{linkMatrix.isPending ? '...' : 'Привязать'}</button>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: '#b45309', marginBottom: 8 }}>Проектов в реестре нет.</div>
+            )}
+            <button
+              style={{ ...btnSecondary, fontSize: 12, padding: '5px 12px', borderColor: '#fde68a', color: '#b45309' }}
+              onClick={() => onCreateProject(row?.client ?? null)}
+            >+ Создать новый проект</button>
+          </>
+        )}
+      </div>
+
+      {/* ── Отделы ── */}
+      <div style={sectionS}>
+        <div style={sectionTitle(hasDepts)}>{check(hasDepts)} Отделы</div>
+        {depts.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+            {depts.map((d) => (
+              <span key={d.id} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '3px 8px 3px 10px', borderRadius: 16, fontSize: 12,
+                background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8',
+              }}>
+                {d.format || d.name}
+                <button
+                  onClick={() => deleteDept.mutate(d.id)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#93c5fd', fontSize: 14, lineHeight: 1, padding: '0 1px' }}
+                >×</button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <select value={newDept} onChange={(e) => setNewDept(e.target.value)} style={{ ...mselect, flex: 1, margin: 0 }}>
+            <option value="">— добавить отдел —</option>
+            {DEPT_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
-          <p style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', margin: '4px 0 12px' }}>— или —</p>
-        </>
-      ) : (
-        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#b45309' }}>
-          {client ? `У клиента «${client}» нет проектов в реестре.` : 'Проектов в реестре нет.'}
+          <button
+            style={{ ...btnPrimary, padding: '7px 14px' }}
+            disabled={!newDept || addDept.isPending}
+            onClick={() => addDept.mutate()}
+          >{addDept.isPending ? '...' : 'Добавить'}</button>
         </div>
-      )}
+      </div>
+
       <div style={mactions}>
         <button style={btnSecondary} onClick={onClose}>Отмена</button>
-        <button style={{ ...btnSecondary, borderColor: '#fde68a', color: '#b45309' }} onClick={onCreateProject}>+ Создать проект</button>
-        {clientMatrices.length > 0 && (
-          <button style={btnPrimary} disabled={!selectedId || link.isPending} onClick={() => link.mutate()}>
-            {link.isPending ? 'Привязка...' : 'Привязать'}
-          </button>
-        )}
+        <button style={{ ...btnPrimary, opacity: allDone ? 1 : 0.4, cursor: allDone ? 'pointer' : 'not-allowed' }} disabled={!allDone} onClick={onProceed}>
+          Перевести в Производство →
+        </button>
       </div>
     </Modal>
   )
@@ -997,7 +1154,6 @@ const cellSelect: React.CSSProperties = {
 const mh3: React.CSSProperties = { fontSize: 16, fontWeight: 700, marginBottom: 8 }
 const mp: React.CSSProperties  = { fontSize: 13, color: '#64748b', marginBottom: 20, lineHeight: 1.5 }
 const mactions: React.CSSProperties = { display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }
-const mlabel: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }
 const mselect: React.CSSProperties = { width: '100%', padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 13, fontFamily: 'inherit', marginBottom: 8 }
 const btnPrimary: React.CSSProperties = { padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none', background: '#2563eb', color: '#fff' }
 const btnSecondary: React.CSSProperties = { padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '1px solid #d1d5db', background: '#fff', color: '#374151' }
