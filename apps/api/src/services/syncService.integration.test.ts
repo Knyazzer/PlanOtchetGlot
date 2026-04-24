@@ -61,7 +61,7 @@ function matrixMetaNoMatch() {
 
 const savedEnv: Record<string, string | undefined> = {}
 
-beforeAll(() => {
+beforeAll(async () => {
   for (const k of ['GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_PROJECTS_SHEET_ID', 'GOOGLE_REGISTRY_SHEET_ID']) {
     savedEnv[k] = process.env[k]
   }
@@ -69,6 +69,8 @@ beforeAll(() => {
   process.env.GOOGLE_PRIVATE_KEY           ??= '-----BEGIN RSA PRIVATE KEY-----\nfakekey\n-----END RSA PRIVATE KEY-----'
   process.env.GOOGLE_PROJECTS_SHEET_ID     ??= 'projects-sheet-id'
   process.env.GOOGLE_REGISTRY_SHEET_ID     ??= 'registry-sheet-id'
+  // Clean up any SyncLogs left by an interrupted previous run
+  await prisma.syncLog.deleteMany().catch(() => {})
 })
 
 afterAll(async () => {

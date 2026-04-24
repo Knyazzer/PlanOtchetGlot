@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/rea
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
+import { TV_FORMATS, FORMATS_WITH_LOCATION, DEFAULT_GROUP_TIMES } from '../lib/groupDefaults'
 import { ShiftPlanner } from './ShiftPlanner'
 import { useCurrentUser } from '../hooks/useAuth'
 
@@ -209,10 +210,8 @@ const LOCATION_OPTIONS = [
 ]
 
 const SHIFT_FORMATS = ['Трансляция', 'Телерадио', 'Съемки', 'Радио', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн']
-const FORMATS_WITH_LOCATION = ['Трансляция', 'Телерадио', 'Съемки']
 const DEPARTMENTS = ['ТВ', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Радио', 'Не профильный']
 const CREATIVE_FORMATS = ['Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Не профильный', 'Радио']
-const TV_FORMATS = ['Трансляция', 'Телерадио', 'Съемки']
 
 // Which schedule fields each group uses
 const GROUP_FIELDS: Record<string, ('date' | 'time' | 'timeFrom' | 'timeTo' | 'startTime')[]> = {
@@ -476,8 +475,7 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parent
   })
 
   const invalidateMicroProjects = () => {
-    qc.invalidateQueries({ queryKey })
-    qc.invalidateQueries({ queryKey: ['micro-projects-info', matrixRegistryId] })
+    qc.invalidateQueries({ queryKey: ['micro-projects'] })
     qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
   }
 
@@ -860,6 +858,14 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated, paren
 
   // ── Date mutations ─────────────────────────────────────────────────────────
 
+  const patchDaysCache = (updated: MicroProject | null) => {
+    if (!updated) return
+    qc.setQueriesData<MicroProject[]>(
+      { queryKey: ['micro-projects'] },
+      (old) => old?.map((p) => p.id === project.id ? { ...p, ...updated } : p),
+    )
+  }
+
   const addDateMutation = useMutation({
     mutationFn: (p: DatePopup) => {
       const iso = p.date
@@ -871,7 +877,7 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated, paren
         ],
       }).then((r) => r.data)
     },
-    onSuccess: () => { onUpdated(); setDatePopup(null) },
+    onSuccess: (updated) => { patchDaysCache(updated); onUpdated(); setDatePopup(null) },
   })
 
   const updateDayMutation = useMutation({
@@ -894,7 +900,7 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated, paren
       }
       return api.patch(`/status-rows/${project.id}`, { days }).then((r) => r.data)
     },
-    onSuccess: () => { onUpdated(); setDatePopup(null) },
+    onSuccess: (updated) => { patchDaysCache(updated); onUpdated(); setDatePopup(null) },
   })
 
   const removeDateMutation = useMutation({
@@ -904,7 +910,7 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated, paren
         .map((d) => ({ id: d.id, date: d.date, type: d.type, startTime: d.startTime ?? null, timeFrom: d.timeFrom ?? null, timeTo: d.timeTo ?? null, allDay: d.allDay ?? false, firstMotor: d.firstMotor ?? null }))
       return api.patch(`/status-rows/${project.id}`, { days: remaining }).then((r) => r.data)
     },
-    onSuccess: onUpdated,
+    onSuccess: (updated) => { patchDaysCache(updated); onUpdated() },
   })
 
   const openAddDate = () => setDatePopup({ mode: 'add', origDate: '', date: '', type: 'efir', timeFrom: '', timeTo: '', startTime: '', allDay: false, firstMotor: '' })
@@ -2497,15 +2503,6 @@ function CreateMicroProjectForm({ matrixRegistryId, parentTaskId, onCreated, onC
   const resolvedFormat = isTv ? tvFormat : dept
   const showLocation = FORMATS_WITH_LOCATION.includes(resolvedFormat)
   const canCreate = dept.trim() !== '' && (!isTv || tvFormat.trim() !== '') && (!showLocation || location.trim() !== '')
-
-  const DEFAULT_GROUP_TIMES: Record<string, { timeFrom: string; timeTo: string; startTime?: string }> = {
-    sbor:      { timeFrom: '07:00', timeTo: '10:00' },
-    zavoz:     { timeFrom: '10:00', timeTo: '11:00' },
-    montazh:   { timeFrom: '11:00', timeTo: '16:00' },
-    efir:      { timeFrom: '16:00', timeTo: '18:00', startTime: '16:30' },
-    demontazh: { timeFrom: '18:00', timeTo: '20:00' },
-    vyvoz:     { timeFrom: '20:00', timeTo: '21:00' },
-  }
 
   const create = useMutation({
     mutationFn: async () => {

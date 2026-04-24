@@ -73,16 +73,22 @@ pnpm test                                 # всё
 pnpm --filter @tv-shifts/api test         # только API
 pnpm --filter @tv-shifts/web test         # только Web
 pnpm --filter @tv-shifts/api exec vitest run src/routes/users.test.ts  # один файл
+pnpm --filter @tv-shifts/api test:watch   # watch-режим (API)
+pnpm --filter @tv-shifts/web test:watch   # watch-режим (Web)
+
+# Линтинг (только Web, ESLint)
+pnpm --filter @tv-shifts/web exec eslint .
 
 # TypeScript-проверка
 pnpm --filter @tv-shifts/web exec tsc --noEmit
 pnpm --filter @tv-shifts/api build
 
 # БД (Prisma)
-pnpm db:generate    # перегенерация клиента
-pnpm db:migrate     # применение миграций
-pnpm db:seed        # тестовые данные
-pnpm db:studio      # GUI
+pnpm db:generate      # перегенерация клиента
+pnpm db:migrate       # применение миграций (dev)
+pnpm db:migrate:test  # применение миграций в тест-БД (TEST_DATABASE_URL из .env)
+pnpm db:seed          # тестовые данные
+pnpm db:studio        # GUI
 ```
 
 **API-тесты** — интеграционные, используют `buildApp()` из `apps/api/src/test/helpers.ts` и реальный PostgreSQL через `app.inject()`. БД должна быть запущена. Фабрики данных — в `apps/api/src/test/factories.ts`, убирай созданное в `afterEach`/`afterAll`. Запуск в `singleThread` — одно соединение на все тесты.

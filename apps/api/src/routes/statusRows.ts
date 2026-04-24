@@ -32,6 +32,7 @@ const createStatusRowSchema = z.object({
   location: z.string().nullable().optional(),
   postProduction: z.string().nullable().optional(),
   matrixRegistryId: z.string().uuid().nullable().optional(),
+  parentTaskId: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   status: z.enum(['request','negotiation','connecting','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   days: z.array(daySchema).optional(),
@@ -103,13 +104,13 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       // Exclude rows that are department children of another row
       const baseClause = query.matrixRegistryId
         ? `matrix_registry_id = $1 AND parent_task_id IS NULL`
-        : `parent_task_id IS NULL`
+        : `parent_task_id IS NULL AND source = 'manual'`
       const rows = query.matrixRegistryId
         ? await prisma.$queryRawUnsafe<{ id: string }[]>(
             `SELECT id FROM status_rows WHERE ${baseClause}`, query.matrixRegistryId
           )
         : await prisma.$queryRawUnsafe<{ id: string }[]>(
-            `SELECT id FROM status_rows WHERE parent_task_id IS NULL`
+            `SELECT id FROM status_rows WHERE parent_task_id IS NULL AND source = 'manual'`
           )
       where.id = { in: rows.map((r) => r.id) }
     }
@@ -180,15 +181,12 @@ export async function statusRowsRoutes(app: FastifyInstance) {
 
   // POST /status-rows — ручное создание (admin only)
   app.post('/', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
-    const rawBody = request.body as Record<string, unknown>
-    const parentTaskId = typeof rawBody?.parentTaskId === 'string' ? rawBody.parentTaskId : null
-
     const body = createStatusRowSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const { days, efirDate, zastroykDate, status: bodyStatus, matrixRegistryId, ...rowData } = body.data
+    const { days, efirDate, zastroykDate, status: bodyStatus, matrixRegistryId, parentTaskId, ...rowData } = body.data
 
     const autoDays: { date: Date; type: 'efir' | 'zastroyka' }[] = []
     if (zastroykDate) autoDays.push({ date: new Date(zastroykDate), type: 'zastroyka' })

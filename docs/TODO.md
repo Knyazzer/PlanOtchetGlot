@@ -16,31 +16,19 @@
 
 - [x] **Класс A #9: `workflow-children` — несовпадение ключей кеша** _(исправлено 2026-04-23)_
 
-- [ ] **Класс C: `MicroProjectTab` — стейл `selectedProject` → потеря дней проекта**
-  - Файл: `apps/web/src/pages/SyncDataPage.tsx:1604` (`project={selectedProject as any}`)
-  - Симптом: пользователь открывает проект из таблицы, добавляет день A, затем день B — день A пропадает
-  - Причина: `addDateMutation` читает `project.days` из пропса, а `selectedProject` — замороженный `useState` на момент клика; `onUpdated()` инвалидирует кеш, но `selectedProject` не синхронизируется
-  - Фикс: хранить `selectedProjectId: string | null`, читать данные из TanStack Query кеша по ID
+- [x] **Класс C: `MicroProjectTab` — стейл `selectedProject` → потеря дней проекта** _(исправлено 2026-04-24)_
+  - Фикс: `patchDaysCache(updated)` через `qc.setQueriesData(['micro-projects'])` в `onSuccess` всех трёх date-мутаций; кеш обновляется синхронно до следующего действия пользователя
 
-- [ ] **Класс A #6: `updateStatus` / `updateBrief` инвалидируют несуществующий ключ**
-  - Файл: `apps/web/src/pages/SyncDataPage.tsx:1737` и `:1753`
-  - Причина: `qc.invalidateQueries({ queryKey: ['internal-matrix'] })` — а `useQuery` слушает `['internal-matrices', client]`
-  - Фикс: заменить на `qc.invalidateQueries({ queryKey: ['internal-matrices'] })`
+- [x] **Класс A #6: `updateStatus` / `updateBrief` инвалидируют несуществующий ключ** _(исправлено 2026-04-24)_
 
-- [ ] **Класс A #7: `deleteMatrix` не инвалидирует пикер матриц**
-  - Файл: `apps/web/src/pages/SyncDataPage.tsx:3191`
-  - Фикс: добавить `queryClient.invalidateQueries({ queryKey: ['internal-matrices'] })` в `onSuccess`
+- [x] **Класс A #7: `deleteMatrix` не инвалидирует пикер матриц** _(исправлено 2026-04-24)_
 
-- [ ] **Класс A #8: `MatrixFormModal.onSaved` не инвалидирует пикер матриц**
-  - Файл: `apps/web/src/pages/SyncDataPage.tsx:3520`
-  - Фикс: добавить `queryClient.invalidateQueries({ queryKey: ['internal-matrices'] })` рядом с `['sync-registry']`
+- [x] **Класс A #8: `MatrixFormModal.onSaved` не инвалидирует пикер матриц** _(исправлено 2026-04-24)_
 
 ### Workflow — производительность при росте данных
 
-- [ ] **`topLevelOnly` без `matrixRegistryId` — нет source-фильтра**
-  - Файл: `apps/api/src/routes/statusRows.ts:111`
-  - Сейчас: `SELECT id FROM status_rows WHERE parent_task_id IS NULL` — тянет ВСЕ строки без фильтра по source. При большом числе строк из Google Sheets (`source='projects_table'`) запрос возвращает лишнее.
-  - Фикс: добавить `AND source = 'manual'` к запросу, когда используется `topLevelOnly` без `matrixRegistryId`
+- [x] **`topLevelOnly` без `matrixRegistryId` — нет source-фильтра** _(исправлено 2026-04-24)_
+  - Добавлен `AND source = 'manual'` в SQL-запрос `topLevelOnly` без `matrixRegistryId`
 
 ---
 
@@ -48,12 +36,11 @@
 
 - [x] **Орфанный импорт `TaskDetailPanel`** — был в `SyncDataPage.tsx:8`, удалён 2026-04-23.
 
-- [ ] **Дублирование `DEFAULT_GROUP_TIMES`** — константа определена в `InternalShiftsPanel.tsx` и в `TaskDetailPanel.tsx`. Вынести в `apps/web/src/lib/groupDefaults.ts`.
+- [x] **Дублирование `DEFAULT_GROUP_TIMES`** _(исправлено 2026-04-24)_ — вынесено в `apps/web/src/lib/groupDefaults.ts` вместе с `TV_FORMATS` и `FORMATS_WITH_LOCATION`; удалено из `InternalShiftsPanel.tsx` (было внутри компонента — пересоздавалось на каждом рендере) и `TaskDetailPanel.tsx`.
 
-- [ ] **`parent_task_id` не в Zod-схеме `createStatusRowSchema`** — поле обходит валидацию: извлекается из `rawBody` до zod.parse. Неявно, но работает. Добавить явное поле в схему для прозрачности.
-  - Файл: `apps/api/src/routes/statusRows.ts:20-38`
+- [x] **`parent_task_id` не в Zod-схеме `createStatusRowSchema`** _(исправлено 2026-04-24)_ — поле добавлено в схему, извлекается из `body.data` вместо `rawBody`.
 
-- [ ] **Два ключа для одних и тех же данных** — `['micro-projects', matrixRegistryId]` и `['micro-projects-info', entry.id]` запрашивают один и тот же `GET /status-rows?matrixRegistryId=...`. Унифицировать в один ключ или удалить дублирующий.
+- [x] **Два ключа для одних и тех же данных** _(исправлено 2026-04-24)_ — `['micro-projects-info', entry.id]` → `['micro-projects', entry.id]`; лишний `invalidate` в `invalidateMicroProjects` удалён.
 
 - [ ] **Schema drift `ProjectMember` / `StatusRow`** — колонки `employment_type`, `rate_plan`, `rate_fact`, `is_approved`, `field_approvals`, `group_name`, `group_schedule`, `parent_task_id` добавлены raw SQL, Prisma-клиент их не знает. Весь доступ через `$queryRawUnsafe`. При регенерации клиента — потеря типизации. Нужна отдельная Prisma-модель или view.
 
@@ -80,21 +67,27 @@
 
 ### Фаза 0 — Тестовая инфраструктура
 
-- [ ] **Изолированная test-база** — добавить `TEST_DATABASE_URL` в `.env`; в `apps/api/src/test/helpers.ts` переключать Prisma-клиент на отдельную БД при `NODE_ENV=test`. Текущая проблема: тесты пишут данные в dev-БД, `afterAll`-падения оставляют записи.
-  - Файл: `apps/api/src/test/helpers.ts` + `docker-compose.dev.yml` (добавить `postgres_test` на порту 5434)
-  - Проверка: `pnpm test` не должен создавать ни одной записи в dev-БД
+- [x] **Изолированная test-база** _(реализовано 2026-04-24)_
+  - `TEST_DATABASE_URL` добавлен в `.env` и `.env.example`; `postgres_test` поднят на порту 5434
+  - `vitest.config.ts` уже подменял `DATABASE_URL → TEST_DATABASE_URL`; миграции накатаны на тест-БД
+  - `db:migrate:test` переписан на кросс-платформенный `node scripts/migrate-test.cjs` (был `bash -c 'source .env...'`, не работал на Windows)
+  - Flaky-тест `syncService.integration.test.ts` устранён: добавлен `prisma.syncLog.deleteMany()` в `beforeAll` — stale-записи от прерванных прогонов больше не мешают
+  - Проверка: dev-БД не получает ни одной записи от `pnpm test`
 
 ### Фаза 1 — CI/CD и безопасность данных
 
-- [ ] **GitHub Actions — базовый пайплайн**
+- [x] **GitHub Actions — базовый пайплайн** _(реализовано 2026-04-24)_
   - Файл: `.github/workflows/ci.yml`
   - Jobs: `lint → tsc → test (test DB в Docker service) → build`
   - Триггер: `push` на любой ветке, `pull_request` → main
 
-- [ ] **Staging-окружение** — отдельный `docker-compose.staging.yml`. Перед каждым деплоем в prod — накатить на staging.
+- [x] **Staging-окружение** _(реализовано 2026-04-24)_
+  - `docker-compose.staging.yml` — изолированная staging-БД, nginx на порту 8080, HTTP (без SSL)
+  - `nginx/nginx.staging.conf` — упрощённый nginx без HTTPS и certbot
+  - `.env.staging.example` — шаблон переменных для staging
 
-- [ ] **Процедура безопасных миграций**
-  - Скрипт `scripts/safe-migrate.sh` — делает pg_dump, накатывает миграцию, пишет в лог
+- [x] **Процедура безопасных миграций** _(реализовано 2026-04-24)_
+  - `scripts/safe-migrate.sh` — pg_dump → `prisma migrate deploy` → лог; при ошибке — инструкция по откату
   - Никаких `DROP COLUMN` без предварительного периода deprecation
 
 - [ ] **Audit log — расширить `change_logs`** — сейчас не логируются: вход/выход пользователя, смена роли, удаление записей.
@@ -181,5 +174,5 @@
 
 ---
 
-> Текущий счёт тестов: **163 теста, 0 провалов** (`pnpm test`).
-> Последнее обновление: 2026-04-23
+> Текущий счёт тестов: **163 теста, 0 провалов** (`pnpm test`), стабильно (flaky sync-тест устранён).
+> Последнее обновление: 2026-04-24 (Фаза 0 + Фаза 1 CI/CD завершены)

@@ -12,6 +12,6 @@
     "db:seed": "pnpm --filter @tv-shifts/db seed",
     "test": "pnpm -r test",
     "db:studio": "prisma studio --schema packages/db/prisma/schema.prisma",
-    "db:migrate:test": "bash -c 'set -a && source .env && set +a && DATABASE_URL=$TEST_DATABASE_URL pnpm --filter @tv-shifts/db migrate:test'"
+    "db:migrate:test": "node scripts/migrate-test.cjs"
   }
 }

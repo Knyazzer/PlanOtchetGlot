@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { TV_FORMATS, FORMATS_WITH_LOCATION, DEFAULT_GROUP_TIMES } from '../lib/groupDefaults'
 import { InternalShiftsPanel } from './InternalShiftsPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -39,19 +40,8 @@ const FORMATS   = ['ТВ', 'Радио', 'Телерадио', 'Продакшн
 const LOCATIONS = ['Знаменка крыша', 'Знаменка чёрная', 'Знаменка камин', 'Романов', 'Выезд']
 
 const DEPARTMENTS         = ['ТВ', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Радио', 'Не профильный']
-const TV_FORMATS          = ['Трансляция', 'Телерадио', 'Съемки']
-const FORMATS_WITH_LOCATION = ['Трансляция', 'Телерадио', 'Съемки']
-
 const STUDIO_GROUPS = ['sbor', 'montazh', 'efir', 'demontazh']
 const VIEZD_GROUPS  = ['sbor', 'zavoz', 'montazh', 'efir', 'demontazh', 'vyvoz']
-const DEFAULT_GROUP_TIMES: Record<string, { timeFrom: string; timeTo: string; startTime?: string }> = {
-  sbor:      { timeFrom: '07:00', timeTo: '10:00' },
-  zavoz:     { timeFrom: '10:00', timeTo: '11:00' },
-  montazh:   { timeFrom: '11:00', timeTo: '16:00' },
-  efir:      { timeFrom: '16:00', timeTo: '18:00', startTime: '16:30' },
-  demontazh: { timeFrom: '18:00', timeTo: '20:00' },
-  vyvoz:     { timeFrom: '20:00', timeTo: '21:00' },
-}
 
 const STATUS_LABELS: Record<string, string> = {
   request: 'Запрос', negotiation: 'На согласовании', connecting: 'Подключение к проекту',

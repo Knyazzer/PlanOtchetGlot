@@ -4,6 +4,42 @@
 
 ---
 
+## Этап 16 — Баги, технический долг, Фаза 0 (сессия 2026-04-24)
+
+### Исправленные баги (аудит 2026-04-21 / 2026-04-23)
+
+- [x] **Класс A #6: неверный query key в `updateStatus` / `saveBrief` / `patchField`** — `['internal-matrix']` → `['internal-matrices']` (3 места в `SyncDataPage.tsx`); пикер матриц теперь обновляется при смене статуса и сохранении брифа
+- [x] **Класс A #7: `deleteMatrix` не инвалидировал пикер матриц** — добавлен `queryClient.invalidateQueries({ queryKey: ['internal-matrices'] })` в `onSuccess`
+- [x] **Класс A #8: `MatrixFormModal.onSaved` не инвалидировал пикер матриц** — добавлен `invalidateQueries(['internal-matrices'])` рядом с `['sync-registry']`
+- [x] **`topLevelOnly` без `source`-фильтра** — `GET /status-rows?topLevelOnly=true` тянул строки из Google Sheets и разделители; добавлен `AND source = 'manual'` в SQL-запрос; воронка задач больше не замедляется при росте данных из Sheets
+- [x] **Класс C: стейл `project.days` → потеря дней при быстром добавлении** — в `InternalShiftsPanel.tsx` добавлен хелпер `patchDaysCache(updated)`: все три date-мутации (`addDate`, `updateDay`, `removeDate`) теперь синхронно обновляют кеш через `qc.setQueriesData(['micro-projects'])` в `onSuccess`; следующее открытие попапа всегда видит актуальные дни
+
+### Технический долг
+
+- [x] **Дублирование констант** — `DEFAULT_GROUP_TIMES`, `TV_FORMATS`, `FORMATS_WITH_LOCATION` вынесены в `apps/web/src/lib/groupDefaults.ts`; в `InternalShiftsPanel.tsx` константа была определена внутри компонента (пересоздавалась на каждом рендере) — теперь импортируется с уровня модуля
+- [x] **`parent_task_id` вне Zod-схемы** — поле `parentTaskId` добавлено в `createStatusRowSchema`; больше не извлекается из сырого `rawBody` до парсинга — обходит валидацию
+- [x] **Дублирующий query key** — `['micro-projects-info', entry.id]` в `SyncDataPage.tsx` унифицирован в `['micro-projects', entry.id]`; лишний `invalidate` в `invalidateMicroProjects` удалён; обе точки теперь шарят один кеш
+
+### Фаза 0 — Изолированная тестовая база
+
+- [x] **`postgres_test` на порту 5434** — контейнер добавлен в `docker-compose.dev.yml` (был уже описан), поднят; миграции накатаны
+- [x] **`TEST_DATABASE_URL`** — добавлен в `.env` и `.env.example`; `vitest.config.ts` уже содержал механизм подмены `DATABASE_URL → TEST_DATABASE_URL` перед стартом воркеров
+- [x] **`pnpm db:migrate:test` на Windows** — скрипт переписан с `bash -c 'source .env ...'` на `node scripts/migrate-test.cjs`; работает кросс-платформенно
+- [x] **Flaky `syncService.integration.test.ts`** — добавлен `prisma.syncLog.deleteMany()` в `beforeAll`; корень: прерванный предыдущий прогон оставлял `SyncLog` со `status='running'` в БД, первый тест следующего прогона их видел; устранено — 163/163 стабильно при трёх прогонах подряд
+- [x] **Изоляция подтверждена** — после `pnpm test` dev-БД не получает ни одной записи (13 users / 9 status_rows — только seed-данные, не трогаются)
+
+### Фаза 1 — CI/CD и безопасность данных
+
+- [x] **GitHub Actions CI пайплайн** (`.github/workflows/ci.yml`) — 4 job'а: `lint` (ESLint), `tsc` (TypeScript), `test` (postgres service, migrate, vitest), `build` (api + web); триггер: push на все ветки + PR → master
+- [x] **Исправлены TypeScript-ошибки в API** — `fastify.d.ts` расширен: `FastifyBaseLogger.setBindings`, `FastifyJWT.payload` включает `email`, `fullName`, `type`; `pnpm --filter @tv-shifts/api build` — чистый выход
+- [x] **`scripts/migrate-test.cjs` совместим с CI** — сначала проверяет `process.env.TEST_DATABASE_URL` (есть в CI), fallback на `.env` (локальная разработка)
+- [x] **Staging-окружение** — `docker-compose.staging.yml` (изолированная БД, nginx на порту 8080, без SSL), `nginx/nginx.staging.conf`, `.env.staging.example`
+- [x] **Процедура безопасных миграций** — `scripts/safe-migrate.sh`: делает `pg_dump | gzip`, применяет `prisma migrate deploy`, пишет лог; при ошибке — команда для восстановления
+
+**Счёт тестов после сессии: 163 теста, 0 провалов, стабильно**
+
+---
+
 ## Этап 1 — Фундамент
 
 ### Инфраструктура

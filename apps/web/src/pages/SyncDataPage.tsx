@@ -1244,7 +1244,7 @@ function RegistryInfoTab({
 
   // Fetch micro-projects and their financial data (only for internal)
   const { data: projects = [] } = useQuery<any[]>({
-    queryKey: ['micro-projects-info', entry.id],
+    queryKey: ['micro-projects', entry.id],
     queryFn: () => api.get(`/status-rows?matrixRegistryId=${entry.id}`).then((r) => r.data),
     enabled: isInternal,
     staleTime: 60_000,
@@ -1309,7 +1309,7 @@ function RegistryInfoTab({
     mutationFn: (newStatus: string) =>
       api.patch(`/internal-matrix/${entry.id}`, { status: newStatus }).then((r) => r.data),
     onSuccess: (_data: unknown, newStatus: string) => {
-      qc.invalidateQueries({ queryKey: ['internal-matrix'] })
+      qc.invalidateQueries({ queryKey: ['internal-matrices'] })
       onStatusChanged?.(newStatus)
     },
   })
@@ -1325,7 +1325,7 @@ function RegistryInfoTab({
     mutationFn: () =>
       api.patch(`/internal-matrix/${entry.id}`, { brief: briefText }).then((r) => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['internal-matrix'] })
+      qc.invalidateQueries({ queryKey: ['internal-matrices'] })
       setBriefDirty(false)
     },
   })
@@ -1355,7 +1355,7 @@ function RegistryInfoTab({
     mutationFn: (patch: Record<string, unknown>) =>
       api.patch(`/internal-matrix/${entry.id}`, patch).then((r) => r.data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['internal-matrix'] })
+      qc.invalidateQueries({ queryKey: ['internal-matrices'] })
       qc.invalidateQueries({ queryKey: ['sync-registry'] })
     },
   })
@@ -2763,6 +2763,7 @@ function RegistryTable({
       const entry = registry.find((r) => r.id === id)
       setDeletedNotice(entry?.projectName ?? entry?.name ?? entry?.matrixId ?? id)
       queryClient.invalidateQueries({ queryKey: ['sync-registry'] })
+      queryClient.invalidateQueries({ queryKey: ['internal-matrices'] })
     },
   })
 
@@ -3091,7 +3092,7 @@ function RegistryTable({
       <MatrixFormModal
         matrix={formMatrix === 'new' ? undefined : formMatrix}
         onClose={() => setFormMatrix(null)}
-        onSaved={() => { queryClient.invalidateQueries({ queryKey: ['sync-registry'] }); setFormMatrix(null) }}
+        onSaved={() => { queryClient.invalidateQueries({ queryKey: ['sync-registry'] }); queryClient.invalidateQueries({ queryKey: ['internal-matrices'] }); setFormMatrix(null) }}
       />
     )}
     <ConfirmDialog {...confirmDialogProps} />
