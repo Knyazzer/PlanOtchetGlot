@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { prisma } from '@tv-shifts/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 
 interface KanbanTask {
   id: string
@@ -88,7 +89,9 @@ export async function kanbanTasksRoutes(app: FastifyInstance) {
     vals.push(id)
 
     const rows = await prisma.$queryRawUnsafe<KanbanTask[]>(
-      `UPDATE kanban_tasks SET ${sets.join(', ')} WHERE id = $${i}::uuid RETURNING *`,
+      `UPDATE kanban_tasks SET ${sets.join(', ')} WHERE id = $${i}::uuid
+       RETURNING kanban_tasks.*,
+         (SELECT name FROM project_members WHERE id = kanban_tasks.assignee_id) AS assignee_name`,
       ...vals
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Задача не найдена' })
@@ -96,7 +99,7 @@ export async function kanbanTasksRoutes(app: FastifyInstance) {
   })
 
   // DELETE /kanban-tasks/:id
-  app.delete('/:id', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requirePermission('kanban:delete') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     await prisma.$executeRawUnsafe(`DELETE FROM kanban_tasks WHERE id = $1::uuid`, id)
     return { ok: true }

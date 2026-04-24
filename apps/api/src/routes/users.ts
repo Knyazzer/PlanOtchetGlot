@@ -2,7 +2,9 @@ import { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { requireRole, authenticate } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
+import { findSheetConfig, refreshSheetData } from '../services/databaseService'
 
 const createUserSchema = z.object({
   fullName: z.string().min(1),
@@ -25,7 +27,7 @@ const updateUserSchema = z.object({
 
 export async function usersRoutes(app: FastifyInstance) {
   // GET /users — список (admin only)
-  app.get('/', { preHandler: requireRole('admin') }, async (request) => {
+  app.get('/', { preHandler: requirePermission('users:manage') }, async (request) => {
     const query = request.query as { search?: string; role?: string }
 
     return prisma.user.findMany({
@@ -82,7 +84,7 @@ export async function usersRoutes(app: FastifyInstance) {
   })
 
   // POST /users — создание (admin only)
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('users:manage') }, async (request, reply) => {
     const body = createUserSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -163,7 +165,7 @@ export async function usersRoutes(app: FastifyInstance) {
   })
 
   // DELETE /users/:id — деактивация (admin only)
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requirePermission('users:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const me = request.user as { id: string }
 
@@ -173,5 +175,51 @@ export async function usersRoutes(app: FastifyInstance) {
 
     await prisma.user.update({ where: { id }, data: { isActive: false } })
     return { ok: true }
+  })
+
+  // GET /users/staff-import — кэшированный список сотрудников из MAIN 2
+  app.get('/staff-import', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
+    const cfg = await findSheetConfig('employees_buffer')
+    if (!cfg?.cached_data) return { rows: [], lastSyncedAt: null }
+    const data = cfg.cached_data as {
+      rows: { tabNumber: string; name: string; position: string; dept: string; subDept: string }[]
+    }
+    return { rows: data.rows ?? [], lastSyncedAt: cfg.last_synced_at }
+  })
+
+  // GET /users/freelancers-import — кэшированный реестр фрилансеров
+  app.get('/freelancers-import', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
+    const cfg = await findSheetConfig('freelancers')
+    if (!cfg?.cached_data) return { rows: [], lastSyncedAt: null }
+    const data = cfg.cached_data as { rows: { number: string; name: string; position: string }[] }
+    return { rows: data.rows ?? [], lastSyncedAt: cfg.last_synced_at }
+  })
+
+  // POST /users/freelancers-import/refresh
+  app.post('/freelancers-import/refresh', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
+    try {
+      await refreshSheetData('freelancers')
+      const cfg = await findSheetConfig('freelancers')
+      const data = cfg?.cached_data as { rows: { number: string; name: string; position: string }[] } | null
+      return { rows: data?.rows ?? [], lastSyncedAt: cfg?.last_synced_at ?? null }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Ошибка загрузки'
+      return reply.code(500).send({ error: msg })
+    }
+  })
+
+  // POST /users/staff-import/refresh — обновить кэш из Google Sheets
+  app.post('/staff-import/refresh', { preHandler: requirePermission('users:manage') }, async (_request, reply) => {
+    try {
+      await refreshSheetData('employees_buffer')
+      const cfg = await findSheetConfig('employees_buffer')
+      const data = cfg?.cached_data as {
+        rows: { tabNumber: string; name: string; position: string; dept: string; subDept: string }[]
+      } | null
+      return { rows: data?.rows ?? [], lastSyncedAt: cfg?.last_synced_at ?? null }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Ошибка загрузки'
+      return reply.code(500).send({ error: msg })
+    }
   })
 }

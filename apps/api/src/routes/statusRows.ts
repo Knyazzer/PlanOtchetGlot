@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { Prisma, prisma } from '@tv-shifts/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 import { logChanges } from '../services/changeLog'
 import { syncProjectBlock, nextBlockSlot, unlinkAndShiftBlocks } from '../services/matrixBlockSync'
 
@@ -32,12 +33,12 @@ const createStatusRowSchema = z.object({
   postProduction: z.string().nullable().optional(),
   matrixRegistryId: z.string().uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
-  status: z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
+  status: z.enum(['request','negotiation','connecting','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   days: z.array(daySchema).optional(),
 })
 
 const updateStatusRowSchema = createStatusRowSchema.partial().extend({
-  status:          z.enum(['request','negotiation','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
+  status:          z.enum(['request','negotiation','connecting','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
   dateConfirmed:   z.boolean().optional(),
   matrixRegistryId: z.string().uuid().nullable().optional(),
   blockSlot:       z.number().int().nullable().optional(),
@@ -45,7 +46,7 @@ const updateStatusRowSchema = createStatusRowSchema.partial().extend({
 
 export async function statusRowsRoutes(app: FastifyInstance) {
   // GET /status-rows/unique-values — distinct format & location values for dropdowns
-  app.get('/unique-values', { preHandler: requireRole('admin') }, async () => {
+  app.get('/unique-values', { preHandler: requirePermission('projects:write') }, async () => {
     const [formats, locations] = await Promise.all([
       prisma.$queryRawUnsafe<{ format: string }[]>(
         `SELECT DISTINCT format FROM status_rows WHERE format IS NOT NULL AND format <> '' AND source <> 'separator' ORDER BY format`,
@@ -67,14 +68,18 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       dateTo?: string
       dateNull?: string
       status?: string
+      source?: string
       search?: string
       withSeparators?: string
       slim?: string
       matrixRegistryId?: string
+      parentTaskId?: string
+      topLevelOnly?: string
     }
 
-    const where = {
+    const where: Record<string, any> = {
       ...(query.withSeparators !== 'true' && { NOT: { source: 'separator' as any } }),
+      ...(query.source && { source: query.source as any }),
       ...(query.dateNull === 'true' && { date: null }),
       ...(query.dateFrom && { date: { gte: new Date(query.dateFrom) } }),
       ...(query.dateTo && { date: { lte: new Date(query.dateTo) } }),
@@ -86,6 +91,27 @@ export async function statusRowsRoutes(app: FastifyInstance) {
           { client: { contains: query.search, mode: Prisma.QueryMode.insensitive } },
         ],
       }),
+    }
+
+    // parent_task_id is not in Prisma schema — filter via raw SQL then pass IDs to Prisma
+    if (query.parentTaskId) {
+      const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+        `SELECT id FROM status_rows WHERE parent_task_id = $1`, query.parentTaskId
+      )
+      where.id = { in: rows.map((r) => r.id) }
+    } else if (query.topLevelOnly === 'true') {
+      // Exclude rows that are department children of another row
+      const baseClause = query.matrixRegistryId
+        ? `matrix_registry_id = $1 AND parent_task_id IS NULL`
+        : `parent_task_id IS NULL`
+      const rows = query.matrixRegistryId
+        ? await prisma.$queryRawUnsafe<{ id: string }[]>(
+            `SELECT id FROM status_rows WHERE ${baseClause}`, query.matrixRegistryId
+          )
+        : await prisma.$queryRawUnsafe<{ id: string }[]>(
+            `SELECT id FROM status_rows WHERE parent_task_id IS NULL`
+          )
+      where.id = { in: rows.map((r) => r.id) }
     }
 
     // slim=true — без join'ов (для страниц которым не нужны вложенные данные)
@@ -114,6 +140,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       where: { id },
       include: {
         matrixRegistry: true,
+        linkedMatrix: { select: { matrixId: true, name: true, projectName: true } },
         assignments: {
           include: {
             user: { select: { id: true, fullName: true, role: true } },
@@ -152,7 +179,10 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // POST /status-rows — ручное создание (admin only)
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
+    const rawBody = request.body as Record<string, unknown>
+    const parentTaskId = typeof rawBody?.parentTaskId === 'string' ? rawBody.parentTaskId : null
+
     const body = createStatusRowSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -169,9 +199,9 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       ? allDays.reduce((min, d) => d.date < min ? d.date : min, allDays[0].date)
       : rowData.date ? new Date(rowData.date) : undefined
 
-    // Auto-assign block slot if matrix is provided
+    // Auto-assign block slot if matrix is provided (departments linked via parentTaskId skip this)
     let blockSlotForCreate: number | null = null
-    if (matrixRegistryId) {
+    if (matrixRegistryId && !parentTaskId) {
       blockSlotForCreate = Number(await nextBlockSlot(matrixRegistryId))
     }
 
@@ -190,11 +220,18 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       include: { days: { orderBy: { date: 'asc' } } },
     })
 
+    if (parentTaskId) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE status_rows SET parent_task_id = $1 WHERE id = $2`,
+        parentTaskId, row.id
+      )
+    }
+
     return reply.code(201).send(row)
   })
 
   // PATCH /status-rows/:id
-  app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const me = request.user as { id: string }
     const body = updateStatusRowSchema.safeParse(request.body)
@@ -282,7 +319,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // GET /status-rows/:id/approvals
-  app.get('/:id/approvals', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.get('/:id/approvals', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ field_approvals: Record<string, boolean> }[]>(
       `SELECT field_approvals FROM status_rows WHERE id = $1`, id
@@ -292,7 +329,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // PATCH /status-rows/:id/approvals — merge field approvals
-  app.patch('/:id/approvals', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id/approvals', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const patch = request.body as Record<string, boolean>
     if (!patch || typeof patch !== 'object') return reply.code(400).send({ error: 'Invalid body' })
@@ -304,8 +341,45 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     return rows[0].field_approvals ?? {}
   })
 
+  // GET /status-rows/children-summary?parentIds=id1,id2,...
+  // Returns { [parentTaskId]: string[] } — dept names (format|name) per parent task
+  app.get('/children-summary', { preHandler: authenticate }, async (request) => {
+    const { parentIds } = request.query as { parentIds?: string }
+    const idList = (parentIds ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+    if (idList.length === 0) return {}
+    const rows = await prisma.$queryRawUnsafe<{ parent_task_id: string; format: string | null; name: string }[]>(
+      `SELECT parent_task_id, format, name FROM status_rows WHERE parent_task_id = ANY($1::text[])`,
+      idList,
+    )
+    const result: Record<string, string[]> = {}
+    for (const row of rows) {
+      const pid = row.parent_task_id
+      if (!result[pid]) result[pid] = []
+      result[pid].push(row.format || row.name || '—')
+    }
+    return result
+  })
+
+  // GET /status-rows/group-schedule-batch?ids=id1,id2,...
+  // Returns { [rowId]: string[] } — active dept keys per row
+  app.get('/group-schedule-batch', { preHandler: authenticate }, async (request) => {
+    const { ids } = request.query as { ids?: string }
+    const idList = (ids ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+    if (idList.length === 0) return {}
+    const rows = await prisma.$queryRawUnsafe<{ id: string; group_schedule: Record<string, unknown> | null }[]>(
+      `SELECT id, group_schedule FROM status_rows WHERE id = ANY($1::uuid[])`,
+      idList,
+    )
+    const result: Record<string, string[]> = {}
+    for (const row of rows) {
+      const gs = row.group_schedule ?? {}
+      result[row.id] = Object.entries(gs).filter(([, v]) => v !== null).map(([k]) => k)
+    }
+    return result
+  })
+
   // GET /status-rows/:id/group-schedule
-  app.get('/:id/group-schedule', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.get('/:id/group-schedule', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ group_schedule: Record<string, unknown> }[]>(
       `SELECT group_schedule FROM status_rows WHERE id = $1`, id
@@ -315,7 +389,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // PATCH /status-rows/:id/group-schedule — merge group schedule
-  app.patch('/:id/group-schedule', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id/group-schedule', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const patch = request.body as Record<string, unknown>
     if (!patch || typeof patch !== 'object') return reply.code(400).send({ error: 'Invalid body' })
@@ -328,7 +402,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // POST /status-rows/:id/sync-block — manual trigger of matrix block sync
-  app.post('/:id/sync-block', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/:id/sync-block', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     try {
       await syncProjectBlock(id)
@@ -339,7 +413,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   })
 
   // DELETE /status-rows/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request) => {
+  app.delete('/:id', { preHandler: requirePermission('projects:write') }, async (request) => {
     const { id } = request.params as { id: string }
 
     // If project had a linked matrix block — delete it and shift remaining projects

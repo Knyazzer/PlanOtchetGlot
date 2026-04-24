@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Задачи v4</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 12px; }
+.modal { background: #f8fafc; border-radius: 16px; width: 100%; max-width: 1440px; height: 94vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,0.5); }
+
+/* ── Header ── */
+.header { background: linear-gradient(135deg, #1e293b 0%, #1e3a5f 100%); flex-shrink: 0; }
+.header-top { padding: 14px 24px 8px; display: flex; align-items: flex-start; justify-content: space-between; }
+.header-title { font-size: 19px; font-weight: 700; color: #f8fafc; }
+.close-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #cbd5e1; cursor: pointer; font-size: 18px; padding: 3px 10px; border-radius: 8px; }
+.main-tabs { display: flex; padding: 0 20px; overflow-x: auto; }
+.main-tab { padding: 7px 16px; font-size: 13px; color: #94a3b8; cursor: pointer; border: none; border-bottom: 2px solid transparent; white-space: nowrap; background: none; transition: color .12s; }
+.main-tab:hover { color: #cbd5e1; }
+.main-tab.active { color: #f0f9ff; border-bottom-color: #60a5fa; font-weight: 600; }
+
+/* ── Body split ── */
+.body { display: flex; flex: 1; overflow: hidden; }
+
+/* ── LEFT: task list ── */
+.task-list { width: 290px; flex-shrink: 0; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
+.task-list-header { padding: 11px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.task-list-header span { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .06em; }
+.add-task-btn { font-size: 11px; padding: 3px 10px; border: 1px dashed #cbd5e1; border-radius: 6px; background: none; color: #64748b; cursor: pointer; }
+.add-task-btn:hover { background: #f1f5f9; }
+.task-scroll { flex: 1; overflow-y: auto; }
+.task-item { border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+.task-item-hd { padding: 10px 14px; display: flex; align-items: center; gap: 8px; transition: background .15s; }
+.task-item-hd:hover { background: #f8fafc; }
+.task-item.open .task-item-hd { background: #eff6ff; }
+.chev { font-size: 10px; color: #94a3b8; transition: transform .22s; flex-shrink: 0; }
+.task-item.open .chev { transform: rotate(90deg); color: #2563eb; }
+.task-fmt { font-size: 13px; font-weight: 600; color: #1e293b; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-item.open .task-fmt { color: #1d4ed8; }
+.sbadge { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+
+/* Accordion */
+.task-detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .26s cubic-bezier(.4,0,.2,1); background: #fafbff; }
+.task-detail-inner { overflow: hidden; padding: 0 14px; transition: padding .26s cubic-bezier(.4,0,.2,1); }
+.task-item.open .task-detail { grid-template-rows: 1fr; border-top: 1px solid #e8f0fe; }
+.task-item.open .task-detail-inner { padding: 8px 14px 12px; }
+.df { padding: 5px 0; border-bottom: 1px solid #f1f5f9; display: flex; flex-direction: column; gap: 2px; }
+.df:last-child { border-bottom: none; }
+.df:has(.dv-empty) { display: none; }
+.dl { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; }
+.dv { font-size: 12px; color: #1e293b; font-weight: 500; }
+.dv-empty { color: #cbd5e1; font-weight: 400; }
+
+/* ── RIGHT: dept panel ── */
+.dept-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; background: #f8fafc; }
+
+/* Dept tabs — matches InternalShiftsPanel style */
+.dept-tabs-wrap { background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; padding: 0 16px; gap: 4px; overflow-x: auto; flex-shrink: 0; }
+.dtab { padding: 8px 14px; font-size: 13px; color: #64748b; cursor: pointer; border: none; border-bottom: 2px solid transparent; background: none; white-space: nowrap; transition: color .12s; margin-bottom: -1px; font-weight: 500; }
+.dtab:hover { color: #334155; }
+.dtab.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+.add-dept-tab { padding: 6px 8px; font-size: 16px; color: #94a3b8; cursor: pointer; border: none; background: none; line-height: 1; }
+.add-dept-tab:hover { color: #2563eb; }
+
+/* Inner tabs bar — Команда / Планировщик / Фрилы / Расходы + action buttons */
+.inner-bar { background: #fff; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; flex-shrink: 0; padding: 0 16px; gap: 0; }
+.itab { padding: 8px 14px; font-size: 13px; color: #64748b; cursor: pointer; border: none; border-bottom: 2px solid transparent; background: none; white-space: nowrap; margin-bottom: -1px; transition: color .12s; }
+.itab:hover { color: #334155; }
+.itab.active { color: #2563eb; border-bottom-color: #2563eb; background: #eff6ff; font-weight: 600; border-radius: 6px 6px 0 0; }
+.inner-actions { margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; }
+.iact-btn { padding: 5px 12px; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; color: #374151; cursor: pointer; font-weight: 500; }
+.iact-btn:hover { background: #f8fafc; }
+.iact-del { border-color: #fecaca; color: #ef4444; }
+.iact-del:hover { background: #fef2f2; }
+
+/* Content area */
+.inner-content { flex: 1; overflow-y: auto; background: #fff; display: flex; flex-direction: column; }
+
+/* Real team table — matches InternalShiftsPanel */
+.team-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.team-table th { padding: 9px 10px; text-align: left; font-size: 11px; font-weight: 700; color: #64748b; background: #f8fafc; border-bottom: 2px solid #e2e8f0; white-space: nowrap; letter-spacing: .04em; text-transform: uppercase; }
+.team-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.team-table tr:hover td { background: #fafbff; }
+.drag-handle { color: #cbd5e1; cursor: grab; font-size: 14px; padding: 0 4px; }
+.cell-input { border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 8px; font-size: 12px; width: 100%; background: #fff; color: #1e293b; outline: none; font-family: inherit; transition: border-color .12s; }
+.cell-input:focus { border-color: #f97316; box-shadow: 0 0 0 2px rgba(249,115,22,0.15); }
+.cell-select { border: 1px solid #e2e8f0; border-radius: 6px; padding: 5px 6px; font-size: 12px; background: #fff; color: #1e293b; cursor: pointer; outline: none; }
+.cell-select:focus { border-color: #f97316; }
+.del-row { border: none; background: none; color: #cbd5e1; cursor: pointer; font-size: 16px; padding: 0 4px; }
+.del-row:hover { color: #ef4444; }
+
+/* Add row button */
+.add-member-row { display: flex; align-items: center; justify-content: center; padding: 10px; border-top: 1px dashed #e2e8f0; cursor: pointer; color: #94a3b8; font-size: 20px; transition: all .12s; }
+.add-member-row:hover { background: #f8fafc; color: #2563eb; }
+
+/* Bottom legend */
+.legend-bar { padding: 8px 16px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 16px; font-size: 12px; color: #64748b; flex-shrink: 0; background: #fff; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; vertical-align: middle; }
+
+/* Planner */
+.planner-wrap { overflow: auto; flex: 1; }
+.planner-grid { display: grid; grid-template-columns: 200px repeat(7,1fr); font-size: 12px; min-width: 600px; }
+.pg-hd { padding: 7px 4px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; border-right: 1px solid #e2e8f0; font-size: 10px; font-weight: 600; color: #64748b; text-align: center; }
+.pg-name { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #e2e8f0; font-weight: 500; font-size: 13px; }
+.pg-cell { padding: 6px 4px; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #e2e8f0; text-align: center; }
+.dot { width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; cursor: pointer; border: 2px solid transparent; transition: all .1s; }
+.dot.on { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.dot.off { background: #f1f5f9; color: #cbd5e1; }
+.dot.on:hover { background: #bbf7d0; }
+.dot.off:hover { background: #e2e8f0; color: #94a3b8; }
+
+.ph { flex: 1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 13px; flex-direction: column; gap: 8px; }
+.ph-icon { font-size: 32px; }
+</style>
+</head>
+<body>
+<div class="modal">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div style="margin-bottom:4px"><span style="background:#f0fdf4;color:#15803d;border:1px solid #86efac;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700">Производство</span></div>
+        <div class="header-title"><span style="color:#94a3b8">36,6:</span> Вечернее шоу</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;cursor:pointer;font-size:12px;padding:5px 12px;border-radius:8px">Удалить</button>
+        <button class="close-btn">×</button>
+      </div>
+    </div>
+    <div class="main-tabs">
+      <button class="main-tab">Инфо</button>
+      <button class="main-tab active">Задачи</button>
+      <button class="main-tab">Отделы</button>
+      <button class="main-tab">Ганта</button>
+      <button class="main-tab">Заметки</button>
+      <button class="main-tab">Документы</button>
+      <button class="main-tab">Изменения</button>
+      <button class="main-tab">Свод матрица</button>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <!-- LEFT: task list -->
+    <div class="task-list">
+      <div class="task-list-header">
+        <span>Задачи</span>
+        <button class="add-task-btn">+ Новая</button>
+      </div>
+      <div class="task-scroll">
+
+        <div class="task-item open" id="ti-1" onclick="selectTask(1,event)">
+          <div class="task-item-hd">
+            <span class="chev">▶</span>
+            <div class="task-fmt">ТВ — Съёмка</div>
+            <span class="sbadge" style="background:#dcfce7;color:#15803d">Производство</span>
+          </div>
+          <div class="task-detail"><div class="task-detail-inner">
+            <div class="df"><div class="dl">Клиент</div><div class="dv">36,6</div></div>
+            <div class="df"><div class="dl">Исп. продюсер</div><div class="dv">Вадим Степанов</div></div>
+            <div class="df"><div class="dl">Лин. продюсер</div><div class="dv">Юлия Романова</div></div>
+            <div class="df"><div class="dl">Аккаунт менеджер</div><div class="dv">Олег Гречко</div></div>
+            <div class="df"><div class="dl">Дата</div><div class="dv">14–18 мая 2025</div></div>
+            <div class="df"><div class="dl">Формат</div><div class="dv">ТВ</div></div>
+            <div class="df"><div class="dl">Локация</div><div class="dv">Знаменка</div></div>
+            <div class="df"><div class="dl">Проект</div><div class="dv" style="color:#16a34a">✓ Вечернее шоу</div></div>
+          </div></div>
+        </div>
+
+        <div class="task-item" id="ti-2" onclick="selectTask(2,event)">
+          <div class="task-item-hd">
+            <span class="chev">▶</span>
+            <div class="task-fmt">Продакшн</div>
+            <span class="sbadge" style="background:#fef3c7;color:#92400e">Запрос</span>
+          </div>
+          <div class="task-detail"><div class="task-detail-inner">
+            <div class="df"><div class="dl">Клиент</div><div class="dv">СТС</div></div>
+            <div class="df"><div class="dl">Исп. продюсер</div><div class="dv">Олег Гречко</div></div>
+            <div class="df"><div class="dl">Лин. продюсер</div><div class="dv dv-empty">—</div></div>
+            <div class="df"><div class="dl">Аккаунт менеджер</div><div class="dv dv-empty">—</div></div>
+            <div class="df"><div class="dl">Дата</div><div class="dv">июнь 2025</div></div>
+            <div class="df"><div class="dl">Формат</div><div class="dv">Продакшн</div></div>
+            <div class="df"><div class="dl">Локация</div><div class="dv dv-empty">—</div></div>
+            <div class="df"><div class="dl">Проект</div><div class="dv dv-empty">Не привязан</div></div>
+          </div></div>
+        </div>
+
+        <div class="task-item" id="ti-3" onclick="selectTask(3,event)">
+          <div class="task-item-hd">
+            <span class="chev">▶</span>
+            <div class="task-fmt">ТВ — Трансляция</div>
+            <span class="sbadge" style="background:#f5f3ff;color:#6d28d9">Сдан</span>
+          </div>
+          <div class="task-detail"><div class="task-detail-inner">
+            <div class="df"><div class="dl">Клиент</div><div class="dv">Первый канал</div></div>
+            <div class="df"><div class="dl">Исп. продюсер</div><div class="dv">Вадим Степанов</div></div>
+            <div class="df"><div class="dl">Дата</div><div class="dv">15 апреля 2025</div></div>
+            <div class="df"><div class="dl">Формат</div><div class="dv">ТВ</div></div>
+            <div class="df"><div class="dl">Локация</div><div class="dv">Крыша Чёрный</div></div>
+            <div class="df"><div class="dl">Проект</div><div class="dv" style="color:#16a34a">✓ Итоги года</div></div>
+          </div></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: dept panel -->
+    <div class="dept-panel">
+
+      <!-- Task 1 panel -->
+      <div id="dp-1" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+
+        <!-- Dept tabs — like actual app -->
+        <div class="dept-tabs-wrap">
+          <button class="dtab active" onclick="switchDept(this,'d-tv')">ТВ — Съёмка</button>
+          <button class="dtab" onclick="switchDept(this,'d-mo')">Моушн</button>
+          <button class="dtab" onclick="switchDept(this,'d-ds')">Дизайн</button>
+          <button class="add-dept-tab" title="Добавить отдел">+</button>
+        </div>
+
+        <!-- ТВ — Съёмка -->
+        <div id="d-tv" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+          <div class="inner-bar">
+            <button class="itab active" onclick="switchInner(this,'i-tv-team')">Команда</button>
+            <button class="itab" onclick="switchInner(this,'i-tv-plan')">Планировщик</button>
+            <button class="itab" onclick="switchInner(this,'i-tv-free')">Фрилы</button>
+            <button class="itab" onclick="switchInner(this,'i-tv-exp')">Производственные расходы</button>
+            <div class="inner-actions">
+              <button class="iact-btn">Вызывной лист</button>
+              <button class="iact-btn">Копировать</button>
+              <button class="iact-btn iact-del">Удалить</button>
+            </div>
+          </div>
+
+          <!-- Команда -->
+          <div id="i-tv-team" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+            <div style="flex:1;overflow-y:auto">
+              <table class="team-table">
+                <thead><tr>
+                  <th style="width:28px"></th>
+                  <th>ФИО</th>
+                  <th style="width:120px">ФОРМАТ</th>
+                  <th>ДОЛЖНОСТЬ</th>
+                  <th style="width:110px">ЦЕНА ПЛАН</th>
+                  <th style="width:110px">ЦЕНА ФАКТ</th>
+                  <th style="width:120px">TELEGRAM</th>
+                  <th style="width:28px"></th>
+                </tr></thead>
+                <tbody id="tbody-tv">
+                  <tr>
+                    <td><span class="drag-handle">⠿</span></td>
+                    <td><input class="cell-input" value="Иванов Дмитрий" /></td>
+                    <td><select class="cell-select"><option selected>Штат</option><option>ИП</option><option>СЗТ</option></select></td>
+                    <td><input class="cell-input" value="Оператор" /></td>
+                    <td><input class="cell-input" value="25 000" /></td>
+                    <td><input class="cell-input" placeholder="—" /></td>
+                    <td><input class="cell-input" value="@ivanov_d" /></td>
+                    <td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="drag-handle">⠿</span></td>
+                    <td><input class="cell-input" value="Петрова Анна" /></td>
+                    <td><select class="cell-select"><option>Штат</option><option selected>ИП</option><option>СЗТ</option></select></td>
+                    <td><input class="cell-input" value="Режиссёр" /></td>
+                    <td><input class="cell-input" value="40 000" /></td>
+                    <td><input class="cell-input" placeholder="—" /></td>
+                    <td><input class="cell-input" value="@petrova_a" /></td>
+                    <td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>
+                  </tr>
+                  <tr>
+                    <td><span class="drag-handle">⠿</span></td>
+                    <td><input class="cell-input" value="Смирнов Кирилл" /></td>
+                    <td><select class="cell-select"><option selected>Штат</option><option>ИП</option><option>СЗТ</option></select></td>
+                    <td><input class="cell-input" value="Звукорежиссёр" /></td>
+                    <td><input class="cell-input" value="20 000" /></td>
+                    <td><input class="cell-input" placeholder="—" /></td>
+                    <td><input class="cell-input" placeholder="@username" /></td>
+                    <td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="add-member-row" onclick="addMember('tbody-tv')">+</div>
+            </div>
+            <div class="legend-bar">
+              <span><span class="legend-dot" style="background:#3b82f6"></span>Участвует</span>
+              <span><span class="legend-dot" style="background:#e2e8f0"></span>Не участвует</span>
+            </div>
+          </div>
+
+          <!-- Планировщик -->
+          <div id="i-tv-plan" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+            <div class="planner-wrap">
+              <div class="planner-grid">
+                <div class="pg-hd" style="text-align:left;padding-left:14px">Участник</div>
+                <div class="pg-hd">14 мая<br><small style="color:#94a3b8;font-weight:400">Застр.</small></div>
+                <div class="pg-hd">15 мая<br><small style="color:#94a3b8;font-weight:400">Застр.</small></div>
+                <div class="pg-hd" style="color:#2563eb">16 мая<br><small style="font-weight:700">Эфир</small></div>
+                <div class="pg-hd">17 мая<br><small style="color:#94a3b8;font-weight:400">Дем.</small></div>
+                <div class="pg-hd">18 мая<br><small style="color:#94a3b8;font-weight:400">Дем.</small></div>
+                <div class="pg-hd">19 мая</div>
+                <div class="pg-hd">20 мая</div>
+                <div class="pg-name">Иванов Дмитрий</div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">З</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">З</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">Э</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">Д</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-name">Петрова Анна</div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">З</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">Э</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">Д</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">Д</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-name">Смирнов Кирилл</div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">З</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">З</span></div>
+                <div class="pg-cell"><span class="dot on" onclick="dotClick(this)">Э</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+                <div class="pg-cell"><span class="dot off" onclick="dotClick(this)">—</span></div>
+              </div>
+            </div>
+            <div class="legend-bar">
+              <span><span class="legend-dot" style="background:#3b82f6"></span>Участвует</span>
+              <span><span class="legend-dot" style="background:#e2e8f0"></span>Не участвует</span>
+            </div>
+          </div>
+
+          <!-- Фрилы -->
+          <div id="i-tv-free" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+            <div style="flex:1;overflow-y:auto">
+              <table class="team-table">
+                <thead><tr>
+                  <th style="width:28px"></th>
+                  <th>ФИО</th>
+                  <th style="width:120px">ФОРМАТ</th>
+                  <th>ДОЛЖНОСТЬ</th>
+                  <th style="width:110px">ЦЕНА ПЛАН</th>
+                  <th style="width:110px">ЦЕНА ФАКТ</th>
+                  <th style="width:120px">TELEGRAM</th>
+                  <th style="width:28px"></th>
+                </tr></thead>
+                <tbody id="tbody-tv-free">
+                  <tr>
+                    <td><span class="drag-handle">⠿</span></td>
+                    <td><input class="cell-input" value="Козлов Артём" /></td>
+                    <td><select class="cell-select"><option>Штат</option><option selected>ИП</option><option>СЗТ</option></select></td>
+                    <td><input class="cell-input" value="Осветитель" /></td>
+                    <td><input class="cell-input" value="15 000" /></td>
+                    <td><input class="cell-input" placeholder="—" /></td>
+                    <td><input class="cell-input" placeholder="@username" /></td>
+                    <td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="add-member-row" onclick="addMember('tbody-tv-free')">+</div>
+            </div>
+            <div class="legend-bar">
+              <span><span class="legend-dot" style="background:#3b82f6"></span>Участвует</span>
+              <span><span class="legend-dot" style="background:#e2e8f0"></span>Не участвует</span>
+            </div>
+          </div>
+
+          <!-- Производственные расходы -->
+          <div id="i-tv-exp" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+            <div style="flex:1;overflow-y:auto">
+              <table class="team-table">
+                <thead><tr><th>СТАТЬЯ РАСХОДОВ</th><th>ОПИСАНИЕ</th><th style="width:120px">ПЛАН</th><th style="width:120px">ФАКТ</th><th style="width:28px"></th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td><input class="cell-input" value="Аренда оборудования" /></td>
+                    <td><input class="cell-input" value="Камеры + свет" /></td>
+                    <td><input class="cell-input" value="80 000" /></td>
+                    <td><input class="cell-input" placeholder="—" /></td>
+                    <td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>
+                  </tr>
+                  <tr>
+                    <td><input class="cell-input" value="Транспорт" /></td>
+                    <td><input class="cell-input" value="Доставка техники" /></td>
+                    <td><input class="cell-input" value="15 000" /></td>
+                    <td><input class="cell-input" placeholder="—" /></td>
+                    <td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="add-member-row" onclick="addExpRow()">+</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Моушн -->
+        <div id="d-mo" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+          <div class="inner-bar">
+            <button class="itab active" onclick="switchInner(this,'i-mo-team')">Команда</button>
+            <button class="itab" onclick="switchInner(this,'i-mo-plan')">Планировщик</button>
+            <button class="itab" onclick="switchInner(this,'i-mo-free')">Фрилы</button>
+            <button class="itab" onclick="switchInner(this,'i-mo-exp')">Производственные расходы</button>
+            <div class="inner-actions">
+              <button class="iact-btn">Вызывной лист</button>
+              <button class="iact-btn">Копировать</button>
+              <button class="iact-btn iact-del">Удалить</button>
+            </div>
+          </div>
+          <div id="i-mo-team" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+            <div style="flex:1;overflow-y:auto">
+              <table class="team-table">
+                <thead><tr><th style="width:28px"></th><th>ФИО</th><th style="width:120px">ФОРМАТ</th><th>ДОЛЖНОСТЬ</th><th style="width:110px">ЦЕНА ПЛАН</th><th style="width:110px">ЦЕНА ФАКТ</th><th style="width:120px">TELEGRAM</th><th style="width:28px"></th></tr></thead>
+                <tbody id="tbody-mo">
+                  <tr>
+                    <td><span class="drag-handle">⠿</span></td>
+                    <td><input class="cell-input" value="Фёдорова Мария" /></td>
+                    <td><select class="cell-select"><option>Штат</option><option selected>ИП</option><option>СЗТ</option></select></td>
+                    <td><input class="cell-input" value="Моушн-дизайнер" /></td>
+                    <td><input class="cell-input" value="55 000" /></td>
+                    <td><input class="cell-input" placeholder="—" /></td>
+                    <td><input class="cell-input" placeholder="@username" /></td>
+                    <td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="add-member-row" onclick="addMember('tbody-mo')">+</div>
+            </div>
+            <div class="legend-bar"><span><span class="legend-dot" style="background:#3b82f6"></span>Участвует</span><span><span class="legend-dot" style="background:#e2e8f0"></span>Не участвует</span></div>
+          </div>
+          <div id="i-mo-plan" style="display:none;flex:1"><div class="ph"><div class="ph-icon">📅</div>Планировщик пока пуст</div></div>
+          <div id="i-mo-free" style="display:none;flex:1"><div class="ph"><div class="ph-icon">👤</div>Фрилансеров нет</div></div>
+          <div id="i-mo-exp" style="display:none;flex:1"><div class="ph"><div class="ph-icon">💰</div>Расходов нет</div></div>
+        </div>
+
+        <!-- Дизайн -->
+        <div id="d-ds" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+          <div class="inner-bar">
+            <button class="itab active">Команда</button>
+            <button class="itab">Планировщик</button>
+            <button class="itab">Фрилы</button>
+            <button class="itab">Производственные расходы</button>
+            <div class="inner-actions">
+              <button class="iact-btn">Вызывной лист</button>
+              <button class="iact-btn">Копировать</button>
+              <button class="iact-btn iact-del">Удалить</button>
+            </div>
+          </div>
+          <div style="flex:1;overflow-y:auto">
+            <table class="team-table"><thead><tr><th style="width:28px"></th><th>ФИО</th><th style="width:120px">ФОРМАТ</th><th>ДОЛЖНОСТЬ</th><th style="width:110px">ЦЕНА ПЛАН</th><th style="width:110px">ЦЕНА ФАКТ</th><th style="width:120px">TELEGRAM</th><th style="width:28px"></th></tr></thead><tbody id="tbody-ds"></tbody></table>
+            <div class="add-member-row" onclick="addMember('tbody-ds')">+</div>
+          </div>
+          <div class="legend-bar"><span><span class="legend-dot" style="background:#3b82f6"></span>Участвует</span><span><span class="legend-dot" style="background:#e2e8f0"></span>Не участвует</span></div>
+        </div>
+
+      </div>
+
+      <!-- Task 2 panel -->
+      <div id="dp-2" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+        <div class="dept-tabs-wrap">
+          <button class="dtab active">Дизайн</button>
+          <button class="add-dept-tab">+</button>
+        </div>
+        <div class="inner-bar">
+          <button class="itab active">Команда</button>
+          <button class="itab">Планировщик</button>
+          <button class="itab">Фрилы</button>
+          <button class="itab">Производственные расходы</button>
+          <div class="inner-actions"><button class="iact-btn">Вызывной лист</button><button class="iact-btn">Копировать</button><button class="iact-btn iact-del">Удалить</button></div>
+        </div>
+        <div style="flex:1;overflow-y:auto">
+          <table class="team-table"><thead><tr><th style="width:28px"></th><th>ФИО</th><th style="width:120px">ФОРМАТ</th><th>ДОЛЖНОСТЬ</th><th style="width:110px">ЦЕНА ПЛАН</th><th style="width:110px">ЦЕНА ФАКТ</th><th style="width:120px">TELEGRAM</th><th style="width:28px"></th></tr></thead><tbody id="tbody-t2"></tbody></table>
+          <div class="add-member-row" onclick="addMember('tbody-t2')">+</div>
+        </div>
+        <div class="legend-bar"><span><span class="legend-dot" style="background:#3b82f6"></span>Участвует</span><span><span class="legend-dot" style="background:#e2e8f0"></span>Не участвует</span></div>
+      </div>
+
+      <!-- Task 3 panel -->
+      <div id="dp-3" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+        <div class="dept-tabs-wrap">
+          <button class="dtab active">ТВ — Трансляция</button>
+          <button class="dtab">Радио</button>
+          <button class="add-dept-tab">+</button>
+        </div>
+        <div class="inner-bar">
+          <button class="itab active">Команда</button>
+          <button class="itab">Планировщик</button>
+          <button class="itab">Фрилы</button>
+          <button class="itab">Производственные расходы</button>
+          <div class="inner-actions"><button class="iact-btn">Вызывной лист</button><button class="iact-btn">Копировать</button><button class="iact-btn iact-del">Удалить</button></div>
+        </div>
+        <div style="flex:1;overflow-y:auto">
+          <table class="team-table">
+            <thead><tr><th style="width:28px"></th><th>ФИО</th><th style="width:120px">ФОРМАТ</th><th>ДОЛЖНОСТЬ</th><th style="width:110px">ЦЕНА ПЛАН</th><th style="width:110px">ЦЕНА ФАКТ</th><th style="width:120px">TELEGRAM</th><th style="width:28px"></th></tr></thead>
+            <tbody>
+              <tr><td><span class="drag-handle">⠿</span></td><td><input class="cell-input" value="Белов Сергей"/></td><td><select class="cell-select"><option selected>Штат</option><option>ИП</option></select></td><td><input class="cell-input" value="Ведущий"/></td><td><input class="cell-input" value="35 000"/></td><td><input class="cell-input" value="35 000" style="color:#16a34a"/></td><td><input class="cell-input" value="@belov_s"/></td><td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td></tr>
+              <tr><td><span class="drag-handle">⠿</span></td><td><input class="cell-input" value="Захарова Елена"/></td><td><select class="cell-select"><option selected>Штат</option><option>ИП</option></select></td><td><input class="cell-input" value="Редактор"/></td><td><input class="cell-input" value="28 000"/></td><td><input class="cell-input" value="28 000" style="color:#16a34a"/></td><td><input class="cell-input" value="@zaharova_e"/></td><td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="legend-bar"><span><span class="legend-dot" style="background:#3b82f6"></span>Участвует</span><span><span class="legend-dot" style="background:#e2e8f0"></span>Не участвует</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+let activeTask = 1
+
+function selectTask(n, e) {
+  if (e) e.stopPropagation()
+  // if already open — collapse (toggle off)
+  const wasOpen = document.getElementById('ti-'+n).classList.contains('open')
+  ;[1,2,3].forEach(i => {
+    document.getElementById('ti-'+i).classList.remove('open')
+    const dp = document.getElementById('dp-'+i)
+    if (dp) dp.style.display = 'none'
+  })
+  if (!wasOpen) {
+    document.getElementById('ti-'+n).classList.add('open')
+    const dp = document.getElementById('dp-'+n)
+    if (dp) dp.style.display = 'flex'
+    activeTask = n
+  }
+}
+
+function switchDept(btn, targetId) {
+  btn.closest('.dept-tabs-wrap').querySelectorAll('.dtab').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+  const depts = ['d-tv','d-mo','d-ds']
+  depts.forEach(d => { const el = document.getElementById(d); if(el) el.style.display='none' })
+  const t = document.getElementById(targetId)
+  if (t) t.style.display = 'flex'
+}
+
+function switchInner(btn, targetId) {
+  const bar = btn.closest('.inner-bar')
+  bar.querySelectorAll('.itab').forEach(b => b.classList.remove('active'))
+  btn.classList.add('active')
+  const deptDiv = btn.closest('[id^="d-"]') || btn.closest('[id^="dp-"]')
+  if (!deptDiv) return
+  deptDiv.querySelectorAll(':scope > div[id]').forEach(d => {
+    d.style.display = 'none'
+  })
+  const t = document.getElementById(targetId)
+  if (t) t.style.display = t.tagName === 'DIV' ? 'flex' : 'block'
+}
+
+function dotClick(dot) {
+  if (dot.classList.contains('on')) { dot.classList.replace('on','off'); dot.textContent='—' }
+  else { dot.classList.replace('off','on'); dot.textContent='З' }
+}
+
+function addMember(tbodyId) {
+  const tbody = document.getElementById(tbodyId)
+  if (!tbody) return
+  const tr = document.createElement('tr')
+  tr.innerHTML = `
+    <td><span class="drag-handle">⠿</span></td>
+    <td><input class="cell-input" placeholder="Новый участник" autofocus /></td>
+    <td><select class="cell-select"><option>Штат</option><option>ИП</option><option>СЗТ</option></select></td>
+    <td><input class="cell-input" placeholder="Должность" /></td>
+    <td><input class="cell-input" placeholder="—" /></td>
+    <td><input class="cell-input" placeholder="—" /></td>
+    <td><input class="cell-input" placeholder="@username" /></td>
+    <td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>
+  `
+  tbody.appendChild(tr)
+  tr.querySelector('input').focus()
+}
+
+function addExpRow() {
+  const tbody = document.querySelector('#i-tv-exp tbody')
+  if (!tbody) return
+  const tr = document.createElement('tr')
+  tr.innerHTML = `<td><input class="cell-input" placeholder="Статья расходов" /></td><td><input class="cell-input" placeholder="Описание" /></td><td><input class="cell-input" placeholder="0" /></td><td><input class="cell-input" placeholder="—" /></td><td><button class="del-row" onclick="this.closest('tr').remove()">×</button></td>`
+  tbody.appendChild(tr)
+  tr.querySelector('input').focus()
+}
+</script>
+</body>
+</html>

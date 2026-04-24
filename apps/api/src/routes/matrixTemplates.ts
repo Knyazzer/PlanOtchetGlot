@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { requireRole } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 
 const templateSchema = z.object({
   name:     z.string().min(1),
@@ -20,14 +20,14 @@ interface TemplateRow {
 export async function matrixTemplatesRoutes(app: FastifyInstance) {
 
   // GET /matrix-templates
-  app.get('/', { preHandler: requireRole('admin') }, async () => {
+  app.get('/', { preHandler: requirePermission('matrix-templates:manage') }, async () => {
     return prisma.$queryRawUnsafe<TemplateRow[]>(
       `SELECT * FROM matrix_templates ORDER BY created_at ASC`
     )
   })
 
   // POST /matrix-templates
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('matrix-templates:manage') }, async (request, reply) => {
     const body = templateSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
 
@@ -42,7 +42,7 @@ export async function matrixTemplatesRoutes(app: FastifyInstance) {
   })
 
   // PATCH /matrix-templates/:id
-  app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id', { preHandler: requirePermission('matrix-templates:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = templateSchema.partial().safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
@@ -65,7 +65,7 @@ export async function matrixTemplatesRoutes(app: FastifyInstance) {
   })
 
   // POST /matrix-templates/:id/activate — set as the active template
-  app.post('/:id/activate', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/:id/activate', { preHandler: requirePermission('matrix-templates:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     await prisma.$executeRawUnsafe(`UPDATE matrix_templates SET is_active = false, updated_at = NOW()`)
     const rows = await prisma.$queryRawUnsafe<TemplateRow[]>(
@@ -76,7 +76,7 @@ export async function matrixTemplatesRoutes(app: FastifyInstance) {
   })
 
   // DELETE /matrix-templates/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requirePermission('matrix-templates:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     await prisma.$executeRawUnsafe(`DELETE FROM matrix_templates WHERE id = $1`, id)
     return { ok: true }

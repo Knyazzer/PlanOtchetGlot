@@ -1,7 +1,8 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 
 // ─── Shift Expenses (/shift-expenses) ────────────────────────────────────────
 
@@ -54,7 +55,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // POST /shift-expenses
-  app.post('/shift-expenses', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.post('/shift-expenses', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const body = shiftExpenseSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
     const { projectId, expenseType, orderedBy, amount, notes } = body.data
@@ -68,7 +69,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // PATCH /shift-expenses/:id
-  app.patch('/shift-expenses/:id', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.patch('/shift-expenses/:id', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = shiftExpenseSchema.omit({ projectId: true }).partial().safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
@@ -90,7 +91,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // DELETE /shift-expenses/:id
-  app.delete('/shift-expenses/:id', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.delete('/shift-expenses/:id', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `DELETE FROM shift_expenses WHERE id = $1 RETURNING id`, id,
@@ -112,7 +113,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // POST /matrix-gantt
-  app.post('/matrix-gantt', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.post('/matrix-gantt', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const body = ganttTaskSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
     const { matrixId, name, startDate, deadline, done, order } = body.data
@@ -130,7 +131,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // PATCH /matrix-gantt/:id
-  app.patch('/matrix-gantt/:id', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.patch('/matrix-gantt/:id', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = ganttTaskSchema.omit({ matrixId: true }).partial().safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
@@ -156,7 +157,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // DELETE /matrix-gantt/:id
-  app.delete('/matrix-gantt/:id', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.delete('/matrix-gantt/:id', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `DELETE FROM gantt_tasks WHERE id = $1 RETURNING id`, id,
@@ -202,7 +203,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // DELETE /matrix-notes/:id
-  app.delete('/matrix-notes/:id', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.delete('/matrix-notes/:id', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `DELETE FROM matrix_notes WHERE id = $1 RETURNING id`, id,
@@ -224,7 +225,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // POST /matrix-documents
-  app.post('/matrix-documents', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.post('/matrix-documents', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const body = matrixDocSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
     const rows = await prisma.$queryRawUnsafe<object[]>(
@@ -237,7 +238,7 @@ export async function matrixExtrasRoutes(app: FastifyInstance) {
   })
 
   // DELETE /matrix-documents/:id
-  app.delete('/matrix-documents/:id', { preHandler: requireRole('admin', 'producer') }, async (request, reply) => {
+  app.delete('/matrix-documents/:id', { preHandler: requirePermission('matrix:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `DELETE FROM matrix_documents WHERE id = $1 RETURNING id`, id,

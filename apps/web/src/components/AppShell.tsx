@@ -13,9 +13,8 @@ import { AnalyticsPage } from '../pages/AnalyticsPage'
 import { SyncDataPage } from '../pages/SyncDataPage'
 import { DealsPage } from '../pages/DealsPage'
 import { DatabasePage } from '../pages/DatabasePage'
-import { FreelancersPage } from '../pages/FreelancersPage'
-
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'freelancers'
+import { WorkflowPage } from '../pages/WorkflowPage'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -24,9 +23,18 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'freelancers']
+    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'workflow']
     return saved && valid.includes(saved) ? saved : 'calendar'
   })
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const p = (e as CustomEvent<{ page: Page }>).detail?.page
+      if (p) { setPage(p); localStorage.setItem('app-page', p) }
+    }
+    window.addEventListener('tvshifts:navigate', handler)
+    return () => window.removeEventListener('tvshifts:navigate', handler)
+  }, [])
 
   async function handleLogout() {
     await api.post('/auth/logout')
@@ -37,11 +45,11 @@ export function AppShell() {
     { id: 'calendar', label: 'Календарь' },
     { id: 'tasks', label: 'Задачи' },
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
-    { id: 'users', label: 'Сотрудники', adminOnly: true },
-    { id: 'syncdata', label: 'Таблицы', adminOnly: true },
+    { id: 'users', label: 'Персонал', adminOnly: true },
+    { id: 'workflow', label: 'Workflow', adminOrProducer: true },
+    { id: 'syncdata', label: 'Проекты', adminOnly: true },
     { id: 'database', label: 'БД', adminOnly: true },
     { id: 'deals', label: 'Клиенты' },
-    { id: 'freelancers', label: 'Фрилы', adminOrProducer: true },
     { id: 'profile', label: 'Профиль' },
   ]
 
@@ -124,13 +132,13 @@ export function AppShell() {
       {/* Main */}
       <main style={{ flex: 1, padding: '20px 16px' }}>
         {page === 'calendar' && <CalendarPage />}
+        {page === 'workflow' && (isAdmin || isProducer) && <WorkflowPage />}
         {page === 'tasks' && <TasksPage />}
         {page === 'analytics' && (isAdmin || isProducer) && <AnalyticsPage />}
         {page === 'users' && isAdmin && <UsersPage />}
         {page === 'syncdata' && isAdmin && <SyncDataPage />}
         {page === 'database' && isAdmin && <DatabasePage />}
         {page === 'deals' && <DealsPage />}
-        {page === 'freelancers' && (isAdmin || isProducer) && <FreelancersPage />}
         {page === 'profile' && <ProfilePage />}
       </main>
     </div>

@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@tv-shifts/db'
-import { requireRole } from '../plugins/auth'
+import { requirePermission } from '../config/permissions'
 import { findSheetConfig } from '../services/databaseService'
 import { copyTemplateToFolder, setupMatrixPermissions, appendToInternalRegistry, checkSpreadsheetExists, writeSvodData, clearMatrixShiftsSheet } from '../services/driveService'
 import { syncProjectBlockNow } from '../services/matrixBlockSync'
@@ -47,7 +47,7 @@ interface MatrixRow {
 export async function internalMatrixRoutes(app: FastifyInstance) {
 
   // POST /internal-matrix — create internal matrix record (SQL only, no Drive)
-  app.post('/', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/', { preHandler: requirePermission('internal-matrix:manage') }, async (request, reply) => {
     const body = createMatrixSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные', details: body.error.flatten() })
 
@@ -83,7 +83,7 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
   })
 
   // PATCH /internal-matrix/:id — update internal matrix
-  app.patch('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.patch('/:id', { preHandler: requirePermission('internal-matrix:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const body = createMatrixSchema.partial().safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Неверные данные' })
@@ -124,17 +124,32 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
   })
 
   // DELETE /internal-matrix/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requirePermission('internal-matrix:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
+
+    // Capture linked workflow tasks before FK cascade nullifies their matrix_registry_id
+    const linkedTasks = await prisma.$queryRawUnsafe<{ id: string }[]>(
+      `SELECT id FROM status_rows WHERE matrix_registry_id = $1 AND parent_task_id IS NULL AND source = 'manual'`, id
+    )
+
     const result = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `DELETE FROM matrix_registry WHERE id = $1 AND source = 'internal' RETURNING id`, id
     )
     if (!result[0]) return reply.code(404).send({ error: 'Матрица не найдена или не внутренняя' })
+
+    // Move orphaned tasks back to "connecting" stage so they appear in Workflow
+    if (linkedTasks.length > 0) {
+      await prisma.$executeRawUnsafe(
+        `UPDATE status_rows SET status = 'connecting', updated_at = NOW() WHERE id = ANY($1::text[])`,
+        linkedTasks.map((r) => r.id),
+      )
+    }
+
     return { ok: true }
   })
 
   // GET /internal-matrix/by-client/:client — all matrices for a client (for project linking)
-  app.get('/by-client/:client', { preHandler: requireRole('admin') }, async (request) => {
+  app.get('/by-client/:client', { preHandler: requirePermission('internal-matrix:manage') }, async (request) => {
     const { client } = request.params as { client: string }
     return prisma.$queryRawUnsafe<Pick<MatrixRow, 'id' | 'matrix_id' | 'name' | 'date' | 'source'>[]>(
       `SELECT id, matrix_id, name, date, source
@@ -146,7 +161,7 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
   })
 
   // POST /internal-matrix/:id/check — проверить существование таблицы, удалить если не найдена
-  app.post('/:id/check', { preHandler: requireRole('admin') }, async (request, reply) => {
+  app.post('/:id/check', { preHandler: requirePermission('internal-matrix:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
 
     const rows = await prisma.$queryRawUnsafe<MatrixRow[]>(
@@ -173,14 +188,14 @@ export async function internalMatrixRoutes(app: FastifyInstance) {
   })
 
   // GET /internal-matrix — list all internal matrices
-  app.get('/', { preHandler: requireRole('admin') }, async () => {
+  app.get('/', { preHandler: requirePermission('internal-matrix:manage') }, async () => {
     return prisma.$queryRawUnsafe<MatrixRow[]>(
       `SELECT * FROM matrix_registry WHERE source = 'internal' ORDER BY created_at DESC`
     )
   })
 
   // POST /internal-matrix/sync-to-drive — полная ручная синхронизация всех внутренних матриц в Drive
-  app.post('/sync-to-drive', { preHandler: requireRole('admin') }, async (_request, reply) => {
+  app.post('/sync-to-drive', { preHandler: requirePermission('internal-matrix:manage') }, async (_request, reply) => {
     const errors: { matrixId: string; error: string }[] = []
     let matricesSynced = 0
     let blocksSynced = 0

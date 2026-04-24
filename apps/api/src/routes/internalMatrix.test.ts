@@ -73,8 +73,7 @@ describe('POST /internal-matrix', () => {
     await prisma.$disconnect()
   })
 
-  it('creates matrix in DB with source=internal when Drive is not configured', async () => {
-    // findSheetConfig returns null → no template, no folder → Drive skipped
+  it('creates matrix in DB with source=internal', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/internal-matrix',
@@ -82,7 +81,7 @@ describe('POST /internal-matrix', () => {
       payload: {
         projectName: 'Test Project',
         client: 'Test Client',
-        unit: 'Unit A',
+        unit: ['Unit A'],
         format: 'Live',
         status: 'preliminary',
       },
@@ -102,7 +101,7 @@ describe('POST /internal-matrix', () => {
     createdIds.push(body.id)
   })
 
-  it('name is auto-generated from client + projectName + date', async () => {
+  it('name is auto-generated from client + projectName', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/internal-matrix',
@@ -118,25 +117,17 @@ describe('POST /internal-matrix', () => {
     const body = res.json()
     expect(body.name).toContain('Заказчик')
     expect(body.name).toContain('Проект')
-    expect(body.name).toContain('2025')
 
     createdIds.push(body.id)
   })
 
-  it('Drive configured → copyTemplateToFolder is called and sheetUrl is saved', async () => {
-    const fakeUrl = 'https://docs.google.com/spreadsheets/d/fake-spreadsheet-id/edit'
-    mockCopyTemplate.mockResolvedValue(fakeUrl)
-    mockSetupPerms.mockResolvedValue(undefined)
-    mockWriteSvod.mockResolvedValue(undefined)
-    mockAppendRegistry.mockResolvedValue(undefined)
-
-    // Provide folder config via findSheetConfig mock
+  it('POST creates matrix with sheet_url=null regardless of Drive config (Drive sync is manual via /sync-to-drive)', async () => {
+    // Drive is configured but POST /internal-matrix no longer calls Drive directly
     mockFindSheetConfig.mockImplementation(async (key: string) => {
       if (key === 'drive_folder') return { sheet_url: 'fake-folder-id', table_key: 'drive_folder' }
       return null
     })
 
-    // Insert an active template so the route finds one
     const [tmplRow] = await prisma.$queryRawUnsafe<{ id: string }[]>(
       `INSERT INTO matrix_templates (id, name, sheet_url, is_active, created_at, updated_at)
        VALUES (gen_random_uuid(), 'Test Template', 'https://docs.google.com/spreadsheets/d/template-id/edit', true, NOW(), NOW())
@@ -149,16 +140,15 @@ describe('POST /internal-matrix', () => {
         method: 'POST',
         url: '/internal-matrix',
         cookies: { access_token: adminToken },
-        payload: {
-          projectName: 'Drive Test',
-          client: 'Client',
-        },
+        payload: { projectName: 'Drive Test', client: 'Client' },
       })
 
       expect(res.statusCode).toBe(201)
       const body = res.json()
-      expect(body.sheet_url).toBe(fakeUrl)
-      expect(mockCopyTemplate).toHaveBeenCalledOnce()
+      expect(body.id).toBeDefined()
+      expect(body.source).toBe('internal')
+      expect(body.sheet_url).toBeNull()
+      expect(mockCopyTemplate).not.toHaveBeenCalled()
 
       createdIds.push(body.id)
     } finally {
@@ -166,38 +156,20 @@ describe('POST /internal-matrix', () => {
     }
   })
 
-  it('Drive copy fails → matrix still created in DB, driveError returned', async () => {
-    mockCopyTemplate.mockRejectedValue(new Error('Drive quota exceeded'))
-    mockFindSheetConfig.mockImplementation(async (key: string) => {
-      if (key === 'drive_folder') return { sheet_url: 'folder-id', table_key: 'drive_folder' }
-      return null
+  it('POST creates matrix even when unit is an array', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/internal-matrix',
+      cookies: { access_token: adminToken },
+      payload: { projectName: 'Unit Test', client: 'X', unit: ['ТВ', 'Дизайн'] },
     })
 
-    const [tmplRow] = await prisma.$queryRawUnsafe<{ id: string }[]>(
-      `INSERT INTO matrix_templates (id, name, sheet_url, is_active, created_at, updated_at)
-       VALUES (gen_random_uuid(), 'Fail Template', 'https://docs.google.com/spreadsheets/d/t/edit', true, NOW(), NOW())
-       RETURNING id`
-    )
-    const tmplId = tmplRow.id
+    expect(res.statusCode).toBe(201)
+    const body = res.json()
+    expect(body.id).toBeDefined()
+    expect(body.unit).toEqual(['ТВ', 'Дизайн'])
 
-    try {
-      const res = await app.inject({
-        method: 'POST',
-        url: '/internal-matrix',
-        cookies: { access_token: adminToken },
-        payload: { projectName: 'Drive Fail', client: 'X' },
-      })
-
-      expect(res.statusCode).toBe(201)
-      const body = res.json()
-      expect(body.id).toBeDefined()
-      expect(body.sheet_url).toBeNull()
-      expect(body.driveError).toMatch(/quota/i)
-
-      createdIds.push(body.id)
-    } finally {
-      await prisma.$executeRawUnsafe(`DELETE FROM matrix_templates WHERE id = $1`, tmplId).catch(() => {})
-    }
+    createdIds.push(body.id)
   })
 
   it('non-admin cannot create internal matrix → 403', async () => {

@@ -32,7 +32,7 @@
 | @fastify/rate-limit | latest | Rate limiting (только `POST /auth/login`, `global: false`) |
 | bcryptjs | latest | Хэширование паролей |
 | googleapis | latest | Google Sheets API v4 + Google Drive API v3 |
-| node-cron | latest | Планировщик синхронизации (каждые 30 мин) |
+| node-cron | latest | Установлен, но auto-cron **не активирован** — синхронизация только ручная (`POST /sync/trigger`) |
 | zod | latest | Валидация входящих данных |
 
 ### База данных
@@ -102,7 +102,7 @@ tv-shifts/
 ## Навигация (фронтенд)
 
 Нет React Router. Навигация реализована через:
-- `useState<Page>` в `AppShell.tsx` — страницы: `calendar | analytics | users | tasks | profile | syncdata | deals | database`
+- `useState<Page>` в `AppShell.tsx` — страницы: `calendar | workflow | analytics | users | tasks | profile | syncdata | deals | database`
 - Активная страница сохраняется в `localStorage` (ключ `app-page`)
 - Часть вкладок скрыта по роли: `users`, `syncdata`, `database` — только admin; `deals` — admin + producer
 
@@ -141,7 +141,7 @@ tv-shifts/
 
 ## Синхронизация (`syncService.ts`)
 
-Полный цикл запускается по cron (каждые 30 мин) или вручную (`POST /sync/trigger`).
+Полный цикл запускается **только вручную** (`POST /sync/trigger`). `node-cron` установлен, но не активирован (осознанное решение, пока проект активно развивается).
 
 ```
 runFullSync():

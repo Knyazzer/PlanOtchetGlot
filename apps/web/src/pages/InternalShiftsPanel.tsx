@@ -211,7 +211,7 @@ const LOCATION_OPTIONS = [
 const SHIFT_FORMATS = ['Трансляция', 'Телерадио', 'Съемки', 'Радио', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн']
 const FORMATS_WITH_LOCATION = ['Трансляция', 'Телерадио', 'Съемки']
 const DEPARTMENTS = ['ТВ', 'Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Радио', 'Не профильный']
-const CREATIVE_FORMATS = ['Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Не профильный']
+const CREATIVE_FORMATS = ['Моушн', 'Постпродакшн', 'Дизайн', 'Саунд-дизайн', 'Не профильный', 'Радио']
 const TV_FORMATS = ['Трансляция', 'Телерадио', 'Съемки']
 
 // Which schedule fields each group uses
@@ -443,7 +443,7 @@ function ProducerField({ label, fieldKey, value, options, onSave, isApproved, on
 
 // ─── InternalShiftsPanel ─────────────────────────────────────────────────────
 
-export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { matrixRegistryId: string; initialProjectId?: string | null }) {
+export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parentTaskId }: { matrixRegistryId?: string | null; initialProjectId?: string | null; parentTaskId?: string | null }) {
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'summary' | string>('summary')
 
@@ -452,30 +452,46 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
   }, [initialProjectId])
   const [creating, setCreating] = useState(false)
 
+  // When parentTaskId is provided, load departments belonging to that specific task.
+  // Otherwise fall back to loading all projects for the matrix (legacy behaviour).
+  const queryKey = parentTaskId
+    ? ['micro-projects', 'task', parentTaskId]
+    : ['micro-projects', matrixRegistryId]
+  const queryUrl = parentTaskId
+    ? `/status-rows?parentTaskId=${parentTaskId}`
+    : `/status-rows?matrixRegistryId=${matrixRegistryId}`
+
   const { data: projects = [], isLoading } = useQuery<MicroProject[]>({
-    queryKey: ['micro-projects', matrixRegistryId],
-    queryFn: () => api.get(`/status-rows?matrixRegistryId=${matrixRegistryId}`).then((r) => r.data),
+    queryKey,
+    queryFn: () => api.get(queryUrl).then((r) => r.data),
+    enabled: parentTaskId ? !!parentTaskId : !!matrixRegistryId,
     staleTime: 30_000,
   })
 
+  const invalidateMicroProjects = () => {
+    qc.invalidateQueries({ queryKey })
+    qc.invalidateQueries({ queryKey: ['micro-projects-info', matrixRegistryId] })
+    qc.invalidateQueries({ queryKey: ['status-rows-sync'] })
+  }
+
   const handleCreated = (id: string) => {
-    qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    invalidateMicroProjects()
     setCreating(false)
     setActiveTab(id)
   }
 
   const handleDeleted = (id: string) => {
-    qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    invalidateMicroProjects()
     if (activeTab === id) setActiveTab('summary')
   }
 
   const handleCopied = (newId: string) => {
-    qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    invalidateMicroProjects()
     setActiveTab(newId)
   }
 
   const handleUpdated = () => {
-    qc.invalidateQueries({ queryKey: ['micro-projects', matrixRegistryId] })
+    qc.invalidateQueries({ queryKey })
   }
 
   const tabBtn = (active: boolean): React.CSSProperties => ({
@@ -484,6 +500,10 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
     color: active ? '#3b82f6' : '#64748b', fontWeight: active ? 600 : 400,
     whiteSpace: 'nowrap', flexShrink: 0,
   })
+
+  if (parentTaskId === null || parentTaskId === undefined) {
+    // No task selected yet — show a prompt
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -525,7 +545,8 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
 
         {!isLoading && creating && activeTab === 'new' && (
           <CreateMicroProjectForm
-            matrixRegistryId={matrixRegistryId}
+            matrixRegistryId={parentTaskId ? undefined : matrixRegistryId}
+            parentTaskId={parentTaskId ?? undefined}
             onCreated={handleCreated}
             onCancel={() => { setCreating(false); setActiveTab('summary') }}
           />
@@ -557,7 +578,7 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId }: { ma
 
 // ─── ShiftsSummaryTab ─────────────────────────────────────────────────────────
 
-function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId: string; projects: MicroProject[] }) {
+function ShiftsSummaryTab({ matrixRegistryId, projects }: { matrixRegistryId?: string | null; projects: MicroProject[] }) {
   const memberQueries = useQueries({
     queries: projects.map((p) => ({
       queryKey: ['project-members', p.id],
@@ -781,7 +802,12 @@ export function MicroProjectTab({ project, onDeleted, onCopied, onUpdated }: {
   const updateProject = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       api.patch(`/status-rows/${project.id}`, data).then((r) => r.data),
-    onSuccess: onUpdated,
+    onSuccess: (updated) => {
+      qc.setQueryData(['micro-projects', project.matrixRegistryId!], (old: MicroProject[] | undefined) =>
+        old?.map((p) => (p.id === project.id ? { ...p, ...updated } : p))
+      )
+      onUpdated()
+    },
   })
 
   const saveField = (key: string, value: unknown) => {
@@ -1052,7 +1078,7 @@ function TimeField({ label, value, onChange }: { label: string; value: string; o
   return (
     <div style={{ flex: 1 }}>
       <label style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: 3 }}>{label}</label>
-      <input type="time" value={value} onChange={(e) => onChange(e.target.value)}
+      <input type="time" step={1800} value={value} onChange={(e) => onChange(e.target.value)}
         style={{ width: '100%', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 8px', fontSize: 12, color: '#1e293b', fontFamily: 'inherit', outline: 'none', background: '#fff', boxSizing: 'border-box' as const }} />
     </div>
   )
@@ -1137,7 +1163,7 @@ function ProjectInfoPanel({ project, onSave }: {
       {/* Block 2: Описание */}
       <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 10, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <div style={{ padding: '9px 12px 8px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Описание задачи для отдела</span>
         </div>
         <textarea
           value={notesDraft}
@@ -1182,23 +1208,23 @@ function GroupDateBlock({ groupId, color, sched, onSave, startTimeLabel = 'На�
       {fields.includes('time') && (
         <div style={rowS}>
           <span style={lblS}>Время</span>
-          <input type="time" value={sched.time ?? ''} onChange={(e) => onSave({ time: e.target.value || undefined })} style={inpS} />
+          <input type="time" step={1800} value={sched.time ?? ''} onChange={(e) => onSave({ time: e.target.value || undefined })} style={inpS} />
         </div>
       )}
       {fields.includes('timeFrom') && (
         <div style={rowS}>
           <span style={lblS}>Время</span>
           <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-            <input type="time" value={sched.timeFrom ?? ''} onChange={(e) => onSave({ timeFrom: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
+            <input type="time" step={1800} value={sched.timeFrom ?? ''} onChange={(e) => onSave({ timeFrom: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
             <span style={{ color: '#94a3b8', fontSize: 10, flexShrink: 0 }}>—</span>
-            <input type="time" value={sched.timeTo ?? ''} onChange={(e) => onSave({ timeTo: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
+            <input type="time" step={1800} value={sched.timeTo ?? ''} onChange={(e) => onSave({ timeTo: e.target.value || undefined })} style={{ ...inpS, flex: 1 }} />
           </div>
         </div>
       )}
       {fields.includes('startTime') && (
         <div style={rowS}>
           <span style={lblS}>{startTimeLabel}</span>
-          <input type="time" value={sched.startTime ?? ''} onChange={(e) => onSave({ startTime: e.target.value || undefined })} style={inpS} />
+          <input type="time" step={1800} value={sched.startTime ?? ''} onChange={(e) => onSave({ startTime: e.target.value || undefined })} style={inpS} />
         </div>
       )}
     </div>
@@ -1471,7 +1497,10 @@ function TeamTable({ project, members, loading, onUpdated, microTab, setMicroTab
 
   const removeMember = useMutation({
     mutationFn: (id: string) => api.delete(`/project-members/${id}`).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['project-members', project.id] }),
+    onSuccess: (_, deletedId) =>
+      qc.setQueryData(['project-members', project.id], (old: ProjectMember[] | undefined) =>
+        old?.filter((m) => m.id !== deletedId)
+      ),
   })
 
   const toggleFieldApproval = (member: ProjectMember, field: string) => {
@@ -2351,7 +2380,7 @@ function KanbanBoard({ projectId, members }: { projectId: string; members: Proje
           members={nonFreelanceMembers}
           onSave={(patch) => patchTask.mutate({ id: editTask.id, ...patch })}
           onDelete={() => deleteTask.mutate(editTask.id)}
-          onClose={() => { setEditTask(null); invalidate() }}
+          onClose={() => setEditTask(null)}
         />
       )}
     </div>
@@ -2438,8 +2467,9 @@ function KanbanTaskModal({ task, members, onSave, onDelete, onClose }: {
 
 // ─── CreateMicroProjectForm ───────────────────────────────────────────────────
 
-function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
-  matrixRegistryId: string
+function CreateMicroProjectForm({ matrixRegistryId, parentTaskId, onCreated, onCancel }: {
+  matrixRegistryId?: string
+  parentTaskId?: string
   onCreated: (id: string) => void
   onCancel: () => void
 }) {
@@ -2455,16 +2485,42 @@ function CreateMicroProjectForm({ matrixRegistryId, onCreated, onCancel }: {
   const showLocation = FORMATS_WITH_LOCATION.includes(resolvedFormat)
   const canCreate = dept.trim() !== '' && (!isTv || tvFormat.trim() !== '') && (!showLocation || location.trim() !== '')
 
+  const DEFAULT_GROUP_TIMES: Record<string, { timeFrom: string; timeTo: string; startTime?: string }> = {
+    sbor:      { timeFrom: '07:00', timeTo: '10:00' },
+    zavoz:     { timeFrom: '10:00', timeTo: '11:00' },
+    montazh:   { timeFrom: '11:00', timeTo: '16:00' },
+    efir:      { timeFrom: '16:00', timeTo: '18:00', startTime: '16:30' },
+    demontazh: { timeFrom: '18:00', timeTo: '20:00' },
+    vyvoz:     { timeFrom: '20:00', timeTo: '21:00' },
+  }
+
   const create = useMutation({
-    mutationFn: () => api.post('/status-rows', {
-      name: resolvedFormat || dept || 'Без названия',
-      notes: notes.trim() || null,
-      date: date ? new Date(date).toISOString() : null,
-      format: resolvedFormat || null,
-      location: showLocation ? (location || null) : null,
-      matrixRegistryId,
-      status: 'request',
-    }).then((r) => r.data),
+    mutationFn: async () => {
+      const r = await api.post('/status-rows', {
+        name: resolvedFormat || dept || 'Без названия',
+        notes: notes.trim() || null,
+        date: date ? new Date(date).toISOString() : null,
+        format: resolvedFormat || null,
+        location: showLocation ? (location || null) : null,
+        ...(parentTaskId ? { parentTaskId } : { matrixRegistryId }),
+        status: 'request',
+      })
+      const newId: string = r.data.id
+
+      if (showLocation && location) {
+        const today = new Date().toISOString().slice(0, 10)
+        const isViezd = location.startsWith('Выезд')
+        const groups = isViezd ? VIEZD_GROUPS : STUDIO_GROUPS
+        const schedule: Record<string, unknown> = {}
+        for (const g of groups) {
+          const t = DEFAULT_GROUP_TIMES[g.id]
+          if (t) schedule[g.id] = { date: today, ...t }
+        }
+        await api.patch(`/status-rows/${newId}/group-schedule`, schedule)
+      }
+
+      return r.data
+    },
     onSuccess: (data) => onCreated(data.id),
   })
 
