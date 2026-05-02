@@ -88,3 +88,5 @@ volumes:
   postgres_data:
   certbot_www:
   certbot_conf:
+    external: true
+    name: tvshifts_certbot_conf
