@@ -10,6 +10,6 @@ FROM base AS production
 COPY packages/db ./packages/db
 COPY apps/api ./apps/api
 RUN pnpm --filter @tv-shifts/db generate
-RUN NODE_OPTIONS=--max-old-space-size=1024 pnpm --filter @tv-shifts/api build
+RUN pnpm --filter @tv-shifts/api build
 EXPOSE 4000
 CMD ["pnpm", "--filter", "@tv-shifts/api", "start"]
