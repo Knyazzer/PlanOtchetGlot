@@ -93,10 +93,6 @@ function fmtDateShort(raw: string | null | undefined): string {
   try { return format(new Date(raw), 'd MMM', { locale: ru }) } catch { return raw }
 }
 
-function fmtDateFull(raw: string | null | undefined): string {
-  if (!raw) return '—'
-  try { return format(new Date(raw), 'd MMM yyyy', { locale: ru }) } catch { return raw }
-}
 
 function toIsoDate(raw: string): string {
   try { return new Date(raw).toISOString().slice(0, 10) } catch { return raw }

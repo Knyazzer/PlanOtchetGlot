@@ -51,6 +51,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
 
+      - name: Build packages/db
+        run: pnpm --filter @tv-shifts/db build
+
       - name: tsc (web)
         run: pnpm --filter @tv-shifts/web exec tsc --noEmit
 
@@ -101,6 +104,9 @@ jobs:
       - name: Generate Prisma client
         run: pnpm db:generate
 
+      - name: Build packages/db
+        run: pnpm --filter @tv-shifts/db build
+
       - name: Apply migrations
         run: pnpm db:migrate:test
 
@@ -129,6 +135,9 @@ jobs:
 
       - name: Generate Prisma client
         run: pnpm db:generate
+
+      - name: Build packages/db
+        run: pnpm --filter @tv-shifts/db build
 
       - name: Build (api + web)
         env:
