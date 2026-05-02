@@ -1846,9 +1846,26 @@ const TASK_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   cancelled:      { bg: '#f1f5f9', color: '#64748b' },
 }
 
+const DEPT_COLORS: Record<string, { bg: string; color: string }> = {
+  'ТВ':             { bg: '#dbeafe', color: '#1e40af' },
+  'Трансляция':     { bg: '#dbeafe', color: '#1e40af' },
+  'Телерадио':      { bg: '#dbeafe', color: '#1e40af' },
+  'Съемки':         { bg: '#dbeafe', color: '#1e40af' },
+  'Съёмки':         { bg: '#dbeafe', color: '#1e40af' },
+  'Моушн':          { bg: '#fce7f3', color: '#be185d' },
+  'Постпродакшн':   { bg: '#ede9fe', color: '#6d28d9' },
+  'Дизайн':         { bg: '#fef3c7', color: '#b45309' },
+  'Саунд-дизайн':   { bg: '#cffafe', color: '#155e75' },
+  'Радио':          { bg: '#d1fae5', color: '#065f46' },
+  'Не профильный':  { bg: '#f1f5f9', color: '#475569' },
+}
+
 function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegistryId: string; initialProjectId?: string | null }) {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialProjectId ?? null)
-  const [openTaskId, setOpenTaskId] = useState<string | null>(initialProjectId ?? null)
+  const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null)
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(
+    () => new Set(initialProjectId ? [initialProjectId] : [])
+  )
 
   const { data: tasks = [], isLoading } = useQuery<LinkedTask[]>({
     queryKey: ['registry-tasks', matrixRegistryId],
@@ -1856,24 +1873,61 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
     staleTime: 30_000,
   })
 
-  const handleTaskClick = (taskId: string) => {
-    setOpenTaskId((prev) => (prev === taskId ? null : taskId))
-    setSelectedTaskId(taskId)
+  const deptQueries = useQueries({
+    queries: tasks.map((task) => ({
+      queryKey: ['task-depts', task.id],
+      queryFn: () => api.get('/status-rows', { params: { parentTaskId: task.id } }).then((r) => r.data as LinkedTask[]),
+      staleTime: 30_000,
+      enabled: tasks.length > 0,
+    })),
+  })
+
+  const deptsByTaskId = useMemo(() => {
+    const map: Record<string, LinkedTask[]> = {}
+    tasks.forEach((task, i) => { map[task.id] = deptQueries[i]?.data ?? [] })
+    return map
+  }, [tasks, deptQueries])
+
+  const toggleExpand = (taskId: string) => {
+    setExpandedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) next.delete(taskId)
+      else next.add(taskId)
+      return next
+    })
   }
+
+  const handleTaskClick = (taskId: string) => {
+    toggleExpand(taskId)
+    setSelectedTaskId(taskId)
+    setSelectedDeptId(null)
+  }
+
+  const handleDeptClick = (taskId: string, deptId: string) => {
+    setSelectedTaskId(taskId)
+    setSelectedDeptId(deptId)
+  }
+
+  const hasRightPanel = selectedDeptId !== null
 
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-      {/* ── LEFT: task accordion list ── */}
-      <div style={{ width: 290, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* ── LEFT: task tree ── */}
+      <div style={{
+        width: hasRightPanel ? 300 : 380,
+        flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        transition: 'width .2s ease',
+      }}>
         <div style={{ padding: '10px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Задачи</span>
+          {tasks.length > 0 && <span style={{ fontSize: 11, color: '#94a3b8' }}>{tasks.length}</span>}
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {isLoading && (
             <div style={{ padding: '20px 16px', color: '#94a3b8', fontSize: 13 }}>Загрузка...</div>
           )}
-
           {!isLoading && tasks.length === 0 && (
             <div style={{ padding: '20px 16px', color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>
               Нет задач.<br />
@@ -1881,93 +1935,136 @@ function RegistryTasksTab({ matrixRegistryId, initialProjectId }: { matrixRegist
             </div>
           )}
 
-          {tasks.map((task) => {
-            const isOpen = openTaskId === task.id
+          {tasks.map((task, taskIdx) => {
+            const isExpanded = expandedTaskIds.has(task.id)
             const isSelected = selectedTaskId === task.id
             const sc = TASK_STATUS_COLORS[task.status] ?? { bg: '#f1f5f9', color: '#64748b' }
             const label = task.format || task.name || '(без названия)'
-            const dateStr = task.date
-              ? new Date(task.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
-              : task.dateApproximate || null
+            const depts = deptsByTaskId[task.id] ?? []
+            const pinLabel = `T${taskIdx + 1}`
 
             return (
               <div key={task.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                {/* Task row */}
                 <div
                   onClick={() => handleTaskClick(task.id)}
                   style={{
-                    padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8,
-                    cursor: 'pointer', background: isSelected ? '#eff6ff' : 'transparent',
+                    padding: '9px 12px 9px 10px', display: 'flex', alignItems: 'center', gap: 7,
+                    cursor: 'pointer',
+                    background: isSelected ? '#eff6ff' : 'transparent',
+                    borderLeft: isSelected ? '3px solid #3b82f6' : '3px solid transparent',
                     transition: 'background .15s',
                   }}
                   onMouseOver={(e) => { if (!isSelected) e.currentTarget.style.background = '#f8fafc' }}
                   onMouseOut={(e) => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
                 >
                   <span style={{
-                    fontSize: 10, color: isSelected ? '#2563eb' : '#94a3b8',
-                    transition: 'transform .22s', display: 'inline-block',
-                    transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-                    flexShrink: 0,
+                    fontSize: 8, color: '#94a3b8', display: 'inline-block', flexShrink: 0,
+                    transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                    transition: 'transform .18s',
                   }}>▶</span>
+
+                  {/* T-pin badge */}
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0,
+                    background: isSelected ? '#3b82f6' : '#94a3b8',
+                    borderRadius: 4, padding: '2px 5px',
+                    transition: 'background .15s',
+                  }}>{pinLabel}</span>
+
                   <span style={{
                     fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     color: isSelected ? '#1d4ed8' : '#1e293b',
                   }}>{label}</span>
-                  <span style={{ ...sc, padding: '2px 7px', borderRadius: 8, fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
-                    {TASK_STATUS_LABELS[task.status] ?? task.status}
-                  </span>
+
+                  {/* dept count chip */}
+                  {depts.length > 0 && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, color: '#64748b',
+                      background: '#f1f5f9', borderRadius: 10, padding: '1px 6px', flexShrink: 0,
+                    }}>{depts.length}</span>
+                  )}
+
+                  {/* status badge — hidden in compact mode */}
+                  {!hasRightPanel && (
+                    <span style={{ ...sc, padding: '2px 6px', borderRadius: 8, fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
+                      {TASK_STATUS_LABELS[task.status] ?? task.status}
+                    </span>
+                  )}
                 </div>
 
-                {/* Accordion body — grid-template-rows for smooth animation */}
-                <div style={{
-                  display: 'grid',
-                  gridTemplateRows: isOpen ? '1fr' : '0fr',
-                  transition: 'grid-template-rows .25s cubic-bezier(.4,0,.2,1)',
-                  background: '#fafbff',
-                }}>
-                  <div style={{ overflow: 'hidden' }}>
-                    <div style={{ padding: isOpen ? '8px 14px 12px' : '0 14px', transition: 'padding .25s cubic-bezier(.4,0,.2,1)' }}>
-                      {(() => {
-                        const row = [
-                          ['Клиент', task.client],
-                          ['Формат', task.format],
-                          ['Локация', task.location],
-                          ['Исп. продюсер', task.execProducer],
-                          ['Лайн-продюсер', task.lineProducer],
-                          ['Аккаунт менеджер', task.accountManager],
-                          ['Дата', dateStr],
-                          ['Проект', task.matrixRegistry ? (task.matrixRegistry.name || task.matrixRegistry.matrixId) : null],
-                        ].filter(([, v]) => v)
-                        return row.map(([label, value], i) => (
-                          <div key={label as string} style={{ paddingBottom: 5, marginBottom: 5, borderBottom: i < row.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                            <div style={{ fontSize: 10, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>{label as string}</div>
-                            <div style={{ fontSize: 12, color: '#1e293b', fontWeight: 500, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value as string}</div>
-                          </div>
-                        ))
-                      })()}
-                      <TaskNotesEditor taskId={task.id} initialNotes={task.notes} matrixRegistryId={matrixRegistryId} />
+                {/* Dept children */}
+                {isExpanded && depts.length > 0 && depts.map((dept, deptIdx) => {
+                  const isLastDept = deptIdx === depts.length - 1
+                  const deptLabel = dept.format || dept.name || '—'
+                  const dc = DEPT_COLORS[deptLabel] ?? { bg: '#f1f5f9', color: '#475569' }
+                  const initials = deptLabel.slice(0, 2).toUpperCase()
+
+                  const isDeptSelected = selectedDeptId === dept.id
+                  return (
+                    <div
+                      key={dept.id}
+                      onClick={() => handleDeptClick(task.id, dept.id)}
+                      style={{
+                        position: 'relative', paddingLeft: 44, cursor: 'pointer',
+                        background: isDeptSelected ? '#eff6ff' : 'transparent',
+                        borderLeft: isDeptSelected ? '3px solid #3b82f6' : '3px solid transparent',
+                      }}
+                      onMouseOver={(e) => { if (!isDeptSelected) e.currentTarget.style.background = '#f8fafc' }}
+                      onMouseOut={(e) => { if (!isDeptSelected) e.currentTarget.style.background = isDeptSelected ? '#eff6ff' : 'transparent' }}
+                    >
+                      {/* Vertical connector */}
+                      <div style={{
+                        position: 'absolute', left: 20, top: 0,
+                        bottom: isLastDept ? '50%' : 0,
+                        width: 1.5, background: '#e2e8f0', pointerEvents: 'none',
+                      }} />
+                      {/* Horizontal connector */}
+                      <div style={{
+                        position: 'absolute', left: 20, top: '50%',
+                        width: 16, height: 1.5, background: '#e2e8f0', pointerEvents: 'none',
+                      }} />
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 6px 0' }}>
+                        {/* Dept color icon */}
+                        <span style={{
+                          width: 26, height: 26, borderRadius: 6, flexShrink: 0,
+                          background: dc.bg, color: dc.color,
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 700, letterSpacing: '0.03em',
+                        }}>{initials}</span>
+
+                        <span style={{
+                          fontSize: 12, color: '#374151', flex: 1, minWidth: 0,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>{deptLabel}</span>
+
+                        <span style={{ fontSize: 10, color: '#cbd5e1', flexShrink: 0 }}>→</span>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  )
+                })}
               </div>
             )
           })}
         </div>
       </div>
 
-      {/* ── RIGHT: InternalShiftsPanel for selected task's departments ── */}
+      {/* ── RIGHT: InternalShiftsPanel for selected dept ── */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {selectedTaskId ? (
+        {selectedDeptId && selectedTaskId ? (
           <InternalShiftsPanel
             matrixRegistryId={matrixRegistryId}
-            initialProjectId={selectedTaskId}
+            initialProjectId={selectedDeptId}
             parentTaskId={selectedTaskId}
+            hideTabs
           />
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8, color: '#94a3b8' }}>
             <div style={{ fontSize: 32 }}>←</div>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Выберите задачу</div>
-            <div style={{ fontSize: 12 }}>Отделы задачи появятся здесь</div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>Выберите отдел</div>
+            <div style={{ fontSize: 12 }}>Нажмите на строку отдела в дереве слева</div>
           </div>
         )}
       </div>

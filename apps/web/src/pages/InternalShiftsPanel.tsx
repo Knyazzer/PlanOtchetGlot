@@ -442,7 +442,7 @@ function ProducerField({ label, fieldKey, value, options, onSave, isApproved, on
 
 // ─── InternalShiftsPanel ─────────────────────────────────────────────────────
 
-export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parentTaskId }: { matrixRegistryId?: string | null; initialProjectId?: string | null; parentTaskId?: string | null }) {
+export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parentTaskId, hideTabs }: { matrixRegistryId?: string | null; initialProjectId?: string | null; parentTaskId?: string | null; hideTabs?: boolean }) {
   const qc = useQueryClient()
   const [activeTab, setActiveTab] = useState<'summary' | string>('summary')
 
@@ -513,7 +513,7 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parent
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Sub-tabs strip */}
-      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', overflowX: 'auto', flexShrink: 0 }}>
+      {!hideTabs && <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', overflowX: 'auto', flexShrink: 0 }}>
         <button style={tabBtn(activeTab === 'summary')} onClick={() => { setActiveTab('summary'); setCreating(false) }}>
           Свод отделов
         </button>
@@ -538,7 +538,7 @@ export function InternalShiftsPanel({ matrixRegistryId, initialProjectId, parent
           title="Добавить отдел"
           onClick={() => { setCreating(true); setActiveTab('new') }}
         >+</button>
-      </div>
+      </div>}
 
       {/* Content */}
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
