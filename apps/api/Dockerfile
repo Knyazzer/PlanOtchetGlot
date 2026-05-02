@@ -12,4 +12,4 @@ COPY apps/api ./apps/api
 RUN pnpm --filter @tv-shifts/db generate
 RUN pnpm --filter @tv-shifts/api build
 EXPOSE 4000
-CMD ["pnpm", "--filter", "@tv-shifts/api", "start"]
+CMD ["/bin/sh", "-c", "pnpm --filter @tv-shifts/db migrate:deploy && pnpm --filter @tv-shifts/api start"]

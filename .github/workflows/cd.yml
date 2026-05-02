@@ -83,16 +83,5 @@ jobs:
             docker compose -f docker-compose.prod.yml pull api web
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-            echo "Waiting for api container to be ready..."
-            for i in $(seq 1 40); do
-              if docker compose -f docker-compose.prod.yml exec -T api echo "ok" 2>/dev/null; then
-                echo "API is ready"
-                break
-              fi
-              echo "  attempt $i/40..."
-              sleep 3
-            done
-
-            docker compose -f docker-compose.prod.yml exec -T api pnpm --filter @tv-shifts/db migrate:deploy
             docker compose -f docker-compose.prod.yml ps
             echo "Deploy complete"
