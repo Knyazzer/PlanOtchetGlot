@@ -86,7 +86,7 @@ function PreviewModal({ tableKey, label, onClose }: { tableKey: string; label: s
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '0 20px 20px' }}>
           {isLoading && <div style={{ color: '#64748b', fontSize: 14, padding: '24px 0' }}>Загрузка...</div>}
-          {error && <div style={{ color: '#ef4444', fontSize: 14, padding: '24px 0' }}>Ошибка: {(error as any)?.response?.data?.error ?? (error as any)?.message}</div>}
+          {error && <div style={{ color: '#ef4444', fontSize: 14, padding: '24px 0' }}>Ошибка: {(error as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error ?? (error as { message?: string })?.message}</div>}
           {isEmpty && <div style={{ color: '#94a3b8', fontSize: 14, padding: '24px 0' }}>Данные не загружены</div>}
           {data && data.rows.length > 0 && (
             <table style={{ borderCollapse: 'collapse', fontSize: 13, width: '100%', marginTop: 4 }}>

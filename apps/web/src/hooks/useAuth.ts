@@ -18,7 +18,7 @@ export function useAuthInit() {
       })
       .catch(() => setUser(null))
       .finally(() => setLoading(false))
-  }, [])
+  }, [setUser, setLoading])
 }
 
 export function useCurrentUser() {

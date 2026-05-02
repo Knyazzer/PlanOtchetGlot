@@ -81,7 +81,7 @@ export function requirePermission(permission: Permission) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await request.jwtVerify()
-      const user = request.user as { id: string; role?: string; permissions?: string[] }
+      const user = request.user as { id: string; role?: string; roles?: string[]; permissions?: string[] }
       request.log.setBindings?.({ userId: user.id, role: user.role })
 
       // Use RBAC permissions when the user has been assigned roles in the new system.

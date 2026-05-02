@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import ruLocale from '@fullcalendar/core/locales/ru'
+import type { EventInput, EventClickArg, DatesSetArg } from '@fullcalendar/core'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -98,7 +99,7 @@ export function CalendarPage() {
   }
 
   // Генерация событий из дней проекта
-  const projectEvents: any[] = []
+  const projectEvents: EventInput[] = []
   for (const p of projects) {
     const title = p.client ? `${p.client} — ${p.name}` : p.name
 
@@ -150,11 +151,11 @@ export function CalendarPage() {
     }
   }
 
-  function handleEventClick(info: any) {
+  function handleEventClick(info: EventClickArg) {
     setSelectedProject(info.event.extendedProps.project)
   }
 
-  function handleDatesSet(info: any) {
+  function handleDatesSet(info: DatesSetArg) {
     setCurrentDate(info.view.currentStart)
   }
 
@@ -628,7 +629,7 @@ function EditProjectModal({
                 <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 3 }}>Тип</label>
                 <select
                   value={day.type}
-                  onChange={(e) => updateDay(i, { type: e.target.value as any })}
+                  onChange={(e) => updateDay(i, { type: e.target.value as ProjectDay['type'] })}
                   style={inp({ background: DAY_TYPE_COLORS[day.type] + '18' })}
                 >
                   <option value="zastroyka">Застройка</option>
