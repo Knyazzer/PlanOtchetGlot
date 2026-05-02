@@ -18,10 +18,7 @@ services:
     # Не открываем порт наружу — только внутри Docker сети
 
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-      target: production
+    image: ghcr.io/knyazzer/planotchetglot-api:latest
     restart: unless-stopped
     depends_on:
       postgres:
@@ -39,12 +36,7 @@ services:
       - "4000"
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      target: production
-      args:
-        VITE_API_URL: ${VITE_API_URL}
+    image: ghcr.io/knyazzer/planotchetglot-web:latest
     restart: unless-stopped
     expose:
       - "80"
