@@ -74,11 +74,11 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - ./backups:/backups
-    # pg_dump каждый день в 3:00
+    # pg_dump раз в 24 часа
     entrypoint: >
       /bin/sh -c '
         while true; do
-          sleep $$(( $(date -d "tomorrow 03:00" +%s) - $(date +%s) ));
+          sleep 86400;
           pg_dump -h postgres -U ${POSTGRES_USER} ${POSTGRES_DB} | gzip > /backups/backup_$$(date +%Y%m%d_%H%M%S).sql.gz;
           find /backups -name "*.sql.gz" -mtime +30 -delete;
         done
