@@ -85,6 +85,7 @@ jobs:
 
             docker compose -f docker-compose.prod.yml pull api web
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml restart nginx
 
             sudo systemctl restart alloy
 
