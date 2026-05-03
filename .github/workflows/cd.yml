@@ -75,7 +75,10 @@ jobs:
           script: |
             set -e
             cd /opt/tvshifts
-            git pull origin master
+            git fetch origin master
+            git checkout -- . 2>/dev/null || true
+            git clean -f config.alloy postgres-exporter/ 2>/dev/null || true
+            git reset --hard origin/master
             mkdir -p nginx/ssl backups
 
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
