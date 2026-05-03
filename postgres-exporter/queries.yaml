@@ -3,8 +3,8 @@ pg_tvshifts_overview:
     SELECT
       (SELECT COUNT(*) FROM users)::float AS total_users,
       (SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '24 hours')::float AS new_users_24h,
-      (SELECT COUNT(*) FROM change_logs WHERE created_at >= NOW() - INTERVAL '24 hours')::float AS changes_24h,
-      (SELECT COUNT(*) FROM sync_logs WHERE created_at >= NOW() - INTERVAL '24 hours')::float AS syncs_24h,
+      (SELECT COUNT(*) FROM change_logs WHERE changed_at >= NOW() - INTERVAL '24 hours')::float AS changes_24h,
+      (SELECT COUNT(*) FROM sync_logs WHERE started_at >= NOW() - INTERVAL '24 hours')::float AS syncs_24h,
       (SELECT COUNT(*) FROM notifications WHERE created_at >= NOW() - INTERVAL '24 hours')::float AS notifications_24h
   master: true
   metrics:
@@ -31,7 +31,7 @@ pg_tvshifts_changes_by_user:
       COUNT(*)::float AS change_count
     FROM change_logs cl
     JOIN users u ON u.id = cl.changed_by
-    WHERE cl.created_at >= NOW() - INTERVAL '24 hours'
+    WHERE cl.changed_at >= NOW() - INTERVAL '24 hours'
     GROUP BY u.full_name
   master: true
   metrics:
