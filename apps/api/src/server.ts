@@ -24,6 +24,7 @@ import { internalMatrixRoutes } from './routes/internalMatrix'
 import { projectMembersRoutes } from './routes/projectMembers'
 import { matrixExtrasRoutes } from './routes/matrixExtras'
 import { kanbanTasksRoutes } from './routes/kanbanTasks'
+import { metricsPlugin } from './plugins/metrics'
 import { runFullSync } from './services/syncService'
 import { prisma } from '@tv-shifts/db'
 
@@ -61,6 +62,8 @@ async function main() {
 
   // Rate limiting — применяется только к роутам с явным config.rateLimit
   await app.register(rateLimit, { global: false })
+
+  await app.register(metricsPlugin)
 
   await app.register(jwt, {
     secret: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',

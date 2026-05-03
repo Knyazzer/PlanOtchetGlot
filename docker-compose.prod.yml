@@ -34,6 +34,8 @@ services:
       GOOGLE_REGISTRY_SHEET_ID: ${GOOGLE_REGISTRY_SHEET_ID}
     expose:
       - "4000"
+    ports:
+      - "127.0.0.1:4000:4000"
 
   web:
     image: ghcr.io/knyazzer/planotchetglot-web:latest
