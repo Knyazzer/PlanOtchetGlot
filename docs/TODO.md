@@ -61,12 +61,46 @@
 ### Фаза 4 — Observability
 
 > Детали конфигурации — в [09-observability.md](09-observability.md).
+> Grafana Cloud подключён, Grafana Alloy запущен как systemd-сервис, Docker-интеграция активна (метрики контейнеров + логи → Loki).
 
-- [ ] **Grafana + PostgreSQL datasource** — дашборды по `change_logs`, `sync_logs`, `notifications`
+#### ✅ Уже сделано
+- [x] **Grafana Cloud** — аккаунт создан, стек настроен
+- [x] **Grafana Alloy** — установлен на VPS, запускается автоматически (`systemd`), собирает логи всех Docker-контейнеров → Loki, метрики cAdvisor → Prometheus
+- [x] **Docker integration dashboards** — установлены ("Docker overview", "Docker logs"), данные идут в реальном времени
+- [x] **Security** — `server_tokens off` в nginx, Cloudflare security headers
 
-- [ ] **Pino → Loki** — добавить Promtail для отправки логов API в Loki → Grafana
+#### 🔲 Шаг 1 — Аудит пользователей через PostgreSQL (нулевой код)
 
-- [ ] **`@fastify/metrics` + Prometheus** — latency по роутам, error rate, active connections
+- [ ] **PostgreSQL datasource в Grafana** — подключить prod БД как datasource (read-only пользователь)
+- [ ] **Дашборд "Аудит"** — панели: новые пользователи по дням (`users`), кто что изменил (`change_logs`), топ активных пользователей, история синхронизаций (`sync_logs`), уведомления системы (`notifications`)
+- [ ] **Дашборд "База данных"** — размер таблиц, количество записей, рост БД во времени (через `pg_stat_user_tables`)
+
+#### 🔲 Шаг 2 — User journey в логах (1 строка кода)
+
+- [ ] **`userId` в Pino-логах** — добавить `request.log = request.log.child({ userId: request.user?.id })` в auth middleware → каждый HTTP-запрос получит userId → в Loki можно фильтровать по пользователю и видеть его полный путь по `reqId`
+- [ ] **Дашборд "Активность пользователей"** — фильтр по userId: все запросы, переходы между роутами, время сессии, последнее действие
+
+#### 🔲 Шаг 3 — Метрики API и ошибки
+
+- [ ] **`@fastify/metrics` + Prometheus** — плагин добавляет `/metrics` endpoint; Prometheus scrape → latency p50/p95/p99 по роутам, error rate 4xx/5xx, active connections
+  ```bash
+  pnpm --filter @tv-shifts/api add @fastify/metrics prom-client
+  ```
+- [ ] **Дашборд "API Health"** — latency по роутам, всплески ошибок, error rate по времени
+- [ ] **Дашборд "Root cause"** — при ошибке 5xx: контекст запроса (userId, reqId, route), предыдущие запросы этого пользователя из Loki, stacktrace
+
+#### 🔲 Шаг 4 — Инфраструктура хоста
+
+- [ ] **Node Exporter** — добавить в `docker-compose.prod.yml`, scrape в Alloy конфиг → диск, сеть, uptime хоста, CPU/RAM на уровне VPS (не контейнеров)
+- [ ] **Дашборд "Infrastructure"** — импортировать готовый шаблон ID **1860** (Node Exporter Full) с grafana.com/grafana/dashboards
+
+#### 🔲 Шаг 5 — Алерты и uptime
+
+- [ ] **Grafana Synthetic Monitoring** — HTTP-проверка `https://tvshift.knzteam.ru` каждые 60с → uptime % и latency
+- [ ] **Алерт: сайт недоступен** — если synthetic check падает > 2 мин → уведомление (email / Telegram)
+- [ ] **Алерт: всплеск 5xx** — если error rate > 5% за 5 мин → уведомление
+- [ ] **Алерт: контейнер упал** — если контейнер исчез из cAdvisor → уведомление
+- [ ] **Алерт: RAM > 85%** — предупреждение до OOM
 
 ---
 
@@ -109,4 +143,4 @@
 ---
 
 > Текущий счёт тестов: **163 теста, 0 провалов** (`pnpm test`), стабильно.
-> Последнее обновление: 2026-04-24 (Фаза 1 завершена полностью, Фаза 2 RBAC инфраструктура готова)
+> Последнее обновление: 2026-05-03 (Фаза 1 завершена, Фаза 2 RBAC инфраструктура готова, Фаза 4 Observability — Grafana Cloud + Alloy запущены)

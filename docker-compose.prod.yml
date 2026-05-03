@@ -64,6 +64,20 @@ services:
     # Запуск вручную: docker compose -f docker-compose.prod.yml run certbot certonly ...
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable"
+      PG_EXPORTER_EXTEND_QUERY_PATH: /queries.yaml
+    volumes:
+      - ./postgres-exporter/queries.yaml:/queries.yaml:ro
+    ports:
+      - "127.0.0.1:9187:9187"
+
   backup:
     image: postgres:16-alpine
     restart: unless-stopped

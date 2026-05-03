@@ -1,0 +1,43 @@
+pg_tvshifts_overview:
+  query: |
+    SELECT
+      (SELECT COUNT(*) FROM users)::float AS total_users,
+      (SELECT COUNT(*) FROM users WHERE created_at >= NOW() - INTERVAL '24 hours')::float AS new_users_24h,
+      (SELECT COUNT(*) FROM change_logs WHERE created_at >= NOW() - INTERVAL '24 hours')::float AS changes_24h,
+      (SELECT COUNT(*) FROM sync_logs WHERE created_at >= NOW() - INTERVAL '24 hours')::float AS syncs_24h,
+      (SELECT COUNT(*) FROM notifications WHERE created_at >= NOW() - INTERVAL '24 hours')::float AS notifications_24h
+  master: true
+  metrics:
+    - total_users:
+        usage: "GAUGE"
+        description: "Total registered users"
+    - new_users_24h:
+        usage: "GAUGE"
+        description: "New users in last 24 hours"
+    - changes_24h:
+        usage: "GAUGE"
+        description: "Change log entries in last 24 hours"
+    - syncs_24h:
+        usage: "GAUGE"
+        description: "Sync operations in last 24 hours"
+    - notifications_24h:
+        usage: "GAUGE"
+        description: "System notifications in last 24 hours"
+
+pg_tvshifts_changes_by_user:
+  query: |
+    SELECT
+      u.full_name AS username,
+      COUNT(*)::float AS change_count
+    FROM change_logs cl
+    JOIN users u ON u.id = cl.changed_by
+    WHERE cl.created_at >= NOW() - INTERVAL '24 hours'
+    GROUP BY u.full_name
+  master: true
+  metrics:
+    - username:
+        usage: "LABEL"
+        description: "User who made changes"
+    - change_count:
+        usage: "GAUGE"
+        description: "Number of changes in last 24 hours"
