@@ -108,6 +108,13 @@ loki.source.docker "logs_integrations_docker" {
     refresh_interval = "5s"
 }
 
+prometheus.scrape "node_exporter" {
+    targets         = [{"__address__" = "localhost:9100"}]
+    forward_to      = [prometheus.remote_write.metrics_service.receiver]
+    scrape_interval = "60s"
+    job_name        = "node-exporter"
+}
+
 prometheus.scrape "postgres_exporter" {
     targets         = [{"__address__" = "localhost:9187"}]
     forward_to      = [prometheus.remote_write.metrics_service.receiver]
