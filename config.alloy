@@ -52,6 +52,16 @@ prometheus.relabel "integrations_cadvisor" {
         regex         = "container_cpu_usage_seconds_total|container_memory_usage_bytes|container_last_seen|machine_memory_bytes|up"
         action        = "keep"
     }
+    rule {
+        source_labels = ["container_label_com_docker_compose_project"]
+        regex         = "tvonly"
+        action        = "drop"
+    }
+    rule {
+        source_labels = ["name"]
+        regex         = "tvonly.*"
+        action        = "drop"
+    }
 }
 
 prometheus.scrape "integrations_cadvisor" {
@@ -82,6 +92,11 @@ discovery.relabel "logs_integrations_docker" {
     rule {
         source_labels = ["__meta_docker_container_log_stream"]
         target_label  = "stream"
+    }
+    rule {
+        source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+        regex         = "tvonly"
+        action        = "drop"
     }
 }
 

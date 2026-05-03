@@ -50,23 +50,9 @@ services:
       - api
       - web
     ports:
-      - "80:80"
-      - "443:443"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - certbot_www:/var/www/certbot:ro
-      - certbot_conf:/etc/letsencrypt:ro
-
-  certbot:
-    image: certbot/certbot
-    volumes:
-      - certbot_www:/var/www/certbot
-      - certbot_conf:/etc/letsencrypt
-    # Запуск вручную: docker compose -f docker-compose.prod.yml run certbot certonly ...
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
@@ -104,7 +90,3 @@ services:
 
 volumes:
   postgres_data:
-  certbot_www:
-  certbot_conf:
-    external: true
-    name: tvshifts_certbot_conf
