@@ -17,6 +17,7 @@
 | Мониторинг, логирование, метрики | `docs/09-observability.md` |
 | Первый запуск на машине | `docs/07-dev-setup.md` |
 | Приоритеты, текущие задачи | `docs/TODO.md` — **источник правды** по тому, что делать и в каком порядке |
+| CI/CD, GitHub Actions | `docs/11-github-workflow.md` |
 | Что уже сделано | `docs/DONE.md` |
 
 При расхождении между этим файлом и `docs/TODO.md` — **TODO.md авторитетнее**.
@@ -72,7 +73,8 @@ docker compose -f docker-compose.dev.yml up -d
 pnpm test                                 # всё
 pnpm --filter @tv-shifts/api test         # только API
 pnpm --filter @tv-shifts/web test         # только Web
-pnpm --filter @tv-shifts/api exec vitest run src/routes/users.test.ts  # один файл
+pnpm --filter @tv-shifts/api exec vitest run src/routes/users.test.ts  # один файл API
+pnpm --filter @tv-shifts/web exec vitest run src/hooks/useAuth.test.ts  # один файл Web
 pnpm --filter @tv-shifts/api test:watch   # watch-режим (API)
 pnpm --filter @tv-shifts/web test:watch   # watch-режим (Web)
 
@@ -222,15 +224,13 @@ await prisma.$executeRawUnsafe(
 
 `WorkflowPage.tsx` (~1000 строк) — воронка задач. Два вида контента:
 - **Pipeline-бар**: Запрос → Подключение к проекту → Производство → Сдан + [Не согласован] [Отменён]
-- **Таблица задач**: `GET /status-rows?source=manual&topLevelOnly=true` — показывает только верхнеуровневые задачи, без отделов-детей
+- **Таблица задач**: `GET /status-rows?source=manual&topLevelOnly=true` — только верхнеуровневые задачи, без отделов-детей
 
-**Drag-and-drop** — pointer events, ghost-карточка. Правило: только один шаг вперёд; в Не согласован/Отменён — из любого. Переход connecting→production требует привязанной матрицы (guard-попап с дропдауном или формой создания).
+**Drag правило**: только один шаг вперёд; в «Не согласован»/«Отменён» — из любого. Переход connecting→production требует привязанной матрицы (guard-попап).
 
-**Иерархия задача → отдел**: `StatusRow.parent_task_id` (TEXT, CASCADE DELETE). Отделы — дочерние `StatusRow` с `parent_task_id = taskId`. `GET /status-rows/children-summary?parentIds=...` — батч-эндпоинт для чипов на карточках. `topLevelOnly=true` — фильтрует только корневые задачи.
+**Иерархия задача → отдел**: `StatusRow.parent_task_id` (TEXT, CASCADE DELETE). `GET /status-rows/children-summary?parentIds=...` — батч-эндпоинт для чипов на карточках.
 
-`TaskDetailPanel.tsx` (~450 строк) — боковая панель задачи:
-- Левая колонка: все поля задачи (клиент, продюсеры, дата, формат, локация, проект) + заметки
-- Правая колонка: ранние стадии (request/negotiation/connecting) → `EarlyDeptsPanel` (чипы + форма); производство → `InternalShiftsPanel` с `parentTaskId`
+`TaskDetailPanel.tsx` (~450 строк) — боковая панель задачи. Ранние стадии (request/negotiation/connecting) → `EarlyDeptsPanel`; производство → `InternalShiftsPanel` с `parentTaskId`.
 
 ---
 
@@ -249,7 +249,7 @@ await prisma.$executeRawUnsafe(
 
 **GroupDateBlock.** Правая колонка, растягивается через HTML `rowspan` на все строки участников. Поля: Дата + Время (диапазон от–до) + Начало эфира / Первый мотор / Начало мероприятия (только для Эфир). Хранится в `status_rows.group_schedule` (JSONB) по ID группы, мерж через `|| $1::jsonb`.
 
-**Drag-and-drop** — pointer events (не HTML5 drag API): `onPointerDown` → ghost-элемент следует за курсором → `pointermove` проверяет `groupBodyRefs` bounding rects → `pointerup` вызывает `updateMember({ groupName })`. Ghost — `position: fixed` клон.
+**Drag-and-drop** использует pointer events (не HTML5 drag API) — см. реализацию в файле.
 
 **Удаление ключа в `group_schedule`** — установка ключа в `null` удаляет копию: `PATCH /status-rows/:id/group-schedule` с `{ "efir_2": null }` мержит null в JSONB; фронтенд фильтрует null при чтении.
 
@@ -267,9 +267,8 @@ await prisma.$executeRawUnsafe(
 3. **Column visibility** — тогглы в поп-апе настроек, в localStorage.
 
 **Технические нюансы:**
-- Dropdown колонок (`ColDropdown`) рендерится **внутри `<th>` через `position: absolute; top: 100%`** (не как floating overlay), чтобы скроллиться вместе с содержимым. Backdrop `position: fixed; inset: 0` ловит клик вне dropdown. Закрытие по скроллу — через `useEffect`.
 - `FilterGroup` определён на **уровне модуля** (не внутри других компонентов) — иначе React пересоздаёт его на каждом рендере, и скролл сбрасывается.
-- **Sticky-заголовки:** `thBase` использует `position: sticky; top: 0`. Не переопределяй `position` на отдельных `<th>` — `sticky` также даёт positioning context для абсолютно позиционированных dropdown'ов. Обёртка использует `overflow: clip`, а не `overflow: hidden` — `hidden` создаёт scroll container, который ломает sticky.
+- Обёртка таблицы использует `overflow: clip`, а не `overflow: hidden` — `hidden` создаёт scroll container, который ломает `position: sticky` на заголовках. Не меняй на `hidden`.
 
 **MatrixTabs.tsx** — выделенный файл с компонентами `GanttTab`, `NotesTab`, `DocumentsTab`. Используются внутри `RegistryDetailModal` в `SyncDataPage.tsx`. Все три работают с `/matrix-gantt`, `/matrix-notes`, `/matrix-documents` соответственно.
 
@@ -332,7 +331,7 @@ await prisma.$executeRawUnsafe(
 - `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY` — для Sheets sync
 - `GOOGLE_PROJECTS_SHEET_ID` + `GOOGLE_REGISTRY_SHEET_ID` — ID исходных таблиц
 - `GOOGLE_DRIVE_*` — OAuth2 креды (отдельно от Sheets)
-- `VITE_API_URL` — API URL для фронта при билде
+- `VITE_API_URL` — API URL для фронта **встраивается в бандл при сборке** (`vite build`), не читается в рантайме — меняй в `.env` до билда, не после
 
 ---
 
