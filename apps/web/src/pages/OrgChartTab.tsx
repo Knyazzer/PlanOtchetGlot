@@ -11,6 +11,7 @@ interface Dept    { id: string; name: string; color: string; leader: string; sub
 
 type ModalMode = 'add-dept' | 'edit-dept' | 'add-sub' | 'edit-sub' | 'add-person' | null
 interface ModalState { mode: ModalMode; dept?: Dept; sub?: SubDept }
+interface SyncPreviewItem { name: string; subs: number; persons: number }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'tv-shifts-org-chart'
@@ -51,6 +52,7 @@ export function OrgChartTab() {
   const [formSub, setFormSub] = useState('')
   const [formColor, setFormColor] = useState(COLORS[0])
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; target: { type: 'dept' | 'sub'; dept: Dept; sub?: SubDept } } | null>(null)
+  const [syncConfirm, setSyncConfirm] = useState(false)
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const worldRef  = useRef<HTMLDivElement>(null)
@@ -212,6 +214,33 @@ export function OrgChartTab() {
       .filter(r => r.dept === deptName && r.subDept === subName && !r.position.startsWith('Руководитель') && !r.position.startsWith('Директор'))
       .map(r => ({ id: uid(), name: r.name, role: r.position }))
 
+  // ── Sync from staff import ──────────────────────────────────────────────────
+  const syncPreview: SyncPreviewItem[] = deptNames.map(deptName => ({
+    name: deptName,
+    subs: subDeptNames(deptName).length,
+    persons: subDeptNames(deptName).reduce((acc, s) => acc + autoPersonsSub(deptName, s).length, 0),
+  }))
+
+  const syncFromStaff = () => {
+    const newData: Dept[] = deptNames.map((deptName, i) => {
+      const existing = data.find(d => d.name === deptName)
+      return {
+        id: uid(),
+        name: deptName,
+        color: existing?.color ?? COLORS[i % COLORS.length],
+        leader: autoLeaderDept(deptName),
+        subs: subDeptNames(deptName).map(subName => ({
+          id: uid(),
+          name: subName,
+          leader: autoLeaderSub(deptName, subName),
+          persons: autoPersonsSub(deptName, subName),
+        })),
+      }
+    })
+    setData(newData)
+    setSyncConfirm(false)
+  }
+
   const doZoom = useCallback((delta: number) => {
     const canvas = canvasRef.current!
     const rect = canvas.getBoundingClientRect()
@@ -301,6 +330,14 @@ export function OrgChartTab() {
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
         <button onClick={() => openModal('add-dept')} style={btnPrimary}>+ Департамент</button>
+        <button
+          onClick={() => setSyncConfirm(true)}
+          disabled={activeStaff.length === 0}
+          style={{ ...btnSync, opacity: activeStaff.length === 0 ? 0.45 : 1, cursor: activeStaff.length === 0 ? 'default' : 'pointer' }}
+          title={activeStaff.length === 0 ? 'Нет данных — обновите импорт персонала' : 'Построить структуру из таблицы'}
+        >
+          ⟳ Синхронизировать структуру
+        </button>
         <div style={sep} />
         <button onClick={() => doZoom(0.15)}  style={btnGhost}>＋</button>
         <span style={{ fontSize: 12, color: '#64748b', minWidth: 40, textAlign: 'center' }}>
@@ -444,6 +481,56 @@ export function OrgChartTab() {
           {ctxMenu.target.type === 'dept' && <CtxItem onClick={() => handleCtxAction('add-sub')}>📁 Добавить отдел</CtxItem>}
           {ctxMenu.target.type === 'sub'  && <CtxItem onClick={() => handleCtxAction('add-person')}>👤 Добавить сотрудника</CtxItem>}
           <CtxItem onClick={() => handleCtxAction('delete')} danger>🗑 Удалить</CtxItem>
+        </div>
+      )}
+
+      {/* Sync confirmation modal */}
+      {syncConfirm && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,.35)', zIndex: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setSyncConfirm(false)}
+        >
+          <div
+            style={{ background: '#fff', borderRadius: 12, padding: 24, width: 440, boxShadow: '0 20px 60px rgba(0,0,0,.2)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Синхронизировать структуру</h3>
+            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16, lineHeight: 1.5 }}>
+              Структура будет построена по данным из таблицы. Цвета существующих департаментов сохранятся, остальные данные заменятся.
+            </p>
+            {activeStaff.length === 0 ? (
+              <div style={{ background: '#fef3c7', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e', marginBottom: 16 }}>
+                Нет данных сотрудников. Обновите импорт персонала.
+              </div>
+            ) : (
+              <>
+                <div style={{ background: '#f0fdf4', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 12 }}>
+                  <span style={{ fontWeight: 600, color: '#166534' }}>Будет создано: </span>
+                  <span style={{ color: '#15803d' }}>
+                    {syncPreview.length} департ. · {syncPreview.reduce((a, d) => a + d.subs, 0)} отд. · {syncPreview.reduce((a, d) => a + d.persons, 0)} сотр.
+                  </span>
+                </div>
+                <div style={{ maxHeight: 200, overflowY: 'auto', marginBottom: 16, border: '1px solid #f1f5f9', borderRadius: 8 }}>
+                  {syncPreview.map((d, i) => (
+                    <div key={d.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 12px', borderBottom: i < syncPreview.length - 1 ? '1px solid #f1f5f9' : 'none', fontSize: 13 }}>
+                      <span style={{ fontWeight: 500, color: '#1e293b' }}>{d.name}</span>
+                      <span style={{ color: '#94a3b8' }}>{d.subs} отд., {d.persons} сотр.</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setSyncConfirm(false)} style={btnGhost}>Отмена</button>
+              <button
+                onClick={syncFromStaff}
+                disabled={activeStaff.length === 0}
+                style={{ ...btnSync, opacity: activeStaff.length === 0 ? 0.5 : 1, cursor: activeStaff.length === 0 ? 'default' : 'pointer' }}
+              >
+                Применить
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -621,5 +708,6 @@ function ModalField({ label, value, onChange, autoFocus }: { label: string; valu
 // ── Shared styles ─────────────────────────────────────────────────────────────
 const btnPrimary: React.CSSProperties = { background: '#2563eb', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 500 }
 const btnGhost: React.CSSProperties  = { background: 'transparent', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontSize: 13 }
+const btnSync: React.CSSProperties   = { background: '#0f766e', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 500 }
 const sep: React.CSSProperties       = { width: 1, height: 24, background: '#e2e8f0' }
 const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 5 }
