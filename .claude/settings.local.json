@@ -115,7 +115,9 @@
       "Bash(DATABASE_URL=\"postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts\" npx prisma db execute --stdin <<< \"SELECT column_name FROM information_schema.columns WHERE table_name = 'project_days' ORDER BY ordinal_position;\")",
       "Bash(pnpm test *)",
       "Bash(pnpm --filter @tv-shifts/api test)",
-      "Bash(pnpm --filter @tv-shifts/web test)"
+      "Bash(pnpm --filter @tv-shifts/web test)",
+      "Bash(Get-Content \"c:\\\\scripts\\\\PlanOtchetGlot\\\\docs\\\\project-model.md\")",
+      "Bash(Measure-Object -Line)"
     ]
   },
   "enabledPlugins": {
