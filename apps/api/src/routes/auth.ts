@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma, Role } from '@tv-shifts/db'
 import { logEvent } from '../services/changeLog'
-import { getUserPermissions } from '../config/permissions'
+import { getUserPermissions, ROLE_PERMISSIONS } from '../config/permissions'
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -11,10 +11,12 @@ const loginSchema = z.object({
 })
 
 async function buildJwtPayload(userId: string, user: { id: string; email: string; role: Role; fullName: string }) {
-  const [permissions, roleRows] = await Promise.all([
+  const [rbacPermissions, roleRows] = await Promise.all([
     getUserPermissions(userId),
     prisma.userAppRole.findMany({ where: { userId }, include: { role: true } }),
   ])
+  // Fall back to legacy role permissions if no UserAppRole records exist yet
+  const permissions = roleRows.length > 0 ? rbacPermissions : ROLE_PERMISSIONS[user.role]
   return {
     id: user.id,
     email: user.email,

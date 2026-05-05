@@ -21,24 +21,13 @@ if (-not $dockerRunning) {
     Write-Host "      BD uzhe zapushchena" -ForegroundColor DarkGray
 }
 
-# -- 2. Ustanovit novye pakety esli izmenilsya lockfile --
-Write-Host "[2/4] Proverka zavisimostey..." -ForegroundColor Cyan
-$gitCmd = Get-Command git -ErrorAction SilentlyContinue
-if ($gitCmd) {
-    $lockChanged = & git -C $projectRoot diff "HEAD@{1}" --name-only 2>$null | Select-String "pnpm-lock.yaml"
-} else {
-    $lockChanged = $null
-    Write-Host "      git ne najden v PATH, propusku proverku lockfile" -ForegroundColor DarkGray
-}
-if ($lockChanged) {
-    Write-Host "      Obnaruzheny novye pakety, ustanavlivayu..." -ForegroundColor DarkGray
-    pnpm install --dir $projectRoot
-} else {
-    Write-Host "      Zavisimosti aktualni" -ForegroundColor DarkGray
-}
+# -- 2. Ustanovit / obnovit pakety --
+Write-Host "[2/5] Ustanovka zavisimostey..." -ForegroundColor Cyan
+pnpm install --dir $projectRoot
+Write-Host "      Zavisimosti ustanovleny" -ForegroundColor DarkGray
 
 # -- 3. Primenit novye migracii --
-Write-Host "[3/4] Primeneniye migraciy..." -ForegroundColor Cyan
+Write-Host "[3/5] Primeneniye migraciy..." -ForegroundColor Cyan
 $env:DATABASE_URL = $dbUrl
 Set-Location $dbDir
 npx prisma migrate deploy
@@ -50,7 +39,16 @@ if ($LASTEXITCODE -ne 0) {
 Set-Location $projectRoot
 Write-Host "      Migracii primeneny" -ForegroundColor Green
 
-# -- 4. Zapustit prilozhenie --
-Write-Host "[4/4] Zapusk prilozheniya..." -ForegroundColor Cyan
+# -- 4. Sobrat paket @tv-shifts/db --
+Write-Host "[4/5] Sborka @tv-shifts/db..." -ForegroundColor Cyan
+pnpm --filter @tv-shifts/db build
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "      OSHIBKA: sborka @tv-shifts/db ne udalas" -ForegroundColor Red
+    exit 1
+}
+Write-Host "      @tv-shifts/db sobran" -ForegroundColor Green
+
+# -- 5. Zapustit prilozhenie --
+Write-Host "[5/5] Zapusk prilozheniya..." -ForegroundColor Cyan
 Write-Host ""
 & "$projectRoot\start.ps1"
