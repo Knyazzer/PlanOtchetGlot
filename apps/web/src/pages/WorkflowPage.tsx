@@ -5,13 +5,9 @@ import { TaskDetailPanel } from './TaskDetailPanel'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type WfStatus =
-  | 'request' | 'negotiation'
-  | 'connecting'
-  | 'preproduction' | 'production' | 'postproduction'
-  | 'delivered' | 'rejected' | 'cancelled'
+type WfStatus = 'draft' | 'active' | 'done' | 'cancelled' | 'rejected'
 
-type WfStage = 'request' | 'connecting' | 'production' | 'delivered' | 'rejected' | 'cancelled'
+type WfStage = WfStatus
 
 interface StatusRow {
   id: string
@@ -35,34 +31,28 @@ interface KfpdData { columns: string[]; rows: string[][] }
 // ── Stage / status mapping ────────────────────────────────────────────────────
 
 const STAGE_STATUSES: Record<WfStage, WfStatus[]> = {
-  request:    ['request', 'negotiation'],
-  connecting: ['connecting'],
-  production: ['preproduction', 'production', 'postproduction'],
-  delivered:  ['delivered'],
-  rejected:   ['rejected'],
-  cancelled:  ['cancelled'],
+  draft:     ['draft'],
+  active:    ['active'],
+  done:      ['done'],
+  rejected:  ['rejected'],
+  cancelled: ['cancelled'],
 }
 
 const STATUS_LABELS: Record<WfStatus, string> = {
-  request: 'Запрос', negotiation: 'На согласовании', connecting: 'Подключение к проекту',
-  preproduction: 'Pre-production', production: 'Production', postproduction: 'Post-production',
-  delivered: 'Сдан', rejected: 'Не согласован', cancelled: 'Отменён',
-}
-
-const STAGE_LABELS: Record<WfStage, string> = {
-  request: 'Запрос', connecting: 'Подключение к проекту',
-  production: 'Производство', delivered: 'Сдан',
+  draft: 'Заявка', active: 'Реализация', done: 'Сдан',
   rejected: 'Не согласован', cancelled: 'Отменён',
 }
 
-const STAGE_ORDER: WfStage[] = ['request', 'connecting', 'production', 'delivered']
+const STAGE_LABELS: Record<WfStage, string> = {
+  draft: 'Заявка', active: 'Реализация', done: 'Сдан',
+  rejected: 'Не согласован', cancelled: 'Отменён',
+}
+
+const STAGE_ORDER: WfStage[] = ['draft', 'active', 'done']
 const EXIT_STAGES: WfStage[] = ['rejected', 'cancelled']
 
 function statusToStage(s: WfStatus): WfStage {
-  for (const [stage, list] of Object.entries(STAGE_STATUSES)) {
-    if ((list as WfStatus[]).includes(s)) return stage as WfStage
-  }
-  return 'request'
+  return s
 }
 
 function canMove(from: WfStage, to: WfStage): 'allowed' | 'exit' | 'blocked' | 'same' {
@@ -91,31 +81,26 @@ function smartDate(raw: string | null): string {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const STAGE_COLORS: Record<WfStage, { bg: string; color: string; border: string; activeBg: string }> = {
-  request:    { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe', activeBg: '#2563eb' },
-  connecting: { bg: '#fffbeb', color: '#b45309', border: '#fde68a', activeBg: '#b45309' },
-  production: { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0', activeBg: '#16a34a' },
-  delivered:  { bg: '#f5f3ff', color: '#7c3aed', border: '#ddd6fe', activeBg: '#7c3aed' },
-  rejected:   { bg: '#fef2f2', color: '#dc2626', border: '#fecaca', activeBg: '#dc2626' },
-  cancelled:  { bg: '#f1f5f9', color: '#64748b', border: '#e2e8f0', activeBg: '#64748b' },
+  draft:     { bg: '#eff6ff', color: '#2563eb', border: '#bfdbfe', activeBg: '#2563eb' },
+  active:    { bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0', activeBg: '#16a34a' },
+  done:      { bg: '#f5f3ff', color: '#7c3aed', border: '#ddd6fe', activeBg: '#7c3aed' },
+  rejected:  { bg: '#fef2f2', color: '#dc2626', border: '#fecaca', activeBg: '#dc2626' },
+  cancelled: { bg: '#f1f5f9', color: '#64748b', border: '#e2e8f0', activeBg: '#64748b' },
 }
 
 const STATUS_BADGE: Record<WfStatus, React.CSSProperties> = {
-  request:       { background: '#dbeafe', color: '#1d4ed8' },
-  negotiation:   { background: '#e0f2fe', color: '#0369a1' },
-  connecting:    { background: '#fef3c7', color: '#92400e' },
-  preproduction: { background: '#fef9c3', color: '#a16207' },
-  production:    { background: '#dcfce7', color: '#15803d' },
-  postproduction:{ background: '#f0fdf4', color: '#16a34a' },
-  delivered:     { background: '#f5f3ff', color: '#6d28d9' },
-  rejected:      { background: '#fee2e2', color: '#b91c1c' },
-  cancelled:     { background: '#f1f5f9', color: '#64748b' },
+  draft:     { background: '#dbeafe', color: '#1d4ed8' },
+  active:    { background: '#dcfce7', color: '#15803d' },
+  done:      { background: '#f5f3ff', color: '#6d28d9' },
+  rejected:  { background: '#fee2e2', color: '#b91c1c' },
+  cancelled: { background: '#f1f5f9', color: '#64748b' },
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function WorkflowPage() {
   const qc = useQueryClient()
-  const [activeStage, setActiveStage] = useState<WfStage>('request')
+  const [activeStage, setActiveStage] = useState<WfStage>('draft')
   const [showGSheets, setShowGSheets] = useState(false)
   const [confirmModal, setConfirmModal] = useState<{ rowId: string; targetStage: WfStage; label: string } | null>(null)
   const [connectModal, setConnectModal] = useState<{ rowId: string } | null>(null)
@@ -127,13 +112,13 @@ export function WorkflowPage() {
 
   const { data: allRows = [], isLoading } = useQuery<StatusRow[]>({
     queryKey: ['workflow-rows'],
-    queryFn: () => api.get('/status-rows', { params: { source: 'manual', topLevelOnly: 'true' } }).then((r) => r.data),
+    queryFn: () => api.get('/work-items', { params: { source: 'manual', topLevelOnly: 'true' } }).then((r) => r.data),
     staleTime: 30_000,
   })
 
   const { data: gsRows = [], isLoading: gsLoading } = useQuery<StatusRow[]>({
     queryKey: ['workflow-gs-rows'],
-    queryFn: () => api.get('/status-rows', { params: { source: 'projects_table', slim: 'true' } }).then((r) => r.data),
+    queryFn: () => api.get('/work-items', { params: { source: 'sync', slim: 'true' } }).then((r) => r.data),
     staleTime: 60_000,
     enabled: showGSheets,
   })
@@ -155,18 +140,18 @@ export function WorkflowPage() {
 
   const patchStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: WfStatus }) =>
-      api.patch(`/status-rows/${id}`, { status }),
+      api.patch(`/work-items/${id}`, { status }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow-rows'] }),
   })
 
   const createRow = useMutation({
-    mutationFn: () => api.post('/status-rows', { name: 'Новая задача', status: 'request', source: 'manual' }),
+    mutationFn: () => api.post('/work-items', { name: 'Новая задача', status: 'draft', source: 'manual' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow-rows'] }),
   })
 
   const patchField = useMutation({
     mutationFn: ({ id, field, value }: { id: string; field: string; value: unknown }) =>
-      api.patch(`/status-rows/${id}`, { [field]: value }),
+      api.patch(`/work-items/${id}`, { [field]: value }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['workflow-rows'] }),
   })
 
@@ -182,7 +167,7 @@ export function WorkflowPage() {
   const stageRowIds = stageRows.map((r) => r.id).join(',')
   const { data: rowDepts = {} } = useQuery<Record<string, string[]>>({
     queryKey: ['workflow-children', stageRowIds],
-    queryFn: () => api.get('/status-rows/children-summary', { params: { parentIds: stageRowIds } }).then((r) => r.data),
+    queryFn: () => api.get('/work-items/children-summary', { params: { parentIds: stageRowIds } }).then((r) => r.data),
     enabled: stageRows.length > 0,
     staleTime: 30_000,
   })
@@ -262,7 +247,7 @@ export function WorkflowPage() {
       if (permission === 'exit') { setConfirmModal({ rowId, targetStage, label: STAGE_LABELS[targetStage] }); return }
 
       const row = allRows.find((r) => r.id === rowId)
-      if (fromStage === 'connecting' && targetStage === 'production') {
+      if (fromStage === 'draft' && targetStage === 'active') {
         const hasDepts = (rowDepts[rowId] ?? []).length > 0
         if (!row?.matrixRegistryId || !row?.client || !hasDepts) {
           setConnectModal({ rowId })
@@ -401,7 +386,7 @@ export function WorkflowPage() {
         {isLoading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Загрузка...</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: activeStage === 'request' ? 1000 : 1100 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: activeStage === 'draft' ? 1000 : 1100 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                 <th style={th}></th>
@@ -414,7 +399,7 @@ export function WorkflowPage() {
                 <th style={th}>Дата</th>
                 <th style={th}>Формат</th>
                 <th style={th}>Локация</th>
-                {activeStage !== 'request' && <th style={th}>Проект</th>}
+                {activeStage !== 'draft' && <th style={th}>Проект</th>}
                 <th style={th}>Отделы</th>
                 <th style={{ ...th, width: 36 }}></th>
               </tr>
@@ -422,8 +407,8 @@ export function WorkflowPage() {
             <tbody>
               {stageRows.length === 0 && (
                 <tr>
-                  <td colSpan={activeStage === 'request' ? 12 : 13} style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
-                    {activeStage === 'request' ? 'Нажмите «+» ниже, чтобы добавить задачу.' : 'Нет задач в этом этапе.'}
+                  <td colSpan={activeStage === 'draft' ? 12 : 13} style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+                    {activeStage === 'draft' ? 'Нажмите «+» ниже, чтобы добавить задачу.' : 'Нет задач в этом этапе.'}
                   </td>
                 </tr>
               )}
@@ -448,7 +433,7 @@ export function WorkflowPage() {
         )}
 
         {/* Add row inline button — only in request stage */}
-        {activeStage === 'request' && !isLoading && (
+        {activeStage === 'draft' && !isLoading && (
           <button
             onClick={() => createRow.mutate()}
             disabled={createRow.isPending}
@@ -533,7 +518,7 @@ export function WorkflowPage() {
         <ConnectProjectModal
           rowId={connectModal.rowId}
           onClose={() => setConnectModal(null)}
-          onProceed={() => { doMove(connectModal.rowId, 'production'); setConnectModal(null) }}
+          onProceed={() => { doMove(connectModal.rowId, 'active'); setConnectModal(null) }}
           onCreateProject={(client) => { setConnectModal(null); setCreateProjectModal({ rowId: connectModal.rowId, client }) }}
         />
       )}
@@ -546,7 +531,7 @@ export function WorkflowPage() {
           clients={clients}
           producers={producers}
           onClose={() => setCreateProjectModal(null)}
-          onCreated={(rowId) => { setCreateProjectModal(null); doMove(rowId, 'production') }}
+          onCreated={(rowId) => { setCreateProjectModal(null); doMove(rowId, 'active') }}
         />
       )}
 
@@ -727,9 +712,9 @@ function WorkflowRow({
       </td>
 
       {/* Project — only for non-request stages */}
-      {activeStage !== 'request' && (
+      {activeStage !== 'draft' && (
         <td style={{ ...td, minWidth: 140 }}>
-          {activeStage === 'connecting' && !row.matrixRegistryId ? (
+          {activeStage === 'draft' && !row.matrixRegistryId ? (
             <button
               onClick={onConnectProject}
               style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #fde68a', background: '#fffbeb', color: '#b45309', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
@@ -822,13 +807,13 @@ function ConnectProjectModal({ rowId, onClose, onProceed, onCreateProject }: {
 
   const { data: row } = useQuery<StatusRow>({
     queryKey: ['connect-modal-row', rowId],
-    queryFn: () => api.get(`/status-rows/${rowId}`).then((r) => r.data),
+    queryFn: () => api.get(`/work-items/${rowId}`).then((r) => r.data),
     staleTime: 5_000,
   })
 
   const { data: depts = [], refetch: refetchDepts } = useQuery<{ id: string; name: string; format: string | null }[]>({
     queryKey: ['connect-modal-depts', rowId],
-    queryFn: () => api.get('/status-rows', { params: { parentTaskId: rowId } }).then((r) => r.data),
+    queryFn: () => api.get('/work-items', { params: { parentWiId: rowId } }).then((r) => r.data),
     staleTime: 5_000,
   })
 
@@ -843,7 +828,7 @@ function ConnectProjectModal({ rowId, onClose, onProceed, onCreateProject }: {
   useEffect(() => { if (row?.client) setClientDraft(row.client) }, [row?.client])
 
   const saveClient = useMutation({
-    mutationFn: () => api.patch(`/status-rows/${rowId}`, { client: clientDraft.trim() || null }),
+    mutationFn: () => api.patch(`/work-items/${rowId}`, { client: clientDraft.trim() || null }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['connect-modal-row', rowId] }),
   })
 
@@ -854,14 +839,14 @@ function ConnectProjectModal({ rowId, onClose, onProceed, onCreateProject }: {
     : matrices
 
   const linkMatrix = useMutation({
-    mutationFn: () => api.patch(`/status-rows/${rowId}`, { matrixRegistryId: selectedId }),
+    mutationFn: () => api.patch(`/work-items/${rowId}`, { matrixRegistryId: selectedId }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['connect-modal-row', rowId] }); qc.invalidateQueries({ queryKey: ['workflow-rows'] }) },
   })
 
   // ── Depts ──
   const [newDept, setNewDept] = useState('')
   const addDept = useMutation({
-    mutationFn: () => api.post('/status-rows', { name: newDept, format: newDept, parentTaskId: rowId, status: 'request' }),
+    mutationFn: () => api.post('/work-items', { name: newDept, format: newDept, parentWiId: rowId, status: 'draft' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['connect-modal-depts', rowId] })
       qc.invalidateQueries({ queryKey: ['workflow-children'] })
@@ -870,7 +855,7 @@ function ConnectProjectModal({ rowId, onClose, onProceed, onCreateProject }: {
     },
   })
   const deleteDept = useMutation({
-    mutationFn: (id: string) => api.delete(`/status-rows/${id}`),
+    mutationFn: (id: string) => api.delete(`/work-items/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['connect-modal-depts', rowId] })
       qc.invalidateQueries({ queryKey: ['workflow-children'] })
@@ -899,7 +884,7 @@ function ConnectProjectModal({ rowId, onClose, onProceed, onCreateProject }: {
 
   return (
     <Modal onClose={onClose}>
-      <h3 style={{ ...mh3, marginBottom: 4 }}>Перевод в Производство</h3>
+      <h3 style={{ ...mh3, marginBottom: 4 }}>Перевод в Реализацию</h3>
       <p style={{ ...mp, marginBottom: 16 }}>Заполните все условия для перевода задачи.</p>
 
       {/* ── Клиент ── */}
@@ -1033,7 +1018,7 @@ function CreateProjectModal({ rowId, client, clients, producers, onClose, onCrea
     onSuccess: async (res) => {
       const matrixId = res.data?.id
       if (matrixId) {
-        await api.patch(`/status-rows/${rowId}`, { matrixRegistryId: matrixId })
+        await api.patch(`/work-items/${rowId}`, { matrixRegistryId: matrixId })
         qc.invalidateQueries({ queryKey: ['workflow-rows'] })
         qc.invalidateQueries({ queryKey: ['matrix-registry-list'] })
         qc.invalidateQueries({ queryKey: ['sync-registry'] })
