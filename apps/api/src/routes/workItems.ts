@@ -235,4 +235,43 @@ export async function workItemsRoutes(app: FastifyInstance) {
     await prisma.workItem.delete({ where: { id } })
     return reply.code(204).send()
   })
+
+  // POST /work-items/:id/dept-links — подключить отдел к WI
+  app.post('/:id/dept-links', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const body = z.object({
+      deptId:   z.string().min(1),
+      deadline: z.string().nullable().optional(),
+    }).safeParse(request.body)
+    if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
+
+    const wi = await prisma.workItem.findUnique({ where: { id }, select: { id: true } })
+    if (!wi) return reply.code(404).send({ error: 'WorkItem not found' })
+
+    const dept = await prisma.department.findUnique({ where: { id: body.data.deptId }, select: { id: true } })
+    if (!dept) return reply.code(404).send({ error: 'Department not found' })
+
+    const link = await prisma.deptWILink.upsert({
+      where:  { deptId_wiId: { deptId: body.data.deptId, wiId: id } },
+      update: { deadline: body.data.deadline ? new Date(body.data.deadline) : null },
+      create: {
+        deptId:   body.data.deptId,
+        wiId:     id,
+        deadline: body.data.deadline ? new Date(body.data.deadline) : null,
+      },
+    })
+    return reply.code(201).send(link)
+  })
+
+  // GET /work-items/:id/dept-links — привязанные отделы
+  app.get('/:id/dept-links', { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const wi = await prisma.workItem.findUnique({ where: { id }, select: { id: true } })
+    if (!wi) return reply.code(404).send({ error: 'WorkItem not found' })
+    return prisma.deptWILink.findMany({
+      where: { wiId: id },
+      include: { dept: { select: { id: true, name: true, type: true } } },
+      orderBy: { createdAt: 'asc' },
+    })
+  })
 }

@@ -31,6 +31,7 @@ async function main() {
     { name: 'users:manage',            description: 'Управление пользователями' },
     { name: 'database:manage',         description: 'Доступ к панели БД' },
     { name: 'kanban:delete',           description: 'Удаление задач в Kanban' },
+    { name: 'departments:manage',      description: 'Управление отделами (admin)' },
   ]
 
   for (const p of ALL_PERMISSIONS) {

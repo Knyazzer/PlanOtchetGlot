@@ -14,7 +14,9 @@ import { SyncDataPage } from '../pages/SyncDataPage'
 import { DealsPage } from '../pages/DealsPage'
 import { DatabasePage } from '../pages/DatabasePage'
 import { WorkflowPage } from '../pages/WorkflowPage'
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow'
+import { DeptBoardPage } from '../pages/DeptBoardPage'
+import { AdminDeptPage } from '../pages/AdminDeptPage'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow' | 'deptboard' | 'admindept'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -23,7 +25,7 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'workflow']
+    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'workflow', 'deptboard', 'admindept']
     return saved && valid.includes(saved) ? saved : 'calendar'
   })
 
@@ -47,7 +49,9 @@ export function AppShell() {
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
     { id: 'users', label: 'Персонал', adminOnly: true },
     { id: 'workflow', label: 'Workflow', adminOrProducer: true },
+    { id: 'deptboard', label: 'Отделы' },
     { id: 'syncdata', label: 'Проекты', adminOnly: true },
+    { id: 'admindept', label: 'Упр. отделами', adminOnly: true },
     { id: 'database', label: 'БД', adminOnly: true },
     { id: 'deals', label: 'Клиенты' },
     { id: 'profile', label: 'Профиль' },
@@ -138,6 +142,8 @@ export function AppShell() {
         {page === 'users' && isAdmin && <UsersPage />}
         {page === 'syncdata' && isAdmin && <SyncDataPage />}
         {page === 'database' && isAdmin && <DatabasePage />}
+        {page === 'deptboard' && <DeptBoardPage />}
+        {page === 'admindept' && isAdmin && <AdminDeptPage />}
         {page === 'deals' && <DealsPage />}
         {page === 'profile' && <ProfilePage />}
       </main>

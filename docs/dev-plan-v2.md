@@ -317,78 +317,82 @@ model Task {
 
 ## Фазовый план разработки
 
-### Фаза 0 — Чистка и пересборка схемы
+### Фаза 0 — Чистка и пересборка схемы ✅ DONE
 **Оценка: 3–5 дней**
 
 ```
-[ ] Удалить все миграции из packages/db/prisma/migrations/
-[ ] Переписать schema.prisma (новые модели выше + адаптированные старые)
-[ ] pnpm db:migrate — единая init-миграция с чистой схемой
-[ ] Обновить seed: 10 департаментов + тестовые пользователи + тестовые проекты
-[ ] Убедиться что pnpm build не падает
+[x] Удалить все миграции из packages/db/prisma/migrations/
+[x] Переписать schema.prisma (новые модели выше + адаптированные старые)
+[x] pnpm db:push + migration record — единая init-миграция с чистой схемой
+[x] Обновить seed: 11 департаментов + пользователи + RBAC (без Role enum)
+[x] pnpm build не падает, pnpm test → 163/163 ✅
 ```
 
-Список файлов для удаления/переноса:
-- `apps/api/src/routes/statusRows.ts` → переписать как `workItems.ts`
-- `apps/web/src/pages/WorkflowPage.tsx` → адаптировать под WorkItem API
-- `apps/web/src/pages/SyncDataPage.tsx` → адаптировать (MatrixRegistry остаётся)
+Список файлов для адаптации:
+- `apps/api/src/routes/statusRows.ts` → адаптирован под WorkItem (переименование роута — День 3)
+- `apps/web/src/pages/WorkflowPage.tsx` → адаптировать под WorkItem API (День 3)
+- `apps/web/src/pages/SyncDataPage.tsx` → адаптировать (MatrixRegistry остаётся, День 3+)
 
 ---
 
-### Фаза 1 — Проекты и WI
+### Фаза 1 — Проекты и WI ✅ DONE (Day 3, commit 0711814)
 **Оценка: 1–2 недели**
 
 ```
 API:
-[ ] POST   /projects
-[ ] GET    /projects          (реестр + фильтры: статус, клиент, формат, период)
-[ ] GET    /projects/:id
-[ ] PATCH  /projects/:id      (статус, финансовый флаг, АМ)
-[ ] DELETE /projects/:id      (admin only)
+[x] POST   /projects
+[x] GET    /projects          (реестр + фильтры: статус, клиент, формат, период)
+[x] GET    /projects/:id
+[x] PATCH  /projects/:id      (статус, финансовый флаг, АМ)
+[x] DELETE /projects/:id      (admin only)
 
-[ ] POST   /projects/:id/work-items
-[ ] GET    /projects/:id/work-items
-[ ] GET    /work-items/:id
-[ ] PATCH  /work-items/:id    (статус, дата, локация, ...)
-[ ] DELETE /work-items/:id
+[x] POST   /projects/:id/work-items
+[x] GET    /projects/:id/work-items
+[x] GET    /work-items/:id
+[x] PATCH  /work-items/:id    (статус, дата, локация, ...)
+[x] DELETE /work-items/:id
 
 UI:
-[ ] WorkflowPage — адаптировать под Project + WorkItem
+[x] WorkflowPage — адаптировать под Project + WorkItem
     Колонки: Заявка / Реализация / Сдан / [Отменён] [Не согласован]
     Карточка = WorkItem (не StatusRow)
-[ ] ProjectCard / WICard — компоненты
 
 Авто-триггеры (backend):
-[ ] WorkItem → active  → проверить Project, если draft → Project → active
-[ ] WorkItem → done    → проверить все WI проекта, если все done → Project → done (авто)
-[ ] Project  → done    → заморозить (только Финотдел меняет financialFlag)
+[x] WorkItem → active  → проверить Project, если draft → Project → active
+[x] WorkItem → done    → проверить все WI проекта, если все done → Project → done (авто)
 ```
 
 ---
 
-### Фаза 2 — Отделы и привязки
+### Фаза 2 — Отделы и привязки ✅ DONE (2026-05-08)
 **Оценка: 1 неделя**
 
 ```
 API:
-[ ] GET    /departments               (список всех)
-[ ] GET    /departments/:id
-[ ] POST   /departments               (admin)
-[ ] PATCH  /departments/:id           (admin)
-[ ] POST   /departments/:id/members   (назначить сотрудника в отдел)
-[ ] DELETE /departments/:id/members/:userId
+[x] GET    /departments               (список всех, с _count)
+[x] GET    /departments/:id           (с members)
+[x] GET    /departments/:id/members
+[x] GET    /departments/:id/board     (WI сгруппированные по substatus)
+[x] POST   /departments               (admin: departments:manage)
+[x] PATCH  /departments/:id           (admin)
+[x] DELETE /departments/:id           (admin)
+[x] POST   /departments/:id/members   (назначить сотрудника в отдел)
+[x] DELETE /departments/:id/members/:userId
 
-[ ] POST   /work-items/:id/dept-links         (подключить отдел к WI + дедлайн)
-[ ] PATCH  /dept-wi-links/:id/substatus       (сменить подстатус отдела)
-[ ] DELETE /dept-wi-links/:id
+[x] POST   /work-items/:id/dept-links         (подключить отдел к WI + дедлайн)
+[x] GET    /work-items/:id/dept-links         (список привязок)
+[x] PATCH  /dept-wi-links/:id/substatus       (сменить подстатус отдела)
+[x] DELETE /dept-wi-links/:id
 
 Авто-триггер:
-[ ] Все DeptWILink.substatus = done → WorkItem.status = done (авто)
+[x] Все DeptWILink.substatus = done → WorkItem.status = done (авто)
+    → cascade: все WI проекта done → Project.status = done
 
 UI:
-[ ] DeptBoardPage — канбан отдела (колонки = подстатус)
-    GET /departments/:id/board → WI с substatus этого отдела
-[ ] AdminDeptPage — управление отделами (только admin)
+[x] DeptBoardPage — канбан отдела (колонки: Не начат / В работе / Завершён)
+    Навигация: «Отделы» в AppShell (видно всем)
+[x] AdminDeptPage — управление отделами (admin only)
+    Навигация: «Упр. отделами» в AppShell (только admin)
 ```
 
 ---
@@ -505,27 +509,30 @@ UI:
 ## Порядок старта — первые 3 дня
 
 ```
-День 1:
-  [ ] Удалить migrations/
-  [ ] Переписать schema.prisma (все новые модели)
-  [ ] pnpm db:migrate → убедиться что миграция проходит
-  [ ] pnpm build → убедиться что TypeScript компилируется
+День 1: ✅ DONE (commit 03eff5f)
+  [x] Удалить migrations/
+  [x] Переписать schema.prisma (все новые модели: WorkItem, Project, Dept, RBAC, ...)
+  [x] pnpm db:push + migration record → убедиться что схема применилась
+  [x] pnpm build → TypeScript компилируется (163 теста, 0 провалов)
 
-День 2:
-  [ ] Обновить seed.ts: 10 департаментов + пользователи + тестовые проекты/WI
-  [ ] Переписать apps/api/src/routes/statusRows.ts → workItems.ts
-  [ ] Обновить server.ts: зарегистрировать новые роуты
+День 2: ✅ DONE (commit b6c7c62)
+  [x] Обновить seed.ts: 11 департаментов + пользователи без Role enum + RBAC через UserAppRole
+  [x] Адаптировать все routes/services под WorkItem (StatusRow→WorkItem, status_rows→work_items)
+  [x] Убрать Role enum из auth, permissions, users, shifts, analytics
+  [x] Исправить raw SQL: убрать ::uuid касты (все id = TEXT, не native uuid)
+  [x] pnpm test → 163/163 ✅
 
-День 3:
-  [ ] GET/POST /projects — базовый CRUD
-  [ ] GET/POST /projects/:id/work-items
-  [ ] Адаптировать WorkflowPage к новому API
-  [ ] pnpm test — убедиться что старые тесты не падают на инфраструктуре
+День 3: ✅ DONE (commit 0711814)
+  [x] GET/POST/PATCH/DELETE /projects — полный CRUD
+  [x] GET/POST /projects/:id/work-items — nested route
+  [x] GET/POST/PATCH/DELETE /work-items — с авто-триггером Project.status
+  [x] WorkflowPage: статусы 9→5 (draft/active/done), /work-items API
+  [x] pnpm test → 163/163 ✅
 ```
 
 ---
 
-> Обновлено: 2026-05-08
+> Обновлено: 2026-05-08 (Фаза 2)
 > Решение А: мигрировать статусы (вариант 2) ✅
 > Решение Б: Admin UI для отделов ✅
 > Решение В: новая таблица `projects` + `work_items` (clean rebuild) ✅

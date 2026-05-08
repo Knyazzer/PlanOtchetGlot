@@ -20,6 +20,7 @@ export type Permission =
   | 'users:manage'
   | 'database:manage'
   | 'kanban:delete'
+  | 'departments:manage'
 
 const ALL_PERMISSIONS: Permission[] = [
   'analytics:read',
@@ -40,6 +41,7 @@ const ALL_PERMISSIONS: Permission[] = [
   'users:manage',
   'database:manage',
   'kanban:delete',
+  'departments:manage',
 ]
 
 // Fallback permissions by role name string (used when RBAC tables are empty)
