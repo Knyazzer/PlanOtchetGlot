@@ -44,14 +44,20 @@ function isAdminOrTasksWrite(user: { roles?: string[]; permissions?: string[] })
 
 export async function tasksRoutes(app: FastifyInstance) {
   // GET /tasks
-  app.get('/', { preHandler: authenticate }, async (request) => {
-    const query = request.query as {
-      status?: string
-      deptId?: string
-      wiId?: string
-      overdue?: string
-      assignedToMe?: string
+  app.get('/', { preHandler: authenticate }, async (request, reply) => {
+    const rawQuery = request.query as Record<string, string>
+    const querySchema = z.object({
+      status: z.enum(['open', 'in_progress', 'done']).optional(),
+      deptId: z.string().optional(),
+      wiId: z.string().optional(),
+      overdue: z.enum(['true', 'false']).optional(),
+      assignedToMe: z.enum(['true', 'false']).optional(),
+    })
+    const parsed = querySchema.safeParse(rawQuery)
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Invalid query', details: parsed.error.flatten() })
     }
+    const query = parsed.data
     const me = request.user as { id: string }
 
     return prisma.task.findMany({
@@ -80,6 +86,14 @@ export async function tasksRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
     const me = request.user as { id: string }
+    if (body.data.deptId) {
+      const dept = await prisma.department.findUnique({ where: { id: body.data.deptId }, select: { id: true } })
+      if (!dept) return reply.code(404).send({ error: 'Department not found' })
+    }
+    if (body.data.wiId) {
+      const wi = await prisma.workItem.findUnique({ where: { id: body.data.wiId }, select: { id: true } })
+      if (!wi) return reply.code(404).send({ error: 'WorkItem not found' })
+    }
     const task = await prisma.task.create({
       data: {
         title: body.data.title,
@@ -110,6 +124,15 @@ export async function tasksRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: 'Forbidden' })
     }
 
+    if (body.data.deptId) {
+      const dept = await prisma.department.findUnique({ where: { id: body.data.deptId }, select: { id: true } })
+      if (!dept) return reply.code(404).send({ error: 'Department not found' })
+    }
+    if (body.data.wiId) {
+      const wi = await prisma.workItem.findUnique({ where: { id: body.data.wiId }, select: { id: true } })
+      if (!wi) return reply.code(404).send({ error: 'WorkItem not found' })
+    }
+
     const updated = await prisma.task.update({
       where: { id },
       data: {
@@ -124,7 +147,7 @@ export async function tasksRoutes(app: FastifyInstance) {
       include: taskInclude,
     })
 
-    return updated
+    return reply.code(200).send(updated)
   })
 
   // POST /tasks/:id/assign — self-assign, moves task to in_progress
