@@ -43,7 +43,7 @@ async function _doSyncProjectBlock(projectId: string): Promise<void> {
   }[]>(
     `SELECT name, date, date_approximate AS "dateApproximate",
             matrix_registry_id AS "matrixRegistryId", block_slot AS "blockSlot"
-     FROM status_rows WHERE id = $1`,
+     FROM work_items WHERE id = $1`,
     projectId,
   )
   const row = rows[0]
@@ -82,7 +82,7 @@ async function _doSyncProjectBlock(projectId: string): Promise<void> {
 export async function nextBlockSlot(matrixRegistryId: string, excludeProjectId?: string): Promise<number> {
   const rows = await prisma.$queryRawUnsafe<{ next: number }[]>(
     `SELECT COALESCE(MAX(block_slot), 0) + 1 AS next
-     FROM status_rows
+     FROM work_items
      WHERE matrix_registry_id = $1
        AND block_slot IS NOT NULL
        ${excludeProjectId ? 'AND id != $2' : ''}`,
@@ -115,7 +115,7 @@ export async function unlinkAndShiftBlocks(
 
   // 2. Shift down blockSlot for all projects above the deleted one in the same matrix
   await prisma.$executeRawUnsafe(
-    `UPDATE status_rows
+    `UPDATE work_items
      SET block_slot = block_slot - 1, updated_at = NOW()
      WHERE matrix_registry_id = $1 AND block_slot > $2 AND id != $3`,
     matrixRegistryId, blockSlot, projectId,

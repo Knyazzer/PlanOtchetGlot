@@ -253,14 +253,14 @@ describe('runFullSync() — orchestration', () => {
     await runFullSync()
 
     const separators = await prisma.$queryRawUnsafe<{ name: string; source: string }[]>(
-      `SELECT name, source FROM status_rows WHERE source = 'separator' AND name = $1`,
+      `SELECT name, source FROM work_items WHERE source = 'separator' AND name = $1`,
       separatorLabel,
     )
     expect(separators.length).toBeGreaterThanOrEqual(1)
     expect(separators[0].source).toBe('separator')
 
     await prisma.$executeRawUnsafe(
-      `DELETE FROM status_rows WHERE source = 'separator' AND name = $1`,
+      `DELETE FROM work_items WHERE source = 'separator' AND name = $1`,
       separatorLabel,
     )
   }, 15_000)

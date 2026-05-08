@@ -99,9 +99,10 @@ export async function shiftsRoutes(app: FastifyInstance) {
       year: string
       month: string
     }
-    const me = request.user as { id: string; role: string }
+    const me = request.user as { id: string; roles?: string[] }
+    const isAdmin = (me.roles ?? []).some((r) => ['admin', 'producer'].includes(r))
 
-    if (me.role === 'employee' && me.id !== userId) {
+    if (!isAdmin && me.id !== userId) {
       return reply.code(403).send({ error: 'Forbidden' })
     }
 

@@ -364,7 +364,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     const idList = (ids ?? '').split(',').map((s) => s.trim()).filter(Boolean)
     if (idList.length === 0) return {}
     const rows = await prisma.$queryRawUnsafe<{ id: string; group_schedule: Record<string, unknown> | null }[]>(
-      `SELECT id, group_schedule FROM work_items WHERE id = ANY($1::uuid[])`,
+      `SELECT id, group_schedule FROM work_items WHERE id = ANY($1::text[])`,
       idList,
     )
     const result: Record<string, string[]> = {}

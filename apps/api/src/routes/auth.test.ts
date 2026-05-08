@@ -38,7 +38,7 @@ describe('POST /auth/login', () => {
 
     const body = res.json()
     expect(body.user.email).toBe(userEmail)
-    expect(body.user.role).toBe('employee')
+    expect(body.user.roles).toContain('employee')
     expect(body.user.passwordHash).toBeUndefined() // не утекает в ответе
 
     const accessCookie  = res.cookies.find((c) => c.name === 'access_token')

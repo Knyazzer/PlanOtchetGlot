@@ -158,7 +158,7 @@ export async function projectMembersRoutes(app: FastifyInstance) {
     const { ids, paymentStatus } = request.body as { ids: string[]; paymentStatus: string }
     if (!Array.isArray(ids) || !ids.length || !paymentStatus) return reply.code(400).send({ error: 'Неверные данные' })
     await prisma.$executeRawUnsafe(
-      `UPDATE project_members SET payment_status = $1, updated_at = NOW() WHERE id = ANY($2::uuid[])`,
+      `UPDATE project_members SET payment_status = $1, updated_at = NOW() WHERE id = ANY($2::text[])`,
       paymentStatus, ids,
     )
     return { updated: ids.length }

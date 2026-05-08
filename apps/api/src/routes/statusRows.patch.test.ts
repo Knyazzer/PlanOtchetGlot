@@ -143,7 +143,7 @@ describe('PATCH /status-rows/:id', () => {
 
     // Verify directly in DB since Prisma client may not expose the column
     const rows = await prisma.$queryRawUnsafe<{ block_slot: number | null }[]>(
-      `SELECT block_slot FROM status_rows WHERE id = $1`,
+      `SELECT block_slot FROM work_items WHERE id = $1`,
       rowId,
     )
     expect(rows[0].block_slot).toBe(3)
@@ -160,7 +160,7 @@ describe('PATCH /status-rows/:id', () => {
     expect(res.statusCode).toBe(200)
 
     const rows = await prisma.$queryRawUnsafe<{ matrix_registry_id: string | null }[]>(
-      `SELECT matrix_registry_id FROM status_rows WHERE id = $1`,
+      `SELECT matrix_registry_id FROM work_items WHERE id = $1`,
       rowId,
     )
     expect(rows[0].matrix_registry_id).toBe(matrixId)
@@ -177,7 +177,7 @@ describe('PATCH /status-rows/:id', () => {
     expect(res.statusCode).toBe(200)
 
     const rows = await prisma.$queryRawUnsafe<{ matrix_registry_id: string | null }[]>(
-      `SELECT matrix_registry_id FROM status_rows WHERE id = $1`,
+      `SELECT matrix_registry_id FROM work_items WHERE id = $1`,
       rowId,
     )
     expect(rows[0].matrix_registry_id).toBeNull()

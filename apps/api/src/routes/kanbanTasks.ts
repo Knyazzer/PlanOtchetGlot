@@ -89,7 +89,7 @@ export async function kanbanTasksRoutes(app: FastifyInstance) {
     vals.push(id)
 
     const rows = await prisma.$queryRawUnsafe<KanbanTask[]>(
-      `UPDATE kanban_tasks SET ${sets.join(', ')} WHERE id = $${i}::uuid
+      `UPDATE kanban_tasks SET ${sets.join(', ')} WHERE id = $${i}
        RETURNING kanban_tasks.*,
          (SELECT name FROM project_members WHERE id = kanban_tasks.assignee_id) AS assignee_name`,
       ...vals
@@ -101,7 +101,7 @@ export async function kanbanTasksRoutes(app: FastifyInstance) {
   // DELETE /kanban-tasks/:id
   app.delete('/:id', { preHandler: requirePermission('kanban:delete') }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    await prisma.$executeRawUnsafe(`DELETE FROM kanban_tasks WHERE id = $1::uuid`, id)
+    await prisma.$executeRawUnsafe(`DELETE FROM kanban_tasks WHERE id = $1`, id)
     return { ok: true }
   })
 }
