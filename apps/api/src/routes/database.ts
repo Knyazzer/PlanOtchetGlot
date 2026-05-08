@@ -21,7 +21,7 @@ export async function databaseRoutes(app: FastifyInstance) {
     const base = 'https://docs.google.com/spreadsheets/d'
 
     const [projectsCount, registryCount, configs] = await Promise.all([
-      prisma.statusRow.count({ where: { NOT: { source: 'separator' as any } } }),
+      prisma.workItem.count({ where: { NOT: { source: 'separator' as any } } }),
       prisma.matrixRegistry.count(),
       allSheetConfigs(),
     ])
@@ -123,7 +123,7 @@ export async function databaseRoutes(app: FastifyInstance) {
     const LIMIT = 200
 
     if (key === 'projects') {
-      const rows = await prisma.statusRow.findMany({
+      const rows = await prisma.workItem.findMany({
         where: { NOT: { source: 'separator' as any } },
         select: { client: true, name: true, status: true, date: true, lineProducer: true },
         orderBy: { createdAt: 'asc' },

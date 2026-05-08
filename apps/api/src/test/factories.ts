@@ -5,14 +5,13 @@
 import { randomUUID } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@tv-shifts/db'
-import type { Role } from '@tv-shifts/db'
 
 export const TEST_PASSWORD = 'testpassword123'
 
 interface CreateUserOptions {
   email?: string
   fullName?: string
-  role?: Role
+  role?: string   // creates an AppRole + UserAppRole so auth tests still work
   password?: string
   isActive?: boolean
 }
@@ -22,15 +21,29 @@ export async function createTestUser(options: CreateUserOptions = {}) {
   const password = options.password ?? TEST_PASSWORD
   const hash     = await bcrypt.hash(password, 10)
 
-  return prisma.user.create({
+  const user = await prisma.user.create({
     data: {
       email,
       fullName:     options.fullName ?? 'Test User',
       passwordHash: hash,
-      role:         options.role     ?? 'employee',
       isActive:     options.isActive ?? true,
     },
   })
+
+  if (options.role) {
+    const appRole = await prisma.appRole.upsert({
+      where:  { name: options.role },
+      update: {},
+      create: { name: options.role },
+    })
+    await prisma.userAppRole.upsert({
+      where:  { userId_roleId: { userId: user.id, roleId: appRole.id } },
+      update: {},
+      create: { userId: user.id, roleId: appRole.id },
+    })
+  }
+
+  return user
 }
 
 export async function cleanupTestUser(id: string) {
@@ -43,29 +56,27 @@ export async function cleanupTestUser(id: string) {
   await prisma.user.delete({ where: { id } }).catch(() => {})
 }
 
-// ─── StatusRow ─────────────────────────────────────────────────────────────────
+// ─── WorkItem ──────────────────────────────────────────────────────────────────
 
-interface CreateStatusRowOptions {
+interface CreateWorkItemOptions {
   name?: string
-  status?: 'request' | 'negotiation' | 'preproduction' | 'production' | 'postproduction' | 'delivered' | 'rejected' | 'cancelled' | 'manual'
+  status?: 'draft' | 'active' | 'done' | 'cancelled' | 'rejected'
   date?: Date | null
 }
 
-export async function createTestStatusRow(options: CreateStatusRowOptions = {}) {
-  return prisma.statusRow.create({
+export async function createTestWorkItem(options: CreateWorkItemOptions = {}) {
+  return prisma.workItem.create({
     data: {
       name:   options.name   ?? `Test Project ${randomUUID().slice(0, 8)}`,
-      status: (options.status ?? 'request') as any,
+      status: (options.status ?? 'draft') as any,
       source: 'manual' as any,
       date:   options.date !== undefined ? options.date : null,
     },
   })
 }
 
-export async function cleanupTestStatusRow(id: string) {
-  // ShiftEntry → onDelete: Cascade через ProjectAssignment
-  // ProjectDay → onDelete: Cascade через StatusRow
-  await prisma.statusRow.delete({ where: { id } }).catch(() => {})
+export async function cleanupTestWorkItem(id: string) {
+  await prisma.workItem.delete({ where: { id } }).catch(() => {})
 }
 
 // ─── ProjectAssignment ────────────────────────────────────────────────────────

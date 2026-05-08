@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { prisma } from '@tv-shifts/db'
 import { buildApp, getAccessToken } from '../test/helpers'
-import { createTestUser, cleanupTestUser, createTestStatusRow, cleanupTestStatusRow } from '../test/factories'
+import { createTestUser, cleanupTestUser, createTestWorkItem, cleanupTestWorkItem } from '../test/factories'
 import type { FastifyInstance } from 'fastify'
 
 /** Recursively replace all leaf values with their JS type name. */
@@ -41,12 +41,12 @@ describe('GET /status-rows response structure', () => {
     adminId = admin.id
     adminToken = await getAccessToken(app, admin.email, 'testpassword123')
 
-    const row = await createTestStatusRow({ name: 'Snapshot Project', date: new Date('2025-06-01') })
+    const row = await createTestWorkItem({ name: 'Snapshot Project', date: new Date('2025-06-01') })
     rowId = row.id
   })
 
   afterAll(async () => {
-    await cleanupTestStatusRow(rowId)
+    await cleanupTestWorkItem(rowId)
     await cleanupTestUser(adminId)
     await app.close()
     await prisma.$disconnect()

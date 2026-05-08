@@ -16,7 +16,7 @@ const createShiftSchema = z.object({
 export async function shiftsRoutes(app: FastifyInstance) {
   // GET /shifts
   app.get('/', { preHandler: authenticate }, async (request) => {
-    const me = request.user as { id: string; role: string }
+    const me = request.user as { id: string; roles?: string[] }
     const query = request.query as {
       userId?: string
       projectId?: string
@@ -25,8 +25,9 @@ export async function shiftsRoutes(app: FastifyInstance) {
       confirmed?: string
     }
 
-    // Сотрудник видит только свои смены
-    const userId = me.role === 'employee' ? me.id : query.userId
+    // Without elevated role, users see only their own shifts
+    const isRestricted = !(me.roles ?? []).some((r) => ['admin', 'producer'].includes(r))
+    const userId = isRestricted ? me.id : query.userId
 
     return prisma.shiftEntry.findMany({
       where: {
@@ -38,7 +39,7 @@ export async function shiftsRoutes(app: FastifyInstance) {
       },
       include: {
         user: { select: { id: true, fullName: true } },
-        statusRow: { select: { id: true, name: true, client: true } },
+        workItem: { select: { id: true, name: true, client: true } },
       },
       orderBy: { date: 'asc' },
     })

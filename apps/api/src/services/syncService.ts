@@ -87,18 +87,18 @@ let upserted = 0
       const separatorText = cellStr(cells[0])
       if (separatorText) {
         const existing = await prisma.$queryRawUnsafe<{ id: string }[]>(
-          `SELECT id FROM status_rows WHERE google_row_index = $1 LIMIT 1`,
+          `SELECT id FROM work_items WHERE google_row_index = $1 LIMIT 1`,
           googleRowIndex,
         )
         if (existing.length > 0) {
           await prisma.$executeRawUnsafe(
-            `UPDATE status_rows SET name = $1, source = 'separator'::"StatusRowSource", updated_at = NOW() WHERE id = $2`,
+            `UPDATE work_items SET name = $1, source = 'separator'::"WorkItemSource", updated_at = NOW() WHERE id = $2`,
             separatorText, existing[0].id,
           )
         } else {
           await prisma.$executeRawUnsafe(
-            `INSERT INTO status_rows (id, name, source, google_row_index, status, date_confirmed, created_at, updated_at, uncertain_fields)
-             VALUES ($1, $2, 'separator'::"StatusRowSource", $3, 'request'::"StatusRowStatus", false, NOW(), NOW(), ARRAY[]::text[])`,
+            `INSERT INTO work_items (id, name, source, google_row_index, status, date_confirmed, created_at, updated_at, uncertain_fields)
+             VALUES ($1, $2, 'separator'::"WorkItemSource", $3, 'draft'::"WIStatus", false, NOW(), NOW(), ARRAY[]::text[])`,
             randomUUID(), separatorText, googleRowIndex,
           )
         }
@@ -166,11 +166,11 @@ let upserted = 0
     }
 
     try {
-      const existing = await prisma.statusRow.findFirst({ where: { googleRowIndex } })
+      const existing = await prisma.workItem.findFirst({ where: { googleRowIndex } })
       if (existing) {
-        await prisma.statusRow.update({ where: { id: existing.id }, data: { ...data, source: 'projects_table' as any } })
+        await prisma.workItem.update({ where: { id: existing.id }, data: { ...data, source: 'sync' as any } })
       } else {
-        await prisma.statusRow.create({ data: { ...data, source: 'projects_table', googleRowIndex } })
+        await prisma.workItem.create({ data: { ...data, source: 'sync', googleRowIndex } })
       }
       upserted++
     } catch (e: any) {
@@ -256,7 +256,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
 
     // Привязка к проекту по ID матрицы (sheetMatrixId в таблице проектов = matrixId здесь)
     let projectId: string | null = null
-    const byMatrixId = await prisma.statusRow.findFirst({
+    const byMatrixId = await prisma.workItem.findFirst({
       where: { sheetMatrixId: matrixId } as any,
     })
     if (byMatrixId) {
@@ -264,7 +264,7 @@ async function syncRegistry(sheets: sheets_v4.Sheets): Promise<{ upserted: numbe
     } else if (sheetUrl) {
       const sheetSpreadsheetId = extractSpreadsheetId(sheetUrl)
       if (sheetSpreadsheetId) {
-        const linked = await prisma.statusRow.findFirst({
+        const linked = await prisma.workItem.findFirst({
           where: { matrixUrl: { contains: sheetSpreadsheetId } },
         })
         if (linked) projectId = linked.id
@@ -321,7 +321,7 @@ async function syncMatrix(
   // ── Find the linked project ──────────────────────────────────────────────
   let projectId = registryEntry.projectId
   if (!projectId) {
-    const linked = await prisma.statusRow.findFirst({
+    const linked = await prisma.workItem.findFirst({
       where: { matrixUrl: { contains: spreadsheetId } },
     })
     projectId = linked?.id ?? null

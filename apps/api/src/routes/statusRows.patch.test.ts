@@ -8,8 +8,8 @@ import { buildApp, getAccessToken } from '../test/helpers'
 import {
   createTestUser,
   cleanupTestUser,
-  createTestStatusRow,
-  cleanupTestStatusRow,
+  createTestWorkItem,
+  cleanupTestWorkItem,
 } from '../test/factories'
 import type { FastifyInstance } from 'fastify'
 
@@ -30,7 +30,7 @@ describe('PATCH /status-rows/:id', () => {
     adminId = admin.id
     adminToken = await getAccessToken(app, admin.email, 'testpassword123')
 
-    const row = await createTestStatusRow({ name: 'PATCH Test Project', status: 'request' })
+    const row = await createTestWorkItem({ name: 'PATCH Test Project', status: 'draft' })
     rowId = row.id
 
     // Use raw SQL to avoid Prisma schema drift on the `unit` column (JSONB default [] ≠ String)
@@ -47,7 +47,7 @@ describe('PATCH /status-rows/:id', () => {
     if (matrixId) {
       await prisma.$executeRawUnsafe(`DELETE FROM matrix_registry WHERE id = $1::uuid`, matrixId).catch(() => {})
     }
-    await cleanupTestStatusRow(rowId)
+    await cleanupTestWorkItem(rowId)
     await cleanupTestUser(adminId)
     await app.close()
     await prisma.$disconnect()
@@ -109,7 +109,7 @@ describe('PATCH /status-rows/:id', () => {
       method: 'PATCH',
       url: `/status-rows/${rowId}`,
       cookies: { access_token: adminToken },
-      payload: { status: 'request' },
+      payload: { status: 'draft' },
     })
     await prisma.changeLog.deleteMany({ where: { entityId: rowId } })
 
@@ -117,7 +117,7 @@ describe('PATCH /status-rows/:id', () => {
       method: 'PATCH',
       url: `/status-rows/${rowId}`,
       cookies: { access_token: adminToken },
-      payload: { status: 'negotiation' },
+      payload: { status: 'active' },
     })
 
     expect(res.statusCode).toBe(200)
@@ -125,8 +125,8 @@ describe('PATCH /status-rows/:id', () => {
       where: { entityId: rowId, field: 'status' },
     })
     expect(log).not.toBeNull()
-    expect(log!.oldValue).toBe('request')
-    expect(log!.newValue).toBe('negotiation')
+    expect(log!.oldValue).toBe('draft')
+    expect(log!.newValue).toBe('active')
   })
 
   // ── matrixRegistryId / blockSlot (raw SQL) ────────────────────────────────

@@ -9,31 +9,76 @@ datasource db {
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-enum Role {
-  employee
-  admin
-  producer
+// Жизненный цикл проекта
+enum ProjectStatus {
+  draft      // Заявка
+  active     // Реализация
+  done       // Сдан (авто: все WI = done)
+  cancelled  // Отменён
+  rejected   // Не согласован
 }
 
-enum StatusRowStatus {
-  request
-  negotiation
-  connecting
-  preproduction
-  production
-  postproduction
-  delivered
-  rejected
-  cancelled
-  manual
+// Финансовый флаг проекта (отдельная ось)
+enum FinancialFlag {
+  pending  // Ожидает оплаты
+  paid     // Оплачен
 }
 
-enum StatusRowSource {
-  projects_table
-  manual
-  separator
+// Жизненный цикл Work Item (Ось 1)
+enum WIStatus {
+  draft      // Заявка
+  active     // Реализация
+  done       // Сдан (авто: все отделы = done)
+  cancelled  // Отменён
+  rejected   // Не согласован
 }
 
+// Источник WI
+enum WorkItemSource {
+  sync      // импортирован через Google Sheets sync
+  manual    // создан пользователем в UI
+  separator // визуальный разделитель (месяц) в WorkflowPage
+  internal  // внутренняя матрица
+}
+
+// Подстатус отдела внутри WI (Ось 2)
+enum DeptSubstatus {
+  not_started  // Не начат
+  in_progress  // В работе
+  done         // Завершён
+}
+
+// Тип департамента
+enum DeptType {
+  production  // ТВ, Радио, Дизайн, Бренд медиа, Корп медиа
+  support     // Технический, Спецпроекты
+  internal    // Финансы, Персонал, Администрация
+}
+
+// Тип HR-заявки
+enum HRStatusType {
+  vacation       // Отпуск
+  sick           // Больничный
+  remote         // Удалёнка
+  business_trip  // Командировка
+  day_off        // Отгул
+}
+
+// Статус утверждения (HR и другие)
+enum ApprovalStatus {
+  pending   // На рассмотрении
+  approved  // Утверждено
+  rejected  // Отклонено
+}
+
+// Статус бронирования студии
+enum BookingStatus {
+  preliminary  // Предварительно (WI в статусе draft)
+  confirmed    // Подтверждено (WI в статусе active)
+  blocked      // Заблокировано (ремонт и т.п.)
+}
+
+// Тип занятости (TV-специфика)
 enum EmploymentType {
   staff
   ip_7
@@ -42,6 +87,7 @@ enum EmploymentType {
   szt
 }
 
+// Тип смены (TV-специфика)
 enum ShiftType {
   zastroyka
   efir
@@ -65,13 +111,7 @@ enum SyncStatus {
   error
 }
 
-enum NotificationType {
-  no_matrix
-  unmatched_name
-  data_conflict
-  schedule_change
-}
-
+// Статус задачи
 enum TaskStatus {
   open
   in_progress
@@ -90,74 +130,293 @@ enum DayType {
   semka
 }
 
-// ─── Models ───────────────────────────────────────────────────────────────────
+enum DealStatus {
+  preliminary
+  in_progress
+  completed
+}
+
+// Типы уведомлений — sync + бизнес-события
+enum NotificationType {
+  // Sync-уведомления (существующие)
+  no_matrix
+  unmatched_name
+  data_conflict
+  schedule_change
+  // Бизнес-уведомления (новые)
+  task_assigned
+  task_overdue
+  task_closed
+  wi_status_changed
+  project_status_changed
+  dept_connected_to_wi
+  hr_request_created
+  hr_request_resolved
+  studio_conflict
+  meeting_invite
+}
+
+// ─── Core Models ──────────────────────────────────────────────────────────────
 
 model User {
   id           String   @id @default(uuid())
   fullName     String   @map("full_name")
   email        String   @unique
   passwordHash String   @map("password_hash")
-  role         Role     @default(employee)
   tabNumber    String?  @map("tab_number")
   isStaff      Boolean  @default(true) @map("is_staff")
   isActive     Boolean  @default(true) @map("is_active")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  shiftEntries       ShiftEntry[]        @relation("UserShifts")
-  confirmedShifts    ShiftEntry[]        @relation("ConfirmedByUser")
-  assignments        ProjectAssignment[]
-  monthlySummaries   MonthlySummary[]
-  tasks              Task[]
-  taskAssignments    TaskAssignment[]
-  notifications          Notification[]
-  notificationReads      UserNotificationRead[]
-  changeLogs             ChangeLog[]
-  matrixNotes            MatrixNote[]
-  userRoles              UserAppRole[]
+  shiftEntries        ShiftEntry[]          @relation("UserShifts")
+  confirmedShifts     ShiftEntry[]          @relation("ConfirmedByUser")
+  assignments         ProjectAssignment[]
+  monthlySummaries    MonthlySummary[]
+  tasks               Task[]
+  taskAssignments     TaskAssignment[]
+  notifications       Notification[]
+  notificationReads   UserNotificationRead[]
+  changeLogs          ChangeLog[]
+  matrixNotes         MatrixNote[]
+  userRoles           UserAppRole[]
+  deptMemberships     DeptMember[]
+  managedProjects     Project[]             @relation("AccountManager")
+  hrStatuses          HRStatus[]            @relation("HRUser")
+  approvedHRStatuses  HRStatus[]            @relation("HRApprover")
+  studioBookings      StudioBooking[]
+  createdEvents       CalendarEvent[]
+  eventParticipations CalendarEventParticipant[]
 
   @@map("users")
 }
 
-model StatusRow {
-  id              String          @id @default(uuid())
-  client          String?
-  name            String
-  execProducer    String?         @map("exec_producer")
-  lineProducer    String?         @map("line_producer")
-  accountManager  String?         @map("account_manager")
-  date            DateTime?
-  dateConfirmed   Boolean         @default(false) @map("date_confirmed")
-  dateApproximate String?         @map("date_approximate")
-  time            String?
-  format          String?
-  location        String?
-  postProduction  String?         @map("post_production")
-  status          StatusRowStatus @default(request)
-  source          StatusRowSource @default(projects_table)
-  matrixUrl       String?         @map("matrix_url")
-  sheetMatrixId   String?         @map("sheet_matrix_id")
-  notes           String?
-  uncertainFields String[]        @default([]) @map("uncertain_fields")
-  googleRowIndex  Int?            @map("google_row_index")
-  matrixRegistryId String?        @map("matrix_registry_id")
-  blockSlot       Int?            @map("block_slot")
-  fieldApprovals  Json?           @map("field_approvals")
-  groupSchedule   Json?           @map("group_schedule")
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+// ─── Project & WorkItem ───────────────────────────────────────────────────────
 
-  matrixRegistry  MatrixRegistry?
-  linkedMatrix    MatrixRegistry? @relation("ProjectMatrixLink", fields: [matrixRegistryId], references: [id])
-  assignments     ProjectAssignment[]
-  shiftEntries    ShiftEntry[]
-  days            ProjectDay[]
-  dealStatusRows  DealStatusRow[]
-  members         ProjectMember[]
+model Project {
+  id               String        @id @default(uuid())
+  name             String
+  client           String?
+  status           ProjectStatus @default(draft)
+  financialFlag    FinancialFlag @default(pending)  @map("financial_flag")
+  accountManagerId String?       @map("account_manager_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  accountManager User?      @relation("AccountManager", fields: [accountManagerId], references: [id])
+  workItems      WorkItem[]
+
+  @@map("projects")
+}
+
+// WorkItem заменяет StatusRow. Сохраняет все поля для совместимости с sync-сервисом.
+model WorkItem {
+  id               String         @id @default(uuid())
+  projectId        String?        @map("project_id")     // nullable: WI может существовать до привязки к Project
+  name             String
+  client           String?
+  execProducer     String?        @map("exec_producer")
+  lineProducer     String?        @map("line_producer")
+  accountManager   String?        @map("account_manager")
+  date             DateTime?
+  dateConfirmed    Boolean        @default(false) @map("date_confirmed")
+  dateApproximate  String?        @map("date_approximate")
+  time             String?
+  format           String?
+  location         String?
+  postProduction   String?        @map("post_production")
+  status           WIStatus       @default(draft)
+  source           WorkItemSource @default(manual)
+  matrixUrl        String?        @map("matrix_url")
+  sheetMatrixId    String?        @map("sheet_matrix_id")
+  notes            String?
+  uncertainFields  String[]       @default([]) @map("uncertain_fields")
+  googleRowIndex   Int?           @map("google_row_index")
+  matrixRegistryId String?        @map("matrix_registry_id")
+  blockSlot        Int?           @map("block_slot")
+  fieldApprovals   Json?          @map("field_approvals")
+  groupSchedule    Json?          @map("group_schedule")
+  parentWiId       String?        @map("parent_wi_id")   // иерархия WI (бывший parent_task_id)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  project        Project?         @relation(fields: [projectId],        references: [id])
+  parentWi       WorkItem?        @relation("WIChildren", fields: [parentWiId], references: [id])
+  childWis       WorkItem[]       @relation("WIChildren")
+  matrixRegistry MatrixRegistry?  @relation("RegistryAnchor")
+  linkedMatrix   MatrixRegistry?  @relation("ProjectMatrixLink", fields: [matrixRegistryId], references: [id])
+  deptLinks      DeptWILink[]
+  tasks          Task[]
+  studioBookings StudioBooking[]
+  assignments    ProjectAssignment[]
+  shiftEntries   ShiftEntry[]
+  members        ProjectMember[]
+  days           ProjectDay[]
+  dealWorkItems  DealWorkItem[]
 
   @@index([date])
-  @@map("status_rows")
+  @@map("work_items")
 }
+
+// ─── Departments ──────────────────────────────────────────────────────────────
+
+model Department {
+  id       String   @id @default(uuid())
+  name     String   @unique
+  type     DeptType
+  parentId String?  @map("parent_id")
+
+  parent   Department?  @relation("DeptTree", fields: [parentId], references: [id])
+  children Department[] @relation("DeptTree")
+  members  DeptMember[]
+  wiLinks  DeptWILink[]
+  tasks    Task[]
+  events   CalendarEvent[]
+
+  @@map("departments")
+}
+
+model DeptMember {
+  userId String  @map("user_id")
+  deptId String  @map("dept_id")
+  isHead Boolean @default(false) @map("is_head")
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dept Department @relation(fields: [deptId], references: [id], onDelete: Cascade)
+
+  @@id([userId, deptId])
+  @@map("dept_members")
+}
+
+// Привязка отдела к WI + подстатус отдела (Ось 2 двуосевой модели)
+model DeptWILink {
+  id        String        @id @default(uuid())
+  deptId    String        @map("dept_id")
+  wiId      String        @map("wi_id")
+  deadline  DateTime?
+  substatus DeptSubstatus @default(not_started) @map("substatus")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  dept     Department @relation(fields: [deptId], references: [id])
+  workItem WorkItem   @relation(fields: [wiId],   references: [id], onDelete: Cascade)
+
+  @@unique([deptId, wiId])
+  @@map("dept_wi_links")
+}
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+
+model Task {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      TaskStatus @default(open)
+  deadline    DateTime?
+  isOverdue   Boolean    @default(false) @map("is_overdue")
+  deptId      String?    @map("dept_id")
+  wiId        String?    @map("wi_id")
+  createdBy   String     @map("created_by")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  creator     User           @relation(fields: [createdBy], references: [id])
+  dept        Department?    @relation(fields: [deptId],    references: [id])
+  workItem    WorkItem?      @relation(fields: [wiId],      references: [id])
+  assignments TaskAssignment[]
+
+  @@index([deadline])
+  @@index([isOverdue])
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id          String    @id @default(uuid())
+  taskId      String    @map("task_id")
+  userId      String    @map("user_id")
+  assignedAt  DateTime  @default(now()) @map("assigned_at")
+  completedAt DateTime? @map("completed_at")
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("task_assignments")
+}
+
+// ─── HR & Studio ──────────────────────────────────────────────────────────────
+
+model HRStatus {
+  id         String         @id @default(uuid())
+  userId     String         @map("user_id")
+  type       HRStatusType
+  dateFrom   DateTime       @map("date_from")
+  dateTo     DateTime       @map("date_to")
+  status     ApprovalStatus @default(pending)
+  approverId String?        @map("approver_id")
+  approvedAt DateTime?      @map("approved_at")
+  notes      String?
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  user     User  @relation("HRUser",     fields: [userId],     references: [id])
+  approver User? @relation("HRApprover", fields: [approverId], references: [id])
+
+  @@index([userId, dateFrom, dateTo])
+  @@map("hr_statuses")
+}
+
+model StudioBooking {
+  id        String        @id @default(uuid())
+  studio    String        // "znamyanka_black" | "znamyanka_white" | "radio" | ...
+  wiId      String?       @map("wi_id")
+  date      DateTime
+  timeFrom  String?       @map("time_from")
+  timeTo    String?       @map("time_to")
+  status    BookingStatus @default(preliminary)
+  reason    String?       // для блокировок
+  createdBy String        @map("created_by")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  workItem WorkItem? @relation(fields: [wiId],      references: [id])
+  creator  User      @relation(fields: [createdBy], references: [id])
+
+  @@index([studio, date])
+  @@map("studio_bookings")
+}
+
+// ─── Calendar ─────────────────────────────────────────────────────────────────
+
+model CalendarEvent {
+  id        String   @id @default(uuid())
+  title     String
+  date      DateTime
+  timeFrom  String?  @map("time_from")
+  timeTo    String?  @map("time_to")
+  deptId    String?  @map("dept_id")
+  creatorId String   @map("creator_id")
+  isGlobal  Boolean  @default(false) @map("is_global")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  dept         Department?               @relation(fields: [deptId],    references: [id])
+  creator      User                      @relation(fields: [creatorId], references: [id])
+  participants CalendarEventParticipant[]
+
+  @@index([date])
+  @@map("calendar_events")
+}
+
+model CalendarEventParticipant {
+  eventId String @map("event_id")
+  userId  String @map("user_id")
+
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User          @relation(fields: [userId],  references: [id])
+
+  @@id([eventId, userId])
+  @@map("calendar_event_participants")
+}
+
+// ─── TV-специфика ─────────────────────────────────────────────────────────────
 
 model ProjectDay {
   id         String   @id @default(uuid())
@@ -171,63 +430,26 @@ model ProjectDay {
   firstMotor String?  @map("first_motor")
   createdAt  DateTime @default(now()) @map("created_at")
 
-  statusRow StatusRow @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  workItem WorkItem @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_days")
 }
 
-model MatrixRegistry {
-  id           String    @id @default(uuid())
-  matrixId     String    @unique @map("matrix_id")
-  sheetUrl     String?   @map("sheet_url")
-  status       String?
-  unit         String[]  @default([])
-  client       String?
-  name         String?
-  format       String?
-  date         DateTime?
-  producer     String?
-  manager      String?
-  curator      String?
-  projectId      String?  @unique @map("project_id")
-  googleRowIndex Int?     @map("google_row_index")
-  hasShiftsData  Boolean? @map("has_shifts_data")
-  shiftsCache    Json?    @map("shifts_cache")
-  lastSyncedAt   DateTime? @map("last_synced_at")
-  projectName    String?   @map("project_name")
-  kpLink         String?   @map("kp_link")
-  brief          String?
-  revenuePlan    Float?    @map("revenue_plan")
-  source         String    @default("google")
-  templateId     String?   @map("template_id")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-
-  statusRow      StatusRow?      @relation(fields: [projectId], references: [id])
-  dealMatrices   DealMatrix[]
-  linkedProjects StatusRow[]     @relation("ProjectMatrixLink")
-  ganttTasks     GanttTask[]
-  notes          MatrixNote[]
-  documents      MatrixDocument[]
-
-  @@map("matrix_registry")
-}
-
 model ProjectAssignment {
-  id              String         @id @default(uuid())
-  projectId       String         @map("project_id")
-  userId          String?        @map("user_id")
-  unmatchedName   String?        @map("unmatched_name")
-  roleOnSite      String?        @map("role_on_site")
-  shiftFormat     String?        @map("shift_format")
-  employmentType  EmploymentType @default(staff) @map("employment_type")
-  plannedShifts   Int            @default(0) @map("planned_shifts")
-  actualShifts    Int            @default(0) @map("actual_shifts")
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
+  id             String         @id @default(uuid())
+  projectId      String         @map("project_id")
+  userId         String?        @map("user_id")
+  unmatchedName  String?        @map("unmatched_name")
+  roleOnSite     String?        @map("role_on_site")
+  shiftFormat    String?        @map("shift_format")
+  employmentType EmploymentType @default(staff) @map("employment_type")
+  plannedShifts  Int            @default(0) @map("planned_shifts")
+  actualShifts   Int            @default(0) @map("actual_shifts")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
 
-  statusRow    StatusRow    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user         User?        @relation(fields: [userId], references: [id])
+  workItem     WorkItem     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId],    references: [id])
   shiftEntries ShiftEntry[]
 
   @@map("project_assignments")
@@ -247,10 +469,10 @@ model ShiftEntry {
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")
 
-  assignment   ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  user         User              @relation("UserShifts", fields: [userId], references: [id])
-  statusRow    StatusRow         @relation(fields: [projectId], references: [id])
-  confirmedByUser User?          @relation("ConfirmedByUser", fields: [confirmedBy], references: [id], onDelete: SetNull)
+  assignment      ProjectAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  user            User              @relation("UserShifts",     fields: [userId],      references: [id])
+  workItem        WorkItem          @relation(fields: [projectId],   references: [id])
+  confirmedByUser User?             @relation("ConfirmedByUser", fields: [confirmedBy], references: [id], onDelete: SetNull)
 
   @@index([userId, date])
   @@index([date])
@@ -258,18 +480,18 @@ model ShiftEntry {
 }
 
 model MonthlySummary {
-  id            String   @id @default(uuid())
-  userId        String   @map("user_id")
-  year          Int
-  month         Int
-  workingDays   Int      @map("working_days")
-  threshold     Int
-  totalShifts   Int      @default(0) @map("total_shifts")
-  overtimeShifts Int     @default(0) @map("overtime_shifts")
-  vacationDays  Int      @default(0) @map("vacation_days")
-  updatedBy     String?  @map("updated_by")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  year           Int
+  month          Int
+  workingDays    Int      @map("working_days")
+  threshold      Int
+  totalShifts    Int      @default(0) @map("total_shifts")
+  overtimeShifts Int      @default(0) @map("overtime_shifts")
+  vacationDays   Int      @default(0) @map("vacation_days")
+  updatedBy      String?  @map("updated_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -277,33 +499,170 @@ model MonthlySummary {
   @@map("monthly_summaries")
 }
 
-model Task {
-  id          String     @id @default(uuid())
-  title       String
-  description String?
-  status      TaskStatus @default(open)
-  createdBy   String     @map("created_by")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
+model ProjectMember {
+  id               String    @id @default(uuid())
+  projectId        String    @map("project_id")
+  name             String
+  position         String?
+  shifts           Json      @default("{}")
+  employmentType   String?   @map("employment_type")
+  ratePlan         Decimal?  @map("rate_plan")         @db.Decimal(12, 2)
+  rateFact         Decimal?  @map("rate_fact")         @db.Decimal(12, 2)
+  isApproved       Boolean   @default(false)            @map("is_approved")
+  fieldApprovals   Json?     @map("field_approvals")
+  groupName        String?   @map("group_name")
+  telegramUsername String?   @map("telegram_username")
+  isFreelancer     Boolean   @default(false)            @map("is_freelancer")
+  paymentType      String?   @map("payment_type")
+  paymentStatus    String    @default("unpaid")         @map("payment_status")
+  paymentAmount    Decimal?  @map("payment_amount")     @db.Decimal(12, 2)
+  createdAt        DateTime  @default(now())            @map("created_at")
+  updatedAt        DateTime  @updatedAt                 @map("updated_at")
 
-  creator         User             @relation(fields: [createdBy], references: [id])
-  taskAssignments TaskAssignment[]
+  workItem WorkItem @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@map("tasks")
+  @@map("project_members")
 }
 
-model TaskAssignment {
-  id          String    @id @default(uuid())
-  taskId      String    @map("task_id")
-  userId      String    @map("user_id")
-  assignedAt  DateTime  @default(now()) @map("assigned_at")
-  completedAt DateTime? @map("completed_at")
+// ─── Google Sheets Sync ───────────────────────────────────────────────────────
 
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
+model MatrixRegistry {
+  id             String    @id @default(uuid())
+  matrixId       String    @unique @map("matrix_id")
+  sheetUrl       String?   @map("sheet_url")
+  status         String?
+  unit           String[]  @default([])
+  client         String?
+  name           String?
+  format         String?
+  date           DateTime?
+  producer       String?
+  manager        String?
+  curator        String?
+  projectId      String?   @unique @map("project_id")
+  googleRowIndex Int?      @map("google_row_index")
+  hasShiftsData  Boolean?  @map("has_shifts_data")
+  shiftsCache    Json?     @map("shifts_cache")
+  lastSyncedAt   DateTime? @map("last_synced_at")
+  projectName    String?   @map("project_name")
+  kpLink         String?   @map("kp_link")
+  brief          String?
+  revenuePlan    Float?    @map("revenue_plan")
+  source         String    @default("google")
+  templateId     String?   @map("template_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  @@map("task_assignments")
+  workItem       WorkItem?        @relation("RegistryAnchor",    fields: [projectId], references: [id])
+  dealMatrices   DealMatrix[]
+  linkedProjects WorkItem[]       @relation("ProjectMatrixLink")
+  notes          MatrixNote[]
+  documents      MatrixDocument[]
+
+  @@map("matrix_registry")
 }
+
+model MatrixTemplate {
+  id        String   @id @default(uuid())
+  name      String
+  sheetUrl  String   @map("sheet_url")
+  isActive  Boolean  @default(false) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("matrix_templates")
+}
+
+model SheetConfig {
+  id           String    @id @default(uuid())
+  tableKey     String    @unique @map("table_key")
+  sheetUrl     String?   @map("sheet_url")
+  apiKey       String?   @map("api_key")
+  cachedData   Json?     @map("cached_data")
+  lastSyncedAt DateTime? @map("last_synced_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("sheet_configs")
+}
+
+model MatrixNote {
+  id        String   @id @default(uuid())
+  matrixId  String   @map("matrix_id")
+  userId    String   @map("user_id")
+  text      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+  user   User           @relation(fields: [userId],   references: [id], onDelete: Cascade)
+
+  @@map("matrix_notes")
+}
+
+model MatrixDocument {
+  id        String   @id @default(uuid())
+  matrixId  String   @map("matrix_id")
+  name      String
+  url       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+
+  @@map("matrix_documents")
+}
+
+model SyncLog {
+  id           String     @id @default(uuid())
+  type         SyncType
+  targetId     String?    @map("target_id")
+  status       SyncStatus @default(running)
+  changesCount Int        @default(0) @map("changes_count")
+  errors       Json       @default("[]")
+  startedAt    DateTime   @default(now()) @map("started_at")
+  finishedAt   DateTime?  @map("finished_at")
+
+  @@map("sync_logs")
+}
+
+// ─── Deals ────────────────────────────────────────────────────────────────────
+
+model Deal {
+  id        String     @id @default(uuid())
+  name      String?
+  client    String?
+  status    DealStatus @default(preliminary)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  workItems  DealWorkItem[]
+  matrices   DealMatrix[]
+
+  @@map("deals")
+}
+
+// DealStatusRow → DealWorkItem (переименован)
+model DealWorkItem {
+  dealId String @map("deal_id")
+  wiId   String @map("wi_id")
+
+  deal     Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  workItem WorkItem @relation(fields: [wiId],   references: [id], onDelete: Cascade)
+
+  @@id([dealId, wiId])
+  @@map("deal_work_items")
+}
+
+model DealMatrix {
+  dealId   String @map("deal_id")
+  matrixId String @map("matrix_id")
+
+  deal   Deal           @relation(fields: [dealId],   references: [id], onDelete: Cascade)
+  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, matrixId])
+  @@map("deal_matrices")
+}
+
+// ─── Notifications & Audit ────────────────────────────────────────────────────
 
 model Notification {
   id         String           @id @default(uuid())
@@ -329,7 +688,7 @@ model UserNotificationRead {
   notificationId String   @map("notification_id")
   readAt         DateTime @default(now()) @map("read_at")
 
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId],         references: [id], onDelete: Cascade)
   notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, notificationId])
@@ -353,144 +712,6 @@ model ChangeLog {
   @@map("change_logs")
 }
 
-enum DealStatus {
-  preliminary
-  in_progress
-  completed
-}
-
-model Deal {
-  id        String     @id @default(uuid())
-  name      String?
-  client    String?
-  status    DealStatus @default(preliminary)
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-
-  statusRows   DealStatusRow[]
-  matrices     DealMatrix[]
-
-  @@map("deals")
-}
-
-model DealStatusRow {
-  dealId      String @map("deal_id")
-  statusRowId String @map("status_row_id")
-
-  deal      Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  statusRow StatusRow @relation(fields: [statusRowId], references: [id], onDelete: Cascade)
-
-  @@id([dealId, statusRowId])
-  @@map("deal_status_rows")
-}
-
-model DealMatrix {
-  dealId   String @map("deal_id")
-  matrixId String @map("matrix_id")
-
-  deal   Deal           @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
-
-  @@id([dealId, matrixId])
-  @@map("deal_matrices")
-}
-
-model MatrixTemplate {
-  id        String   @id @default(uuid())
-  name      String
-  sheetUrl  String   @map("sheet_url")
-  isActive  Boolean  @default(false) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("matrix_templates")
-}
-
-model ProjectMember {
-  id               String    @id @default(uuid())
-  projectId        String    @map("project_id")
-  name             String
-  position         String?
-  shifts           Json      @default("{}")
-  employmentType   String?   @map("employment_type")
-  ratePlan         Decimal?  @map("rate_plan") @db.Decimal(12, 2)
-  rateFact         Decimal?  @map("rate_fact") @db.Decimal(12, 2)
-  isApproved       Boolean   @default(false) @map("is_approved")
-  fieldApprovals   Json?     @map("field_approvals")
-  groupName        String?   @map("group_name")
-  telegramUsername String?   @map("telegram_username")
-  isFreelancer     Boolean   @default(false) @map("is_freelancer")
-  paymentType      String?   @map("payment_type")
-  paymentStatus    String    @default("unpaid") @map("payment_status")
-  paymentAmount    Decimal?  @map("payment_amount") @db.Decimal(12, 2)
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-
-  statusRow StatusRow @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@map("project_members")
-}
-
-// SheetConfig хранит URL и API-ключи для всех внешних источников данных.
-// Ключи (tableKey): projects, registry, employees_buffer, freelancers, kfpd,
-//   internal_registry, drive_folder.
-// Примечание: для ключа drive_folder поле sheetUrl содержит URL папки Google Drive
-//   (не таблицы) — это намеренно, колонка используется как универсальное поле URL.
-model SheetConfig {
-  id           String    @id @default(uuid())
-  tableKey     String    @unique @map("table_key")
-  /// URL источника данных. Для большинства ключей — Google Sheets URL.
-  /// Для drive_folder — URL папки Google Drive.
-  sheetUrl     String?   @map("sheet_url")
-  apiKey       String?   @map("api_key")
-  cachedData   Json?     @map("cached_data")
-  lastSyncedAt DateTime? @map("last_synced_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-
-  @@map("sheet_configs")
-}
-
-model GanttTask {
-  id             String    @id @default(uuid())
-  matrixId       String    @map("matrix_id")
-  name           String
-  startDate      DateTime? @map("start_date")
-  deadline       DateTime? @map("deadline")
-  done           Boolean   @default(false)
-  order          Int       @default(0)
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-
-  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
-
-  @@map("gantt_tasks")
-}
-
-model MatrixNote {
-  id        String   @id @default(uuid())
-  matrixId  String   @map("matrix_id")
-  userId    String   @map("user_id")
-  text      String
-  createdAt DateTime @default(now()) @map("created_at")
-
-  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
-  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("matrix_notes")
-}
-
-model MatrixDocument {
-  id        String   @id @default(uuid())
-  matrixId  String   @map("matrix_id")
-  name      String
-  url       String
-  createdAt DateTime @default(now()) @map("created_at")
-
-  matrix MatrixRegistry @relation(fields: [matrixId], references: [id], onDelete: Cascade)
-
-  @@map("matrix_documents")
-}
-
 // ─── RBAC ─────────────────────────────────────────────────────────────────────
 
 model AppRole {
@@ -506,8 +727,8 @@ model AppRole {
 }
 
 model UserAppRole {
-  userId String  @map("user_id")
-  roleId String  @map("role_id")
+  userId String @map("user_id")
+  roleId String @map("role_id")
 
   user User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   role AppRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -517,8 +738,8 @@ model UserAppRole {
 }
 
 model AppPermission {
-  id          String @id @default(uuid())
-  name        String @unique
+  id          String  @id @default(uuid())
+  name        String  @unique
   description String?
 
   @@map("permissions")
@@ -532,19 +753,4 @@ model RolePermission {
 
   @@id([roleId, permission])
   @@map("role_permissions")
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-
-model SyncLog {
-  id           String     @id @default(uuid())
-  type         SyncType
-  targetId     String?    @map("target_id")
-  status       SyncStatus @default(running)
-  changesCount Int        @default(0) @map("changes_count")
-  errors       Json       @default("[]")
-  startedAt    DateTime   @default(now()) @map("started_at")
-  finishedAt   DateTime?  @map("finished_at")
-
-  @@map("sync_logs")
 }

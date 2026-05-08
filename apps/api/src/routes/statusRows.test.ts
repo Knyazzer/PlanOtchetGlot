@@ -9,8 +9,8 @@ import { buildApp, getAccessToken } from '../test/helpers'
 import {
   createTestUser,
   cleanupTestUser,
-  createTestStatusRow,
-  cleanupTestStatusRow,
+  createTestWorkItem,
+  cleanupTestWorkItem,
   createTestAssignment,
   createTestShiftEntry,
 } from '../test/factories'
@@ -44,9 +44,9 @@ describe('GET /status-rows/conflicts', () => {
     userId2 = user2.id
 
     // Two projects
-    const project1 = await createTestStatusRow({ name: 'Conflicts Project A' })
+    const project1 = await createTestWorkItem({ name: 'Conflicts Project A' })
     projectId1 = project1.id
-    const project2 = await createTestStatusRow({ name: 'Conflicts Project B' })
+    const project2 = await createTestWorkItem({ name: 'Conflicts Project B' })
     projectId2 = project2.id
 
     // Assignments linking the admin user to both projects
@@ -61,8 +61,8 @@ describe('GET /status-rows/conflicts', () => {
     await prisma.shiftEntry.deleteMany({
       where: { userId: { in: [userId, userId2] } },
     }).catch(() => {})
-    await cleanupTestStatusRow(projectId1)
-    await cleanupTestStatusRow(projectId2)
+    await cleanupTestWorkItem(projectId1)
+    await cleanupTestWorkItem(projectId2)
     await cleanupTestUser(userId)
     await cleanupTestUser(userId2)
     await app.close()

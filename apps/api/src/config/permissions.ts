@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { Role, prisma } from '@tv-shifts/db'
+import { prisma } from '@tv-shifts/db'
 
 export type Permission =
   | 'analytics:read'
@@ -42,8 +42,8 @@ const ALL_PERMISSIONS: Permission[] = [
   'kanban:delete',
 ]
 
-// Legacy fallback: permissions by enum role (used when JWT lacks permissions[])
-export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+// Fallback permissions by role name string (used when RBAC tables are empty)
+export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   admin: ALL_PERMISSIONS,
   producer: [
     'analytics:read',
@@ -57,8 +57,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   employee: [],
 }
 
-export function hasPermission(role: Role, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[role].includes(permission)
+export function hasPermission(role: string, permission: Permission): boolean {
+  return (ROLE_PERMISSIONS[role] ?? []).includes(permission)
 }
 
 export async function getUserPermissions(userId: string): Promise<string[]> {
@@ -81,15 +81,14 @@ export function requirePermission(permission: Permission) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       await request.jwtVerify()
-      const user = request.user as { id: string; role?: string; roles?: string[]; permissions?: string[] }
-      request.log.setBindings?.({ userId: user.id, role: user.role })
+      const user = request.user as { id: string; roles?: string[]; permissions?: string[] }
+      request.log.setBindings?.({ userId: user.id })
 
-      // Use RBAC permissions when the user has been assigned roles in the new system.
-      // Fall back to legacy enum-based check when roles[] is empty (no RBAC data yet).
+      // Use RBAC permissions[] from JWT; fall back to role-name lookup when empty.
       const hasRbacRoles = user.roles && user.roles.length > 0
       const allowed = hasRbacRoles
         ? (user.permissions ?? []).includes(permission)
-        : hasPermission((user.role ?? 'employee') as Role, permission)
+        : (user.roles ?? []).some((r) => hasPermission(r, permission))
 
       if (!allowed) {
         reply.code(403).send({ error: 'Forbidden' })

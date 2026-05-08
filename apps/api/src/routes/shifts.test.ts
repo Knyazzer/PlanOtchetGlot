@@ -8,8 +8,8 @@ import { buildApp, getAccessToken } from '../test/helpers'
 import {
   createTestUser,
   cleanupTestUser,
-  createTestStatusRow,
-  cleanupTestStatusRow,
+  createTestWorkItem,
+  cleanupTestWorkItem,
   createTestAssignment,
   createTestShiftEntry,
   createTestMonthlySummary,
@@ -47,7 +47,7 @@ describe('GET /shifts/monthly-summary/:userId/:year/:month', () => {
     employee2Id = emp2.id
     employee2Token = await getAccessToken(app, emp2.email, 'testpassword123')
 
-    const project = await createTestStatusRow({ name: 'Monthly Summary Project' })
+    const project = await createTestWorkItem({ name: 'Monthly Summary Project' })
     projectId = project.id
 
     const asgn = await createTestAssignment({ projectId, userId: employeeId })
@@ -57,7 +57,7 @@ describe('GET /shifts/monthly-summary/:userId/:year/:month', () => {
   afterAll(async () => {
     await prisma.shiftEntry.deleteMany({ where: { userId: employeeId } }).catch(() => {})
     await prisma.monthlySummary.deleteMany({ where: { userId: { in: [employeeId, employee2Id] } } }).catch(() => {})
-    await cleanupTestStatusRow(projectId)
+    await cleanupTestWorkItem(projectId)
     await cleanupTestUser(adminId)
     await cleanupTestUser(employeeId)
     await cleanupTestUser(employee2Id)

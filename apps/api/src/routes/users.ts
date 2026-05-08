@@ -11,7 +11,6 @@ const createUserSchema = z.object({
   fullName: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['employee', 'admin', 'producer']).default('employee'),
   tabNumber: z.string().optional(),
   isStaff: z.boolean().default(true),
 })
@@ -20,7 +19,6 @@ const updateUserSchema = z.object({
   fullName: z.string().min(1).optional(),
   email: z.string().email().optional(),
   password: z.string().min(6).optional(),
-  role: z.enum(['employee', 'admin', 'producer']).optional(),
   tabNumber: z.string().optional(),
   isStaff: z.boolean().optional(),
   isActive: z.boolean().optional(),
@@ -40,17 +38,16 @@ export async function usersRoutes(app: FastifyInstance) {
             { email: { contains: query.search, mode: 'insensitive' } },
           ],
         }),
-        ...(query.role && { role: query.role as any }),
       },
       select: {
         id: true,
         fullName: true,
         email: true,
-        role: true,
         tabNumber: true,
         isStaff: true,
         isActive: true,
         createdAt: true,
+        userRoles: { include: { role: { select: { name: true } } } },
       },
       orderBy: { fullName: 'asc' },
     })
@@ -59,10 +56,11 @@ export async function usersRoutes(app: FastifyInstance) {
   // GET /users/:id
   app.get('/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const me = request.user as { id: string; role: string }
+    const me = request.user as { id: string; roles?: string[] }
 
-    // Сотрудник может смотреть только себя
-    if (me.role === 'employee' && me.id !== id) {
+    // Without admin role, users can only view themselves
+    const isAdmin = (me.roles ?? []).includes('admin')
+    if (!isAdmin && me.id !== id) {
       return reply.code(403).send({ error: 'Forbidden' })
     }
 
@@ -72,11 +70,11 @@ export async function usersRoutes(app: FastifyInstance) {
         id: true,
         fullName: true,
         email: true,
-        role: true,
         tabNumber: true,
         isStaff: true,
         isActive: true,
         createdAt: true,
+        userRoles: { include: { role: { select: { name: true } } } },
       },
     })
 
@@ -103,7 +101,6 @@ export async function usersRoutes(app: FastifyInstance) {
         fullName: body.data.fullName,
         email: body.data.email,
         passwordHash,
-        role: body.data.role as any,
         tabNumber: body.data.tabNumber,
         isStaff: body.data.isStaff,
       },
@@ -111,7 +108,6 @@ export async function usersRoutes(app: FastifyInstance) {
         id: true,
         fullName: true,
         email: true,
-        role: true,
         tabNumber: true,
         isStaff: true,
         createdAt: true,
@@ -124,9 +120,10 @@ export async function usersRoutes(app: FastifyInstance) {
   // PATCH /users/:id — обновление (admin или сам пользователь)
   app.patch('/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const me = request.user as { id: string; role: string }
+    const me = request.user as { id: string; roles?: string[] }
+    const isAdmin = (me.roles ?? []).includes('admin')
 
-    if (me.role === 'employee' && me.id !== id) {
+    if (!isAdmin && me.id !== id) {
       return reply.code(403).send({ error: 'Forbidden' })
     }
 
@@ -141,16 +138,11 @@ export async function usersRoutes(app: FastifyInstance) {
       data.passwordHash = await bcrypt.hash(password, 10)
     }
 
-    // Только admin может менять роль и isActive
-    if (me.role !== 'admin') {
-      delete data.role
+    // Only admin can change isActive / isStaff
+    if (!isAdmin) {
       delete data.isActive
       delete data.isStaff
     }
-
-    const existing = data.role
-      ? await prisma.user.findUnique({ where: { id }, select: { role: true } })
-      : null
 
     const user = await prisma.user.update({
       where: { id },
@@ -159,16 +151,11 @@ export async function usersRoutes(app: FastifyInstance) {
         id: true,
         fullName: true,
         email: true,
-        role: true,
         tabNumber: true,
         isStaff: true,
         isActive: true,
       },
     })
-
-    if (existing && existing.role !== user.role) {
-      logEvent('role_change', id, me.id, { oldRole: existing.role, newRole: user.role }).catch(() => {})
-    }
 
     return user
   })

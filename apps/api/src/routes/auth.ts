@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
-import { prisma, Role } from '@tv-shifts/db'
+import { prisma } from '@tv-shifts/db'
 import { logEvent } from '../services/changeLog'
 import { getUserPermissions, ROLE_PERMISSIONS } from '../config/permissions'
 
@@ -10,19 +10,21 @@ const loginSchema = z.object({
   password: z.string().min(1),
 })
 
-async function buildJwtPayload(userId: string, user: { id: string; email: string; role: Role; fullName: string }) {
+async function buildJwtPayload(userId: string, user: { id: string; email: string; fullName: string }) {
   const [rbacPermissions, roleRows] = await Promise.all([
     getUserPermissions(userId),
     prisma.userAppRole.findMany({ where: { userId }, include: { role: true } }),
   ])
-  // Fall back to legacy role permissions if no UserAppRole records exist yet
-  const permissions = roleRows.length > 0 ? rbacPermissions : ROLE_PERMISSIONS[user.role]
+  const roleNames = roleRows.map((r) => r.role.name)
+  // Fall back to per-role-name permissions when no RBAC entries seeded yet
+  const permissions = roleRows.length > 0
+    ? rbacPermissions
+    : roleNames.flatMap((r) => ROLE_PERMISSIONS[r] ?? [])
   return {
     id: user.id,
     email: user.email,
-    role: user.role,   // legacy field — kept for backward compat with old tokens
     fullName: user.fullName,
-    roles: roleRows.map((r) => r.role.name),
+    roles: roleNames,
     permissions,
   }
 }
@@ -76,7 +78,6 @@ export async function authRoutes(app: FastifyInstance) {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role,
         roles: payload.roles,
         permissions: payload.permissions,
       },
@@ -132,7 +133,7 @@ export async function authRoutes(app: FastifyInstance) {
       const payload = request.user as { id: string }
       const user = await prisma.user.findUnique({
         where: { id: payload.id },
-        select: { id: true, email: true, fullName: true, role: true, tabNumber: true, isStaff: true },
+        select: { id: true, email: true, fullName: true, tabNumber: true, isStaff: true },
       })
       if (!user) return reply.code(404).send({ error: 'User not found' })
 

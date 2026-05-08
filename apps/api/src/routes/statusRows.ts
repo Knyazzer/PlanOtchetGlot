@@ -34,12 +34,12 @@ const createStatusRowSchema = z.object({
   matrixRegistryId: z.string().uuid().nullable().optional(),
   parentTaskId: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  status: z.enum(['request','negotiation','connecting','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
+  status: z.enum(['draft','active','done','cancelled','rejected']).optional(),
   days: z.array(daySchema).optional(),
 })
 
 const updateStatusRowSchema = createStatusRowSchema.partial().extend({
-  status:          z.enum(['request','negotiation','connecting','preproduction','production','postproduction','delivered','rejected','cancelled','manual']).optional(),
+  status:          z.enum(['draft','active','done','cancelled','rejected']).optional(),
   dateConfirmed:   z.boolean().optional(),
   matrixRegistryId: z.string().uuid().nullable().optional(),
   blockSlot:       z.number().int().nullable().optional(),
@@ -50,10 +50,10 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   app.get('/unique-values', { preHandler: requirePermission('projects:write') }, async () => {
     const [formats, locations] = await Promise.all([
       prisma.$queryRawUnsafe<{ format: string }[]>(
-        `SELECT DISTINCT format FROM status_rows WHERE format IS NOT NULL AND format <> '' AND source <> 'separator' ORDER BY format`,
+        `SELECT DISTINCT format FROM work_items WHERE format IS NOT NULL AND format <> '' AND source <> 'separator' ORDER BY format`,
       ),
       prisma.$queryRawUnsafe<{ location: string }[]>(
-        `SELECT DISTINCT location FROM status_rows WHERE location IS NOT NULL AND location <> '' AND source <> 'separator' ORDER BY location`,
+        `SELECT DISTINCT location FROM work_items WHERE location IS NOT NULL AND location <> '' AND source <> 'separator' ORDER BY location`,
       ),
     ])
     return {
@@ -94,39 +94,38 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       }),
     }
 
-    // parent_task_id is not in Prisma schema — filter via raw SQL then pass IDs to Prisma
+    // parent_wi_id is not in Prisma schema — filter via raw SQL then pass IDs to Prisma
     if (query.parentTaskId) {
       const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
-        `SELECT id FROM status_rows WHERE parent_task_id = $1`, query.parentTaskId
+        `SELECT id FROM work_items WHERE parent_wi_id = $1`, query.parentTaskId
       )
       where.id = { in: rows.map((r) => r.id) }
     } else if (query.topLevelOnly === 'true') {
-      // Exclude rows that are department children of another row
       const baseClause = query.matrixRegistryId
-        ? `matrix_registry_id = $1 AND parent_task_id IS NULL`
-        : `parent_task_id IS NULL AND source = 'manual'`
+        ? `matrix_registry_id = $1 AND parent_wi_id IS NULL`
+        : `parent_wi_id IS NULL AND source = 'manual'`
       const rows = query.matrixRegistryId
         ? await prisma.$queryRawUnsafe<{ id: string }[]>(
-            `SELECT id FROM status_rows WHERE ${baseClause}`, query.matrixRegistryId
+            `SELECT id FROM work_items WHERE ${baseClause}`, query.matrixRegistryId
           )
         : await prisma.$queryRawUnsafe<{ id: string }[]>(
-            `SELECT id FROM status_rows WHERE parent_task_id IS NULL AND source = 'manual'`
+            `SELECT id FROM work_items WHERE parent_wi_id IS NULL AND source = 'manual'`
           )
       where.id = { in: rows.map((r) => r.id) }
     }
 
     // slim=true — без join'ов (для страниц которым не нужны вложенные данные)
     if (query.slim === 'true') {
-      return prisma.statusRow.findMany({ where, orderBy: { googleRowIndex: 'asc' } })
+      return prisma.workItem.findMany({ where, orderBy: { googleRowIndex: 'asc' } })
     }
 
-    return prisma.statusRow.findMany({
+    return prisma.workItem.findMany({
       where,
       include: {
         matrixRegistry: true,
         linkedMatrix: { select: { matrixId: true } },
         assignments: {
-          include: { user: { select: { id: true, fullName: true, role: true } } },
+          include: { user: { select: { id: true, fullName: true } } },
         },
         days: { orderBy: { date: 'asc' } },
       },
@@ -137,21 +136,21 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   // GET /status-rows/:id
   app.get('/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string }
-    const row = await prisma.statusRow.findUnique({
+    const row = await prisma.workItem.findUnique({
       where: { id },
       include: {
         matrixRegistry: true,
         linkedMatrix: { select: { matrixId: true, name: true, projectName: true } },
         assignments: {
           include: {
-            user: { select: { id: true, fullName: true, role: true } },
+            user: { select: { id: true, fullName: true } },
             shiftEntries: true,
           },
         },
         days: { orderBy: { date: 'asc' } },
       },
     })
-    if (!row) return reply.code(404).send({ error: 'StatusRow not found' })
+    if (!row) return reply.code(404).send({ error: 'WorkItem not found' })
     return row
   })
 
@@ -159,12 +158,12 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   app.get('/:id/link-info', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<any[]>(
-      `SELECT sr.matrix_registry_id AS "matrixRegistryId", sr.block_slot AS "blockSlot",
+      `SELECT wi.matrix_registry_id AS "matrixRegistryId", wi.block_slot AS "blockSlot",
               mr.id AS "mId", mr.name AS "mName", mr.client AS "mClient",
               mr.matrix_id AS "mMatrixId", mr.sheet_url AS "mSheetUrl", mr.source AS "mSource"
-       FROM status_rows sr
-       LEFT JOIN matrix_registry mr ON mr.id = sr.matrix_registry_id
-       WHERE sr.id = $1`,
+       FROM work_items wi
+       LEFT JOIN matrix_registry mr ON mr.id = wi.matrix_registry_id
+       WHERE wi.id = $1`,
       id
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
@@ -203,11 +202,11 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       blockSlotForCreate = Number(await nextBlockSlot(matrixRegistryId))
     }
 
-    const row = await prisma.statusRow.create({
+    const row = await prisma.workItem.create({
       data: {
         ...rowData,
         date: earliestDate ?? undefined,
-        status: (bodyStatus ?? 'request') as any,
+        status: (bodyStatus ?? 'draft') as any,
         source: 'manual',
         matrixRegistryId: matrixRegistryId ?? undefined,
         blockSlot: blockSlotForCreate ?? undefined,
@@ -220,7 +219,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
 
     if (parentTaskId) {
       await prisma.$executeRawUnsafe(
-        `UPDATE status_rows SET parent_task_id = $1 WHERE id = $2`,
+        `UPDATE work_items SET parent_wi_id = $1 WHERE id = $2`,
         parentTaskId, row.id
       )
     }
@@ -237,8 +236,8 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
     }
 
-    const before = await prisma.statusRow.findUnique({ where: { id } })
-    if (!before) return reply.code(404).send({ error: 'StatusRow not found' })
+    const before = await prisma.workItem.findUnique({ where: { id } })
+    if (!before) return reply.code(404).send({ error: 'WorkItem not found' })
 
     const { days, matrixRegistryId, blockSlot, ...rowFields } = body.data
     const data: any = { ...rowFields }
@@ -266,7 +265,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     if (matrixRegistryId !== undefined) {
       // Read current state
       const cur = await prisma.$queryRawUnsafe<{ matrixRegistryId: string | null; blockSlot: number | null }[]>(
-        `SELECT matrix_registry_id AS "matrixRegistryId", block_slot AS "blockSlot" FROM status_rows WHERE id = $1`,
+        `SELECT matrix_registry_id AS "matrixRegistryId", block_slot AS "blockSlot" FROM work_items WHERE id = $1`,
         id,
       )
       const oldMatrixId  = cur[0]?.matrixRegistryId ?? null
@@ -288,8 +287,8 @@ export async function statusRowsRoutes(app: FastifyInstance) {
         resolvedSlot = Number(raw)
       }
 
-      const affected = await prisma.$executeRawUnsafe(
-        `UPDATE status_rows SET matrix_registry_id = $1, block_slot = $2, updated_at = NOW() WHERE id = $3`,
+      await prisma.$executeRawUnsafe(
+        `UPDATE work_items SET matrix_registry_id = $1, block_slot = $2, updated_at = NOW() WHERE id = $3`,
         matrixRegistryId, resolvedSlot, id,
       )
 
@@ -299,7 +298,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     } else if (blockSlot !== undefined) {
       // blockSlot-only update (no matrix change)
       await prisma.$executeRawUnsafe(
-        `UPDATE status_rows SET block_slot = $1, updated_at = NOW() WHERE id = $2`,
+        `UPDATE work_items SET block_slot = $1, updated_at = NOW() WHERE id = $2`,
         blockSlot, id,
       )
       delete data.blockSlot
@@ -307,8 +306,8 @@ export async function statusRowsRoutes(app: FastifyInstance) {
 
     const include = { days: { orderBy: { date: 'asc' as const } } }
     const row = Object.keys(data).length > 0
-      ? await prisma.statusRow.update({ where: { id }, data, include })
-      : await prisma.statusRow.findUnique({ where: { id }, include })
+      ? await prisma.workItem.update({ where: { id }, data, include })
+      : await prisma.workItem.findUnique({ where: { id }, include })
 
     await logChanges('status_row', id, before as any, rowFields as any, me.id)
 
@@ -320,7 +319,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   app.get('/:id/approvals', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ field_approvals: Record<string, boolean> }[]>(
-      `SELECT field_approvals FROM status_rows WHERE id = $1`, id
+      `SELECT field_approvals FROM work_items WHERE id = $1`, id
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
     return rows[0].field_approvals ?? {}
@@ -332,7 +331,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     const patch = request.body as Record<string, boolean>
     if (!patch || typeof patch !== 'object') return reply.code(400).send({ error: 'Invalid body' })
     const rows = await prisma.$queryRawUnsafe<{ field_approvals: Record<string, boolean> }[]>(
-      `UPDATE status_rows SET field_approvals = field_approvals || $1::jsonb, updated_at = NOW() WHERE id = $2 RETURNING field_approvals`,
+      `UPDATE work_items SET field_approvals = field_approvals || $1::jsonb, updated_at = NOW() WHERE id = $2 RETURNING field_approvals`,
       JSON.stringify(patch), id
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
@@ -345,13 +344,13 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     const { parentIds } = request.query as { parentIds?: string }
     const idList = (parentIds ?? '').split(',').map((s) => s.trim()).filter(Boolean)
     if (idList.length === 0) return {}
-    const rows = await prisma.$queryRawUnsafe<{ parent_task_id: string; format: string | null; name: string }[]>(
-      `SELECT parent_task_id, format, name FROM status_rows WHERE parent_task_id = ANY($1::text[])`,
+    const rows = await prisma.$queryRawUnsafe<{ parent_wi_id: string; format: string | null; name: string }[]>(
+      `SELECT parent_wi_id, format, name FROM work_items WHERE parent_wi_id = ANY($1::text[])`,
       idList,
     )
     const result: Record<string, string[]> = {}
     for (const row of rows) {
-      const pid = row.parent_task_id
+      const pid = row.parent_wi_id
       if (!result[pid]) result[pid] = []
       result[pid].push(row.format || row.name || '—')
     }
@@ -365,7 +364,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     const idList = (ids ?? '').split(',').map((s) => s.trim()).filter(Boolean)
     if (idList.length === 0) return {}
     const rows = await prisma.$queryRawUnsafe<{ id: string; group_schedule: Record<string, unknown> | null }[]>(
-      `SELECT id, group_schedule FROM status_rows WHERE id = ANY($1::uuid[])`,
+      `SELECT id, group_schedule FROM work_items WHERE id = ANY($1::uuid[])`,
       idList,
     )
     const result: Record<string, string[]> = {}
@@ -380,7 +379,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
   app.get('/:id/group-schedule', { preHandler: requirePermission('projects:write') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const rows = await prisma.$queryRawUnsafe<{ group_schedule: Record<string, unknown> }[]>(
-      `SELECT group_schedule FROM status_rows WHERE id = $1`, id
+      `SELECT group_schedule FROM work_items WHERE id = $1`, id
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
     return rows[0].group_schedule ?? {}
@@ -392,7 +391,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     const patch = request.body as Record<string, unknown>
     if (!patch || typeof patch !== 'object') return reply.code(400).send({ error: 'Invalid body' })
     const rows = await prisma.$queryRawUnsafe<{ group_schedule: Record<string, unknown> }[]>(
-      `UPDATE status_rows SET group_schedule = group_schedule || $1::jsonb, updated_at = NOW() WHERE id = $2 RETURNING group_schedule`,
+      `UPDATE work_items SET group_schedule = group_schedule || $1::jsonb, updated_at = NOW() WHERE id = $2 RETURNING group_schedule`,
       JSON.stringify(patch), id
     )
     if (!rows[0]) return reply.code(404).send({ error: 'Not found' })
@@ -416,7 +415,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
 
     // If project had a linked matrix block — delete it and shift remaining projects
     const cur = await prisma.$queryRawUnsafe<{ matrixRegistryId: string | null; blockSlot: number | null }[]>(
-      `SELECT matrix_registry_id AS "matrixRegistryId", block_slot AS "blockSlot" FROM status_rows WHERE id = $1`,
+      `SELECT matrix_registry_id AS "matrixRegistryId", block_slot AS "blockSlot" FROM work_items WHERE id = $1`,
       id,
     )
     const { matrixRegistryId: mId, blockSlot: bSlot } = cur[0] ?? {}
@@ -425,7 +424,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
     }
 
     try {
-      await prisma.statusRow.delete({ where: { id } })
+      await prisma.workItem.delete({ where: { id } })
     } catch (e: any) {
       if (e?.code === 'P2025') return { ok: true } // already deleted — treat as success
       throw e
@@ -444,7 +443,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
       },
       include: {
         user: { select: { id: true, fullName: true } },
-        statusRow: { select: { id: true, name: true, client: true } },
+        workItem: { select: { id: true, name: true, client: true } },
       },
       orderBy: [{ userId: 'asc' }, { date: 'asc' }],
     })
@@ -462,7 +461,7 @@ export async function statusRowsRoutes(app: FastifyInstance) {
         conflicts.push({
           user: entries[0].user,
           date: entries[0].date,
-          shifts: entries.map((e) => ({ shiftId: e.id, statusRow: e.statusRow, shiftType: e.shiftType })),
+          shifts: entries.map((e) => ({ shiftId: e.id, workItem: e.workItem, shiftType: e.shiftType })),
         })
       }
     }

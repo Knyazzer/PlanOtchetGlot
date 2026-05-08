@@ -13,8 +13,8 @@ import { buildApp, getAccessToken } from '../test/helpers'
 import {
   createTestUser,
   cleanupTestUser,
-  createTestStatusRow,
-  cleanupTestStatusRow,
+  createTestWorkItem,
+  cleanupTestWorkItem,
   createTestAssignment,
   createTestShiftEntry,
 } from '../test/factories'
@@ -46,7 +46,7 @@ describe('GET /analytics/shifts', () => {
     userId1 = u1.id
     userId2 = u2.id
 
-    const project = await createTestStatusRow({ date: DATE })
+    const project = await createTestWorkItem({ date: DATE })
     projectId = project.id
 
     const a1 = await createTestAssignment({ projectId, userId: userId1 })
@@ -67,7 +67,7 @@ describe('GET /analytics/shifts', () => {
   afterAll(async () => {
     await prisma.shiftEntry.deleteMany({ where: { projectId } }).catch(() => {})
     await prisma.projectAssignment.deleteMany({ where: { projectId } }).catch(() => {})
-    await cleanupTestStatusRow(projectId)
+    await cleanupTestWorkItem(projectId)
     await cleanupTestUser(userId1)
     await cleanupTestUser(userId2)
     await cleanupTestUser(adminId)

@@ -19,7 +19,7 @@ export async function tasksRoutes(app: FastifyInstance) {
       },
       include: {
         creator: { select: { id: true, fullName: true } },
-        taskAssignments: {
+        assignments: {
           include: { user: { select: { id: true, fullName: true } } },
         },
       },

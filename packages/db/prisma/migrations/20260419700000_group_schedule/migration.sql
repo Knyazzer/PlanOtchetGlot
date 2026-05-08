@@ -1,1 +1,0 @@
-ALTER TABLE "status_rows" ADD COLUMN IF NOT EXISTS "group_schedule" JSONB NOT NULL DEFAULT '{}';

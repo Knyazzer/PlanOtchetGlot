@@ -9,16 +9,16 @@ const createDealSchema = z.object({
   name: z.string().nullable().optional(),
   client: z.string().nullable().optional(),
   status: z.enum(['preliminary', 'in_progress', 'completed']).optional(),
-  statusRowIds: z.array(z.string().uuid()).optional(),
+  wiIds: z.array(z.string().uuid()).optional(),
   matrixIds: z.array(z.string()).optional(),
 })
 
 const updateDealSchema = createDealSchema.partial()
 
 const dealInclude = {
-  statusRows: {
+  workItems: {
     include: {
-      statusRow: {
+      workItem: {
         include: { days: { orderBy: { date: 'asc' as const } } },
       },
     },
@@ -38,25 +38,22 @@ export async function dealsRoutes(app: FastifyInstance) {
     return deals.map(formatDeal)
   })
 
-  // GET /deals/potential — StatusRow с sheetMatrixId совпадающим в MatrixRegistry, без привязки к Deal
+  // GET /deals/potential — WorkItem с sheetMatrixId совпадающим в MatrixRegistry, без привязки к Deal
   app.get('/potential', { preHandler: requirePermission('deals:write') }, async () => {
-    // Все StatusRow с sheetMatrixId
-    const rowsWithMatrix = await prisma.statusRow.findMany({
+    const rowsWithMatrix = await prisma.workItem.findMany({
       where: {
         sheetMatrixId: { not: null },
-        source: 'projects_table',
+        source: 'sync',
       },
     })
 
-    // Все matrixId из реестра
     const registryIds = await prisma.matrixRegistry.findMany({
       select: { id: true, matrixId: true, name: true, client: true, status: true, unit: true, format: true },
     })
     const registryMap = new Map(registryIds.map((r) => [r.matrixId, r]))
 
-    // Все StatusRow уже привязанные к Deal
-    const linked = await prisma.dealStatusRow.findMany({ select: { statusRowId: true } })
-    const linkedIds = new Set(linked.map((l) => l.statusRowId))
+    const linked = await prisma.dealWorkItem.findMany({ select: { wiId: true } })
+    const linkedIds = new Set(linked.map((l) => l.wiId))
 
     // Группируем по matrixId: матрица → строки
     const groups = new Map<string, { matrix: typeof registryIds[0]; rows: typeof rowsWithMatrix }>()
@@ -91,16 +88,16 @@ export async function dealsRoutes(app: FastifyInstance) {
     const body = createDealSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
 
-    const { statusRowIds = [], matrixIds = [], ...dealData } = body.data
+    const { wiIds = [], matrixIds = [], ...dealData } = body.data
 
     const deal = await prisma.deal.create({
       data: {
         ...dealData,
-        statusRows: statusRowIds.length
-          ? { create: statusRowIds.map((id) => ({ statusRowId: id })) }
+        workItems: wiIds.length
+          ? { create: wiIds.map((wiId) => ({ wiId })) }
           : undefined,
         matrices: matrixIds.length
-          ? { create: matrixIds.map((id) => ({ matrixId: id })) }
+          ? { create: matrixIds.map((matrixId) => ({ matrixId })) }
           : undefined,
       },
       include: dealInclude,
@@ -115,22 +112,20 @@ export async function dealsRoutes(app: FastifyInstance) {
     const body = updateDealSchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
 
-    const { statusRowIds, matrixIds, ...dealData } = body.data
+    const { wiIds, matrixIds, ...dealData } = body.data
 
     const existing = await prisma.deal.findUnique({ where: { id } })
     if (!existing) return reply.code(404).send({ error: 'Deal not found' })
 
-    // Обновляем данные
     if (Object.keys(dealData).length > 0) {
       await prisma.deal.update({ where: { id }, data: dealData })
     }
 
-    // Заменяем statusRows если переданы
-    if (statusRowIds !== undefined) {
-      await prisma.dealStatusRow.deleteMany({ where: { dealId: id } })
-      if (statusRowIds.length > 0) {
-        await prisma.dealStatusRow.createMany({
-          data: statusRowIds.map((statusRowId) => ({ dealId: id, statusRowId })),
+    if (wiIds !== undefined) {
+      await prisma.dealWorkItem.deleteMany({ where: { dealId: id } })
+      if (wiIds.length > 0) {
+        await prisma.dealWorkItem.createMany({
+          data: wiIds.map((wiId) => ({ dealId: id, wiId })),
         })
       }
     }
@@ -162,7 +157,7 @@ type DealWithIncludes = Prisma.DealGetPayload<{ include: typeof dealInclude }>
 function formatDeal(deal: DealWithIncludes) {
   return {
     ...deal,
-    statusRows: deal.statusRows.map((r) => r.statusRow),
+    workItems: deal.workItems.map((r) => r.workItem),
     matrices: deal.matrices.map((m) => m.matrix),
   }
 }
