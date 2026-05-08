@@ -1,46 +1,81 @@
 # CLAUDE.md
 
-Этот файл — навигационная карта для Claude Code при работе в репозитории **TV Shifts**. Читается автоматически при старте сессии. Главный принцип: быть _тонким_ — детали лежат в `docs/` и `schema.prisma`, здесь только то, что нужно знать прямо сейчас.
+Навигационная карта для Claude Code. Читается автоматически при старте сессии.
+
+---
+
+## 🔄 ТЕКУЩЕЕ СОСТОЯНИЕ ПРОЕКТА (обновлено 2026-05-08)
+
+**Идёт глобальный rebuild V2.** Детальный план с чекбоксами — в `docs/dev-plan-v2.md`.
+
+| Фаза | Статус | Коммит |
+|------|--------|--------|
+| Фаза 0: чистая схема (StatusRow→WorkItem, Role→RBAC) | ✅ DONE | `03eff5f`, `b6c7c62` |
+| Фаза 1: /projects + /work-items + WorkflowPage | ✅ DONE | `0711814` |
+| Фаза 2: /departments + /dept-wi-links + DeptBoard + AdminDept | ✅ DONE | `ef6ee2f` |
+| Фаза 3: Task-система (TasksPage полноценный + overdue cron) | ⬜ следующая |
+| Фаза 4–6: Календарь, HR, Аналитика | ⬜ |
+
+**Ключевые изменения схемы (важно — весь код до rebuild'а устарел):**
+- `status_rows` таблица → `work_items` (модель `WorkItem`)
+- `StatusRowStatus` (9 значений) → `WIStatus`: `draft | active | done | cancelled | rejected`
+- `StatusRowSource` → `WorkItemSource`: `sync | manual | separator | internal`
+- `Role` enum на `User` **удалён** — авторизация через RBAC-таблицы (`AppRole`, `UserAppRole`, `RolePermission`)
+- Новая таблица `projects` (модель `Project`) — родитель для `WorkItem`
+- `WorkItem.parentWiId` (было `parent_task_id`) — иерархия WI → дочерние (отделы)
+- **Все ID-колонки — тип `TEXT`** в PostgreSQL (не native uuid). В raw SQL никогда не используй `::uuid` — будет ошибка `operator does not exist: text = uuid`
+
+**Новые роуты Day 3 (Фаза 1):**
+- `GET/POST/PATCH/DELETE /projects` — `apps/api/src/routes/projects.ts`
+- `GET/POST /projects/:id/work-items` — вложенный в projects.ts
+- `GET/POST/PATCH/DELETE /work-items` — `apps/api/src/routes/workItems.ts`
+- `POST/GET /work-items/:id/dept-links` — привязка отдела к WI (в workItems.ts)
+
+**Новые роуты Day 4 (Фаза 2):**
+- `GET/POST/PATCH/DELETE /departments` — `apps/api/src/routes/departments.ts`
+- `GET /departments/:id/members`, `POST /departments/:id/members`, `DELETE /departments/:id/members/:userId`
+- `GET /departments/:id/board` — WI сгруппированные по DeptWILink.substatus
+- `PATCH /dept-wi-links/:id/substatus`, `DELETE /dept-wi-links/:id` — `apps/api/src/routes/deptWiLinks.ts`
+
+**WorkflowPage** переключён на `/work-items`, статусы: Заявка(`draft`) → Реализация(`active`) → Сдан(`done`).
+
+**Новые страницы (Day 4):**
+- `DeptBoardPage.tsx` — канбан-доска отдела, колонки: Не начат / В работе / Завершён
+- `AdminDeptPage.tsx` — управление отделами (только admin): дерево, создание, участники
+- В AppShell: `deptboard` (всем) + `admindept` (только admin)
 
 ---
 
 ## 📖 Порядок чтения перед работой
 
-Сверяйся с этим списком **до** того, как начинаешь менять код. Если задача попадает в одну из зон — открой соответствующий файл до того, как предлагать решение.
-
 | Зона задачи | Сначала читай |
 |-------------|---------------|
-| Изменение схемы БД, миграции, новые таблицы | `docs/04-database-schema.md` + `packages/db/prisma/schema.prisma` |
-| Правка синхронизации / парсера матриц | `docs/03-data-sources.md` + `docs/05-architecture.md` (секция «Парсер матрицы») |
-| Авторизация, роли, permissions | `docs/10-roles-and-scale.md` (обязательно — там целевая RBAC-модель) |
-| Деплой, Docker, production | `docs/08-deploy.md` |
-| Мониторинг, логирование, метрики | `docs/09-observability.md` |
-| Первый запуск на машине | `docs/07-dev-setup.md` |
-| Приоритеты, текущие задачи | `docs/TODO.md` — **источник правды** по тому, что делать и в каком порядке |
-| CI/CD, GitHub Actions | `docs/11-github-workflow.md` |
-| Что уже сделано | `docs/DONE.md` |
+| Текущие задачи, приоритеты rebuild'а | `docs/dev-plan-v2.md` — **источник правды** |
+| Схема БД, миграции | `packages/db/prisma/schema.prisma` |
+| Синхронизация / парсер матриц | `docs/03-data-sources.md` + `docs/05-architecture.md` |
+| Авторизация, роли, permissions | `apps/api/src/config/permissions.ts` + `apps/api/src/plugins/auth.ts` |
+| Деплой, Docker | `docs/08-deploy.md` |
+| Первый запуск | `docs/07-dev-setup.md` |
+| CI/CD | `docs/11-github-workflow.md` |
 
-При расхождении между этим файлом и `docs/TODO.md` — **TODO.md авторитетнее**.
+**Не трогай `docs/DONE.md` и `docs/TODO.md`** — логи прошлого, не план.
 
 ---
 
-## ⚙️ Рабочие правила для Claude в этом проекте
+## ⚙️ Рабочие правила
 
-1. **Перед крупным архитектурным решением** (новая таблица, изменение auth, интеграция) — используй `sequentialthinking` MCP. Это проект масштаба 60 пользователей / 10–15 ролей / внешние интеграции, одношаговые ответы здесь почти всегда неполные.
-2. **Актуальную документацию библиотек** (Fastify, Prisma, TanStack Query, FullCalendar и т.д.) бери через `context7` MCP, а не из памяти — версии в проекте свежие (React 19, Fastify v4, Prisma v5).
-3. **Архитектурные решения, которые уже приняты** — храни в `memory` MCP под ключами `tv-shifts:decision:*`. Если собираешься предложить решение, которое противоречит уже записанному — явно это отметь в ответе.
-4. **Фазы развития проекта (Ф0→Ф4)** из `docs/10-roles-and-scale.md` — это последовательность. Не предлагай Ф2 (RBAC), если Ф0 (изоляция тест-БД) ещё не сделана. `permissions.ts` и structured logging из Ф0 уже реализованы.
-5. **Не предлагай решения, которые уже отвергнуты** в пользу осознанных компромиссов. См. блок «Принятые компромиссы» ниже.
-6. **Не трогай `docs/DONE.md`** — это лог, не план.
-7. **При работе с кодом — всегда проверяй тесты.** Цель: `pnpm test` → `163 теста, 0 провалов` (на 2026-04-20). Если падает больше — что-то сломано.
+1. **`pnpm test` должен давать 163 теста, 0 провалов.** Тесты требуют запущенной тест-БД (`docker compose -f docker-compose.dev.yml up -d`). Если БД не запущена — тесты падают с `PrismaClientInitializationError`, это ожидаемо.
+2. **Перед архитектурным решением** — читай `docs/dev-plan-v2.md`. Там уже приняты решения по всем крупным вопросам.
+3. **Актуальную документацию библиотек** бери через `context7` MCP (React 19, Fastify v4, Prisma v5).
+4. **Не трогай** `/status-rows` роут и `statusRows.ts` — они живут параллельно для SyncDataPage и других старых компонентов. Новый код — только в `projects.ts` / `workItems.ts` / `departments.ts`.
 
 ---
 
 ## 🎯 Обзор проекта
 
-**TV Shifts** — full-stack веб-приложение для управления сменами, нагрузкой и расписанием проектов на телепроизводстве. Синхронизируется с Google Sheets для импорта данных. UI и документация на русском.
+**TV Shifts** — full-stack веб-приложение для управления сменами, нагрузкой и расписанием проектов на телепроизводстве. Синхронизируется с Google Sheets. UI на русском.
 
-**Целевой масштаб:** ~60 пользователей, ~15 одновременных, 10–15 ролей, интеграции с Битрикс24 и сервером техники.
+**Масштаб:** ~60 пользователей, 10–15 ролей, интеграции с Google Sheets / Drive.
 
 ---
 
@@ -51,51 +86,39 @@ pnpm workspace, три пакета:
 - `apps/web` — React + Vite frontend (порт 5173)
 - `packages/db` — Prisma schema + миграции + seed
 
-Подробная структура папок — в `docs/05-architecture.md`.
-
 ---
 
 ## 🔧 Основные команды
 
-Полный список — в `docs/07-dev-setup.md`. Здесь — самое частое:
-
 ```bash
-# Запуск (Windows, раздельные окна)
-.\start.ps1
+# Запуск
+.\start.ps1          # Windows, раздельные окна
+pnpm dev             # кроссплатформенно
 
-# Запуск API + Web параллельно (кроссплатформенно)
-pnpm dev
-
-# БД отдельно для локальной разработки (PostgreSQL на порту 5433 в dev)
+# БД (PostgreSQL на порту 5433 в dev)
 docker compose -f docker-compose.dev.yml up -d
 
 # Тесты
-pnpm test                                 # всё
-pnpm --filter @tv-shifts/api test         # только API
-pnpm --filter @tv-shifts/web test         # только Web
-pnpm --filter @tv-shifts/api exec vitest run src/routes/users.test.ts  # один файл API
-pnpm --filter @tv-shifts/web exec vitest run src/hooks/useAuth.test.ts  # один файл Web
-pnpm --filter @tv-shifts/api test:watch   # watch-режим (API)
-pnpm --filter @tv-shifts/web test:watch   # watch-режим (Web)
+pnpm test                                              # всё (цель: 163/163)
+pnpm --filter @tv-shifts/api test                      # только API
+pnpm --filter @tv-shifts/web test                      # только Web
+pnpm --filter @tv-shifts/api exec vitest run src/routes/projects.test.ts  # один файл
 
-# Линтинг (только Web, ESLint)
-pnpm --filter @tv-shifts/web exec eslint .
-
-# TypeScript-проверка
-pnpm --filter @tv-shifts/web exec tsc --noEmit
+# TypeScript
 pnpm --filter @tv-shifts/api build
+pnpm --filter @tv-shifts/web exec tsc --noEmit
 
 # БД (Prisma)
 pnpm db:generate      # перегенерация клиента
 pnpm db:migrate       # применение миграций (dev)
-pnpm db:migrate:test  # применение миграций в тест-БД (TEST_DATABASE_URL из .env)
-pnpm db:seed          # тестовые данные
+pnpm db:migrate:test  # тест-БД
+pnpm db:seed          # тестовые данные (11 отделов + пользователи + RBAC)
 pnpm db:studio        # GUI
 ```
 
-**API-тесты** — интеграционные, используют `buildApp()` из `apps/api/src/test/helpers.ts` и реальный PostgreSQL через `app.inject()`. БД должна быть запущена. Фабрики данных — в `apps/api/src/test/factories.ts`, убирай созданное в `afterEach`/`afterAll`. Запуск в `singleThread` — одно соединение на все тесты.
+**API-тесты** — интеграционные, реальный PostgreSQL, `buildApp()` из `apps/api/src/test/helpers.ts`. Фабрики — `apps/api/src/test/factories.ts`. Режим `singleThread`.
 
-**Web-тесты** — Vitest + `@testing-library/react` + MSW. Сервер MSW: `apps/web/src/test/msw-server.ts`, поднимается глобально в `apps/web/src/test/setup.ts`.
+**Web-тесты** — Vitest + RTL + MSW (`apps/web/src/test/msw-server.ts`).
 
 ---
 
@@ -104,208 +127,237 @@ pnpm db:studio        # GUI
 ### Поток данных
 1. Frontend (React) → HTTP → Fastify API
 2. Fastify → Prisma → PostgreSQL
-3. Sync запускается **только вручную** через `POST /sync/trigger` (admin/producer). Автокрон **не реализован** — `node-cron` установлен, но в `server.ts` не зарегистрирован.
-
-### Старт сервера
-`apps/api/src/server.ts` ждёт PostgreSQL (30 попыток × 2с) перед стартом. На каждом старте **все записи `SyncLog` удаляются** — история синхронизаций не переживает рестарт. Порт API: `PORT` env (default 4000).
+3. Sync — только вручную через `POST /sync/trigger`. Автокрон не реализован.
 
 ### Auth
-JWT, две httpOnly cookies: `access_token` (15 мин, все пути), `refresh_token` (7 дней, scoped на `/auth/refresh`). `@fastify/jwt` читает cookie автоматически. На фронте — Zustand store (`apps/web/src/stores/auth.ts`), axios-interceptor в `apps/web/src/lib/api.ts` делает автоматический retry на 401 через `/auth/refresh` (interceptor пропускает `/auth/*`, чтобы не было петли).
+JWT, две httpOnly cookies: `access_token` (15 мин), `refresh_token` (7 дней, scoped на `/auth/refresh`).
 
-`POST /auth/login` ограничен rate limit (10 req/min через `@fastify/rate-limit`; плагин `global: false`, остальные роуты без лимита).
+**RBAC (новая система):** роли хранятся в `AppRole` + `UserAppRole`, права — в `RolePermission`. JWT содержит массив `roles[]` и `permissions[]`. На `User` нет поля `role`.
 
-Auth guard: `apps/api/src/plugins/auth.ts` — либо `request.jwtVerify()` внутри обработчика, либо `authenticate` / `requireRole(...roles)` как preHandler. `requireRole` принимает несколько ролей: `requireRole('admin', 'producer')`.
+`requirePermission(permission)` и `requireRole(...roles)` — в `apps/api/src/plugins/auth.ts`.
+
+Fallback (когда RBAC-таблицы пусты): `ROLE_PERMISSIONS` в `apps/api/src/config/permissions.ts`.
 
 ### Состояние фронтенда
-- **TanStack Query** — всё серверное состояние (fetch, cache, invalidation)
-- **Zustand** — только auth (`stores/auth.ts`). Хелперы: `useAuthInit()` (грузит `/auth/me` при старте), `useCurrentUser()`, `useIsAdmin()`, `useIsProducer()` в `apps/web/src/hooks/useAuth.ts`
-- **Inline styles** — UI-библиотеки нет (ни shadcn/ui, ни MUI, ни Tailwind)
-- **FullCalendar** — только в `CalendarPage.tsx`
-- **Навигация** — `useState<Page>` в `AppShell.tsx` (React Router нет). Страницы: `calendar | workflow | analytics | users | tasks | profile | syncdata | deals | database`. Текущая страница — в `localStorage` под ключом `app-page`. Гард проверяет роль, так что манипуляция localStorage не поможет обойти защиту.
-- Auth-gate в `App.tsx`: не залогинен → `LoginPage`, залогинен → `AppShell`
+- **TanStack Query** — серверное состояние
+- **Zustand** — только auth (`stores/auth.ts`)
+- **Inline styles** — UI-библиотек нет (не предлагай shadcn/MUI/Tailwind)
+- **Навигация** — `useState<Page>` в `AppShell.tsx` (React Router нет, не предлагай)
+- Страницы: `calendar | workflow | analytics | users | tasks | profile | syncdata | deals | database | deptboard | admindept`
 
-### API-роуты (регистрируются в корне, без префикса `/api`)
+### API-роуты
 
-| Префикс | Файл |
-|---------|------|
-| `/auth` | `apps/api/src/routes/auth.ts` |
-| `/users` | `apps/api/src/routes/users.ts` |
-| `/status-rows` | `apps/api/src/routes/statusRows.ts` |
-| `/shifts` | `apps/api/src/routes/shifts.ts` |
-| `/tasks` | `apps/api/src/routes/tasks.ts` |
-| `/notifications` | `apps/api/src/routes/notifications.ts` |
-| `/sync` | `apps/api/src/routes/sync.ts` |
-| `/change-logs` | `apps/api/src/routes/changeLogs.ts` |
-| `/analytics` | `apps/api/src/routes/analytics.ts` |
-| `/deals` | `apps/api/src/routes/deals.ts` |
-| `/database` | `apps/api/src/routes/database.ts` |
-| `/matrix-templates` | `apps/api/src/routes/matrixTemplates.ts` |
-| `/internal-matrix` | `apps/api/src/routes/internalMatrix.ts` |
-| `/project-members` | `apps/api/src/routes/projectMembers.ts` |
-| `/shift-expenses`, `/matrix-gantt`, `/matrix-notes`, `/matrix-documents` | `apps/api/src/routes/matrixExtras.ts` |
-| `/kanban-tasks` | `apps/api/src/routes/kanbanTasks.ts` |
+| Префикс | Файл | Примечание |
+|---------|------|-----------|
+| `/auth` | `routes/auth.ts` | |
+| `/users` | `routes/users.ts` | |
+| `/projects` | `routes/projects.ts` | **Фаза 1** — Project CRUD |
+| `/work-items` | `routes/workItems.ts` | **Фаза 1** — WorkItem CRUD + авто-триггер Project.status + dept-links |
+| `/departments` | `routes/departments.ts` | **Фаза 2** — Dept CRUD + members + board |
+| `/dept-wi-links` | `routes/deptWiLinks.ts` | **Фаза 2** — substatus PATCH + DELETE + авто-триггер WI.status |
+| `/status-rows` | `routes/statusRows.ts` | legacy — используется SyncDataPage, sync-сервисом |
+| `/shifts` | `routes/shifts.ts` | |
+| `/tasks` | `routes/tasks.ts` | |
+| `/notifications` | `routes/notifications.ts` | |
+| `/sync` | `routes/sync.ts` | |
+| `/change-logs` | `routes/changeLogs.ts` | |
+| `/analytics` | `routes/analytics.ts` | |
+| `/deals` | `routes/deals.ts` | |
+| `/database` | `routes/database.ts` | |
+| `/matrix-templates` | `routes/matrixTemplates.ts` | |
+| `/internal-matrix` | `routes/internalMatrix.ts` | |
+| `/project-members` | `routes/projectMembers.ts` | |
+| `/shift-expenses`, `/matrix-gantt`, `/matrix-notes`, `/matrix-documents` | `routes/matrixExtras.ts` | |
+| `/kanban-tasks` | `routes/kanbanTasks.ts` | |
 
-### Prisma — ключевые enum'ы
-- `Role` — `employee | admin | producer` (**временно!** Ф2 плана — миграция на таблицу `roles`)
-- `StatusRowStatus` — `request | negotiation | preproduction | production | postproduction | delivered | rejected | cancelled | manual`
-- `StatusRowSource` — `projects_table | manual | separator`
-- `EmploymentType` — `staff | ip_7 | ip_8 | ip_10 | szt`
-- `ShiftType` — `zastroyka | efir | demontazh`
-- `NotificationType` — `no_matrix | unmatched_name | data_conflict | schedule_change`
-- `DealStatus` — `preliminary | in_progress | completed`
+### Prisma — актуальные enum'ы
 
-Полный список моделей и enum'ов — в `packages/db/prisma/schema.prisma` и `docs/04-database-schema.md`.
-
----
-
-## ⚠️ Принятые компромиссы (осознанные — не предлагай менять без уважительной причины)
-
-- **Навигация через `useState<Page>`, а не React Router.** Deep links и браузерная история не нужны сейчас. В `docs/TODO.md` → «Пожелания» есть пункт миграции на React Router v6 — когда понадобятся deep links.
-- **Role как enum из 3 значений.** Будет мигрировано на таблицу `roles` + `user_roles` + `role_permissions` в Фазе 2 плана масштабирования. До тех пор — используй существующий `requireRole`.
-- **Инлайн-стили вместо UI-библиотеки.** Сознательно. Не предлагай shadcn/ui / MUI / Tailwind.
-- **Sync только вручную.** Автокрон осознанно выключен — проект активно развивается, и ручной контроль важен. `node-cron` установлен но не зарегистрирован в `server.ts`. Есть пункт в TODO → «Пожелания».
-- **`pg-boss` для очередей, не BullMQ.** Чтобы не тянуть Redis. Будет пересмотрено, если Redis появится по другой причине.
-- **Google Sheets — read-only.** Запись — только через Drive API для внутренних матриц. Не предлагай писать обратно в исходные Sheets.
-
----
-
-## 🚧 Schema drift — предупреждение
-
-`ProjectMember` и `StatusRow` в `schema.prisma` **не содержат** полей, добавленных через raw SQL миграции. Prisma-клиент про них не знает, весь доступ — через `$queryRawUnsafe`:
-
-- `project_members`: `employment_type`, `rate_plan`, `rate_fact`, `is_approved`, `field_approvals` (JSONB), `group_name`
-- `status_rows`: `field_approvals` (JSONB), `group_schedule` (JSONB), `parent_task_id` (TEXT, FK → `status_rows.id` CASCADE DELETE)
-
-**При регенерации Prisma-клиента эти поля исчезнут из рантайма, но останутся в БД.** Задача на рефакторинг (отдельная Prisma-модель или view) — в `docs/TODO.md` → «Технический долг».
-
-### Workaround для залоченного Prisma client
-Запущенный API-процесс держит DLL Prisma клиента. Если нужно применить миграцию без перегенерации клиента:
-```bash
-cd packages/db && DATABASE_URL="..." npx prisma migrate dev --skip-generate
+```
+WIStatus         draft | active | done | cancelled | rejected
+WorkItemSource   sync | manual | separator | internal
+ProjectStatus    draft | active | done | cancelled | rejected
+FinancialFlag    pending | paid
+DeptType         production | support | internal
+DeptSubstatus    not_started | in_progress | done
+EmploymentType   staff | ip_7 | ip_8 | ip_10 | szt
+ShiftType        zastroyka | efir | demontazh
+NotificationType no_matrix | unmatched_name | data_conflict | schedule_change | task_assigned | task_overdue | task_closed | wi_status_changed | project_status_changed | dept_connected_to_wi | hr_request_created | hr_request_resolved | studio_conflict | meeting_invite
+DealStatus       preliminary | in_progress | completed
+TaskStatus       open | in_progress | done
+ApprovalStatus   pending | approved | rejected
+BookingStatus    preliminary | confirmed | blocked
+HRStatusType     vacation | sick | remote | business_trip | day_off
 ```
 
-Или raw SQL через `$executeRawUnsafe` с явными кастами enum'ов:
+### Permissions (актуальные, включая Фазу 2)
+
+```
+analytics:read, sync:trigger, sync:logs, sync:admin
+projects:write, projects:config
+deals:write, shifts:write, tasks:write
+matrix:write, matrix-templates:manage, internal-matrix:manage
+members:read, members:write, members:bulk
+users:manage, database:manage, kanban:delete
+departments:manage   ← новый (Фаза 2), только admin
+```
+
+---
+
+## ⚠️ Важные технические нюансы
+
+### Raw SQL — ID-колонки это TEXT, не uuid
+
+Все `@id` в schema.prisma используют `@default(uuid())` без `@db.Uuid` → PostgreSQL создаёт колонки как `TEXT NOT NULL`.
+
 ```typescript
-await prisma.$executeRawUnsafe(
-  `UPDATE "status_rows" SET source = 'separator'::"StatusRowSource" WHERE id = $1`,
-  id
-)
+// ❌ НЕВЕРНО — вызовет: operator does not exist: text = uuid
+`WHERE id = $1::uuid`
+`WHERE matrix_registry_id = $1::uuid`
+
+// ✅ ВЕРНО — текстовое сравнение, каст не нужен
+`WHERE id = $1`
+`WHERE id = ANY($1::text[])`   // для массивов
 ```
+
+### Schema drift
+
+После rebuild V2 большинство полей `WorkItem` уже **в Prisma-схеме** (`schema.prisma`). Через raw SQL нужны только поля в таблице `project_members`, которые не вошли в модель:
+- `employment_type`, `rate_plan`, `rate_fact`, `is_approved`, `field_approvals` (JSONB), `group_name`
+
+`WorkItem.fieldApprovals`, `WorkItem.groupSchedule`, `WorkItem.parentWiId` — **уже в schema.prisma**, доступны через Prisma Client напрямую.
+
+### Enum-касты в raw SQL
+Enum-значения требуют явного каста:
+```typescript
+`UPDATE work_items SET source = 'separator'::"WorkItemSource" WHERE id = $1`
+```
+
+---
+
+## ⚠️ Принятые компромиссы
+
+- **Навигация через `useState<Page>`** — React Router не нужен, не предлагай.
+- **Inline styles** — без UI-библиотек, сознательно.
+- **Sync только вручную** — `node-cron` установлен, но не зарегистрирован.
+- **`/status-rows` роут живёт параллельно с `/work-items`** — SyncDataPage и InternalShiftsPanel ещё на нём. Постепенная миграция.
+- **Google Sheets — read-only.** Запись — только через Drive API для внутренних матриц.
 
 ---
 
 ## 🔗 Google Sheets + Drive
 
-Полная архитектура — в `docs/05-architecture.md` и `docs/03-data-sources.md`. Кратко:
-
-- **Sheets API v4** через Service Account (`GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`) или `GOOGLE_API_KEY` для публичных таблиц. Per-table ключи в `sheet_configs` перекрывают глобальные.
-- **Drive API** через **OAuth2** (отдельные креды: `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET`, `GOOGLE_DRIVE_REFRESH_TOKEN`, `GOOGLE_DRIVE_OWNER_EMAIL`). Используется `apps/api/src/services/driveService.ts`.
-- **Sync flow:** `syncService.ts::runFullSync()` → `syncProjects()` → `syncRegistry()` → `syncMatrix()` для каждой. Задержка 1500ms между матрицами. Ретрай 3 раза на 429/503 с задержками 3с/6с.
-- **Sync abort:** `requestSyncAbort()` ставит флаг, матричный цикл проверяет его перед каждой матрицей. `POST /sync/stop` → вызов. `_abortRequested` сбрасывается в начале каждого нового `runFullSync()`.
-- **Shifts cache:** `shifts_cache` (JSONB) и `has_shifts_data` на `MatrixRegistry` сохраняются **до** матчинга имён — чтобы UI подсветил строки сразу.
-- **Internal matrices** (`source = 'internal'` в `matrix_registry`) создаются через `POST /internal-matrix`. ID формат: `INT-{timestamp}`. Drive folder ID — в `sheet_configs` под ключом `drive_folder` (в колонке `sheet_url` — naming convention, не баг).
-- **`matrixBlockSync.ts`:** когда `StatusRow` имеет `matrixRegistryId` + `blockSlot`, `syncProjectBlock(projectId)` пишет данные проекта обратно в соответствующий блок листа.
+- **Sheets API v4** через Service Account (`GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY`).
+- **Drive API** через OAuth2 (`GOOGLE_DRIVE_CLIENT_ID/SECRET/REFRESH_TOKEN/OWNER_EMAIL`) — `driveService.ts`.
+- **Sync flow:** `syncService.ts::runFullSync()` → `syncProjects()` → `syncRegistry()` → `syncMatrix()`. Задержка 1500ms между матрицами, ретрай 3× на 429/503.
+- **Internal matrices** (`source = 'internal'`) создаются через `POST /internal-matrix`. ID: `INT-{timestamp}`.
+- **`matrixBlockSync.ts`** — когда `WorkItem` имеет `matrixRegistryId + blockSlot`, `syncProjectBlock(id)` пишет данные в блок Google Sheet (дебаунс 3с).
 
 ### Парсер матрицы (лист «₽ СМЕНЫ» или «₽ СПЕЦИАЛИСТЫ»)
 ```
 Строка 2:   даты для колонок J–P
 Строки 4+:  C=ФИО  G=функция  I=тип занятости  J–P=маркеры (1 = работает)
-
-Тип смены:
-  J, K, L  → zastroyka  (до даты проекта)
-  M        → efir       (день проекта)
-  N, O, P  → demontazh  (после даты проекта)
+Тип смены:  J,K,L → zastroyka | M → efir | N,O,P → demontazh
 ```
-Строка включается, если есть хотя бы одно непустое поле в C/G/I/J–P. «Итог:»-строки пропускаются. `ShiftEntry` создаётся только для `type='staff'`; ИП/СЗТ — только `ProjectAssignment`.
 
 ---
 
-## 📐 Архитектура WorkflowPage + TaskDetailPanel
+## 📐 Авто-триггеры статусов (каскад)
 
-`WorkflowPage.tsx` (~1000 строк) — воронка задач. Два вида контента:
-- **Pipeline-бар**: Запрос → Подключение к проекту → Производство → Сдан + [Не согласован] [Отменён]
-- **Таблица задач**: `GET /status-rows?source=manual&topLevelOnly=true` — только верхнеуровневые задачи, без отделов-детей
+Реализованы автоматические переходы при смене статуса:
 
-**Drag правило**: только один шаг вперёд; в «Не согласован»/«Отменён» — из любого. Переход connecting→production требует привязанной матрицы (guard-попап).
+```
+WorkItem.status → active
+  → если Project.status == draft → Project.status = active
 
-**Иерархия задача → отдел**: `StatusRow.parent_task_id` (TEXT, CASCADE DELETE). `GET /status-rows/children-summary?parentIds=...` — батч-эндпоинт для чипов на карточках.
+WorkItem.status → done (или все DeptWILink.substatus == done)
+  → если все WI проекта done → Project.status = done
 
-`TaskDetailPanel.tsx` (~450 строк) — боковая панель задачи. Ранние стадии (request/negotiation/connecting) → `EarlyDeptsPanel`; производство → `InternalShiftsPanel` с `parentTaskId`.
+DeptWILink.substatus → done (все привязки отдела к WI)
+  → WorkItem.status = done
+  → далее по цепочке выше
+```
+
+Код авто-триггеров:
+- `workItems.ts::syncProjectStatus()` — триггер от WI
+- `deptWiLinks.ts::syncWIStatusFromDepts()` — триггер от DeptWILink
+
+---
+
+## 📐 Архитектура WorkflowPage
+
+`WorkflowPage.tsx` — воронка задач на `/work-items`.
+
+**Pipeline:** Заявка(`draft`) → Реализация(`active`) → Сдан(`done`) + [Не согласован(`rejected`)] [Отменён(`cancelled`)]
+
+**API:** `GET /work-items?source=manual&topLevelOnly=true`
+
+**Drag:** только один шаг вперёд; в rejected/cancelled — из любого. Переход draft→active требует: клиент + матрица + отделы (guard-попап).
+
+**Иерархия:** `WorkItem.parentWiId` → дочерние WorkItem'ы (отделы). `GET /work-items/children-summary?parentIds=...` — батч для чипов.
+
+`TaskDetailPanel.tsx` (~450 строк) — боковая панель задачи.
+
+---
+
+## 📐 Архитектура DeptBoardPage (Фаза 2)
+
+`DeptBoardPage.tsx` — канбан-доска отдела по подстатусу.
+
+**API:** `GET /departments/:id/board` → `{ not_started: DeptWILink[], in_progress: DeptWILink[], done: DeptWILink[] }`
+
+Каждый `DeptWILink` включает вложенный `workItem` (имя, клиент, формат, дата, проект).
+
+Смена статуса: `PATCH /dept-wi-links/:id/substatus` → авто-триггер если все отделы done.
 
 ---
 
 ## 📐 Архитектура InternalShiftsPanel
 
-`InternalShiftsPanel.tsx` (~2500 строк) — центральный UI управления сменами внутренних матриц.
+`InternalShiftsPanel.tsx` (~2500 строк) — центральный UI смен внутренних матриц.
 
-**Система групп.** Члены команды группируются по полю `group_name` в `ProjectMember`. Доступные группы зависят от `project.location`:
+**Группы** по `project_members.group_name`. Зависят от `WorkItem.location`:
 - `Выезд*` → `VIEZD_GROUPS`: Сбор, Завоз, Монтаж, Эфир, Демонтаж, Вывоз
 - `Знаменка*` → `STUDIO_GROUPS`: Сбор, Монтаж, Эфир, Демонтаж
-- Без location или формат `Менеджмент` → единый блок «Команда»
+- Менеджмент → единый блок
 
-**Динамические названия групп** по `project.format`: Съёмки → «Съёмки» вместо «Эфир»; Оффлайн → «Мероприятие»; Менеджмент перекрывает логику location.
+**`group_schedule`** (JSONB в `work_items`, поле `groupSchedule` в Prisma) — расписание групп по ключу группы. Мерж через `|| $1::jsonb`. Null-значение = удаление ключа.
 
-**Копирование блока Эфир.** Кнопка ⎘ на группе Эфир/Съёмки/Мероприятие создаёт копию (`efir_2`, `efir_3`, ...) в `group_schedule`. У каждой копии — свой блок дата/время и заметка. × удаляет копию и переносит участников в «Без группы».
+**Micro-tabs:** `team | planner | expenses | freelancers`. `FreelancersPage` — только саб-таб, не самостоятельная страница.
 
-**GroupDateBlock.** Правая колонка, растягивается через HTML `rowspan` на все строки участников. Поля: Дата + Время (диапазон от–до) + Начало эфира / Первый мотор / Начало мероприятия (только для Эфир). Хранится в `status_rows.group_schedule` (JSONB) по ID группы, мерж через `|| $1::jsonb`.
-
-**Drag-and-drop** использует pointer events (не HTML5 drag API) — см. реализацию в файле.
-
-**Удаление ключа в `group_schedule`** — установка ключа в `null` удаляет копию: `PATCH /status-rows/:id/group-schedule` с `{ "efir_2": null }` мержит null в JSONB; фронтенд фильтрует null при чтении.
-
-**Micro-tabs.** У каждой матрицы в `InternalShiftsPanel` — 4 саб-таба: `team` (команда + группы), `planner` (шедулер/канбан), `expenses` (расходы), `freelancers` (фрилансеры — внешний компонент `FreelancersPage.tsx`). `FreelancersPage` — не самостоятельная страница навигации, только саб-таб.
-
-**KanbanBoard.** Для `CREATIVE_FORMATS` (Моушн, Постпродакшн, Дизайн, Саунд-дизайн, Не профильный, **Радио**) саб-таб «Планировщик» показывает `KanbanBoard` вместо `ShiftPlanner`. Три колонки: request / in_progress / done. Таблица `kanban_tasks`, роуты `/kanban-tasks`. Drag-n-drop через pointer events. `KanbanTaskModal` редактирует title, assignee (из `ProjectMember`), даты.
+**KanbanBoard** — для `CREATIVE_FORMATS` (Моушн, Постпродакшн, Дизайн, Саунд-дизайн, Радио, Не профильный).
 
 ---
 
 ## 📐 Архитектура SyncDataPage
 
-Трёхуровневая система фильтров:
-1. **Primary filters** — глобальные настройки в поп-апе (⚙ кнопка), в localStorage.
-2. **Column filters** — мультиселект в заголовках таблицы, в localStorage.
-3. **Column visibility** — тогглы в поп-апе настроек, в localStorage.
+Три уровня фильтров: Primary → Column → Visibility (все в localStorage).
 
-**Технические нюансы:**
-- `FilterGroup` определён на **уровне модуля** (не внутри других компонентов) — иначе React пересоздаёт его на каждом рендере, и скролл сбрасывается.
-- Обёртка таблицы использует `overflow: clip`, а не `overflow: hidden` — `hidden` создаёт scroll container, который ломает `position: sticky` на заголовках. Не меняй на `hidden`.
+**Нюансы:**
+- `FilterGroup` — на уровне модуля (не внутри компонента), иначе скролл сбрасывается.
+- `overflow: clip`, не `hidden` — иначе ломается `position: sticky`.
 
-**MatrixTabs.tsx** — выделенный файл с компонентами `GanttTab`, `NotesTab`, `DocumentsTab`. Используются внутри `RegistryDetailModal` в `SyncDataPage.tsx`. Все три работают с `/matrix-gantt`, `/matrix-notes`, `/matrix-documents` соответственно.
-
-Также в `SyncDataPage.tsx` содержится UI для:
-- **Управления внутренними матрицами** (`/internal-matrix/*`) — создание, редактирование, привязка, проверка наличия в Drive
-- **Project members** — участники команды вручную с JSONB-расписанием (`/project-members/*`)
-- **Matrix linking** — привязка `MatrixRegistry` к `StatusRow` через `blockSlot` + `matrixRegistryId`
-
-### AppShell SyncButton
-Поллит `/sync/logs` и показывает прогресс.
-- `totalMatrices` возвращается из `POST /sync/trigger`, хранится в `sessionStorage` (ключ `sync-total-matrices`) — переживает F5. Чистится при успехе или аборте.
-- `isRunning = logsRunning || matricesStillExpected` — остаётся `true` даже в 1.5с пауз между матрицами через `totalMatrices > 0 && matrixDone < totalMatrices`.
-- `refetchInterval` читает sessionStorage напрямую (не React state), чтобы держать 2с интервал без stale closure.
-- Кнопка «Остановить» появляется при `isRunning` и когда все `projects`/`registry` логи завершены (остались только матрицы).
+Содержит UI для: внутренних матриц (`/internal-matrix/*`), project members (`/project-members/*`), matrix linking (привязка `MatrixRegistry` к `WorkItem`).
 
 ---
 
 ## 📋 Прочие нюансы
 
-**Change Log.** `apps/api/src/services/changeLog.ts::logChanges(entityType, entityId, oldData, newData, changedBy, source)`. Диффит old vs new по ключам, каждое изменённое поле — запись в `change_logs`. Обработчики вызывают это после ручных правок; sync использует `source='sync'`. Роут `/change-logs` отдаёт аудит.
+**Change Log.** `services/changeLog.ts::logChanges(entityType, entityId, old, new, changedBy)`. Роут `/change-logs`.
 
-**Separator Rows.** `StatusRow` с `source='separator'` — разделители месяцев, инжектятся синком. Без реальных данных. Фронт фильтрует их везде, кроме `SyncDataPage` (через `?withSeparators=true`). В API-list эндпойнтах всегда исключай: `NOT: { source: 'separator' as any }`.
+**Separator rows.** `WorkItem` с `source='separator'` — разделители месяцев из sync. В list-эндпоинтах всегда исключай: `NOT: { source: 'separator' as any }`.
 
-**Notifications.** `Notification` с `userId=null` — глобальные. Прочитанность per-user отслеживается через `user_notification_reads`. Личные используют `notifications.is_read`. `NotificationBell` в `AppShell` поллит `/notifications/count` каждые 30с.
+**Notifications.** `userId=null` — глобальные. Per-user прочитанность: `user_notification_reads`. `NotificationBell` поллит `/notifications/count` каждые 30с.
 
-**Matrix Extras.** `apps/api/src/routes/matrixExtras.ts` — 4 CRUD-группы, все через `$queryRawUnsafe`:
+**Deal.** Группирует `WorkItem` с `MatrixRegistry`. Связи через `DealWorkItem` и `DealMatrix`.
+
+**Matrix Extras** (`routes/matrixExtras.ts`):
 
 | Префикс | Таблица | Scope |
 |---------|---------|-------|
-| `/shift-expenses` | `shift_expenses` | `project_id` (StatusRow UUID) |
-| `/matrix-gantt` | `gantt_tasks` | `matrix_id` (MatrixRegistry UUID) |
+| `/shift-expenses` | `shift_expenses` | `project_id` (WorkItem UUID) |
+| `/matrix-gantt` | `gantt_tasks` | `matrix_id` |
 | `/matrix-notes` | `matrix_notes` | `matrix_id` |
 | `/matrix-documents` | `matrix_documents` | `matrix_id` |
-
-`/matrix-notes` JOIN-fetch'ит `users.full_name` как `author_name`. Запись — `admin | producer`, кроме заметок (любой аутентифицированный).
-
-**Deal.** Группирует `StatusRow` с `MatrixRegistry`-записями. Связи через `DealStatusRow` и `DealMatrix`. Статус: `preliminary | in_progress | completed`. `/deals/potential` возвращает неслинкованные `StatusRow` с совпадающим `sheetMatrixId` в `MatrixRegistry`.
 
 ---
 
@@ -319,19 +371,24 @@ await prisma.$executeRawUnsafe(
 | petrov@tvshifts.ru | user123 | employee |
 | sidorova@tvshifts.ru | user123 | employee |
 
+Seed также создаёт 11 отделов: Продюсерский центр + ТВ, Радио, Дизайн, Бренд медиа, Корп. медиа (production); Технический, Спецпроекты (support); Финансы, Персонал, Администрация (internal).
+
 ---
 
 ## 🌍 Environment
 
-`.env` загружается из **корня монорепо** (не из `apps/api/`). Копируй `.env.example` → `.env`. Полный список переменных — в `docs/07-dev-setup.md` и `docs/08-deploy.md`. Критичные:
+`.env` — в корне монорепо (не в `apps/api/`). Ключевые переменные:
 
-- `DATABASE_URL` — postgres connection string
-- `JWT_SECRET` — случайная строка
-- `WEB_URL` — origin фронта для CORS
-- `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY` — для Sheets sync
-- `GOOGLE_PROJECTS_SHEET_ID` + `GOOGLE_REGISTRY_SHEET_ID` — ID исходных таблиц
-- `GOOGLE_DRIVE_*` — OAuth2 креды (отдельно от Sheets)
-- `VITE_API_URL` — API URL для фронта **встраивается в бандл при сборке** (`vite build`), не читается в рантайме — меняй в `.env` до билда, не после
+```
+DATABASE_URL              postgres connection string
+TEST_DATABASE_URL         отдельная БД для тестов
+JWT_SECRET                случайная строка
+WEB_URL                   origin фронта (CORS)
+GOOGLE_SERVICE_ACCOUNT_EMAIL + GOOGLE_PRIVATE_KEY
+GOOGLE_PROJECTS_SHEET_ID + GOOGLE_REGISTRY_SHEET_ID
+GOOGLE_DRIVE_CLIENT_ID/SECRET/REFRESH_TOKEN/OWNER_EMAIL
+VITE_API_URL              встраивается в бандл при сборке — меняй до vite build
+```
 
 ---
 
@@ -341,7 +398,7 @@ await prisma.$executeRawUnsafe(
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Nginx-конфиг в `nginx/`. Скрипт `migrate:deploy` в `packages/db` применяет миграции без перегенерации клиента (безопасно для prod). Детали — в `docs/08-deploy.md`.
+`migrate:deploy` в `packages/db` применяет миграции без перегенерации клиента.
 
 ---
 
@@ -351,18 +408,18 @@ Nginx-конфиг в `nginx/`. Скрипт `migrate:deploy` в `packages/db` �
 |----------|------|--------|
 | Login | `LoginPage.tsx` | ✅ |
 | Calendar | `CalendarPage.tsx` | ✅ |
-| Workflow | `WorkflowPage.tsx` | ✅ (admin+producer) |
-| Task Card | `TaskDetailPanel.tsx` | ✅ (открывается из Workflow) |
-| Sync Data | `SyncDataPage.tsx` | ✅ (+ внутренние матрицы, project members, привязка) |
+| Workflow | `WorkflowPage.tsx` | ✅ — draft/active/done, `/work-items` |
+| Task Card | `TaskDetailPanel.tsx` | ✅ |
+| Dept Board | `DeptBoardPage.tsx` | ✅ Фаза 2 — канбан по substatus |
+| Admin Dept | `AdminDeptPage.tsx` | ✅ Фаза 2 — управление отделами (admin) |
+| Sync Data | `SyncDataPage.tsx` | ✅ (ещё на `/status-rows`, миграция позже) |
 | Users | `UsersPage.tsx` | ✅ |
 | Deals | `DealsPage.tsx` | ✅ |
-| Database | `DatabasePage.tsx` | ✅ (admin, «БД» в навигации) |
+| Database | `DatabasePage.tsx` | ✅ |
 | Notifications | `NotificationBell` в `AppShell.tsx` | ✅ |
-| Shift Planner | `ShiftPlanner.tsx` | ✅ (саб-таб «Планировщик» в InternalShiftsPanel) |
-| Freelancers | `FreelancersPage.tsx` | ✅ (саб-таб «Фрилансеры» в InternalShiftsPanel) |
-| OrgChart | `OrgChartTab.tsx` | ✅ (саб-таб «Структура» в UsersPage; состояние в localStorage `tv-shifts-org-chart`) |
-| Tasks | `TasksPage.tsx` | 🚧 (API готов) |
-| Analytics | `AnalyticsPage.tsx` | 🚧 (API готов) |
-| Profile | `ProfilePage.tsx` | 🚧 (API готов) |
-
-Актуальный список задач и приоритеты — в `docs/TODO.md`.
+| Shift Planner | `ShiftPlanner.tsx` | ✅ (саб-таб InternalShiftsPanel) |
+| Freelancers | `FreelancersPage.tsx` | ✅ (саб-таб InternalShiftsPanel) |
+| OrgChart | `OrgChartTab.tsx` | ✅ (саб-таб UsersPage) |
+| Tasks | `TasksPage.tsx` | 🚧 заглушка — Фаза 3 |
+| Analytics | `AnalyticsPage.tsx` | 🚧 |
+| Profile | `ProfilePage.tsx` | 🚧 |
