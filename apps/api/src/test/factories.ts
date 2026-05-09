@@ -70,6 +70,9 @@ export async function cleanupTestUser(id: string) {
   // hr_statuses FK — delete as user and as approver
   await prisma.hRStatus.deleteMany({ where: { userId: id } }).catch(() => {})
   await prisma.hRStatus.deleteMany({ where: { approverId: id } }).catch(() => {})
+  // studio_bookings FK — participants cascade-delete via onDelete: Cascade on bookingId
+  await prisma.studioBookingParticipant.deleteMany({ where: { userId: id } }).catch(() => {})
+  await prisma.studioBooking.deleteMany({ where: { createdBy: id } }).catch(() => {})
   // user_notification_reads удалится каскадно при удалении user (onDelete: Cascade)
   await prisma.user.delete({ where: { id } }).catch(() => {})
 }
