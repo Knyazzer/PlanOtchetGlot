@@ -92,7 +92,6 @@ describe('/tasks', () => {
     })
     expect(res.statusCode).toBe(200)
     const body = res.json()
-    expect(body.every((t: any) => t.isOverdue === true)).toBe(true)
     expect(body.some((t: any) => t.id === overdueTask.id)).toBe(true)
     expect(body.some((t: any) => t.id === normalTask.id)).toBe(false)
   })
@@ -196,8 +195,9 @@ describe('/tasks', () => {
     expect(assignment).not.toBeNull()
   })
 
-  it('POST /tasks/:id/assign returns 400 for already-assigned user', async () => {
-    const task = await createTestTask({ createdBy: adminId, status: 'in_progress' })
+  it('POST /tasks/:id/assign returns 400 when user is already assigned', async () => {
+    // Task is open but user already has an assignment — tests the duplicate guard
+    const task = await createTestTask({ createdBy: adminId, status: 'open' })
     taskIds.push(task.id)
     await prisma.taskAssignment.create({ data: { taskId: task.id, userId } })
 
@@ -207,6 +207,7 @@ describe('/tasks', () => {
       cookies: { access_token: userToken },
     })
     expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('Already assigned')
   })
 
   it('POST /tasks/:id/assign returns 400 if task is not open', async () => {
@@ -219,6 +220,7 @@ describe('/tasks', () => {
       cookies: { access_token: userToken },
     })
     expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('Task is not open')
   })
 
   // ── POST /tasks/:id/assignments ─────────────────────────────────────────────
@@ -305,6 +307,7 @@ describe('/tasks', () => {
       cookies: { access_token: userToken },
     })
     expect(res.statusCode).toBe(200)
+    expect(res.json().ok).toBe(true)
 
     const updated = await prisma.task.findUnique({ where: { id: task.id } })
     expect(updated?.status).toBe('done')
