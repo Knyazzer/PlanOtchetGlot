@@ -1,746 +1,685 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import interactionPlugin from '@fullcalendar/interaction'
+import type { EventInput, DateClickArg, EventClickArg, DatesSetArg } from '@fullcalendar/core'
 import ruLocale from '@fullcalendar/core/locales/ru'
-import type { EventInput, EventClickArg, DatesSetArg } from '@fullcalendar/core'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns'
-import { ru } from 'date-fns/locale'
+import { format } from 'date-fns'
 import { api } from '../lib/api'
-import { useIsAdmin, usePrimaryDept } from '../hooks/useAuth'
-import { EventCalendar } from './EventCalendar'
-import HRPage from './HRPage'
-import StudioCalendar from './StudioCalendar'
+import { useCurrentUser, usePrimaryDept } from '../hooks/useAuth'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Типы ─────────────────────────────────────────────────────────────────────
 
-interface ProjectDay {
-  id?: string
-  date: string
-  type: 'zastroyka' | 'efir'
-  startTime?: string | null
+interface CalEvent {
+  id: string; title: string; date: string
+  timeFrom: string | null; timeTo: string | null
+  deptId: string | null; isGlobal: boolean
+  creator: { id: string; fullName: string }
+  participants: { userId: string; user: { fullName: string } }[]
 }
 
-interface Project {
-  id: string
-  client: string | null
-  name: string
-  execProducer: string | null
-  lineProducer: string | null
-  accountManager: string | null
-  date: string | null
-  dateConfirmed: boolean
-  dateApproximate: string | null
-  time: string | null
-  format: string | null
-  location: string | null
-  status: string
-  source: 'projects_table' | 'manual'
-  matrixUrl: string | null
-  sheetMatrixId: string | null
-  googleRowIndex: number | null
-  uncertainFields: string[]
-  days: ProjectDay[]
-  matrixRegistry: { sheetUrl: string | null; matrixId: string } | null
-  assignments: {
-    id: string
-    roleOnSite: string | null
-    user: { id: string; fullName: string; role: string } | null
-    unmatchedName: string | null
-  }[]
+interface HRRecord {
+  id: string; type: string; dateFrom: string; dateTo: string
+  status: string; notes?: string
+  user: { id: string; fullName: string }
 }
 
-interface ChangeLogEntry {
-  id: string
-  field: string | null
-  oldValue: string | null
-  newValue: string | null
-  changedAt: string
-  source: string
-  user: { id: string; fullName: string } | null
+interface StudioBooking {
+  id: string; studio: string; title: string; date: string
+  timeFrom?: string; timeTo?: string; status: string
+  creator: { id: string; fullName: string }
 }
 
-const DAY_TYPE_LABELS: Record<string, string> = { zastroyka: 'Застройка', efir: 'Эфир' }
-const DAY_TYPE_COLORS: Record<string, string> = { zastroyka: '#f59e0b', efir: '#10b981' }
+interface SimpleUser { id: string; fullName: string }
 
-const EVENT_COLOR = '#3b82f6'
+// ─── Константы ────────────────────────────────────────────────────────────────
 
-// ─── ProjectsCalendarTab (события из Google Sheets) ──────────────────────────
+const STUDIOS = [
+  { key: 'znamyanka_kamin',  label: 'Знаменка Камин',  color: '#0891b2' },
+  { key: 'znamyanka_black',  label: 'Знаменка Чёрная', color: '#4f46e5' },
+  { key: 'znamyanka_kupol',  label: 'Знаменка Купол',  color: '#7c3aed' },
+  { key: 'romanov',          label: 'Романов',          color: '#db2777' },
+] as const
 
-function ProjectsCalendarTab() {
+type StudioKey = typeof STUDIOS[number]['key']
+
+const HR_COLORS: Record<string, string> = {
+  vacation:      '#f59e0b',
+  sick:          '#ef4444',
+  remote:        '#10b981',
+  business_trip: '#6366f1',
+  day_off:       '#64748b',
+}
+const HR_LABELS: Record<string, string> = {
+  vacation: 'Отпуск', sick: 'Больничный', remote: 'Удалёнка',
+  business_trip: 'Командировка', day_off: 'Отгул',
+}
+
+type LayerId = 'meetings' | 'hr' | StudioKey
+
+const ALL_LAYERS: { id: LayerId; label: string; color: string }[] = [
+  { id: 'meetings',          label: 'Встречи',           color: '#2563eb' },
+  { id: 'hr',                label: 'HR-статусы',        color: '#f59e0b' },
+  { id: 'znamyanka_kamin',   label: 'Знаменка Камин',    color: '#0891b2' },
+  { id: 'znamyanka_black',   label: 'Знаменка Чёрная',   color: '#4f46e5' },
+  { id: 'znamyanka_kupol',   label: 'Знаменка Купол',    color: '#7c3aed' },
+  { id: 'romanov',           label: 'Романов',            color: '#db2777' },
+]
+
+type CreateType = 'meeting' | 'studio' | 'vacation' | 'sick' | 'remote' | 'business_trip' | 'day_off'
+
+const CREATE_OPTIONS: { id: CreateType; label: string; icon: string }[] = [
+  { id: 'meeting',       label: 'Встреча',        icon: '📅' },
+  { id: 'studio',        label: 'Студия',          icon: '🎬' },
+  { id: 'vacation',      label: 'Отпуск',          icon: '🏖️' },
+  { id: 'sick',          label: 'Больничный',      icon: '🤒' },
+  { id: 'remote',        label: 'Удалёнка',        icon: '🏠' },
+  { id: 'business_trip', label: 'Командировка',    icon: '✈️' },
+  { id: 'day_off',       label: 'Отгул',           icon: '💤' },
+]
+
+// ─── Вспомогательные ──────────────────────────────────────────────────────────
+
+function dateTimeToISO(date: string, time: string | null) {
+  if (!time) return date
+  return `${date}T${time}`
+}
+
+function pill(color: string, label: string) {
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 8px', borderRadius: 10, fontSize: 11,
+      background: color + '22', color, fontWeight: 600,
+    }}>
+      {label}
+    </span>
+  )
+}
+
+// ─── CalendarPage ─────────────────────────────────────────────────────────────
+
+export function CalendarPage() {
   const qc = useQueryClient()
-  const calendarRef = useRef<FullCalendar>(null)
-  const isAdmin = useIsAdmin()
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const user = useCurrentUser()
+  const primaryDept = usePrimaryDept()
+  const calRef = useRef<FullCalendar>(null)
 
-  const dateFrom = format(startOfMonth(addMonths(currentDate, -1)), 'yyyy-MM-dd')
-  const dateTo = format(endOfMonth(addMonths(currentDate, 1)), 'yyyy-MM-dd')
+  const [activeLayers, setActiveLayers] = useState<Set<LayerId>>(
+    new Set(['meetings', 'hr'])
+  )
+  const [dateRange, setDateRange] = useState({ from: '', to: '' })
 
-  const { data: projects = [], isLoading } = useQuery<Project[]>({
-    queryKey: ['status-rows', dateFrom, dateTo],
-    queryFn: () =>
-      api.get('/status-rows', { params: { dateFrom, dateTo } }).then((r) => r.data),
+  // Создание события
+  const [createInfo, setCreateInfo] = useState<{ date: string; time?: string } | null>(null)
+  const [createType, setCreateType] = useState<CreateType>('meeting')
+
+  // Просмотр события
+  const [detailEvent, setDetailEvent] = useState<{
+    type: 'meeting' | 'hr' | 'studio'
+    data: CalEvent | HRRecord | StudioBooking
+  } | null>(null)
+
+  function toggleLayer(id: LayerId) {
+    setActiveLayers((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  // ── Данные ────────────────────────────────────────────────────────────────
+
+  const { data: meetings = [] } = useQuery<CalEvent[]>({
+    queryKey: ['cal-events', primaryDept?.id, dateRange.from, dateRange.to],
+    queryFn: () => api.get('/calendar/events', {
+      params: { deptId: primaryDept?.id, from: dateRange.from, to: dateRange.to },
+    }).then((r) => r.data),
+    enabled: !!dateRange.from && activeLayers.has('meetings'),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 
-  // Проекты без даты — в правую панель
-  const { data: unconfirmedProjects = [] } = useQuery<Project[]>({
-    queryKey: ['status-rows-unconfirmed'],
-    queryFn: () =>
-      api.get('/status-rows', { params: { dateNull: 'true', slim: 'true' } }).then((r) => r.data),
+  const { data: hrRecords = [] } = useQuery<HRRecord[]>({
+    queryKey: ['hr-cal', dateRange.from, dateRange.to],
+    queryFn: () => api.get('/hr-statuses', {
+      params: { from: dateRange.from, to: dateRange.to },
+    }).then((r) => r.data),
+    enabled: !!dateRange.from && activeLayers.has('hr'),
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   })
 
-  // Форматирование даты без потери дня из-за UTC offset
-  function dateStrAddDay(dateStr: string): string {
-    const [y, m, d] = dateStr.split('-').map(Number)
-    const dt = new Date(y, m - 1, d + 1)
-    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
-  }
+  const studioQueries = STUDIOS.map((s) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useQuery<StudioBooking[]>({
+      queryKey: ['studio-cal', s.key, dateRange.from, dateRange.to],
+      queryFn: () => api.get('/studios/slots', {
+        params: { studio: s.key, from: dateRange.from, to: dateRange.to },
+      }).then((r) => r.data),
+      enabled: !!dateRange.from && activeLayers.has(s.key),
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
+    })
+  )
 
-  function isoToDateStr(iso: string): string {
-    return iso.slice(0, 10)
-  }
+  // ── Маппинг событий для FullCalendar ──────────────────────────────────────
 
-  // Генерация событий из дней проекта
-  const projectEvents: EventInput[] = []
-  for (const p of projects) {
-    const title = p.client ? `${p.client} — ${p.name}` : p.name
+  const fcEvents: EventInput[] = [
+    ...(activeLayers.has('meetings')
+      ? meetings.map((e) => ({
+          id: `meeting-${e.id}`,
+          title: e.title,
+          start: dateTimeToISO(e.date, e.timeFrom),
+          end: e.timeTo ? dateTimeToISO(e.date, e.timeTo) : undefined,
+          color: '#2563eb',
+          extendedProps: { type: 'meeting', data: e },
+        }))
+      : []),
 
-    if (p.days && p.days.length > 0) {
-      const sorted = [...p.days]
-        .map((d) => ({ ...d, dateStr: isoToDateStr(d.date) }))
-        .sort((a, b) => a.dateStr.localeCompare(b.dateStr))
+    ...(activeLayers.has('hr')
+      ? hrRecords.map((r) => ({
+          id: `hr-${r.id}`,
+          title: `${HR_LABELS[r.type] ?? r.type} — ${r.user.fullName}`,
+          start: r.dateFrom.slice(0, 10),
+          end: r.dateTo ? (() => {
+            const d = new Date(r.dateTo); d.setDate(d.getDate() + 1)
+            return d.toISOString().slice(0, 10)
+          })() : undefined,
+          color: HR_COLORS[r.type] ?? '#64748b',
+          allDay: true,
+          extendedProps: { type: 'hr', data: r },
+        }))
+      : []),
 
-      const ranges: { start: string; end: string }[] = []
-      let rangeStart = sorted[0].dateStr
-      let rangeEnd = rangeStart
+    ...STUDIOS.flatMap((s, i) =>
+      activeLayers.has(s.key)
+        ? (studioQueries[i].data ?? []).map((b) => ({
+            id: `studio-${b.id}`,
+            title: `${s.label}: ${b.title}`,
+            start: dateTimeToISO(b.date, b.timeFrom ?? null),
+            end: b.timeTo ? dateTimeToISO(b.date, b.timeTo) : undefined,
+            color: s.color,
+            extendedProps: { type: 'studio', data: b },
+          }))
+        : []
+    ),
+  ]
 
-      for (let i = 1; i < sorted.length; i++) {
-        const [py, pm, pd] = rangeEnd.split('-').map(Number)
-        const [cy, cm, cd] = sorted[i].dateStr.split('-').map(Number)
-        const prevMs = new Date(py, pm - 1, pd).getTime()
-        const currMs = new Date(cy, cm - 1, cd).getTime()
-        const diffDays = Math.round((currMs - prevMs) / 86400000)
-        if (diffDays <= 1) {
-          rangeEnd = sorted[i].dateStr
-        } else {
-          ranges.push({ start: rangeStart, end: rangeEnd })
-          rangeStart = sorted[i].dateStr
-          rangeEnd = rangeStart
-        }
-      }
-      ranges.push({ start: rangeStart, end: rangeEnd })
+  // ── Обработчики ──────────────────────────────────────────────────────────
 
-      ranges.forEach((r, idx) => {
-        projectEvents.push({
-          id: `${p.id}-${idx}`,
-          title,
-          start: r.start,
-          end: dateStrAddDay(r.end),
-          backgroundColor: EVENT_COLOR,
-          borderColor: EVENT_COLOR,
-          extendedProps: { project: p },
-        })
-      })
-    } else if (p.date) {
-      projectEvents.push({
-        id: p.id,
-        title,
-        date: p.date.split('T')[0],
-        backgroundColor: EVENT_COLOR,
-        borderColor: EVENT_COLOR,
-        extendedProps: { project: p },
-      })
-    }
-  }
+  const handleDatesSet = useCallback((arg: DatesSetArg) => {
+    setDateRange({
+      from: format(arg.start, 'yyyy-MM-dd'),
+      to:   format(arg.end,   'yyyy-MM-dd'),
+    })
+  }, [])
 
-  function handleEventClick(info: EventClickArg) {
-    setSelectedProject(info.event.extendedProps.project)
-  }
+  const handleDateClick = useCallback((arg: DateClickArg) => {
+    const time = arg.allDay ? undefined : format(arg.date, 'HH:mm')
+    setCreateInfo({ date: format(arg.date, 'yyyy-MM-dd'), time })
+    setCreateType('meeting')
+  }, [])
 
-  function handleDatesSet(info: DatesSetArg) {
-    setCurrentDate(info.view.currentStart)
+  const handleEventClick = useCallback((arg: EventClickArg) => {
+    const { type, data } = arg.event.extendedProps as { type: 'meeting' | 'hr' | 'studio'; data: any }
+    setDetailEvent({ type, data })
+  }, [])
+
+  function invalidateAll() {
+    qc.invalidateQueries({ queryKey: ['cal-events'] })
+    qc.invalidateQueries({ queryKey: ['hr-cal'] })
+    STUDIOS.forEach((s) => qc.invalidateQueries({ queryKey: ['studio-cal', s.key] }))
   }
 
   return (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-      {/* Calendar */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>Производственный календарь</h2>
-        </div>
-
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '12px 8px' }}>
-          {isLoading ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>Загрузка...</div>
-          ) : (
-            <div>
-              <FullCalendar
-                ref={calendarRef}
-                plugins={[dayGridPlugin]}
-                initialView="dayGridMonth"
-                locale={ruLocale}
-                firstDay={1}
-                height="auto"
-                headerToolbar={{
-                  left: 'prev,next today',
-                  center: 'title',
-                  right: 'dayGridMonth,dayGridWeek',
-                }}
-                buttonText={{ today: 'Сегодня', month: 'Месяц', week: 'Неделя' }}
-                events={projectEvents}
-                eventClick={handleEventClick}
-                datesSet={handleDatesSet}
-                eventDisplay="block"
-                displayEventTime={false}
-                eventContent={(arg) => {
-                  const p: Project | undefined = arg.event.extendedProps.project
-                  if (!p) return null
-                  return (
-                    <div style={{
-                      padding: '1px 4px',
-                      overflow: 'hidden',
-                      whiteSpace: 'nowrap',
-                      textOverflow: 'ellipsis',
-                      fontSize: '0.75rem',
-                      lineHeight: 1.4,
-                    }}>
-                      {p.client && (
-                        <span style={{ fontWeight: 600 }}>{p.client}</span>
-                      )}
-                      {p.client && ' — '}
-                      <span>{p.name}</span>
-                    </div>
-                  )
-                }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Правая панель */}
-      <div style={{ width: 260, flexShrink: 0 }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, color: '#374151' }}>
-          Без даты ({unconfirmedProjects.length})
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {unconfirmedProjects.length === 0 && (
-            <div style={{ fontSize: 14, color: '#94a3b8', padding: '12px 0' }}>Все проекты имеют дату</div>
-          )}
-          {unconfirmedProjects.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => setSelectedProject(p)}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: '#fff' }}>
+      {/* Панель слоёв */}
+      <div style={{
+        padding: '10px 20px', borderBottom: '1px solid #e2e8f0',
+        display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 12, color: '#94a3b8', marginRight: 4 }}>Показать:</span>
+        {ALL_LAYERS.map((l) => {
+          const active = activeLayers.has(l.id)
+          return (
+            <button
+              key={l.id}
+              onClick={() => toggleLayer(l.id)}
               style={{
-                background: '#fff',
-                borderRadius: 8,
-                border: '1px solid #e2e8f0',
-                padding: '12px 14px',
-                cursor: 'pointer',
-                borderLeft: `3px solid ${EVENT_COLOR}`,
+                padding: '4px 12px', borderRadius: 20, border: `1.5px solid ${l.color}`,
+                background: active ? l.color : 'transparent',
+                color: active ? '#fff' : l.color,
+                fontSize: 12, cursor: 'pointer', fontWeight: 500,
+                transition: 'all 0.15s',
               }}
             >
-              <div style={{ fontSize: 15, fontWeight: 500, color: '#1e293b', marginBottom: 3 }}>
-                {p.name}
-              </div>
-              {p.client && (
-                <div style={{ fontSize: 13, color: '#64748b' }}>{p.client}</div>
-              )}
-              {p.dateApproximate && (
-                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>≈ {p.dateApproximate}</div>
-              )}
-            </div>
-          ))}
-        </div>
+              {l.label}
+            </button>
+          )
+        })}
       </div>
 
-      {/* Модалка проекта */}
-      {selectedProject && (
-        <ProjectModal
-          project={selectedProject}
-          onClose={() => setSelectedProject(null)}
-          onDeleted={() => {
-            setSelectedProject(null)
-            qc.invalidateQueries({ queryKey: ['status-rows'] })
-            qc.invalidateQueries({ queryKey: ['status-rows-unconfirmed'] })
+      {/* Сетка FullCalendar */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '0 4px' }}>
+        <FullCalendar
+          ref={calRef}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          locale={ruLocale}
+          headerToolbar={{
+            left:   'prev,next today',
+            center: 'title',
+            right:  'dayGridMonth,timeGridWeek,timeGridDay',
           }}
-          canEdit={isAdmin}
+          buttonText={{ today: 'Сегодня', month: 'Месяц', week: 'Неделя', day: 'День' }}
+          events={fcEvents}
+          datesSet={handleDatesSet}
+          dateClick={handleDateClick}
+          eventClick={handleEventClick}
+          selectable
+          height="100%"
+          slotMinTime="07:00:00"
+          slotMaxTime="23:00:00"
+          allDayText="Весь день"
+          nowIndicator
+          eventDisplay="block"
+        />
+      </div>
+
+      {/* Модал создания */}
+      {createInfo && (
+        <CreateModal
+          date={createInfo.date}
+          time={createInfo.time}
+          type={createType}
+          onTypeChange={setCreateType}
+          primaryDeptId={primaryDept?.id ?? null}
+          onClose={() => setCreateInfo(null)}
+          onSuccess={() => { setCreateInfo(null); invalidateAll() }}
+        />
+      )}
+
+      {/* Модал просмотра */}
+      {detailEvent && (
+        <DetailModal
+          type={detailEvent.type}
+          data={detailEvent.data}
+          currentUserId={user?.id ?? ''}
+          onClose={() => setDetailEvent(null)}
+          onDelete={() => { setDetailEvent(null); invalidateAll() }}
         />
       )}
     </div>
   )
 }
 
-// ─── ProjectModal ─────────────────────────────────────────────────────────────
+// ─── CreateModal ──────────────────────────────────────────────────────────────
 
-function ProjectModal({
-  project,
-  onClose,
-  onDeleted,
-  canEdit,
+function CreateModal({
+  date, time, type, onTypeChange, primaryDeptId, onClose, onSuccess,
 }: {
-  project: Project
-  onClose: () => void
-  onDeleted: () => void
-  canEdit: boolean
+  date: string; time?: string; type: CreateType
+  onTypeChange: (t: CreateType) => void
+  primaryDeptId: string | null
+  onClose: () => void; onSuccess: () => void
 }) {
-  const [tab, setTab] = useState<'info' | 'log'>('info')
-  const [editing, setEditing] = useState(false)
+  const qc = useQueryClient()
 
-  const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/status-rows/${project.id}`),
-    onSuccess: onDeleted,
+  const { data: users = [] } = useQuery<SimpleUser[]>({
+    queryKey: ['users-list'],
+    queryFn: () => api.get('/users').then((r) => r.data),
   })
 
-  const { data: changeLogs = [] } = useQuery<ChangeLogEntry[]>({
-    queryKey: ['change-logs', 'project', project.id],
-    queryFn: () =>
-      api.get('/change-logs', { params: { entityType: 'project', entityId: project.id } }).then((r) => r.data),
-    enabled: tab === 'log',
-  })
-
-  if (editing) {
-    return (
-      <EditProjectModal
-        project={project}
-        onClose={() => setEditing(false)}
-        onSaved={() => { setEditing(false); onClose() }}
-      />
-    )
-  }
-
-  const rows: [string, string | null | undefined][] = [
-    ['Клиент', project.client],
-    ['Исп. продюсер', project.execProducer],
-    ['Лайн-продюсер', project.lineProducer],
-    ['Аккаунт', project.accountManager],
-    ['Дата', project.date ? format(new Date(project.date), 'd MMMM yyyy', { locale: ru }) : project.dateApproximate ? `≈ ${project.dateApproximate}` : null],
-    ['Время', project.time],
-    ['Формат', project.format],
-    ['Локация', project.location],
-  ]
-
-  const matrixSheetUrl = project.matrixRegistry?.sheetUrl ?? project.matrixUrl
+  const isHR = ['vacation', 'sick', 'remote', 'business_trip', 'day_off'].includes(type)
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onMouseDown={onClose}
     >
-      <div style={{ background: '#fff', borderRadius: 12, padding: 32, width: 600, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-          <h3 style={{ margin: 0, fontSize: 22, fontWeight: 600 }}>{project.name}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#94a3b8', padding: 4 }}>×</button>
+      <div
+        style={{ background: '#fff', borderRadius: 12, width: 480, maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>
+            Новое событие — {date}{time ? ` в ${time}` : ''}
+          </span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: '#94a3b8', cursor: 'pointer', lineHeight: 1 }}>×</button>
         </div>
 
-        {/* Вкладки */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #e2e8f0' }}>
-          {(['info', 'log'] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              background: 'none', border: 'none', padding: '6px 14px', cursor: 'pointer',
-              fontSize: 15, fontWeight: tab === t ? 600 : 400,
-              color: tab === t ? '#2563eb' : '#64748b',
-              borderBottom: tab === t ? '2px solid #2563eb' : '2px solid transparent',
-              marginBottom: -1,
-            }}>
-              {t === 'info' ? 'Информация' : 'История изменений'}
+        {/* Тип события */}
+        <div style={{ padding: '14px 20px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {CREATE_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => onTypeChange(opt.id)}
+              style={{
+                padding: '6px 12px', borderRadius: 8, border: '1.5px solid',
+                borderColor: type === opt.id ? '#2563eb' : '#e2e8f0',
+                background: type === opt.id ? '#eff6ff' : '#fff',
+                color: type === opt.id ? '#2563eb' : '#64748b',
+                fontSize: 12, cursor: 'pointer', fontWeight: type === opt.id ? 600 : 400,
+              }}
+            >
+              {opt.icon} {opt.label}
             </button>
           ))}
         </div>
 
-        {tab === 'info' && (
-          <>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
-              <tbody>
-                {rows.map(([label, value]) =>
-                  value ? (
-                    <tr key={label} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '8px 0', fontSize: 15, color: '#64748b', width: 160 }}>{label}</td>
-                      <td style={{ padding: '8px 0', fontSize: 15, color: '#1e293b' }}>{value}</td>
-                    </tr>
-                  ) : null
-                )}
-              </tbody>
-            </table>
-
-            {/* Источники данных */}
-            <div style={{ marginBottom: 20, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 8 }}>Источник данных</div>
-              {project.source === 'manual' ? (
-                <div style={{ fontSize: 14, color: '#64748b' }}>Ручной ввод</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 90 }}>Таблица проектов</span>
-                    <span style={{ fontSize: 13, color: '#374151' }}>Google Sheets · строка {project.googleRowIndex ?? '—'}</span>
-                  </div>
-                  {project.sheetMatrixId && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 90 }}>ID матрицы</span>
-                      <span style={{ fontSize: 13, color: '#374151', fontFamily: 'monospace' }}>{project.sheetMatrixId}</span>
-                    </div>
-                  )}
-                  {matrixSheetUrl && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 90 }}>Матрица смен</span>
-                      <a href={matrixSheetUrl} target="_blank" rel="noreferrer" style={{ fontSize: 13, color: '#2563eb', textDecoration: 'none' }}>
-                        Открыть в Google Sheets ↗
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Дни проекта */}
-            {project.days?.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8, color: '#374151' }}>Дни проекта</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {project.days.map((d, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 6, background: '#f8fafc', border: `1px solid ${DAY_TYPE_COLORS[d.type]}44` }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: DAY_TYPE_COLORS[d.type], minWidth: 70 }}>
-                        {DAY_TYPE_LABELS[d.type]}
-                      </span>
-                      <span style={{ fontSize: 14, color: '#1e293b' }}>
-                        {format(new Date(d.date), 'd MMMM yyyy', { locale: ru })}
-                      </span>
-                      {d.startTime && (
-                        <span style={{ fontSize: 13, color: '#64748b' }}>{d.type === 'efir' ? '▶ ' : ''}{d.startTime}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Состав */}
-            {project.assignments.length > 0 && (
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 10, color: '#374151' }}>Состав команды</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {project.assignments.map((a) => (
-                    <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, padding: '6px 0', borderBottom: '1px solid #f8fafc' }}>
-                      <span style={{ color: '#1e293b' }}>
-                        {a.user?.fullName ?? <span style={{ color: '#ef4444' }}>{a.unmatchedName} (не найден)</span>}
-                      </span>
-                      {a.roleOnSite && <span style={{ color: '#64748b' }}>{a.roleOnSite}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === 'log' && (
-          <div>
-            {changeLogs.length === 0 ? (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>
-                Изменений не зафиксировано
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {changeLogs.map((entry) => (
-                  <div key={entry.id} style={{ fontSize: 14, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                      <span style={{ fontWeight: 500, color: '#374151' }}>{entry.field}</span>
-                      <span style={{ color: '#94a3b8' }}>
-                        {format(new Date(entry.changedAt), 'd MMM yyyy HH:mm', { locale: ru })}
-                        {entry.user && ` · ${entry.user.fullName}`}
-                      </span>
-                    </div>
-                    <div style={{ color: '#64748b' }}>
-                      <span style={{ color: '#dc2626', textDecoration: 'line-through' }}>{entry.oldValue ?? '—'}</span>
-                      {' → '}
-                      <span style={{ color: '#16a34a' }}>{entry.newValue ?? '—'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {canEdit && (
-          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <button
-              onClick={() => setEditing(true)}
-              style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}
-            >
-              Редактировать
-            </button>
-            <button
-              onClick={() => {
-                if (confirm(`Удалить проект «${project.name}»?`)) deleteMutation.mutate()
-              }}
-              disabled={deleteMutation.isPending}
-              style={{ padding: '8px 14px', borderRadius: 6, border: '1px solid #fca5a5', background: 'transparent', color: '#dc2626', cursor: 'pointer', fontSize: 14 }}
-            >
-              Удалить
-            </button>
-          </div>
-        )}
+        <div style={{ padding: '16px 20px 20px' }}>
+          {type === 'meeting' && (
+            <MeetingForm
+              date={date} time={time ?? ''} deptId={primaryDeptId}
+              users={users} onSuccess={onSuccess}
+            />
+          )}
+          {type === 'studio' && (
+            <StudioForm date={date} time={time ?? ''} onSuccess={onSuccess} />
+          )}
+          {isHR && (
+            <HRForm type={type as any} dateFrom={date} onSuccess={onSuccess} />
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-// ─── EditProjectModal ─────────────────────────────────────────────────────────
+// ─── MeetingForm ──────────────────────────────────────────────────────────────
 
-function EditProjectModal({
-  project,
-  onClose,
-  onSaved,
-}: {
-  project: Project
-  onClose: () => void
-  onSaved: () => void
+function MeetingForm({ date, time, deptId, users, onSuccess }: {
+  date: string; time: string; deptId: string | null
+  users: SimpleUser[]; onSuccess: () => void
 }) {
   const qc = useQueryClient()
   const [form, setForm] = useState({
-    name: project.name,
-    client: project.client ?? '',
-    execProducer: project.execProducer ?? '',
-    lineProducer: project.lineProducer ?? '',
-    accountManager: project.accountManager ?? '',
-    date: project.date ? project.date.split('T')[0] : '',
-    dateApproximate: project.dateApproximate ?? '',
-    time: project.time ?? '',
-    format: project.format ?? '',
-    location: project.location ?? '',
+    title: '', date, timeFrom: time, timeTo: '',
+    isGlobal: false, participantIds: [] as string[],
   })
-  const [days, setDays] = useState<ProjectDay[]>(
-    project.days?.map((d) => ({ ...d, date: d.date.split('T')[0] })) ?? []
-  )
-  const [error, setError] = useState<string | null>(null)
+  const [err, setErr] = useState('')
 
   const save = useMutation({
-    mutationFn: () =>
-      api.patch(`/status-rows/${project.id}`, {
-        name: form.name,
-        client: form.client || null,
-        execProducer: form.execProducer || null,
-        lineProducer: form.lineProducer || null,
-        accountManager: form.accountManager || null,
-        date: form.date ? new Date(form.date).toISOString() : null,
-        dateApproximate: form.dateApproximate || null,
-        time: form.time || null,
-        format: form.format || null,
-        location: form.location || null,
-        days: days
-          .filter((d) => d.date)
-          .map((d) => ({
-            date: new Date(d.date).toISOString(),
-            type: d.type,
-            startTime: d.startTime || null,
-          })),
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['status-rows'] })
-      qc.invalidateQueries({ queryKey: ['status-rows-unconfirmed'] })
-      onSaved()
-    },
-    onError: (e: any) => setError(e.response?.data?.error ?? 'Ошибка сохранения'),
+    mutationFn: () => api.post('/calendar/events', {
+      ...form,
+      deptId: form.isGlobal ? undefined : deptId,
+    }).then((r) => r.data),
+    onSuccess,
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Ошибка'),
   })
 
-  function addDay() {
-    setDays((d) => [...d, { date: '', type: 'zastroyka', startTime: '' }])
+  const toggleParticipant = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      participantIds: f.participantIds.includes(id)
+        ? f.participantIds.filter((x) => x !== id)
+        : [...f.participantIds, id],
+    }))
   }
 
-  function updateDay(i: number, patch: Partial<ProjectDay>) {
-    setDays((d) => d.map((day, idx) => (idx === i ? { ...day, ...patch } : day)))
-  }
-
-  function removeDay(i: number) {
-    setDays((d) => d.filter((_, idx) => idx !== i))
-  }
-
-  const inp = (style?: object) => ({
-    padding: '8px 12px',
-    border: '1px solid #d1d5db',
-    borderRadius: 6,
-    fontSize: 14,
-    boxSizing: 'border-box' as const,
-    width: '100%',
-    ...style,
-  })
-
-  const fieldRow = (label: string, key: keyof typeof form, type = 'text', placeholder?: string) => (
-    <div style={{ marginBottom: 10 }}>
-      <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 3, color: '#374151' }}>{label}</label>
-      <input
-        type={type}
-        value={form[key]}
-        placeholder={placeholder}
-        onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-        style={inp()}
-      />
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Field label="Название *">
+        <input
+          value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+          placeholder="Название встречи" autoFocus
+          style={inputStyle}
+        />
+      </Field>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="Начало">
+          <input type="time" value={form.timeFrom} onChange={(e) => setForm({ ...form, timeFrom: e.target.value })} style={inputStyle} />
+        </Field>
+        <Field label="Конец">
+          <input type="time" value={form.timeTo} onChange={(e) => setForm({ ...form, timeTo: e.target.value })} style={inputStyle} />
+        </Field>
+      </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
+        <input type="checkbox" checked={form.isGlobal} onChange={(e) => setForm({ ...form, isGlobal: e.target.checked })} />
+        Глобальное событие (все отделы)
+      </label>
+      {users.length > 0 && (
+        <Field label="Участники">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 120, overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: 6, padding: 8 }}>
+            {users.map((u) => {
+              const selected = form.participantIds.includes(u.id)
+              return (
+                <button key={u.id} onClick={() => toggleParticipant(u.id)} style={{
+                  padding: '3px 10px', borderRadius: 12, border: 'none', cursor: 'pointer', fontSize: 12,
+                  background: selected ? '#2563eb' : '#f1f5f9',
+                  color: selected ? '#fff' : '#374151',
+                }}>
+                  {u.fullName}
+                </button>
+              )
+            })}
+          </div>
+        </Field>
+      )}
+      {err && <div style={{ color: '#dc2626', fontSize: 13 }}>{err}</div>}
+      <button
+        onClick={() => save.mutate()}
+        disabled={!form.title.trim() || save.isPending}
+        style={{ ...btnStyle, opacity: !form.title.trim() ? 0.5 : 1 }}
+      >
+        {save.isPending ? 'Сохранение...' : 'Создать встречу'}
+      </button>
     </div>
   )
+}
+
+// ─── StudioForm ───────────────────────────────────────────────────────────────
+
+function StudioForm({ date, time, onSuccess }: { date: string; time: string; onSuccess: () => void }) {
+  const [form, setForm] = useState({
+    studio: 'znamyanka_kamin' as StudioKey,
+    title: '', date, timeFrom: time, timeTo: '',
+  })
+  const [err, setErr] = useState('')
+
+  const save = useMutation({
+    mutationFn: () => api.post('/studios/book', form).then((r) => r.data),
+    onSuccess,
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Ошибка бронирования'),
+  })
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Field label="Студия *">
+        <select value={form.studio} onChange={(e) => setForm({ ...form, studio: e.target.value as StudioKey })} style={inputStyle}>
+          {STUDIOS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+        </select>
+      </Field>
+      <Field label="Название / цель *">
+        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Съёмка, репетиция..." style={inputStyle} autoFocus />
+      </Field>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="Начало *">
+          <input type="time" value={form.timeFrom} onChange={(e) => setForm({ ...form, timeFrom: e.target.value })} style={inputStyle} />
+        </Field>
+        <Field label="Конец">
+          <input type="time" value={form.timeTo} onChange={(e) => setForm({ ...form, timeTo: e.target.value })} style={inputStyle} />
+        </Field>
+      </div>
+      {err && <div style={{ color: '#dc2626', fontSize: 13 }}>{err}</div>}
+      <button
+        onClick={() => save.mutate()}
+        disabled={!form.title.trim() || !form.timeFrom || save.isPending}
+        style={{ ...btnStyle, opacity: (!form.title.trim() || !form.timeFrom) ? 0.5 : 1 }}
+      >
+        {save.isPending ? 'Бронирование...' : 'Забронировать'}
+      </button>
+    </div>
+  )
+}
+
+// ─── HRForm ───────────────────────────────────────────────────────────────────
+
+function HRForm({ type, dateFrom, onSuccess }: {
+  type: 'vacation' | 'sick' | 'remote' | 'business_trip' | 'day_off'
+  dateFrom: string; onSuccess: () => void
+}) {
+  const [form, setForm] = useState({ type, dateFrom, dateTo: dateFrom, notes: '' })
+  const [err, setErr] = useState('')
+
+  const save = useMutation({
+    mutationFn: () => api.post('/hr-statuses', form).then((r) => r.data),
+    onSuccess,
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Ошибка'),
+  })
+
+  const label = HR_LABELS[type] ?? type
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ padding: '10px 14px', background: '#fef3c7', borderRadius: 8, fontSize: 13, color: '#92400e' }}>
+        Запрос: <strong>{label}</strong>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="С">
+          <input type="date" value={form.dateFrom} onChange={(e) => setForm({ ...form, dateFrom: e.target.value })} style={inputStyle} />
+        </Field>
+        <Field label="По">
+          <input type="date" value={form.dateTo} onChange={(e) => setForm({ ...form, dateTo: e.target.value })} style={inputStyle} />
+        </Field>
+      </div>
+      <Field label="Комментарий">
+        <textarea
+          value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          placeholder="Необязательно" rows={2}
+          style={{ ...inputStyle, resize: 'vertical' }}
+        />
+      </Field>
+      {err && <div style={{ color: '#dc2626', fontSize: 13 }}>{err}</div>}
+      <button onClick={() => save.mutate()} disabled={save.isPending} style={btnStyle}>
+        {save.isPending ? 'Отправка...' : `Подать заявку — ${label}`}
+      </button>
+    </div>
+  )
+}
+
+// ─── DetailModal ──────────────────────────────────────────────────────────────
+
+function DetailModal({ type, data, currentUserId, onClose, onDelete }: {
+  type: 'meeting' | 'hr' | 'studio'
+  data: CalEvent | HRRecord | StudioBooking
+  currentUserId: string
+  onClose: () => void; onDelete: () => void
+}) {
+  const deleteMut = useMutation({
+    mutationFn: () => {
+      if (type === 'meeting') return api.delete(`/calendar/events/${data.id}`)
+      if (type === 'hr')      return api.delete(`/hr-statuses/${data.id}`)
+      return api.delete(`/studios/${(data as StudioBooking).studio}/bookings/${data.id}`)
+    },
+    onSuccess: onDelete,
+  })
+
+  const isOwner = type === 'meeting'
+    ? (data as CalEvent).creator.id === currentUserId
+    : type === 'hr'
+      ? (data as HRRecord).user.id === currentUserId
+      : (data as StudioBooking).creator.id === currentUserId
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onMouseDown={onClose}
     >
-      <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: 620, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 12px 48px rgba(0,0,0,0.2)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Редактировать проект</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#94a3b8' }}>×</button>
+      <div
+        style={{ background: '#fff', borderRadius: 12, width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
+            {type === 'meeting' ? '📅 Встреча' : type === 'hr' ? '📋 HR-заявка' : '🎬 Студия'}
+          </span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: '#94a3b8', cursor: 'pointer' }}>×</button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-          <div style={{ gridColumn: '1 / -1' }}>{fieldRow('Название *', 'name')}</div>
-          {fieldRow('Клиент', 'client')}
-          {fieldRow('Исп. продюсер', 'execProducer')}
-          {fieldRow('Лайн-продюсер', 'lineProducer')}
-          {fieldRow('Аккаунт', 'accountManager')}
-          {fieldRow('Формат', 'format')}
-          {fieldRow('Локация', 'location')}
-        </div>
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {type === 'meeting' && (() => {
+            const e = data as CalEvent
+            return <>
+              <div style={{ fontSize: 16, fontWeight: 600, color: '#1e293b' }}>{e.title}</div>
+              <div style={{ fontSize: 13, color: '#64748b' }}>
+                {e.date}{e.timeFrom ? ` · ${e.timeFrom}${e.timeTo ? `–${e.timeTo}` : ''}` : ''}
+              </div>
+              <div style={{ fontSize: 13, color: '#374151' }}>Организатор: {e.creator.fullName}</div>
+              {e.participants.length > 0 && (
+                <div style={{ fontSize: 13, color: '#374151' }}>
+                  Участники: {e.participants.map((p) => p.user.fullName).join(', ')}
+                </div>
+              )}
+              {e.isGlobal && <div style={{ fontSize: 12, color: '#64748b' }}>Глобальное событие</div>}
+            </>
+          })()}
 
-        {/* Дни проекта */}
-        <div style={{ marginTop: 20, borderTop: '1px solid #e2e8f0', paddingTop: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: '#374151' }}>Дни проекта</span>
+          {type === 'hr' && (() => {
+            const r = data as HRRecord
+            return <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>{HR_LABELS[r.type]}</span>
+                {pill(r.status === 'approved' ? '#16a34a' : r.status === 'rejected' ? '#dc2626' : '#f59e0b',
+                  r.status === 'approved' ? 'Одобрен' : r.status === 'rejected' ? 'Отклонён' : 'Ожидает')}
+              </div>
+              <div style={{ fontSize: 13, color: '#64748b' }}>
+                {r.dateFrom.slice(0, 10)} — {r.dateTo.slice(0, 10)}
+              </div>
+              <div style={{ fontSize: 13, color: '#374151' }}>{r.user.fullName}</div>
+              {r.notes && <div style={{ fontSize: 13, color: '#64748b' }}>{r.notes}</div>}
+            </>
+          })()}
+
+          {type === 'studio' && (() => {
+            const b = data as StudioBooking
+            const studio = STUDIOS.find((s) => s.key === b.studio)
+            return <>
+              <div style={{ fontWeight: 600, fontSize: 15, color: '#1e293b' }}>{b.title}</div>
+              <div style={{ fontSize: 13, color: '#64748b' }}>
+                {studio?.label ?? b.studio} · {b.date}{b.timeFrom ? ` · ${b.timeFrom}${b.timeTo ? `–${b.timeTo}` : ''}` : ''}
+              </div>
+              <div style={{ fontSize: 13, color: '#374151' }}>{b.creator.fullName}</div>
+              {pill(b.status === 'confirmed' ? '#16a34a' : b.status === 'blocked' ? '#dc2626' : '#f59e0b',
+                b.status === 'confirmed' ? 'Подтверждено' : b.status === 'blocked' ? 'Заблокировано' : 'Предварительно')}
+            </>
+          })()}
+
+          {isOwner && (
             <button
-              onClick={addDay}
-              style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, padding: '5px 12px', fontSize: 13, cursor: 'pointer', color: '#374151', fontWeight: 500 }}
+              onClick={() => deleteMut.mutate()}
+              disabled={deleteMut.isPending}
+              style={{ marginTop: 8, padding: '8px 0', border: 'none', borderRadius: 6, background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
             >
-              + Добавить день
+              {deleteMut.isPending ? 'Удаление...' : 'Удалить'}
             </button>
-          </div>
-
-          {days.length === 0 && (
-            <div style={{ fontSize: 13, color: '#94a3b8', padding: '8px 0' }}>Дни не добавлены</div>
           )}
-
-          {days.map((day, i) => (
-            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 110px 100px auto', gap: 8, alignItems: 'end', marginBottom: 8, background: '#f8fafc', borderRadius: 8, padding: '10px 12px', border: `1px solid ${DAY_TYPE_COLORS[day.type]}33` }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 3 }}>Дата</label>
-                <input
-                  type="date"
-                  value={day.date}
-                  onChange={(e) => updateDay(i, { date: e.target.value })}
-                  style={inp()}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 3 }}>Тип</label>
-                <select
-                  value={day.type}
-                  onChange={(e) => updateDay(i, { type: e.target.value as ProjectDay['type'] })}
-                  style={inp({ background: DAY_TYPE_COLORS[day.type] + '18' })}
-                >
-                  <option value="zastroyka">Застройка</option>
-                  <option value="efir">Эфир</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 3 }}>
-                  {day.type === 'efir' ? 'Начало эфира' : 'Время'}
-                </label>
-                <input
-                  type="time"
-                  value={day.startTime ?? ''}
-                  onChange={(e) => updateDay(i, { startTime: e.target.value })}
-                  style={inp()}
-                />
-              </div>
-              <button
-                onClick={() => removeDay(i)}
-                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 18, padding: '0 4px', alignSelf: 'center', marginTop: 18 }}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {error && <div style={{ marginTop: 12, color: '#dc2626', fontSize: 13 }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
-          <button onClick={onClose} style={{ padding: '10px 20px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', cursor: 'pointer', fontSize: 15 }}>
-            Отмена
-          </button>
-          <button
-            onClick={() => save.mutate()}
-            disabled={save.isPending || !form.name}
-            style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 15, opacity: !form.name ? 0.5 : 1 }}
-          >
-            {save.isPending ? 'Сохранение...' : 'Сохранить'}
-          </button>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── CalendarPage — единый календарь (4 вкладки) ─────────────────────────────
+// ─── Утилиты UI ───────────────────────────────────────────────────────────────
 
-type CalTab = 'events' | 'dept' | 'hr' | 'studios'
-
-const CAL_TABS: { id: CalTab; label: string }[] = [
-  { id: 'events',  label: 'Мои события' },
-  { id: 'dept',    label: 'Событийный' },
-  { id: 'hr',      label: 'HR-заявки' },
-  { id: 'studios', label: 'Студии' },
-]
-
-export function CalendarPage() {
-  const [tab, setTab] = useState<CalTab>('events')
-  const primaryDept = usePrimaryDept()
-
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      {/* Вкладки */}
-      <div style={{
-        padding: '10px 24px',
-        borderBottom: '1px solid #e2e8f0',
-        display: 'flex',
-        gap: 4,
-        flexShrink: 0,
-        background: '#fff',
-      }}>
-        {CAL_TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              padding: '6px 18px',
-              borderRadius: 6,
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 13,
-              background: tab === t.id ? '#2563eb' : 'transparent',
-              color: tab === t.id ? '#fff' : '#64748b',
-              fontWeight: tab === t.id ? 600 : 400,
-              transition: 'background 0.15s',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Контент */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        {tab === 'events' && <ProjectsCalendarTab />}
-
-        {tab === 'dept' && !primaryDept && (
-          <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 15 }}>
-            Вы не состоите ни в одном отделе
-          </div>
-        )}
-        {tab === 'dept' && primaryDept && <EventCalendar deptId={primaryDept.id} />}
-
-        {tab === 'hr' && <HRPage />}
-
-        {tab === 'studios' && <StudioCalendar />}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</label>
+      {children}
     </div>
   )
+}
+
+const inputStyle: React.CSSProperties = {
+  padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 6,
+  fontSize: 13, color: '#1e293b', background: '#fff', width: '100%', boxSizing: 'border-box',
+}
+
+const btnStyle: React.CSSProperties = {
+  padding: '9px 0', border: 'none', borderRadius: 6,
+  background: '#2563eb', color: '#fff', cursor: 'pointer',
+  fontSize: 14, fontWeight: 600, width: '100%',
 }
