@@ -116,9 +116,14 @@ function ProjectColumn({ status, projects, canWrite }: {
   )
 }
 
+const emptyForm = { name: '', client: '' }
+
 export function ProjectsPage() {
   const user = useCurrentUser()
+  const qc = useQueryClient()
   const [showArchive, setShowArchive] = useState(false)
+  const [showForm, setShowForm]       = useState(false)
+  const [form, setForm]               = useState(emptyForm)
   const canWrite = user?.permissions?.includes('projects:write') ?? false
 
   const { data: projects = [], isLoading } = useQuery<Project[]>({
@@ -128,6 +133,15 @@ export function ProjectsPage() {
     refetchIntervalInBackground: false,
   })
 
+  const createMutation = useMutation({
+    mutationFn: (body: typeof form) => api.post('/projects', body).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['all-projects'] })
+      setShowForm(false)
+      setForm(emptyForm)
+    },
+  })
+
   const byStatus = (status: ProjectStatus) => projects.filter((p) => p.status === status)
 
   return (
@@ -135,13 +149,61 @@ export function ProjectsPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#1e293b' }}>Доска проектов</h1>
         <div style={{ fontSize: 13, color: '#64748b' }}>Всего: {projects.length}</div>
+        {canWrite && (
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            style={{ padding: '6px 14px', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer', fontSize: 13 }}
+          >
+            + Новый проект
+          </button>
+        )}
         <button
           onClick={() => setShowArchive((v) => !v)}
-          style={{ marginLeft: 'auto', padding: '6px 14px', border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 13, color: '#64748b' }}
+          style={{ marginLeft: canWrite ? 0 : 'auto', padding: '6px 14px', border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', cursor: 'pointer', fontSize: 13, color: '#64748b' }}
         >
-          {showArchive ? 'Скрыть архив' : 'Показать архив'}
+          {showArchive ? 'Скрыть архив' : 'Архив'}
         </button>
       </div>
+
+      {showForm && (
+        <div style={{
+          background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
+          padding: 16, marginBottom: 20, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.04em' }}>Название *</label>
+            <input
+              placeholder="Название проекта"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              style={{ padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, minWidth: 260 }}
+              autoFocus
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.04em' }}>Клиент</label>
+            <input
+              placeholder="Название клиента"
+              value={form.client}
+              onChange={(e) => setForm({ ...form, client: e.target.value })}
+              style={{ padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, minWidth: 200 }}
+            />
+          </div>
+          <button
+            onClick={() => createMutation.mutate({ name: form.name, client: form.client || '' })}
+            disabled={!form.name.trim() || createMutation.isPending}
+            style={{ padding: '7px 16px', border: 'none', borderRadius: 6, background: '#16a34a', color: '#fff', cursor: 'pointer', fontSize: 13 }}
+          >
+            Создать
+          </button>
+          <button
+            onClick={() => { setShowForm(false); setForm(emptyForm) }}
+            style={{ padding: '7px 14px', border: 'none', borderRadius: 6, background: '#f1f5f9', cursor: 'pointer', fontSize: 13 }}
+          >
+            Отмена
+          </button>
+        </div>
+      )}
 
       {isLoading && <div style={{ color: '#64748b' }}>Загрузка...</div>}
 
