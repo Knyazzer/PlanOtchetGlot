@@ -36,7 +36,7 @@ export async function hrStatusesRoutes(app: FastifyInstance) {
     const validStatuses = ['pending', 'approved', 'rejected']
     if (q.status) {
       if (!validStatuses.includes(q.status)) {
-        return reply.status(400).send({ error: 'Invalid status value' })
+        return reply.code(400).send({ error: 'Invalid status value' })
       }
       where.status = q.status
     }
@@ -93,13 +93,13 @@ export async function hrStatusesRoutes(app: FastifyInstance) {
   // PATCH /hr-statuses/:id/approve
   app.patch('/:id/approve', { preHandler: authenticate }, async (request, reply) => {
     const user = request.user as { id: string; roles?: string[]; permissions?: string[] }
-    if (!isAdmin(user)) return reply.status(403).send({ error: 'Forbidden' })
+    if (!isAdmin(user)) return reply.code(403).send({ error: 'Forbidden' })
 
     const { id } = request.params as { id: string }
     const body   = approveSchema.parse(request.body)
 
     const existing = await prisma.hRStatus.findUnique({ where: { id } })
-    if (!existing) return reply.status(404).send({ error: 'Not found' })
+    if (!existing) return reply.code(404).send({ error: 'Not found' })
 
     const updated = await prisma.hRStatus.update({
       where: { id },
@@ -128,13 +128,13 @@ export async function hrStatusesRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string }
 
     const existing = await prisma.hRStatus.findUnique({ where: { id } })
-    if (!existing) return reply.status(404).send({ error: 'Not found' })
+    if (!existing) return reply.code(404).send({ error: 'Not found' })
     if (existing.userId !== user.id && !isAdmin(user))
-      return reply.status(403).send({ error: 'Forbidden' })
+      return reply.code(403).send({ error: 'Forbidden' })
     if (existing.status !== 'pending' && !isAdmin(user))
-      return reply.status(400).send({ error: 'Can only cancel pending requests' })
+      return reply.code(400).send({ error: 'Can only cancel pending requests' })
 
     await prisma.hRStatus.delete({ where: { id } })
-    return reply.status(204).send()
+    return reply.code(204).send()
   })
 }
