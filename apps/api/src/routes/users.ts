@@ -224,7 +224,7 @@ export async function usersRoutes(app: FastifyInstance) {
 
     const importData = cfg.cached_data as { rows: { name: string; tabNumber: string; dept: string; subDept: string; position: string }[] }
     const rows = importData.rows ?? []
-    const existingUsers = await prisma.user.findMany({ select: { fullName: true, tabNumber: true } })
+    const existingUsers = await prisma.user.findMany({ where: { isActive: true }, select: { fullName: true, tabNumber: true } })
     const existingNames = new Set(existingUsers.map((u) => u.fullName.toLowerCase().trim()))
     const existingTabs  = new Set(existingUsers.map((u) => u.tabNumber).filter(Boolean))
 
