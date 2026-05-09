@@ -11,8 +11,8 @@ const hrInclude = {
 
 const createSchema = z.object({
   type:     z.enum(['vacation', 'sick', 'remote', 'business_trip', 'day_off']),
-  dateFrom: z.string(),
-  dateTo:   z.string(),
+  dateFrom: z.string().min(1),
+  dateTo:   z.string().min(1),
   notes:    z.string().optional(),
 })
 
@@ -26,18 +26,30 @@ function isAdmin(user: { roles?: string[]; permissions?: string[] }) {
 
 export async function hrStatusesRoutes(app: FastifyInstance) {
   // GET /hr-statuses?userId=&from=&to=&status=
-  app.get('/', { preHandler: authenticate }, async (request) => {
-    const user = (request as any).user as { id: string; roles?: string[]; permissions?: string[] }
+  app.get('/', { preHandler: authenticate }, async (request, reply) => {
+    const user = request.user as { id: string; roles?: string[]; permissions?: string[] }
     const q    = request.query as Record<string, string>
 
     const where: Record<string, any> = {}
     if (!isAdmin(user)) where.userId = user.id
     if (q.userId && isAdmin(user)) where.userId = q.userId
-    if (q.status) where.status = q.status
+    const validStatuses = ['pending', 'approved', 'rejected']
+    if (q.status) {
+      if (!validStatuses.includes(q.status)) {
+        return reply.status(400).send({ error: 'Invalid status value' })
+      }
+      where.status = q.status
+    }
     if (q.from || q.to) {
-      where.dateFrom = {}
-      if (q.from) where.dateFrom.gte = new Date(q.from)
-      if (q.to)   where.dateFrom.lte = new Date(q.to)
+      // records that overlap with [from, to]: dateFrom <= to AND dateTo >= from
+      const conditions: any[] = []
+      if (q.to)   conditions.push({ dateFrom: { lte: new Date(q.to) } })
+      if (q.from) conditions.push({ dateTo:   { gte: new Date(q.from) } })
+      if (conditions.length === 1) {
+        Object.assign(where, conditions[0])
+      } else if (conditions.length === 2) {
+        where.AND = conditions
+      }
     }
 
     return prisma.hRStatus.findMany({
@@ -49,7 +61,7 @@ export async function hrStatusesRoutes(app: FastifyInstance) {
 
   // POST /hr-statuses
   app.post('/', { preHandler: authenticate }, async (request, reply) => {
-    const user  = (request as any).user as { id: string }
+    const user  = request.user as { id: string }
     const body  = createSchema.parse(request.body)
 
     const record = await prisma.hRStatus.create({
@@ -75,12 +87,12 @@ export async function hrStatusesRoutes(app: FastifyInstance) {
       record.id,
     )
 
-    return reply.status(201).send(record)
+    return reply.code(201).send(record)
   })
 
   // PATCH /hr-statuses/:id/approve
   app.patch('/:id/approve', { preHandler: authenticate }, async (request, reply) => {
-    const user = (request as any).user as { id: string; roles?: string[]; permissions?: string[] }
+    const user = request.user as { id: string; roles?: string[]; permissions?: string[] }
     if (!isAdmin(user)) return reply.status(403).send({ error: 'Forbidden' })
 
     const { id } = request.params as { id: string }
@@ -112,7 +124,7 @@ export async function hrStatusesRoutes(app: FastifyInstance) {
 
   // DELETE /hr-statuses/:id
   app.delete('/:id', { preHandler: authenticate }, async (request, reply) => {
-    const user = (request as any).user as { id: string; roles?: string[]; permissions?: string[] }
+    const user = request.user as { id: string; roles?: string[]; permissions?: string[] }
     const { id } = request.params as { id: string }
 
     const existing = await prisma.hRStatus.findUnique({ where: { id } })
