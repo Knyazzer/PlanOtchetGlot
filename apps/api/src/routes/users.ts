@@ -225,19 +225,49 @@ export async function usersRoutes(app: FastifyInstance) {
     const importData = cfg.cached_data as { rows: { name: string; tabNumber: string; dept: string; subDept: string; position: string }[] }
     const rows = importData.rows ?? []
 
-    const [activeUsers, inactiveUsers] = await Promise.all([
+    const [activeUsers, inactiveUsers, allDepts] = await Promise.all([
       prisma.user.findMany({ where: { isActive: true  }, select: { id: true, fullName: true, tabNumber: true } }),
       prisma.user.findMany({ where: { isActive: false }, select: { id: true, fullName: true, tabNumber: true } }),
+      prisma.department.findMany({ select: { id: true, name: true } }),
     ])
 
-    const activeNames = new Set(activeUsers.map((u) => u.fullName.toLowerCase().trim()))
-    const activeTabs  = new Set(activeUsers.map((u) => u.tabNumber).filter(Boolean))
-    // index inactive users for fast lookup
+    const activeNames  = new Set(activeUsers.map((u) => u.fullName.toLowerCase().trim()))
+    const activeTabs   = new Set(activeUsers.map((u) => u.tabNumber).filter(Boolean))
     const inactiveByName = new Map(inactiveUsers.map((u) => [u.fullName.toLowerCase().trim(), u]))
     const inactiveByTab  = new Map(inactiveUsers.filter((u) => u.tabNumber).map((u) => [u.tabNumber!, u]))
+    const deptByName     = new Map(allDepts.map((d) => [d.name.toLowerCase().trim(), d.id]))
 
     const hash = await bcrypt.hash(defaultPassword, 10)
-    const roleRecord = await prisma.appRole.findFirst({ where: { name: role } })
+    const [roleRecord, deptDirectorRole] = await Promise.all([
+      prisma.appRole.findFirst({ where: { name: role } }),
+      prisma.appRole.findFirst({ where: { name: 'dept_director' } }),
+    ])
+
+    const HEAD_KEYWORDS = ['руководитель', 'директор', 'начальник', 'заведующий']
+    function isHeadPosition(position: string): boolean {
+      const p = position.toLowerCase()
+      return HEAD_KEYWORDS.some((k) => p.includes(k))
+    }
+
+    async function assignToDept(userId: string, row: { dept: string; subDept: string; position: string }) {
+      const deptId =
+        deptByName.get(row.subDept?.toLowerCase().trim()) ??
+        deptByName.get(row.dept?.toLowerCase().trim())
+      if (!deptId) return
+      const isHead = isHeadPosition(row.position ?? '')
+      await prisma.deptMember.upsert({
+        where:  { userId_deptId: { userId, deptId } },
+        update: { isHead },
+        create: { userId, deptId, isHead },
+      })
+      if (isHead && deptDirectorRole) {
+        await prisma.userAppRole.upsert({
+          where:  { userId_roleId: { userId, roleId: deptDirectorRole.id } },
+          update: {},
+          create: { userId, roleId: deptDirectorRole.id },
+        })
+      }
+    }
 
     let created = 0
     let skipped = 0
@@ -259,11 +289,12 @@ export async function usersRoutes(app: FastifyInstance) {
         await prisma.user.update({ where: { id: inactive.id }, data: { isActive: true, passwordHash: hash } })
         if (roleRecord) {
           await prisma.userAppRole.upsert({
-            where: { userId_roleId: { userId: inactive.id, roleId: roleRecord.id } },
+            where:  { userId_roleId: { userId: inactive.id, roleId: roleRecord.id } },
             update: {},
             create: { userId: inactive.id, roleId: roleRecord.id },
           })
         }
+        await assignToDept(inactive.id, row)
         activeNames.add(name.toLowerCase())
         if (tabNumber) activeTabs.add(tabNumber)
         created_accounts.push({ fullName: name, email, password: defaultPassword })
@@ -279,6 +310,7 @@ export async function usersRoutes(app: FastifyInstance) {
         if (roleRecord) {
           await prisma.userAppRole.create({ data: { userId: user.id, roleId: roleRecord.id } })
         }
+        await assignToDept(user.id, row)
         activeNames.add(name.toLowerCase())
         if (tabNumber) activeTabs.add(tabNumber)
         created_accounts.push({ fullName: name, email, password: defaultPassword })

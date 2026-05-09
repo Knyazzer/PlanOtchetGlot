@@ -13,6 +13,11 @@ export async function departmentsRoutes(app: FastifyInstance) {
         _count: { select: { members: true, wiLinks: true } },
         parent:   { select: { id: true, name: true } },
         children: { select: { id: true, name: true, type: true } },
+        members: {
+          include: {
+            user: { select: { id: true, fullName: true, email: true, tabNumber: true } },
+          },
+        },
       },
       orderBy: { name: 'asc' },
     })
@@ -205,10 +210,53 @@ export async function departmentsRoutes(app: FastifyInstance) {
     return reply.code(201).send(member)
   })
 
+  // PATCH /departments/:id/members/:userId — update isHead + sync AppRole
+  app.patch('/:id/members/:userId', { preHandler: requirePermission('departments:manage') }, async (request, reply) => {
+    const { id: deptId, userId } = request.params as { id: string; userId: string }
+    const body = z.object({ isHead: z.boolean() }).safeParse(request.body)
+    if (!body.success) return reply.code(400).send({ error: 'Invalid input' })
+
+    const { isHead } = body.data
+
+    await prisma.deptMember.upsert({
+      where:  { userId_deptId: { userId, deptId } },
+      update: { isHead },
+      create: { userId, deptId, isHead },
+    })
+
+    const deptDirectorRole = await prisma.appRole.findFirst({ where: { name: 'dept_director' } })
+    if (deptDirectorRole) {
+      if (isHead) {
+        await prisma.userAppRole.upsert({
+          where:  { userId_roleId: { userId, roleId: deptDirectorRole.id } },
+          update: {},
+          create: { userId, roleId: deptDirectorRole.id },
+        })
+      } else {
+        const otherHeadships = await prisma.deptMember.count({ where: { userId, isHead: true } })
+        if (otherHeadships === 0) {
+          await prisma.userAppRole.deleteMany({ where: { userId, roleId: deptDirectorRole.id } })
+        }
+      }
+    }
+
+    return { ok: true }
+  })
+
   // DELETE /departments/:id/members/:userId — admin only
   app.delete('/:id/members/:userId', { preHandler: requirePermission('departments:manage') }, async (request, reply) => {
-    const { id, userId } = request.params as { id: string; userId: string }
-    await prisma.deptMember.deleteMany({ where: { deptId: id, userId } })
+    const { id: deptId, userId } = request.params as { id: string; userId: string }
+    await prisma.deptMember.deleteMany({ where: { deptId, userId } })
+
+    // If user is no longer head of any dept, remove dept_director role
+    const deptDirectorRole = await prisma.appRole.findFirst({ where: { name: 'dept_director' } })
+    if (deptDirectorRole) {
+      const otherHeadships = await prisma.deptMember.count({ where: { userId, isHead: true } })
+      if (otherHeadships === 0) {
+        await prisma.userAppRole.deleteMany({ where: { userId, roleId: deptDirectorRole.id } })
+      }
+    }
+
     return reply.code(204).send()
   })
 }
