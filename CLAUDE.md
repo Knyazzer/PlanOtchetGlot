@@ -4,7 +4,7 @@
 
 ---
 
-## 🔄 ТЕКУЩЕЕ СОСТОЯНИЕ ПРОЕКТА (обновлено 2026-05-08)
+## 🔄 ТЕКУЩЕЕ СОСТОЯНИЕ ПРОЕКТА (обновлено 2026-05-09)
 
 **Идёт глобальный rebuild V2.** Детальный план с чекбоксами — в `docs/dev-plan-v2.md`.
 
@@ -15,7 +15,8 @@
 | Фаза 2: /departments + /dept-wi-links + DeptBoard + AdminDept | ✅ DONE | `ef6ee2f` |
 | Фаза 3: Task-система (TasksPage полноценный + overdue cron) | ✅ DONE | `7cbb66c` |
 | Фаза 4: Три вида отдела (Календарь, Гантт, Доска) | ✅ DONE | `8034fc8` |
-| Фаза 5–6: HR, Студии, Аналитика | ⬜ следующая |
+| Фаза 5: HR-заявки + Студии + Гантт-интеграция | ✅ DONE | `631c004` |
+| Фаза 6: Аналитика | ⬜ следующая |
 
 **Ключевые изменения схемы (важно — весь код до rebuild'а устарел):**
 - `status_rows` таблица → `work_items` (модель `WorkItem`)
@@ -167,6 +168,8 @@ Fallback (когда RBAC-таблицы пусты): `ROLE_PERMISSIONS` в `app
 | `/shifts` | `routes/shifts.ts` | |
 | `/tasks` | `routes/tasks.ts` | |
 | `/calendar/events` | `routes/calendarEvents.ts` | **Фаза 4** — CalendarEvent CRUD |
+| `/hr-statuses` | `routes/hrStatuses.ts` | **Фаза 5** — HR CRUD + approve |
+| `/studios` | `routes/studios.ts` | **Фаза 5** — Studio booking (slots, book, block, delete) |
 | `/notifications` | `routes/notifications.ts` | |
 | `/sync` | `routes/sync.ts` | |
 | `/change-logs` | `routes/changeLogs.ts` | |
@@ -437,5 +440,7 @@ docker compose -f docker-compose.prod.yml up -d
 | Tasks | `TasksPage.tsx` | ✅ Фаза 3 — канбан, Мои/Все, фильтр по отделу, polling |
 | Dept Page | `DeptPage.tsx` | ✅ Фаза 4 — 3 вкладки: Доска/Событийный/Гантт |
 | Projects Board | `ProjectsPage.tsx` | ✅ Фаза 4 — глобальный канбан проектов |
+| HR | `HRPage.tsx` | ✅ Фаза 5 — заявки (подать, апрув, отклонить) |
+| Студии | `StudioCalendar.tsx` | ✅ Фаза 5 — недельный вид, бронирование, блокировка |
 | Analytics | `AnalyticsPage.tsx` | 🚧 |
 | Profile | `ProfilePage.tsx` | 🚧 |

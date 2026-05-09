@@ -452,27 +452,27 @@ UI:
 
 ---
 
-### Фаза 5 — HR и Студии
+### Фаза 5 — HR и Студии ✅ DONE
 **Оценка: 1 неделя**
 
 ```
 API:
-[ ] POST   /hr-statuses             (запрос от сотрудника)
-[ ] GET    /hr-statuses?userId=&from=&to=
-[ ] PATCH  /hr-statuses/:id/approve { approved: true/false }
+[x] POST   /hr-statuses             (запрос от сотрудника)
+[x] GET    /hr-statuses?userId=&from=&to=
+[x] PATCH  /hr-statuses/:id/approve { approved: true/false }
            → уведомление сотруднику
 
-[ ] GET    /studios/slots?studio=&from=&to=
-[ ] POST   /studios/book    { studio, wiId, date, timeFrom, timeTo }
+[x] GET    /studios/slots?studio=&from=&to=
+[x] POST   /studios/book    { studio, title, date, timeFrom, timeTo, participantIds }
            → авто-confirm если слот свободен
-           → конфликт → уведомление руководителю ТВ
-[ ] PATCH  /studios/bookings/:id/block  { reason }
-[ ] DELETE /studios/bookings/:id
+           → конфликт → studio_conflict уведомление
+[x] PATCH  /studios/bookings/:id/block  { reason }
+[x] DELETE /studios/bookings/:id
 
 UI:
-[ ] HRPage — сотрудник подаёт заявку, руководитель/HR утверждает
-[ ] Интеграция с Гантт — HR-статусы = серый блок "недоступен"
-[ ] StudioCalendar — слот-вид по студиям (встроен в EventCalendar ТВ)
+[x] HRPage — сотрудник подаёт заявку, руководитель/HR утверждает
+[x] Интеграция с Гантт — HR-статусы = серый блок "недоступен"
+[x] StudioCalendar — неделный вид по студиям (4 вкладки)
 ```
 
 ---

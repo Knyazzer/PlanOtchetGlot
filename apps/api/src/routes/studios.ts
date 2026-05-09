@@ -41,8 +41,20 @@ function timesOverlap(
 
 export async function studiosRoutes(app: FastifyInstance) {
   // GET /studios/slots?studio=&from=&to=
-  app.get('/slots', { preHandler: authenticate }, async (request) => {
+  app.get('/slots', { preHandler: authenticate }, async (request, reply) => {
     const q = request.query as Record<string, string>
+
+    // Validate query parameters
+    if (q.studio && !VALID_STUDIOS.includes(q.studio as any)) {
+      return reply.code(400).send({ error: 'Invalid studio value' })
+    }
+    if (q.from && isNaN(Date.parse(q.from))) {
+      return reply.code(400).send({ error: 'Invalid from date' })
+    }
+    if (q.to && isNaN(Date.parse(q.to))) {
+      return reply.code(400).send({ error: 'Invalid to date' })
+    }
+
     const where: Record<string, any> = {}
     if (q.studio) where.studio = q.studio
     if (q.from || q.to) {
@@ -118,11 +130,12 @@ export async function studiosRoutes(app: FastifyInstance) {
     const existing = await prisma.studioBooking.findUnique({ where: { id } })
     if (!existing) return reply.code(404).send({ error: 'Not found' })
 
-    return prisma.studioBooking.update({
+    const updated = await prisma.studioBooking.update({
       where: { id },
       data:  { status: 'blocked' as any, reason: body.reason },
       include: bookingInclude,
     })
+    return reply.code(200).send(updated)
   })
 
   // DELETE /studios/bookings/:id
@@ -135,7 +148,6 @@ export async function studiosRoutes(app: FastifyInstance) {
     if (existing.createdBy !== user.id && !isAdmin(user))
       return reply.code(403).send({ error: 'Forbidden' })
 
-    await prisma.studioBookingParticipant.deleteMany({ where: { bookingId: id } })
     await prisma.studioBooking.delete({ where: { id } })
     return reply.code(204).send()
   })
