@@ -46,7 +46,7 @@ export function DeptGantt({ deptId }: { deptId: string }) {
   const url = `/departments/${deptId}/gantt?from=${from}&to=${to}${filterUserId ? `&userId=${filterUserId}` : ''}`
 
   const { data, isLoading } = useQuery<GanttData>({
-    queryKey: ['dept-gantt', deptId, from, to, filterUserId],
+    queryKey: ['dept-gantt', deptId, from, to, ...(filterUserId ? [filterUserId] : [])],
     queryFn: () => api.get(url).then((r) => r.data),
     refetchInterval: 30_000,
     refetchIntervalInBackground: false,
@@ -59,12 +59,14 @@ export function DeptGantt({ deptId }: { deptId: string }) {
   const days = eachDayOfInterval({ start: fromDate, end: toDate })
 
   function barStyle(task: GanttTask) {
-    const start  = new Date(task.createdAt)
-    const end    = task.deadline ? new Date(task.deadline) : toDate
-    const left   = Math.max(0, (start.getTime() - fromDate.getTime()) / rangeMs) * 100
-    const right  = Math.min(rangeMs, end.getTime() - fromDate.getTime()) / rangeMs * 100
-    const width  = Math.max(1, right - left)
-    const color  = task.isOverdue ? '#dc2626' : STATUS_COLOR[task.status]
+    const start     = new Date(task.createdAt)
+    const end       = task.deadline ? new Date(task.deadline) : toDate
+    const startOff  = Math.max(0, Math.min(rangeMs, start.getTime() - fromDate.getTime()))
+    const endOff    = Math.max(0, Math.min(rangeMs, end.getTime()   - fromDate.getTime()))
+    const left      = (startOff / rangeMs) * 100
+    const right     = (endOff   / rangeMs) * 100
+    const width     = Math.max(1, right - left)
+    const color     = task.isOverdue ? '#dc2626' : STATUS_COLOR[task.status]
     return { left: `${left}%`, width: `${width}%`, background: color }
   }
 
