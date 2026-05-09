@@ -7,7 +7,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, startOfMonth, endOfMonth, addMonths } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
-import { useIsAdmin } from '../hooks/useAuth'
+import { useIsAdmin, usePrimaryDept } from '../hooks/useAuth'
+import { EventCalendar } from './EventCalendar'
+import HRPage from './HRPage'
+import StudioCalendar from './StudioCalendar'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -62,9 +65,9 @@ const DAY_TYPE_COLORS: Record<string, string> = { zastroyka: '#f59e0b', efir: '#
 
 const EVENT_COLOR = '#3b82f6'
 
-// ─── CalendarPage ─────────────────────────────────────────────────────────────
+// ─── ProjectsCalendarTab (события из Google Sheets) ──────────────────────────
 
-export function CalendarPage() {
+function ProjectsCalendarTab() {
   const qc = useQueryClient()
   const calendarRef = useRef<FullCalendar>(null)
   const isAdmin = useIsAdmin()
@@ -671,6 +674,72 @@ function EditProjectModal({
             {save.isPending ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── CalendarPage — единый календарь (4 вкладки) ─────────────────────────────
+
+type CalTab = 'events' | 'dept' | 'hr' | 'studios'
+
+const CAL_TABS: { id: CalTab; label: string }[] = [
+  { id: 'events',  label: 'Мои события' },
+  { id: 'dept',    label: 'Событийный' },
+  { id: 'hr',      label: 'HR-заявки' },
+  { id: 'studios', label: 'Студии' },
+]
+
+export function CalendarPage() {
+  const [tab, setTab] = useState<CalTab>('events')
+  const primaryDept = usePrimaryDept()
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {/* Вкладки */}
+      <div style={{
+        padding: '10px 24px',
+        borderBottom: '1px solid #e2e8f0',
+        display: 'flex',
+        gap: 4,
+        flexShrink: 0,
+        background: '#fff',
+      }}>
+        {CAL_TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            style={{
+              padding: '6px 18px',
+              borderRadius: 6,
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 13,
+              background: tab === t.id ? '#2563eb' : 'transparent',
+              color: tab === t.id ? '#fff' : '#64748b',
+              fontWeight: tab === t.id ? 600 : 400,
+              transition: 'background 0.15s',
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Контент */}
+      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+        {tab === 'events' && <ProjectsCalendarTab />}
+
+        {tab === 'dept' && !primaryDept && (
+          <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8', fontSize: 15 }}>
+            Вы не состоите ни в одном отделе
+          </div>
+        )}
+        {tab === 'dept' && primaryDept && <EventCalendar deptId={primaryDept.id} />}
+
+        {tab === 'hr' && <HRPage />}
+
+        {tab === 'studios' && <StudioCalendar />}
       </div>
     </div>
   )
