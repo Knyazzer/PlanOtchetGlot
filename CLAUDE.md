@@ -14,8 +14,8 @@
 | Фаза 1: /projects + /work-items + WorkflowPage | ✅ DONE | `0711814` |
 | Фаза 2: /departments + /dept-wi-links + DeptBoard + AdminDept | ✅ DONE | `ef6ee2f` |
 | Фаза 3: Task-система (TasksPage полноценный + overdue cron) | ✅ DONE | `7cbb66c` |
-| Фаза 4: Три вида отдела (Календарь, Гантт, Доска) | ⬜ следующая |
-| Фаза 5–6: HR, Студии, Аналитика | ⬜ |
+| Фаза 4: Три вида отдела (Календарь, Гантт, Доска) | ✅ DONE | `8034fc8` |
+| Фаза 5–6: HR, Студии, Аналитика | ⬜ следующая |
 
 **Ключевые изменения схемы (важно — весь код до rebuild'а устарел):**
 - `status_rows` таблица → `work_items` (модель `WorkItem`)
@@ -151,7 +151,7 @@ Fallback (когда RBAC-таблицы пусты): `ROLE_PERMISSIONS` в `app
 - **Zustand** — только auth (`stores/auth.ts`)
 - **Inline styles** — UI-библиотек нет (не предлагай shadcn/MUI/Tailwind)
 - **Навигация** — `useState<Page>` в `AppShell.tsx` (React Router нет, не предлагай)
-- Страницы: `calendar | workflow | analytics | users | tasks | profile | syncdata | deals | database | deptboard | admindept`
+- Страницы: `calendar | workflow | analytics | users | tasks | profile | syncdata | deals | database | deptboard | admindept | projects`
 
 ### API-роуты
 
@@ -166,6 +166,7 @@ Fallback (когда RBAC-таблицы пусты): `ROLE_PERMISSIONS` в `app
 | `/status-rows` | `routes/statusRows.ts` | legacy — используется SyncDataPage, sync-сервисом |
 | `/shifts` | `routes/shifts.ts` | |
 | `/tasks` | `routes/tasks.ts` | |
+| `/calendar/events` | `routes/calendarEvents.ts` | **Фаза 4** — CalendarEvent CRUD |
 | `/notifications` | `routes/notifications.ts` | |
 | `/sync` | `routes/sync.ts` | |
 | `/change-logs` | `routes/changeLogs.ts` | |
@@ -434,5 +435,7 @@ docker compose -f docker-compose.prod.yml up -d
 | Freelancers | `FreelancersPage.tsx` | ✅ (саб-таб InternalShiftsPanel) |
 | OrgChart | `OrgChartTab.tsx` | ✅ (саб-таб UsersPage) |
 | Tasks | `TasksPage.tsx` | ✅ Фаза 3 — канбан, Мои/Все, фильтр по отделу, polling |
+| Dept Page | `DeptPage.tsx` | ✅ Фаза 4 — 3 вкладки: Доска/Событийный/Гантт |
+| Projects Board | `ProjectsPage.tsx` | ✅ Фаза 4 — глобальный канбан проектов |
 | Analytics | `AnalyticsPage.tsx` | 🚧 |
 | Profile | `ProfilePage.tsx` | 🚧 |

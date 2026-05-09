@@ -427,27 +427,27 @@ UI:
 
 ---
 
-### Фаза 4 — Три вида отдела (Календарь, Гантт, Доска)
+### Фаза 4 — Три вида отдела (Календарь, Гантт, Доска) ✅ DONE
 **Оценка: 2–3 недели**
 
 ```
 API:
-[ ] GET  /departments/:id/board    → WI этого отдела по substatus
-[ ] GET  /departments/:id/gantt?from=&to=
+[x] GET  /departments/:id/board    → WI этого отдела по substatus
+[x] GET  /departments/:id/gantt?from=&to=
          → задачи людей отдела × время + HRStatus как "недоступен"
          → ?userId= фильтр "только мои"
 
-[ ] GET  /calendar/events?deptId=&from=&to=
-[ ] POST /calendar/events  { title, date, participantIds, isGlobal }
-[ ] PATCH/DELETE /calendar/events/:id
+[x] GET  /calendar/events?deptId=&from=&to=
+[x] POST /calendar/events  { title, date, participantIds, isGlobal }
+[x] PATCH/DELETE /calendar/events/:id
 
 UI:
-[ ] DeptPage — страница отдела с тремя вкладками:
+[x] DeptPage — страница отдела с тремя вкладками:
     [Событийный] [Гантт] [Доска проектов]
-[ ] EventCalendar.tsx — месячный календарь-блоки
-[ ] DeptGantt.tsx     — горизонтальные полосы по людям × дням
-[ ] DeptBoard.tsx     — канбан по substatus (переиспользовать из Фазы 2)
-[ ] AllProjectsBoard.tsx — директорская (Заявка/Реализация/Сдан)
+[x] EventCalendar.tsx — месячный календарь-блоки
+[x] DeptGantt.tsx     — горизонтальные полосы по людям × дням
+[x] DeptBoard.tsx     — канбан по substatus (переиспользовать из Фазы 2)
+[x] AllProjectsBoard.tsx — директорская (Заявка/Реализация/Сдан)
 ```
 
 ---
@@ -532,7 +532,7 @@ UI:
 
 ---
 
-> Обновлено: 2026-05-08 (Фаза 2)
+> Обновлено: 2026-05-09 (Фаза 4)
 > Решение А: мигрировать статусы (вариант 2) ✅
 > Решение Б: Admin UI для отделов ✅
 > Решение В: новая таблица `projects` + `work_items` (clean rebuild) ✅

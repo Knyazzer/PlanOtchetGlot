@@ -16,7 +16,8 @@ import { DatabasePage } from '../pages/DatabasePage'
 import { WorkflowPage } from '../pages/WorkflowPage'
 import { DeptPage } from '../pages/DeptPage'
 import { AdminDeptPage } from '../pages/AdminDeptPage'
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow' | 'deptboard' | 'admindept'
+import { ProjectsPage } from '../pages/ProjectsPage'
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow' | 'deptboard' | 'admindept' | 'projects'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -25,7 +26,7 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'workflow', 'deptboard', 'admindept']
+    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'workflow', 'deptboard', 'admindept', 'projects']
     return saved && valid.includes(saved) ? saved : 'calendar'
   })
 
@@ -49,6 +50,7 @@ export function AppShell() {
     { id: 'analytics', label: 'Аналитика', adminOnly: true },
     { id: 'users', label: 'Персонал', adminOnly: true },
     { id: 'workflow', label: 'Workflow', adminOrProducer: true },
+    { id: 'projects', label: 'Проекты', adminOrProducer: true },
     { id: 'deptboard', label: 'Отделы' },
     { id: 'syncdata', label: 'Данные', adminOnly: true },
     { id: 'admindept', label: 'Упр. отделами', adminOnly: true },
@@ -137,6 +139,7 @@ export function AppShell() {
       <main style={{ flex: 1, padding: '20px 16px' }}>
         {page === 'calendar' && <CalendarPage />}
         {page === 'workflow' && (isAdmin || isProducer) && <WorkflowPage />}
+        {page === 'projects' && (isAdmin || isProducer) && <ProjectsPage />}
         {page === 'tasks' && <TasksPage />}
         {page === 'analytics' && (isAdmin || isProducer) && <AnalyticsPage />}
         {page === 'users' && isAdmin && <UsersPage />}
