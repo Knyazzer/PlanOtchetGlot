@@ -28,6 +28,7 @@ import { projectsRoutes }     from '../routes/projects'
 import { workItemsRoutes }    from '../routes/workItems'
 import { departmentsRoutes }  from '../routes/departments'
 import { deptWiLinksRoutes }  from '../routes/deptWiLinks'
+import { hrStatusesRoutes }   from '../routes/hrStatuses'
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
@@ -61,6 +62,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(workItemsRoutes,   { prefix: '/work-items' })
   await app.register(departmentsRoutes, { prefix: '/departments' })
   await app.register(deptWiLinksRoutes, { prefix: '/dept-wi-links' })
+  await app.register(hrStatusesRoutes,  { prefix: '/hr-statuses' })
 
   await app.ready()
   return app

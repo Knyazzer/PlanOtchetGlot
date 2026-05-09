@@ -1,6 +1,9 @@
 import { prisma } from '@tv-shifts/db'
 
-type NotifType = 'task_assigned' | 'task_overdue' | 'task_closed'
+type NotifType =
+  | 'task_assigned' | 'task_overdue' | 'task_closed'
+  | 'hr_request_created' | 'hr_request_resolved'
+  | 'studio_conflict'
 
 export async function notify(
   type: NotifType,

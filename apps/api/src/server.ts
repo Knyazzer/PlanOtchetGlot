@@ -29,6 +29,7 @@ import { workItemsRoutes } from './routes/workItems'
 import { departmentsRoutes } from './routes/departments'
 import { deptWiLinksRoutes } from './routes/deptWiLinks'
 import { calendarEventsRoutes } from './routes/calendarEvents'
+import { hrStatusesRoutes } from './routes/hrStatuses'
 import { metricsPlugin } from './plugins/metrics'
 import { runFullSync } from './services/syncService'
 import { startOverdueChecker } from './jobs/overdueChecker'
@@ -104,6 +105,7 @@ async function main() {
   await app.register(departmentsRoutes, { prefix: '/departments' })
   await app.register(deptWiLinksRoutes,    { prefix: '/dept-wi-links' })
   await app.register(calendarEventsRoutes, { prefix: '/calendar/events' })
+  await app.register(hrStatusesRoutes,     { prefix: '/hr-statuses' })
 
   // Удалить все логи синхронизации при старте (старые данные неактуальны)
   await prisma.syncLog.deleteMany({})
