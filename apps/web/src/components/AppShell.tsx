@@ -32,7 +32,7 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const inNav: Page[] = ['calendar', 'tasks', 'deptprojects', 'workflow', 'analytics', 'users', 'syncdata', 'admindept', 'database', 'profile', 'projects']
+    const inNav: Page[] = ['calendar', 'tasks', 'deptprojects', 'workflow', 'analytics', 'users', 'syncdata', 'database', 'profile', 'projects']
     return saved && inNav.includes(saved) ? saved : 'calendar'
   })
 
@@ -63,7 +63,7 @@ export function AppShell() {
     // ── Только admin + директор ───────────────────────────────────
     { id: 'users',       label: 'Персонал',         show: isAdminOrDirector },
     { id: 'syncdata',    label: 'Данные',            show: isAdminOrDirector },
-    { id: 'admindept',   label: 'Упр. отделами',    show: isAdminOrDirector },
+    { id: 'admindept',   label: 'Упр. отделами',    show: false },
     { id: 'database',    label: 'БД',               show: isAdminOrDirector },
     // ── Скрытые (функционал уйдёт в Календарь) ───────────────────
     { id: 'projects',    label: 'Проекты (global)', show: false },
@@ -780,7 +780,7 @@ function DriveExportButton() {
 function roleLabel(roles?: string[]) {
   if (!roles?.length) return 'Сотрудник'
   if (roles.includes('admin'))        return 'Администратор'
-  if (roles.includes('dept_director')) return 'Директор отдела'
+  if (roles.includes('dept_director')) return 'Руководитель'
   if (roles.includes('producer'))     return 'Продюсер'
   if (roles.includes('spec_projects')) return 'Спецпроекты'
   if (roles.includes('accountant'))   return 'Бухгалтер'

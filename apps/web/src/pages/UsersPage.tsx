@@ -40,13 +40,16 @@ interface StaffRow {
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Администратор',
-  dept_director: 'Руководитель',
+  dept_director: 'Руководитель отдела',
   producer: 'Продюсер',
   spec_projects: 'Спецпроекты',
   accountant: 'Бухгалтер',
   hr_manager: 'HR',
   employee: 'Сотрудник',
 }
+
+// Роли, доступные для назначения в UI (admin нельзя назначить через интерфейс)
+const ASSIGNABLE_ROLES = ['employee', 'dept_director', 'producer'] as const
 
 const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
   admin:         { bg: '#ede9fe', color: '#7c3aed' },
@@ -564,8 +567,8 @@ function CreateUserModal({ onClose }: { onClose: () => void }) {
             onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}
             style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 14 }}
           >
-            {Object.entries(ROLE_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
+            {ASSIGNABLE_ROLES.map(val => (
+              <option key={val} value={val}>{ROLE_LABELS[val]}</option>
             ))}
           </select>
         </div>
@@ -634,8 +637,8 @@ function RegisterModal({ staff, onClose, onSuccess }: {
         <div style={{ marginBottom: 20 }}>
           <label style={labelSt}>Роль</label>
           <select value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} style={{ ...inputSt, cursor: 'pointer' }}>
-            {Object.entries(ROLE_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
+            {ASSIGNABLE_ROLES.map(val => (
+              <option key={val} value={val}>{ROLE_LABELS[val]}</option>
             ))}
           </select>
         </div>
