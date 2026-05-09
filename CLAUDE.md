@@ -13,8 +13,9 @@
 | Фаза 0: чистая схема (StatusRow→WorkItem, Role→RBAC) | ✅ DONE | `03eff5f`, `b6c7c62` |
 | Фаза 1: /projects + /work-items + WorkflowPage | ✅ DONE | `0711814` |
 | Фаза 2: /departments + /dept-wi-links + DeptBoard + AdminDept | ✅ DONE | `ef6ee2f` |
-| Фаза 3: Task-система (TasksPage полноценный + overdue cron) | ⬜ следующая |
-| Фаза 4–6: Календарь, HR, Аналитика | ⬜ |
+| Фаза 3: Task-система (TasksPage полноценный + overdue cron) | ✅ DONE | `7cbb66c` |
+| Фаза 4: Три вида отдела (Календарь, Гантт, Доска) | ⬜ следующая |
+| Фаза 5–6: HR, Студии, Аналитика | ⬜ |
 
 **Ключевые изменения схемы (важно — весь код до rebuild'а устарел):**
 - `status_rows` таблица → `work_items` (модель `WorkItem`)
@@ -123,6 +124,8 @@ pnpm db:studio        # GUI
 
 **API-тесты** — интеграционные, реальный PostgreSQL, `buildApp()` из `apps/api/src/test/helpers.ts`. Фабрики — `apps/api/src/test/factories.ts`. Режим `singleThread`.
 
+> ⚠️ `buildApp()` **не регистрирует** роуты Фазы 1–2 (`projectsRoutes`, `workItemsRoutes`, `departmentsRoutes`, `deptWiLinksRoutes`). Тесты этих роутов создают свой `FastifyInstance` напрямую внутри тестового файла — см. паттерн в `projects.test.ts`.
+
 **Web-тесты** — Vitest + RTL + MSW (`apps/web/src/test/msw-server.ts`).
 
 ---
@@ -192,6 +195,11 @@ TaskStatus       open | in_progress | done
 ApprovalStatus   pending | approved | rejected
 BookingStatus    preliminary | confirmed | blocked
 HRStatusType     vacation | sick | remote | business_trip | day_off
+ShiftSource      matrix | manual
+SyncType         projects | registry | matrix
+SyncStatus       running | success | error
+ChangeSource     sync | manual
+DayType          zastroyka | efir | deadline | semka
 ```
 
 ### Permissions (актуальные, включая Фазу 2)
@@ -243,7 +251,7 @@ Enum-значения требуют явного каста:
 
 - **Навигация через `useState<Page>`** — React Router не нужен, не предлагай.
 - **Inline styles** — без UI-библиотек, сознательно.
-- **Sync только вручную** — `node-cron` установлен, но не зарегистрирован.
+- **Sync только вручную** — `node-cron` зарегистрирован. Cron-job для просроченных задач: `apps/api/src/jobs/overdueChecker.ts` (каждый час).
 - **`/status-rows` роут живёт параллельно с `/work-items`** — SyncDataPage и InternalShiftsPanel ещё на нём. Постепенная миграция.
 - **Google Sheets — read-only.** Запись — только через Drive API для внутренних матриц.
 
@@ -425,6 +433,6 @@ docker compose -f docker-compose.prod.yml up -d
 | Shift Planner | `ShiftPlanner.tsx` | ✅ (саб-таб InternalShiftsPanel) |
 | Freelancers | `FreelancersPage.tsx` | ✅ (саб-таб InternalShiftsPanel) |
 | OrgChart | `OrgChartTab.tsx` | ✅ (саб-таб UsersPage) |
-| Tasks | `TasksPage.tsx` | 🚧 заглушка — Фаза 3 |
+| Tasks | `TasksPage.tsx` | ✅ Фаза 3 — канбан, Мои/Все, фильтр по отделу, polling |
 | Analytics | `AnalyticsPage.tsx` | 🚧 |
 | Profile | `ProfilePage.tsx` | 🚧 |

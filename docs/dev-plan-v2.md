@@ -397,29 +397,29 @@ UI:
 
 ---
 
-### Фаза 3 — Task-система
+### Фаза 3 — Task-система ✅ DONE
 **Оценка: 1–2 недели**
 
 ```
 API (расширить существующий /tasks):
-[ ] PATCH  /tasks/:id  добавить deadline, deptId, wiId
-[ ] GET    /tasks?deptId=&wiId=&overdue=true&assignedTo=
+[x] PATCH  /tasks/:id  добавить deadline, deptId, wiId
+[x] GET    /tasks?deptId=&wiId=&overdue=true&assignedTo=
 
-[ ] POST   /tasks/:id/assignments  (назначить исполнителя)
-[ ] DELETE /tasks/:id/assignments/:userId
+[x] POST   /tasks/:id/assignments  (назначить исполнителя)
+[x] DELETE /tasks/:id/assignments/:userId
 
 Крон-job:
-[ ] apps/api/src/jobs/overdueChecker.ts
+[x] apps/api/src/jobs/overdueChecker.ts
     — каждый час: Task WHERE deadline < NOW() AND is_overdue=false AND status != done
     — UPDATE is_overdue=true → создать уведомление task_overdue
 
 Уведомления:
-[ ] task_assigned  → исполнитель
-[ ] task_overdue   → исполнитель + создатель
-[ ] task_closed    → создатель
+[x] task_assigned  → исполнитель
+[x] task_overdue   → исполнитель + создатель
+[x] task_closed    → создатель
 
 UI:
-[ ] TasksPage — полноценный (не заглушка)
+[x] TasksPage — полноценный (не заглушка)
     Три колонки: Входящие / В работе / Готово
     + раздел «Просроченные» (isOverdue=true)
     Фильтры: по отделу, по WI, только мои
