@@ -30,6 +30,7 @@ import { departmentsRoutes } from './routes/departments'
 import { deptWiLinksRoutes } from './routes/deptWiLinks'
 import { metricsPlugin } from './plugins/metrics'
 import { runFullSync } from './services/syncService'
+import { startOverdueChecker } from './jobs/overdueChecker'
 import { prisma } from '@tv-shifts/db'
 
 const app = Fastify({ logger: true })
@@ -108,6 +109,9 @@ async function main() {
   const port = Number(process.env.PORT ?? 4000)
   await app.listen({ port, host: '0.0.0.0' })
   console.log(`API running on http://0.0.0.0:${port}`)
+
+  startOverdueChecker()
+  console.log('[cron] Overdue checker started (runs every hour)')
 
 }
 
