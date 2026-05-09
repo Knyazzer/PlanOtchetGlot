@@ -39,13 +39,10 @@ interface StaffRow {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Администратор',
+  admin:         'Администратор',
   dept_director: 'Руководитель отдела',
-  producer: 'Продюсер',
-  spec_projects: 'Спецпроекты',
-  accountant: 'Бухгалтер',
-  hr_manager: 'HR',
-  employee: 'Сотрудник',
+  producer:      'Продюсер',
+  employee:      'Сотрудник',
 }
 
 // Роли, доступные для назначения в UI (admin нельзя назначить через интерфейс)
@@ -55,9 +52,6 @@ const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
   admin:         { bg: '#ede9fe', color: '#7c3aed' },
   dept_director: { bg: '#fef3c7', color: '#b45309' },
   producer:      { bg: '#e0f2fe', color: '#0369a1' },
-  spec_projects: { bg: '#fce7f3', color: '#be185d' },
-  accountant:    { bg: '#ecfdf5', color: '#065f46' },
-  hr_manager:    { bg: '#fff7ed', color: '#c2410c' },
   employee:      { bg: '#dcfce7', color: '#16a34a' },
 }
 

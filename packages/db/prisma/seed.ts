@@ -42,6 +42,9 @@ async function main() {
     })
   }
 
+  // ── Remove obsolete roles ────────────────────────────────────────────────────
+  await prisma.appRole.deleteMany({ where: { name: { in: ['spec_projects', 'accountant', 'hr_manager'] } } })
+
   // ── Roles + role-permission bindings ─────────────────────────────────────────
 
   const ROLE_PERMISSIONS: Record<string, string[]> = {
@@ -58,21 +61,6 @@ async function main() {
       'analytics:read', 'sync:trigger', 'sync:logs',
       'projects:write', 'matrix:write',
       'members:read', 'members:bulk', 'kanban:delete',
-    ],
-
-    spec_projects: [
-      'analytics:read', 'sync:trigger', 'sync:logs',
-      'projects:write', 'matrix:write', 'internal-matrix:manage',
-      'members:read', 'members:bulk',
-      'shifts:write', 'tasks:write', 'kanban:delete',
-    ],
-
-    accountant: [
-      'analytics:read', 'deals:write', 'members:read',
-    ],
-
-    hr_manager: [
-      'analytics:read', 'users:manage', 'members:read', 'members:write', 'tasks:write',
     ],
 
     employee: [],
@@ -212,9 +200,9 @@ async function main() {
     [admin.id,          'admin'],
     [director.id,       'dept_director'],
     [producer.id,       'producer'],
-    [specUser.id,       'spec_projects'],
-    [accountantUser.id, 'accountant'],
-    [hrUser.id,         'hr_manager'],
+    [specUser.id,       'employee'],
+    [accountantUser.id, 'employee'],
+    [hrUser.id,         'employee'],
     [ivanov.id,         'employee'],
     [petrov.id,         'employee'],
     [sidorova.id,       'employee'],
@@ -339,9 +327,6 @@ async function main() {
   console.log('admin              admin@tvshifts.ru           admin123')
   console.log('dept_director      director@tvshifts.ru        user123')
   console.log('producer           producer@tvshifts.ru        user123')
-  console.log('spec_projects      spec@tvshifts.ru            user123')
-  console.log('accountant         accountant@tvshifts.ru      user123')
-  console.log('hr_manager         hr@tvshifts.ru              user123')
   console.log('employee           ivanov@tvshifts.ru          user123')
   console.log('employee           petrov@tvshifts.ru          user123')
   console.log('employee           sidorova@tvshifts.ru        user123')

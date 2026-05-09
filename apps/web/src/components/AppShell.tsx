@@ -779,22 +779,16 @@ function DriveExportButton() {
 
 function roleLabel(roles?: string[]) {
   if (!roles?.length) return 'Сотрудник'
-  if (roles.includes('admin'))        return 'Администратор'
+  if (roles.includes('admin'))         return 'Администратор'
   if (roles.includes('dept_director')) return 'Руководитель'
-  if (roles.includes('producer'))     return 'Продюсер'
-  if (roles.includes('spec_projects')) return 'Спецпроекты'
-  if (roles.includes('accountant'))   return 'Бухгалтер'
-  if (roles.includes('hr_manager'))   return 'HR-специалист'
+  if (roles.includes('producer'))      return 'Продюсер'
   return 'Сотрудник'
 }
 
 function roleColor(roles?: string[]) {
   if (!roles?.length) return '#16a34a'
-  if (roles.includes('admin'))        return '#7c3aed'
+  if (roles.includes('admin'))         return '#7c3aed'
   if (roles.includes('dept_director')) return '#0284c7'
-  if (roles.includes('producer'))     return '#0891b2'
-  if (roles.includes('spec_projects')) return '#d97706'
-  if (roles.includes('accountant'))   return '#059669'
-  if (roles.includes('hr_manager'))   return '#db2777'
+  if (roles.includes('producer'))      return '#0891b2'
   return '#16a34a'
 }

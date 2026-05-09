@@ -58,18 +58,6 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     'projects:write', 'matrix:write',
     'members:read', 'members:bulk', 'kanban:delete',
   ],
-  spec_projects: [
-    'analytics:read', 'sync:trigger', 'sync:logs',
-    'projects:write', 'matrix:write', 'internal-matrix:manage',
-    'members:read', 'members:bulk',
-    'shifts:write', 'tasks:write', 'kanban:delete',
-  ],
-  accountant: [
-    'analytics:read', 'deals:write', 'members:read',
-  ],
-  hr_manager: [
-    'analytics:read', 'users:manage', 'members:read', 'members:write', 'tasks:write',
-  ],
   employee: [],
 }
 

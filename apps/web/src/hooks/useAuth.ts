@@ -31,7 +31,7 @@ export function useIsAdmin() {
 
 export function useIsProducer() {
   return useAuthStore((s) =>
-    s.user?.roles?.some((r) => r === 'producer' || r === 'admin' || r === 'spec_projects') ??
+    s.user?.roles?.some((r) => r === 'producer' || r === 'admin') ??
     (s.user?.role === 'producer' || s.user?.role === 'admin')
   )
 }
