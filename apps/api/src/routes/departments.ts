@@ -105,26 +105,39 @@ export async function departmentsRoutes(app: FastifyInstance) {
     const toDate   = to   ? new Date(to)   : undefined
     const targetIds = userId ? [userId] : memberUserIds
 
-    const tasks = await prisma.task.findMany({
-      where: {
-        ...(targetIds.length > 0
-          ? { assignments: { some: { userId: { in: targetIds } } } }
-          : { id: 'no-match' }),
-        ...(fromDate || toDate ? {
-          AND: [
-            ...(fromDate ? [{ OR: [{ deadline: { gte: fromDate } }, { deadline: null }] }] : []),
-            ...(toDate   ? [{ createdAt: { lte: toDate } }] : []),
-          ],
-        } : {}),
-      },
-      include: {
-        assignments: { include: { user: { select: { id: true, fullName: true } } } },
-        creator:     { select: { id: true, fullName: true } },
-      },
-      orderBy: [{ deadline: 'asc' }, { createdAt: 'asc' }],
-    })
+    const [tasks, hrStatuses] = await Promise.all([
+      prisma.task.findMany({
+        where: {
+          ...(targetIds.length > 0
+            ? { assignments: { some: { userId: { in: targetIds } } } }
+            : { id: 'no-match' }),
+          ...(fromDate || toDate ? {
+            AND: [
+              ...(fromDate ? [{ OR: [{ deadline: { gte: fromDate } }, { deadline: null }] }] : []),
+              ...(toDate   ? [{ createdAt: { lte: toDate } }] : []),
+            ],
+          } : {}),
+        },
+        include: {
+          assignments: { include: { user: { select: { id: true, fullName: true } } } },
+          creator:     { select: { id: true, fullName: true } },
+        },
+        orderBy: [{ deadline: 'asc' }, { createdAt: 'asc' }],
+      }),
+      targetIds.length > 0
+        ? prisma.hRStatus.findMany({
+            where: {
+              userId: { in: targetIds },
+              status: { in: ['approved', 'pending'] as any[] },
+              dateFrom: { lte: toDate   ?? new Date('2099-12-31') },
+              dateTo:   { gte: fromDate ?? new Date('2000-01-01') },
+            },
+            select: { id: true, userId: true, type: true, dateFrom: true, dateTo: true, status: true },
+          })
+        : Promise.resolve([]),
+    ])
 
-    return { members: members.map((m) => m.user), tasks }
+    return { members: members.map((m) => m.user), tasks, hrStatuses }
   })
 
   // POST /departments — admin only

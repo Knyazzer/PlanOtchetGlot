@@ -17,9 +17,27 @@ type GanttTask = {
   assignments: { userId: string; user: { id: string; fullName: string } }[]
 }
 
+type HRStatusItem = {
+  id: string
+  userId: string
+  type: string
+  dateFrom: string
+  dateTo: string
+  status: 'pending' | 'approved'
+}
+
 type GanttData = {
   members: { id: string; fullName: string }[]
   tasks: GanttTask[]
+  hrStatuses: HRStatusItem[]
+}
+
+const HR_LABEL: Record<string, string> = {
+  vacation:      'Отпуск',
+  sick:          'Больничный',
+  remote:        'Удалёнка',
+  business_trip: 'Командировка',
+  day_off:       'Отгул',
 }
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
@@ -97,6 +115,49 @@ export function DeptGantt({ deptId }: { deptId: string }) {
       </div>
 
       {isLoading && <div style={{ color: '#64748b', fontSize: 14 }}>Загрузка...</div>}
+
+      {/* HR status blocks (unavailability) */}
+      {data && data.hrStatuses && data.hrStatuses.length > 0 && (
+        <div style={{ marginBottom: 16, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+          <div style={{ padding: '6px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: 12, fontWeight: 600, color: '#64748b' }}>
+            Недоступность
+          </div>
+          {data.members
+            .filter((m) => data.hrStatuses.some((hr) => hr.userId === m.id))
+            .map((member) => {
+              const memberHR = data.hrStatuses.filter((hr) => hr.userId === member.id)
+              return (
+                <div key={member.id} style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #f1f5f9', minHeight: 40 }}>
+                  <div style={{ width: 320, flexShrink: 0, padding: '6px 16px', borderRight: '1px solid #e2e8f0', fontSize: 13, color: '#374151' }}>
+                    {member.fullName}
+                  </div>
+                  <div style={{ flex: 1, position: 'relative', height: 40 }}>
+                    {memberHR.map((hr) => {
+                      const startOff = Math.max(0, Math.min(rangeMs, new Date(hr.dateFrom).getTime() - fromDate.getTime()))
+                      const endOff   = Math.max(0, Math.min(rangeMs, new Date(hr.dateTo).getTime()   - fromDate.getTime()))
+                      const left     = (startOff / rangeMs) * 100
+                      const width    = Math.max(1, (endOff / rangeMs) * 100 - left)
+                      return (
+                        <div
+                          key={hr.id}
+                          title={`${HR_LABEL[hr.type] ?? hr.type}${hr.status === 'pending' ? ' (ожидает)' : ''}`}
+                          style={{
+                            position: 'absolute',
+                            left: `${left}%`, width: `${width}%`,
+                            top: 8, height: 24,
+                            background: hr.status === 'approved' ? '#6b7280' : '#9ca3af',
+                            opacity: 0.7,
+                            borderRadius: 4,
+                          }}
+                        />
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+        </div>
+      )}
 
       {data && data.tasks.length === 0 && (
         <div style={{ color: '#94a3b8', fontSize: 14, textAlign: 'center', paddingTop: 40 }}>
@@ -189,6 +250,10 @@ export function DeptGantt({ deptId }: { deptId: string }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
           <span style={{ width: 12, height: 12, borderRadius: 3, background: '#dc2626' }} />
           Просрочена
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b' }}>
+          <span style={{ width: 12, height: 12, borderRadius: 3, background: '#6b7280' }} />
+          Недоступен
         </div>
       </div>
     </div>
