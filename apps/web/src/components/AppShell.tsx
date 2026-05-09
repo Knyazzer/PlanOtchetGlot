@@ -31,8 +31,8 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const valid: Page[] = ['calendar', 'analytics', 'users', 'tasks', 'profile', 'syncdata', 'deals', 'database', 'workflow', 'deptboard', 'admindept', 'projects', 'hr', 'studios']
-    return saved && valid.includes(saved) ? saved : 'calendar'
+    const inNav: Page[] = ['calendar', 'tasks', 'deptboard', 'projects', 'workflow', 'analytics', 'users', 'syncdata', 'admindept', 'database', 'profile']
+    return saved && inNav.includes(saved) ? saved : 'calendar'
   })
 
   useEffect(() => {
@@ -49,21 +49,23 @@ export function AppShell() {
     setUser(null)
   }
 
+  // HR/Студии/Клиенты скрыты из nav — переедут в Календарь
   const navItems: { id: Page; label: string; show?: boolean }[] = [
-    { id: 'calendar',  label: 'Календарь',     show: true },
-    { id: 'tasks',     label: 'Задачи',         show: true },
-    { id: 'analytics', label: 'Аналитика',      show: isAdminOrDirector || isProducer },
-    { id: 'users',     label: 'Персонал',        show: isAdminOrDirector },
-    { id: 'workflow',  label: 'Workflow',         show: isAdmin || isProducer },
+    { id: 'calendar',  label: 'Календарь',      show: true },
+    { id: 'tasks',     label: 'Задачи',          show: true },
+    { id: 'deptboard', label: 'Мой отдел',       show: true },
     { id: 'projects',  label: 'Проекты',         show: canWriteProjects },
-    { id: 'deptboard', label: 'Отделы',          show: true },
-    { id: 'hr',        label: 'HR',              show: true },
-    { id: 'studios',   label: 'Студии',          show: true },
-    { id: 'syncdata',  label: 'Данные',          show: isAdminOrDirector },
+    { id: 'workflow',  label: 'Workflow',         show: isAdmin || isProducer },
+    { id: 'analytics', label: 'Аналитика',       show: isAdminOrDirector || isProducer },
+    { id: 'users',     label: 'Персонал',         show: isAdminOrDirector },
+    { id: 'syncdata',  label: 'Данные',           show: isAdminOrDirector },
     { id: 'admindept', label: 'Упр. отделами',   show: isAdminOrDirector },
     { id: 'database',  label: 'БД',              show: isAdminOrDirector },
-    { id: 'deals',     label: 'Клиенты',         show: true },
     { id: 'profile',   label: 'Профиль',         show: true },
+    // скрытые — функционал переедет в Календарь
+    { id: 'hr',        label: 'HR',              show: false },
+    { id: 'studios',   label: 'Студии',          show: false },
+    { id: 'deals',     label: 'Клиенты',         show: false },
   ]
 
   return (
