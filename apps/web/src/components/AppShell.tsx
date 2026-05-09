@@ -14,7 +14,7 @@ import { SyncDataPage } from '../pages/SyncDataPage'
 import { DealsPage } from '../pages/DealsPage'
 import { DatabasePage } from '../pages/DatabasePage'
 import { WorkflowPage } from '../pages/WorkflowPage'
-import { DeptBoardPage } from '../pages/DeptBoardPage'
+import { DeptPage } from '../pages/DeptPage'
 import { AdminDeptPage } from '../pages/AdminDeptPage'
 type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow' | 'deptboard' | 'admindept'
 
@@ -50,7 +50,7 @@ export function AppShell() {
     { id: 'users', label: 'Персонал', adminOnly: true },
     { id: 'workflow', label: 'Workflow', adminOrProducer: true },
     { id: 'deptboard', label: 'Отделы' },
-    { id: 'syncdata', label: 'Проекты', adminOnly: true },
+    { id: 'syncdata', label: 'Данные', adminOnly: true },
     { id: 'admindept', label: 'Упр. отделами', adminOnly: true },
     { id: 'database', label: 'БД', adminOnly: true },
     { id: 'deals', label: 'Клиенты' },
@@ -142,7 +142,7 @@ export function AppShell() {
         {page === 'users' && isAdmin && <UsersPage />}
         {page === 'syncdata' && isAdmin && <SyncDataPage />}
         {page === 'database' && isAdmin && <DatabasePage />}
-        {page === 'deptboard' && <DeptBoardPage />}
+        {page === 'deptboard' && <DeptPage />}
         {page === 'admindept' && isAdmin && <AdminDeptPage />}
         {page === 'deals' && <DealsPage />}
         {page === 'profile' && <ProfilePage />}
