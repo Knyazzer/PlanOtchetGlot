@@ -232,15 +232,23 @@ export function TasksPage() {
   })
 
   const take = useMutation({
-    mutationFn: (id: string) => api.post(`/tasks/${id}/assign`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+    mutationFn: ({ id }: { id: string; wiId: string | null }) =>
+      api.post(`/tasks/${id}/assign`),
+    onSuccess: (_, { wiId }) => {
+      qc.invalidateQueries({ queryKey: ['tasks'] })
+      if (wiId) qc.invalidateQueries({ queryKey: ['work-item', wiId] })
+    },
     onError: (err: any) =>
       alert(err?.response?.data?.error ?? 'Не удалось взять задачу'),
   })
 
   const complete = useMutation({
-    mutationFn: (id: string) => api.patch(`/tasks/${id}/complete`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+    mutationFn: ({ id }: { id: string; wiId: string | null }) =>
+      api.patch(`/tasks/${id}/complete`),
+    onSuccess: (_, { wiId }) => {
+      qc.invalidateQueries({ queryKey: ['tasks'] })
+      if (wiId) qc.invalidateQueries({ queryKey: ['work-item', wiId] })
+    },
     onError: (err: any) =>
       alert(err?.response?.data?.error ?? 'Не удалось завершить задачу'),
   })
@@ -433,11 +441,17 @@ export function TasksPage() {
                       currentUserId={me?.id ?? ''}
                       onTake={(id) => {
                         setTakingId(id)
-                        take.mutate(id, { onSettled: () => setTakingId(null) })
+                        take.mutate(
+                          { id, wiId: task.wiId },
+                          { onSettled: () => setTakingId(null) },
+                        )
                       }}
                       onComplete={(id) => {
                         setCompletingId(id)
-                        complete.mutate(id, { onSettled: () => setCompletingId(null) })
+                        complete.mutate(
+                          { id, wiId: task.wiId },
+                          { onSettled: () => setCompletingId(null) },
+                        )
                       }}
                       isTaking={takingId === task.id}
                       isCompleting={completingId === task.id}
