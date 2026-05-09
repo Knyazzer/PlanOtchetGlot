@@ -1,8 +1,8 @@
 // apps/web/src/pages/TasksPage.tsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { useCurrentUser, usePrimaryDept } from '../hooks/useAuth'
+import { useCurrentUser, usePrimaryDept, useIsAdmin, useIsDeptDirector, useUserDepts } from '../hooks/useAuth'
 import { DeptGantt } from './DeptGantt'
 
 type TaskView = 'kanban' | 'gantt'
@@ -214,11 +214,22 @@ export function TasksPage() {
   const qc = useQueryClient()
   const me = useCurrentUser()
   const primaryDept = usePrimaryDept()
+  const isAdmin = useIsAdmin()
+  const isDeptDirector = useIsDeptDirector()
+  const isAdminOrDirector = isAdmin || isDeptDirector
+  const userDepts = useUserDepts()
   const [view, setView] = useState<TaskView>('kanban')
   const [scope, setScope] = useState<'my' | 'all'>('my')
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null)
   const [takingId, setTakingId] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<string | null>(null)
+
+  // Auto-select primary dept for non-admin users once auth loads
+  useEffect(() => {
+    if (!isAdminOrDirector && primaryDept && selectedDeptId === null) {
+      setSelectedDeptId(primaryDept.id)
+    }
+  }, [isAdminOrDirector, primaryDept?.id])
 
   const tasksParams = new URLSearchParams()
   if (scope === 'my') tasksParams.set('assignedToMe', 'true')
@@ -231,10 +242,13 @@ export function TasksPage() {
     refetchIntervalInBackground: false,
   })
 
-  const { data: departments = [] } = useQuery<Department[]>({
+  // Admin/director see all departments; regular users see only their own
+  const { data: allDepts = [] } = useQuery<Department[]>({
     queryKey: ['departments'],
     queryFn: () => api.get('/departments').then((r) => r.data),
+    enabled: isAdminOrDirector,
   })
+  const departments: Department[] = isAdminOrDirector ? allDepts : userDepts
 
   const take = useMutation({
     mutationFn: ({ id }: { id: string; wiId: string | null }) =>

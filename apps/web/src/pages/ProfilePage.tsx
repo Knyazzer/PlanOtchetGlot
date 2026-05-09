@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { format } from 'date-fns'
+import { format, isToday, isTomorrow, differenceInDays } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { api } from '../lib/api'
 import { useCurrentUser, useIsAdmin } from '../hooks/useAuth'
@@ -35,6 +35,16 @@ interface ShiftEntry {
   confirmed: boolean
   confirmedAt: string | null
   workItem: { id: string; name: string; client: string | null }
+}
+
+interface MyTask {
+  id: string
+  title: string
+  status: 'open' | 'in_progress' | 'done'
+  deadline: string | null
+  isOverdue: boolean
+  dept: { id: string; name: string } | null
+  workItem: { id: string; name: string } | null
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -125,6 +135,30 @@ export function ProfilePage() {
 
   const unconfirmedCount = shifts.filter(s => !s.confirmed).length
 
+  // Daily plan: tasks assigned to current user (not viewing someone else)
+  const { data: myTasks = [] } = useQuery<MyTask[]>({
+    queryKey: ['my-tasks-today'],
+    queryFn: () => api.get('/tasks?assignedToMe=true').then(r => r.data),
+    enabled: !isAdmin || !selectedUserId,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
+    staleTime: 30_000,
+  })
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const activeTasks = myTasks.filter(t => t.status !== 'done')
+  const overdueTasks = activeTasks.filter(t => t.isOverdue)
+  const todayTasks = activeTasks.filter(t => !t.isOverdue && t.deadline && isToday(new Date(t.deadline)))
+  const soonTasks = activeTasks.filter(t => {
+    if (!t.deadline || t.isOverdue) return false
+    if (isToday(new Date(t.deadline))) return false
+    const diff = differenceInDays(new Date(t.deadline), today)
+    return diff > 0 && diff <= 3
+  })
+  const inProgressNoDeadline = activeTasks.filter(t => t.status === 'in_progress' && !t.deadline && !t.isOverdue)
+
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -142,6 +176,36 @@ export function ProfilePage() {
               <option key={u.id} value={u.id}>{u.fullName} ({userRoleLabel(u)})</option>
             ))}
           </select>
+        </div>
+      )}
+
+      {/* Daily plan — only shown for own profile */}
+      {(!isAdmin || !selectedUserId) && activeTasks.length > 0 && (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+              План на сегодня — {format(new Date(), 'd MMMM', { locale: ru })}
+            </div>
+            <span style={{ marginLeft: 'auto', fontSize: 11, background: '#f1f5f9', color: '#64748b', borderRadius: 10, padding: '1px 7px' }}>
+              {activeTasks.length} задач
+            </span>
+          </div>
+          <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {overdueTasks.map(t => <DailyTaskRow key={t.id} task={t} accent="#dc2626" label="Просрочена" />)}
+            {todayTasks.map(t => <DailyTaskRow key={t.id} task={t} accent="#d97706" label="Сегодня" />)}
+            {inProgressNoDeadline.map(t => <DailyTaskRow key={t.id} task={t} accent="#2563eb" label="В работе" />)}
+            {soonTasks.map(t => {
+              const diff = differenceInDays(new Date(t.deadline!), today)
+              const label = isTomorrow(new Date(t.deadline!)) ? 'Завтра' : `+${diff} дн.`
+              return <DailyTaskRow key={t.id} task={t} accent="#7c3aed" label={label} />
+            })}
+            {activeTasks.filter(t =>
+              !t.isOverdue &&
+              !isToday(new Date(t.deadline ?? '0')) &&
+              t.status !== 'in_progress' &&
+              (!t.deadline || differenceInDays(new Date(t.deadline), today) > 3)
+            ).slice(0, 3).map(t => <DailyTaskRow key={t.id} task={t} accent="#94a3b8" label="Открыта" />)}
+          </div>
         </div>
       )}
 
@@ -269,6 +333,34 @@ function StatCard({ label, value, color = '#1e293b' }: { label: string; value: n
     <div style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', textAlign: 'center' }}>
       <div style={{ fontSize: 22, fontWeight: 700, color, marginBottom: 2 }}>{value}</div>
       <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</div>
+    </div>
+  )
+}
+
+function DailyTaskRow({ task, accent, label }: { task: MyTask; accent: string; label: string }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '7px 10px', borderRadius: 7,
+      background: '#f8fafc', border: `1px solid #f1f5f9`,
+    }}>
+      <span style={{
+        flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#fff',
+        background: accent, borderRadius: 4, padding: '2px 6px', minWidth: 56, textAlign: 'center',
+      }}>
+        {label}
+      </span>
+      <span style={{ flex: 1, fontSize: 13, color: '#1e293b', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {task.title}
+      </span>
+      {task.dept && (
+        <span style={{ fontSize: 10, color: '#94a3b8', flexShrink: 0 }}>{task.dept.name}</span>
+      )}
+      {task.deadline && (
+        <span style={{ fontSize: 10, color: accent, flexShrink: 0, fontWeight: 600 }}>
+          {format(new Date(task.deadline), 'd MMM', { locale: ru })}
+        </span>
+      )}
     </div>
   )
 }
