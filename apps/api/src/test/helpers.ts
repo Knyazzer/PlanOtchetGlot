@@ -23,6 +23,7 @@ import { databaseRoutes } from '../routes/database'
 import { matrixTemplatesRoutes } from '../routes/matrixTemplates'
 import { internalMatrixRoutes } from '../routes/internalMatrix'
 import { projectMembersRoutes } from '../routes/projectMembers'
+import { calendarEventsRoutes } from '../routes/calendarEvents'
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
@@ -51,6 +52,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(matrixTemplatesRoutes, { prefix: '/matrix-templates' })
   await app.register(internalMatrixRoutes,  { prefix: '/internal-matrix' })
   await app.register(projectMembersRoutes,  { prefix: '/project-members' })
+  await app.register(calendarEventsRoutes,  { prefix: '/calendar/events' })
 
   await app.ready()
   return app

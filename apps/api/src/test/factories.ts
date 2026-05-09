@@ -65,6 +65,8 @@ export async function cleanupTestUser(id: string) {
   await prisma.monthlySummary.deleteMany({ where: { userId: id } }).catch(() => {})
   // tasks.created_by has ON DELETE RESTRICT — delete tasks created by user first
   await prisma.task.deleteMany({ where: { createdBy: id } }).catch(() => {})
+  await prisma.calendarEventParticipant.deleteMany({ where: { userId: id } }).catch(() => {})
+  await prisma.calendarEvent.deleteMany({ where: { creatorId: id } }).catch(() => {})
   // user_notification_reads удалится каскадно при удалении user (onDelete: Cascade)
   await prisma.user.delete({ where: { id } }).catch(() => {})
 }
@@ -193,4 +195,62 @@ export async function createTestTask(options: CreateTaskOptions) {
 export async function cleanupTestTask(id: string) {
   await prisma.taskAssignment.deleteMany({ where: { taskId: id } }).catch(() => {})
   await prisma.task.delete({ where: { id } }).catch(() => {})
+}
+
+// ─── Department ───────────────────────────────────────────────────────────────
+
+interface CreateDeptOptions {
+  name?: string
+  type?: 'production' | 'support' | 'internal'
+}
+
+export async function createTestDept(options: CreateDeptOptions = {}) {
+  return prisma.department.create({
+    data: {
+      name: options.name ?? `Dept-${randomUUID().slice(0, 8)}`,
+      type: (options.type ?? 'production') as any,
+    },
+  })
+}
+
+export async function cleanupTestDept(id: string) {
+  await prisma.deptMember.deleteMany({ where: { deptId: id } }).catch(() => {})
+  await prisma.calendarEvent.deleteMany({ where: { deptId: id } }).catch(() => {})
+  await prisma.deptWILink.deleteMany({ where: { deptId: id } }).catch(() => {})
+  await prisma.department.delete({ where: { id } }).catch(() => {})
+}
+
+// ─── CalendarEvent ─────────────────────────────────────────────────────────────
+
+interface CreateCalendarEventOptions {
+  creatorId: string
+  deptId?: string
+  isGlobal?: boolean
+  date?: Date
+  title?: string
+  participantIds?: string[]
+}
+
+export async function createTestCalendarEvent(options: CreateCalendarEventOptions) {
+  return prisma.calendarEvent.create({
+    data: {
+      title:     options.title ?? 'Test Event',
+      date:      options.date  ?? new Date(),
+      creatorId: options.creatorId,
+      deptId:    options.deptId,
+      isGlobal:  options.isGlobal ?? false,
+      ...(options.participantIds?.length ? {
+        participants: {
+          createMany: {
+            data: options.participantIds.map((userId) => ({ userId })),
+            skipDuplicates: true,
+          },
+        },
+      } : {}),
+    },
+  })
+}
+
+export async function cleanupTestCalendarEvent(id: string) {
+  await prisma.calendarEvent.delete({ where: { id } }).catch(() => {})
 }
