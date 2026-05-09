@@ -225,19 +225,34 @@ export async function usersRoutes(app: FastifyInstance) {
     const importData = cfg.cached_data as { rows: { name: string; tabNumber: string; dept: string; subDept: string; position: string }[] }
     const rows = importData.rows ?? []
 
-    const [activeUsers, inactiveUsers] = await Promise.all([
+    const [activeUsers, inactiveUsers, allDepts] = await Promise.all([
       prisma.user.findMany({ where: { isActive: true  }, select: { id: true, fullName: true, tabNumber: true } }),
       prisma.user.findMany({ where: { isActive: false }, select: { id: true, fullName: true, tabNumber: true } }),
+      prisma.department.findMany({ select: { id: true, name: true } }),
     ])
 
     const activeNames = new Set(activeUsers.map((u) => u.fullName.toLowerCase().trim()))
     const activeTabs  = new Set(activeUsers.map((u) => u.tabNumber).filter(Boolean))
-    // index inactive users for fast lookup
     const inactiveByName = new Map(inactiveUsers.map((u) => [u.fullName.toLowerCase().trim(), u]))
     const inactiveByTab  = new Map(inactiveUsers.filter((u) => u.tabNumber).map((u) => [u.tabNumber!, u]))
+    // Index departments by name (case-insensitive)
+    const deptByName = new Map(allDepts.map((d) => [d.name.toLowerCase().trim(), d.id]))
 
     const hash = await bcrypt.hash(defaultPassword, 10)
     const roleRecord = await prisma.appRole.findFirst({ where: { name: role } })
+
+    async function assignToDept(userId: string, row: { subDept: string; dept: string }) {
+      // Prefer subDept (more specific), fall back to dept
+      const deptId =
+        deptByName.get(row.subDept?.toLowerCase().trim()) ??
+        deptByName.get(row.dept?.toLowerCase().trim())
+      if (!deptId) return
+      await prisma.deptMember.upsert({
+        where:  { userId_deptId: { userId, deptId } },
+        update: {},
+        create: { userId, deptId, isHead: false },
+      })
+    }
 
     let created = 0
     let skipped = 0
@@ -253,7 +268,7 @@ export async function usersRoutes(app: FastifyInstance) {
 
       const email = generateEmail(name)
 
-      // Inactive user exists → reactivate + reset password
+      // Inactive user exists → reactivate + reset password + re-assign dept
       const inactive = inactiveByName.get(name.toLowerCase()) ?? inactiveByTab.get(tabNumber)
       if (inactive) {
         await prisma.user.update({ where: { id: inactive.id }, data: { isActive: true, passwordHash: hash } })
@@ -264,6 +279,7 @@ export async function usersRoutes(app: FastifyInstance) {
             create: { userId: inactive.id, roleId: roleRecord.id },
           })
         }
+        await assignToDept(inactive.id, row)
         activeNames.add(name.toLowerCase())
         if (tabNumber) activeTabs.add(tabNumber)
         created_accounts.push({ fullName: name, email, password: defaultPassword })
@@ -271,7 +287,7 @@ export async function usersRoutes(app: FastifyInstance) {
         continue
       }
 
-      // New user → create
+      // New user → create + assign dept
       try {
         const user = await prisma.user.create({
           data: { fullName: name, email, passwordHash: hash, tabNumber: tabNumber || null, isStaff: true, isActive: true },
@@ -279,6 +295,7 @@ export async function usersRoutes(app: FastifyInstance) {
         if (roleRecord) {
           await prisma.userAppRole.create({ data: { userId: user.id, roleId: roleRecord.id } })
         }
+        await assignToDept(user.id, row)
         activeNames.add(name.toLowerCase())
         if (tabNumber) activeTabs.add(tabNumber)
         created_accounts.push({ fullName: name, email, password: defaultPassword })
