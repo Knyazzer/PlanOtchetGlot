@@ -7,4 +7,13 @@ export default defineConfig({
   server: {
     host: 'localhost',
   },
+  optimizeDeps: {
+    exclude: [
+      '@fullcalendar/react',
+      '@fullcalendar/core',
+      '@fullcalendar/daygrid',
+      '@fullcalendar/timegrid',
+      '@fullcalendar/interaction',
+    ],
+  },
 })
