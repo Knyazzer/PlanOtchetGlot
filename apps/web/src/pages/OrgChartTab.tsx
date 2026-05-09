@@ -137,6 +137,7 @@ export function OrgChartTab() {
     }
     const onMouseMove = (e: MouseEvent) => {
       if (!dragging.current) return
+      e.preventDefault()
       setOffset(o => ({ x: o.x + e.clientX - lastPos.current.x, y: o.y + e.clientY - lastPos.current.y }))
       lastPos.current = { x: e.clientX, y: e.clientY }
     }
@@ -281,7 +282,7 @@ export function OrgChartTab() {
       {/* Canvas */}
       <div
         ref={canvasRef}
-        style={{ flex: 1, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', cursor: 'grab', position: 'relative' }}
+        style={{ flex: 1, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', cursor: 'grab', position: 'relative', userSelect: 'none' }}
       >
         <div
           ref={worldRef}
