@@ -7,6 +7,20 @@ import { requirePermission } from '../config/permissions'
 import { findSheetConfig, refreshSheetData } from '../services/databaseService'
 import { logEvent } from '../services/changeLog'
 
+const TRANSLIT: Record<string, string> = {
+  а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'yo',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',
+  м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'kh',ц:'ts',ч:'ch',ш:'sh',
+  щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya',
+}
+function generateEmail(fullName: string): string {
+  const parts = fullName.trim().toLowerCase().split(/\s+/)
+  const translit = (s: string) => s.split('').map(c => TRANSLIT[c] ?? c).join('')
+  const last  = translit(parts[0] ?? 'user')
+  const first = translit(parts[1] ?? '')
+  const base  = first ? `${last}.${first}` : last
+  return `${base}@tvshifts.ru`
+}
+
 const createUserSchema = z.object({
   fullName: z.string().min(1),
   email: z.string().email(),
@@ -160,19 +174,93 @@ export async function usersRoutes(app: FastifyInstance) {
     return user
   })
 
-  // DELETE /users/:id — деактивация (admin only)
+  // DELETE /users/:id — деактивация (admin only), admin account protected
   app.delete('/:id', { preHandler: requirePermission('users:manage') }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const me = request.user as { id: string }
 
-    if (me.id === id) {
-      return reply.code(400).send({ error: 'Cannot deactivate yourself' })
+    if (me.id === id) return reply.code(400).send({ error: 'Cannot deactivate yourself' })
+
+    // Protect admin accounts from deletion
+    const targetRoles = await prisma.userAppRole.findMany({ where: { userId: id }, include: { role: true } })
+    if (targetRoles.some((r) => r.role.name === 'admin')) {
+      return reply.code(400).send({ error: 'Cannot deactivate admin account' })
     }
 
     const target = await prisma.user.findUnique({ where: { id }, select: { email: true, fullName: true } })
     await prisma.user.update({ where: { id }, data: { isActive: false } })
     logEvent('delete', id, me.id, { email: target?.email, fullName: target?.fullName }).catch(() => {})
     return { ok: true }
+  })
+
+  // DELETE /users/bulk-deactivate — deactivate all non-admin users (dev tool)
+  app.delete('/bulk-deactivate', { preHandler: requirePermission('users:manage') }, async (request, reply) => {
+    const me = request.user as { id: string }
+    // Find all admin user IDs to protect them
+    const adminRoleUsers = await prisma.userAppRole.findMany({
+      where: { role: { name: 'admin' } },
+      select: { userId: true },
+    })
+    const protectedIds = new Set([me.id, ...adminRoleUsers.map((r) => r.userId)])
+    const toDeactivate = await prisma.user.findMany({
+      where: { isActive: true, id: { notIn: [...protectedIds] } },
+      select: { id: true },
+    })
+    await prisma.user.updateMany({
+      where: { id: { in: toDeactivate.map((u) => u.id) } },
+      data: { isActive: false },
+    })
+    return { deactivated: toDeactivate.length }
+  })
+
+  // POST /users/bulk-register — register all staff-import rows without accounts (dev tool)
+  app.post('/bulk-register', { preHandler: requirePermission('users:manage') }, async (request, reply) => {
+    const body = request.body as { role?: string }
+    const role = body?.role ?? 'employee'
+    const defaultPassword = 'Tvshifts2026'
+
+    const cfg = await findSheetConfig('employees_buffer')
+    if (!cfg?.cached_data) return reply.code(400).send({ error: 'No staff import data. Refresh first.' })
+
+    const importData = cfg.cached_data as { rows: { name: string; tabNumber: string; dept: string; subDept: string; position: string }[] }
+    const rows = importData.rows ?? []
+    const existingUsers = await prisma.user.findMany({ select: { fullName: true, tabNumber: true } })
+    const existingNames = new Set(existingUsers.map((u) => u.fullName.toLowerCase().trim()))
+    const existingTabs  = new Set(existingUsers.map((u) => u.tabNumber).filter(Boolean))
+
+    const hash = await bcrypt.hash(defaultPassword, 10)
+
+    // Find target role
+    const roleRecord = await prisma.appRole.findFirst({ where: { name: role } })
+
+    let created = 0
+    let skipped = 0
+    const created_accounts: { fullName: string; email: string; password: string }[] = []
+
+    for (const row of rows) {
+      const name: string = row.name?.trim() ?? ''
+      const tabNumber: string = row.tabNumber?.trim() ?? ''
+      if (!name) { skipped++; continue }
+      if (existingNames.has(name.toLowerCase()) || (tabNumber && existingTabs.has(tabNumber))) { skipped++; continue }
+
+      const email = generateEmail(name)
+      try {
+        const user = await prisma.user.create({
+          data: { fullName: name, email, passwordHash: hash, tabNumber: tabNumber || null, isStaff: true, isActive: true },
+        })
+        if (roleRecord) {
+          await prisma.userAppRole.create({ data: { userId: user.id, roleId: roleRecord.id } })
+        }
+        existingNames.add(name.toLowerCase())
+        if (tabNumber) existingTabs.add(tabNumber)
+        created_accounts.push({ fullName: name, email, password: defaultPassword })
+        created++
+      } catch {
+        skipped++
+      }
+    }
+
+    return { created, skipped, password: defaultPassword, accounts: created_accounts }
   })
 
   // GET /users/staff-import — кэшированный список сотрудников из MAIN 2

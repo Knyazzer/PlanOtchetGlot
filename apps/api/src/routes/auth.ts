@@ -156,4 +156,52 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: 'Unauthorized' })
     }
   })
+
+  // POST /auth/impersonate/:userId — admin generates a one-time login token for another user
+  app.post('/impersonate/:userId', async (request, reply) => {
+    try {
+      await request.jwtVerify()
+      const me = request.user as { id: string; roles?: string[] }
+      if (!(me.roles ?? []).includes('admin')) return reply.code(403).send({ error: 'Admin only' })
+
+      const { userId } = request.params as { userId: string }
+      const target = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, fullName: true },
+      })
+      if (!target) return reply.code(404).send({ error: 'User not found' })
+
+      const payload = await buildJwtPayload(target.id, target)
+      // Short-lived token (5 minutes) — enough time to open new tab
+      const token = (app as any).jwt.sign({ ...payload, _impersonate: true }, { expiresIn: '5m' })
+      const url = `${process.env.WEB_URL ?? 'http://localhost:5173'}?impersonate=${token}`
+      return { token, url, targetName: target.fullName }
+    } catch {
+      return reply.code(401).send({ error: 'Unauthorized' })
+    }
+  })
+
+  // POST /auth/impersonate/consume — consume impersonation token, set cookies
+  app.post('/impersonate/consume', async (request, reply) => {
+    const { token } = request.body as { token: string }
+    if (!token) return reply.code(400).send({ error: 'Token required' })
+    try {
+      const payload = (app as any).jwt.verify(token) as { id: string; email: string; fullName: string; _impersonate?: boolean }
+      if (!payload._impersonate) return reply.code(400).send({ error: 'Invalid token type' })
+
+      const user = await prisma.user.findUnique({ where: { id: payload.id }, select: { id: true, email: true, fullName: true } })
+      if (!user) return reply.code(404).send({ error: 'User not found' })
+
+      const freshPayload = await buildJwtPayload(user.id, user)
+      const accessToken  = (app as any).jwt.sign(freshPayload, { expiresIn: '15m' })
+      const refreshToken = (app as any).jwt.sign({ id: user.id }, { expiresIn: '7d' })
+
+      reply
+        .setCookie('access_token', accessToken, { httpOnly: true, path: '/', maxAge: 60 * 15, sameSite: 'lax' })
+        .setCookie('refresh_token', refreshToken, { httpOnly: true, path: '/auth/refresh', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax' })
+      return { ok: true }
+    } catch {
+      return reply.code(401).send({ error: 'Invalid or expired token' })
+    }
+  })
 }

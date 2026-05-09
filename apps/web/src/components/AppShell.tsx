@@ -119,7 +119,12 @@ export function AppShell() {
           {(isAdmin || isProducer) && <SyncButton />}
           {isAdmin && <DriveExportButton />}
           <NotificationBell />
-          <span style={{ fontSize: 14, color: '#94a3b8' }}>{user?.fullName}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+            <span style={{ fontSize: 13, color: '#f1f5f9', lineHeight: 1.2 }}>{user?.fullName}</span>
+            {user?.depts?.[0] && (
+              <span style={{ fontSize: 11, color: '#64748b', lineHeight: 1.2 }}>{user.depts[0].name}</span>
+            )}
+          </div>
           <span style={{
             fontSize: 12,
             padding: '3px 10px',
@@ -127,6 +132,7 @@ export function AppShell() {
             background: roleColor(user?.roles),
             color: '#fff',
             fontWeight: 500,
+            flexShrink: 0,
           }}>
             {roleLabel(user?.roles)}
           </span>
