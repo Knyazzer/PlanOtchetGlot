@@ -80,6 +80,53 @@ export async function departmentsRoutes(app: FastifyInstance) {
     return board
   })
 
+  // GET /departments/:id/gantt?from=&to=&userId=
+  // Returns Tasks assigned to dept members within the date range.
+  app.get('/:id/gantt', { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const q = z.object({
+      from:   z.string().optional(),
+      to:     z.string().optional(),
+      userId: z.string().optional(),
+    }).safeParse(request.query)
+    if (!q.success) return reply.code(400).send({ error: 'Invalid query' })
+
+    const dept = await prisma.department.findUnique({ where: { id }, select: { id: true } })
+    if (!dept) return reply.code(404).send({ error: 'Department not found' })
+
+    const members = await prisma.deptMember.findMany({
+      where: { deptId: id },
+      include: { user: { select: { id: true, fullName: true } } },
+    })
+    const memberUserIds = members.map((m) => m.userId)
+
+    const { from, to, userId } = q.data
+    const fromDate = from ? new Date(from) : undefined
+    const toDate   = to   ? new Date(to)   : undefined
+    const targetIds = userId ? [userId] : memberUserIds
+
+    const tasks = await prisma.task.findMany({
+      where: {
+        ...(targetIds.length > 0
+          ? { assignments: { some: { userId: { in: targetIds } } } }
+          : { id: 'no-match' }),
+        ...(fromDate || toDate ? {
+          AND: [
+            ...(fromDate ? [{ OR: [{ deadline: { gte: fromDate } }, { deadline: null }] }] : []),
+            ...(toDate   ? [{ createdAt: { lte: toDate } }] : []),
+          ],
+        } : {}),
+      },
+      include: {
+        assignments: { include: { user: { select: { id: true, fullName: true } } } },
+        creator:     { select: { id: true, fullName: true } },
+      },
+      orderBy: [{ deadline: 'asc' }, { createdAt: 'asc' }],
+    })
+
+    return { members: members.map((m) => m.user), tasks }
+  })
+
   // POST /departments — admin only
   app.post('/', { preHandler: requirePermission('departments:manage') }, async (request, reply) => {
     const body = z.object({
