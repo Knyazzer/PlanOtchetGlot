@@ -274,11 +274,15 @@ export async function tasksRoutes(app: FastifyInstance) {
     return { ok: true }
   })
 
-  // DELETE /tasks/:id — hard delete (tasks:write permission)
-  app.delete('/:id', { preHandler: requirePermission('tasks:write') }, async (request, reply) => {
+  // DELETE /tasks/:id — creator can delete own tasks; tasks:write can delete any
+  app.delete('/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string }
     const task = await prisma.task.findUnique({ where: { id } })
     if (!task) return reply.code(404).send({ error: 'Task not found' })
+    const me = request.user as { id: string; roles?: string[]; permissions?: string[] }
+    if (task.createdBy !== me.id && !isAdminOrTasksWrite(me)) {
+      return reply.code(403).send({ error: 'Forbidden' })
+    }
     await prisma.task.delete({ where: { id } })
     return reply.code(204).send()
   })
