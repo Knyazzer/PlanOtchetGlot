@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { EventCalendar } from './EventCalendar'
 
 type DeptWILink = {
   id: string
@@ -172,11 +173,7 @@ export function DeptPage() {
           </div>
         )}
 
-        {tab === 'calendar' && (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 14 }}>
-            Событийный календарь — в разработке
-          </div>
-        )}
+        {tab === 'calendar' && deptId && <EventCalendar deptId={deptId} />}
 
         {tab === 'gantt' && (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 14 }}>
