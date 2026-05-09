@@ -5,21 +5,22 @@ import { ru } from 'date-fns/locale'
 import { useCurrentUser, useIsAdmin, useIsProducer, useIsDeptDirector } from '../hooks/useAuth'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
-import { CalendarPage } from '../pages/CalendarPage'
-import { UsersPage } from '../pages/UsersPage'
-import { TasksPage } from '../pages/TasksPage'
-import { ProfilePage } from '../pages/ProfilePage'
-import { AnalyticsPage } from '../pages/AnalyticsPage'
-import { SyncDataPage } from '../pages/SyncDataPage'
-import { DealsPage } from '../pages/DealsPage'
-import { DatabasePage } from '../pages/DatabasePage'
-import { WorkflowPage } from '../pages/WorkflowPage'
-import { DeptPage } from '../pages/DeptPage'
-import { AdminDeptPage } from '../pages/AdminDeptPage'
-import { ProjectsPage } from '../pages/ProjectsPage'
-import HRPage         from '../pages/HRPage'
-import StudioCalendar from '../pages/StudioCalendar'
-type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow' | 'deptboard' | 'admindept' | 'projects' | 'hr' | 'studios'
+import { CalendarPage }      from '../pages/CalendarPage'
+import { UsersPage }         from '../pages/UsersPage'
+import { TasksPage }         from '../pages/TasksPage'
+import { ProfilePage }       from '../pages/ProfilePage'
+import { AnalyticsPage }     from '../pages/AnalyticsPage'
+import { SyncDataPage }      from '../pages/SyncDataPage'
+import { DealsPage }         from '../pages/DealsPage'
+import { DatabasePage }      from '../pages/DatabasePage'
+import { WorkflowPage }      from '../pages/WorkflowPage'
+import { DeptProjectsPage }  from '../pages/DeptProjectsPage'
+import { AdminDeptPage }     from '../pages/AdminDeptPage'
+import { ProjectsPage }      from '../pages/ProjectsPage'
+import HRPage                from '../pages/HRPage'
+import StudioCalendar        from '../pages/StudioCalendar'
+
+type Page = 'calendar' | 'analytics' | 'users' | 'tasks' | 'profile' | 'syncdata' | 'deals' | 'database' | 'workflow' | 'deptprojects' | 'admindept' | 'projects' | 'hr' | 'studios'
 
 export function AppShell() {
   const user = useCurrentUser()
@@ -31,7 +32,7 @@ export function AppShell() {
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
-    const inNav: Page[] = ['calendar', 'tasks', 'deptboard', 'projects', 'workflow', 'analytics', 'users', 'syncdata', 'admindept', 'database', 'profile']
+    const inNav: Page[] = ['calendar', 'tasks', 'deptprojects', 'workflow', 'analytics', 'users', 'syncdata', 'admindept', 'database', 'profile', 'projects']
     return saved && inNav.includes(saved) ? saved : 'calendar'
   })
 
@@ -49,23 +50,26 @@ export function AppShell() {
     setUser(null)
   }
 
-  // HR/Студии/Клиенты скрыты из nav — переедут в Календарь
   const navItems: { id: Page; label: string; show?: boolean }[] = [
-    { id: 'calendar',  label: 'Календарь',      show: true },
-    { id: 'tasks',     label: 'Задачи',          show: true },
-    { id: 'deptboard', label: 'Мой отдел',       show: true },
-    { id: 'projects',  label: 'Проекты',         show: canWriteProjects },
-    { id: 'workflow',  label: 'Workflow',         show: isAdmin || isProducer },
-    { id: 'analytics', label: 'Аналитика',       show: isAdminOrDirector || isProducer },
-    { id: 'users',     label: 'Персонал',         show: isAdminOrDirector },
-    { id: 'syncdata',  label: 'Данные',           show: isAdminOrDirector },
-    { id: 'admindept', label: 'Упр. отделами',   show: isAdminOrDirector },
-    { id: 'database',  label: 'БД',              show: isAdminOrDirector },
-    { id: 'profile',   label: 'Профиль',         show: true },
-    // скрытые — функционал переедет в Календарь
-    { id: 'hr',        label: 'HR',              show: false },
-    { id: 'studios',   label: 'Студии',          show: false },
-    { id: 'deals',     label: 'Клиенты',         show: false },
+    // ── Базовые для всех ──────────────────────────────────────────
+    { id: 'calendar',     label: 'Календарь',     show: true },
+    { id: 'tasks',        label: 'Задачи',         show: true },
+    { id: 'deptprojects', label: 'Проекты',        show: true },
+    { id: 'profile',      label: 'Профиль',        show: true },
+    // ── Продюсер / Спецпроекты ────────────────────────────────────
+    { id: 'workflow',     label: 'Workflow',        show: isAdmin || isProducer },
+    // ── Менеджмент (admin + директор + продюсер) ─────────────────
+    { id: 'analytics',   label: 'Аналитика',       show: isAdminOrDirector || isProducer },
+    // ── Только admin + директор ───────────────────────────────────
+    { id: 'users',       label: 'Персонал',         show: isAdminOrDirector },
+    { id: 'syncdata',    label: 'Данные',            show: isAdminOrDirector },
+    { id: 'admindept',   label: 'Упр. отделами',    show: isAdminOrDirector },
+    { id: 'database',    label: 'БД',               show: isAdminOrDirector },
+    // ── Скрытые (функционал уйдёт в Календарь) ───────────────────
+    { id: 'projects',    label: 'Проекты (global)', show: false },
+    { id: 'hr',          label: 'HR',               show: false },
+    { id: 'studios',     label: 'Студии',           show: false },
+    { id: 'deals',       label: 'Клиенты',          show: false },
   ]
 
   return (
@@ -145,20 +149,21 @@ export function AppShell() {
 
       {/* Main */}
       <main style={{ flex: 1, padding: '20px 16px' }}>
-        {page === 'calendar'  && <CalendarPage />}
-        {page === 'workflow'  && (isAdmin || isProducer) && <WorkflowPage />}
-        {page === 'projects'  && canWriteProjects && <ProjectsPage />}
-        {page === 'tasks'     && <TasksPage />}
-        {page === 'analytics' && (isAdminOrDirector || isProducer) && <AnalyticsPage />}
-        {page === 'users'     && isAdminOrDirector && <UsersPage />}
-        {page === 'syncdata'  && isAdminOrDirector && <SyncDataPage />}
-        {page === 'database'  && isAdminOrDirector && <DatabasePage />}
-        {page === 'deptboard' && <DeptPage />}
-        {page === 'admindept' && isAdminOrDirector && <AdminDeptPage />}
-        {page === 'hr'        && <HRPage />}
-        {page === 'studios'   && <StudioCalendar />}
-        {page === 'deals'     && <DealsPage />}
-        {page === 'profile'   && <ProfilePage />}
+        {page === 'calendar'     && <CalendarPage />}
+        {page === 'tasks'        && <TasksPage />}
+        {page === 'deptprojects' && <DeptProjectsPage />}
+        {page === 'profile'      && <ProfilePage />}
+        {page === 'workflow'     && (isAdmin || isProducer) && <WorkflowPage />}
+        {page === 'analytics'    && (isAdminOrDirector || isProducer) && <AnalyticsPage />}
+        {page === 'users'        && isAdminOrDirector && <UsersPage />}
+        {page === 'syncdata'     && isAdminOrDirector && <SyncDataPage />}
+        {page === 'database'     && isAdminOrDirector && <DatabasePage />}
+        {page === 'admindept'    && isAdminOrDirector && <AdminDeptPage />}
+        {/* скрытые страницы — доступны пока не переехали в Календарь */}
+        {page === 'projects'     && <ProjectsPage />}
+        {page === 'hr'           && <HRPage />}
+        {page === 'studios'      && <StudioCalendar />}
+        {page === 'deals'        && <DealsPage />}
       </main>
     </div>
   )

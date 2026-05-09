@@ -137,15 +137,20 @@ export async function authRoutes(app: FastifyInstance) {
       })
       if (!user) return reply.code(404).send({ error: 'User not found' })
 
-      const [permissions, roleRows] = await Promise.all([
+      const [permissions, roleRows, deptRows] = await Promise.all([
         getUserPermissions(user.id),
         prisma.userAppRole.findMany({ where: { userId: user.id }, include: { role: true } }),
+        prisma.deptMember.findMany({
+          where: { userId: user.id },
+          include: { dept: { select: { id: true, name: true, type: true } } },
+        }),
       ])
 
       return {
         ...user,
         roles: roleRows.map((r) => r.role.name),
         permissions,
+        depts: deptRows.map((m) => ({ id: m.dept.id, name: m.dept.name, type: m.dept.type, isHead: m.isHead })),
       }
     } catch {
       return reply.code(401).send({ error: 'Unauthorized' })

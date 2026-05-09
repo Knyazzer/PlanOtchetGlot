@@ -43,3 +43,13 @@ export function useIsDeptDirector() {
 export function useHasPermission(permission: string) {
   return useAuthStore((s) => s.user?.permissions?.includes(permission) ?? false)
 }
+
+/** Первый отдел пользователя — используется для авто-выбора на страницах */
+export function usePrimaryDept() {
+  return useAuthStore((s) => s.user?.depts?.[0] ?? null)
+}
+
+/** Все отделы пользователя */
+export function useUserDepts() {
+  return useAuthStore((s) => s.user?.depts ?? [])
+}

@@ -2,7 +2,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
-import { useCurrentUser } from '../hooks/useAuth'
+import { useCurrentUser, usePrimaryDept } from '../hooks/useAuth'
+import { DeptGantt } from './DeptGantt'
+
+type TaskView = 'kanban' | 'gantt'
 
 type TaskStatus = 'open' | 'in_progress' | 'done'
 
@@ -210,6 +213,8 @@ function TaskCard({
 export function TasksPage() {
   const qc = useQueryClient()
   const me = useCurrentUser()
+  const primaryDept = usePrimaryDept()
+  const [view, setView] = useState<TaskView>('kanban')
   const [scope, setScope] = useState<'my' | 'all'>('my')
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null)
   const [takingId, setTakingId] = useState<string | null>(null)
@@ -258,7 +263,28 @@ export function TasksPage() {
     tasks.filter((t) => COL_STATUSES[col].includes(t.status))
 
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+      {/* Переключатель Канбан / Гантт */}
+      <div style={{ padding: '10px 16px', borderBottom: '1px solid #1e293b', display: 'flex', gap: 4, flexShrink: 0 }}>
+        {(['kanban', 'gantt'] as const).map((v) => (
+          <button key={v} onClick={() => setView(v)} style={{
+            padding: '5px 16px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 13,
+            background: view === v ? '#2563eb' : 'transparent',
+            color: view === v ? '#fff' : '#64748b',
+            fontWeight: view === v ? 600 : 400,
+          }}>
+            {v === 'kanban' ? 'Канбан' : 'Гантт'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'gantt' && (
+        primaryDept
+          ? <DeptGantt deptId={primaryDept.id} />
+          : <div style={{ padding: 40, color: '#94a3b8', textAlign: 'center' }}>Вы не состоите ни в одном отделе</div>
+      )}
+
+      {view === 'kanban' && <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
       {/* Sidebar */}
       <div
         style={{
@@ -463,6 +489,7 @@ export function TasksPage() {
           })}
         </div>
       </div>
+      </div>}
     </div>
   )
 }
