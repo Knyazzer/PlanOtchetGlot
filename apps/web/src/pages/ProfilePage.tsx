@@ -11,10 +11,10 @@ interface UserProfile {
   id: string
   fullName: string
   email: string
-  role: string
   tabNumber: string | null
   isStaff: boolean
   isActive: boolean
+  userRoles: { role: { name: string } }[]
 }
 
 interface MonthlySummary {
@@ -34,7 +34,7 @@ interface ShiftEntry {
   shiftType: 'zastroyka' | 'efir' | 'demontazh'
   confirmed: boolean
   confirmedAt: string | null
-  statusRow: { id: string; name: string; client: string | null }
+  workItem: { id: string; name: string; client: string | null }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -48,9 +48,14 @@ const SHIFT_LABELS: Record<string, string> = {
 const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
 
 const ROLE_LABELS: Record<string, string> = {
-  admin: 'Администратор',
+  admin:    'Администратор',
   producer: 'Продюсер',
   employee: 'Сотрудник',
+}
+
+function userRoleLabel(profile: UserProfile) {
+  const names = profile.userRoles?.map((r) => r.role.name) ?? []
+  return names.map((n) => ROLE_LABELS[n] ?? n).join(', ') || 'Сотрудник'
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -134,7 +139,7 @@ export function ProfilePage() {
           >
             <option value="">Мой профиль</option>
             {users.filter(u => u.id !== me?.id).map(u => (
-              <option key={u.id} value={u.id}>{u.fullName} ({ROLE_LABELS[u.role] ?? u.role})</option>
+              <option key={u.id} value={u.id}>{u.fullName} ({userRoleLabel(u)})</option>
             ))}
           </select>
         </div>
@@ -149,7 +154,7 @@ export function ProfilePage() {
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', marginBottom: 4 }}>{profile.fullName}</div>
             <div style={{ fontSize: 13, color: '#64748b', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              <span>{ROLE_LABELS[profile.role] ?? profile.role}</span>
+              <span>{userRoleLabel(profile)}</span>
               <span style={{ color: '#cbd5e1' }}>·</span>
               <span>{profile.email}</span>
               {profile.tabNumber && <><span style={{ color: '#cbd5e1' }}>·</span><span>Таб. №{profile.tabNumber}</span></>}
@@ -218,8 +223,8 @@ export function ProfilePage() {
                     {format(new Date(s.date), 'd MMM', { locale: ru })}
                   </td>
                   <td style={{ padding: '9px 12px', color: '#1e293b' }}>
-                    <div style={{ fontWeight: 500 }}>{s.statusRow.name}</div>
-                    {s.statusRow.client && <div style={{ fontSize: 11, color: '#94a3b8' }}>{s.statusRow.client}</div>}
+                    <div style={{ fontWeight: 500 }}>{s.workItem.name}</div>
+                    {s.workItem.client && <div style={{ fontSize: 11, color: '#94a3b8' }}>{s.workItem.client}</div>}
                   </td>
                   <td style={{ padding: '9px 12px', color: '#475569' }}>
                     {SHIFT_LABELS[s.shiftType] ?? s.shiftType}

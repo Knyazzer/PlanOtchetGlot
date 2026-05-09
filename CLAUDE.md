@@ -6,7 +6,7 @@
 
 ## 🔄 ТЕКУЩЕЕ СОСТОЯНИЕ ПРОЕКТА (обновлено 2026-05-09)
 
-**Идёт глобальный rebuild V2.** Детальный план с чекбоксами — в `docs/dev-plan-v2.md`.
+**Rebuild V2 завершён.** Детальный план с чекбоксами — в `docs/dev-plan-v2.md`.
 
 | Фаза | Статус | Коммит |
 |------|--------|--------|
@@ -15,8 +15,8 @@
 | Фаза 2: /departments + /dept-wi-links + DeptBoard + AdminDept | ✅ DONE | `ef6ee2f` |
 | Фаза 3: Task-система (TasksPage полноценный + overdue cron) | ✅ DONE | `7cbb66c` |
 | Фаза 4: Три вида отдела (Календарь, Гантт, Доска) | ✅ DONE | `8034fc8` |
-| Фаза 5: HR-заявки + Студии + Гантт-интеграция | ✅ DONE | `631c004` |
-| Фаза 6: Аналитика | ⬜ следующая |
+| Фаза 5: HR-заявки + Студии + Гантт-интеграция | ✅ DONE | `bd5dc99` |
+| Фаза 6: Аналитика + ProfilePage | ✅ DONE | текущий |
 
 **Ключевые изменения схемы (важно — весь код до rebuild'а устарел):**
 - `status_rows` таблица → `work_items` (модель `WorkItem`)
@@ -442,5 +442,5 @@ docker compose -f docker-compose.prod.yml up -d
 | Projects Board | `ProjectsPage.tsx` | ✅ Фаза 4 — глобальный канбан проектов |
 | HR | `HRPage.tsx` | ✅ Фаза 5 — заявки (подать, апрув, отклонить) |
 | Студии | `StudioCalendar.tsx` | ✅ Фаза 5 — недельный вид, бронирование, блокировка |
-| Analytics | `AnalyticsPage.tsx` | 🚧 |
-| Profile | `ProfilePage.tsx` | 🚧 |
+| Analytics | `AnalyticsPage.tsx` | ✅ Фаза 6 — Задачи / Смены / Проекты |
+| Profile | `ProfilePage.tsx` | ✅ Фаза 6 — смены за месяц, сводка, userRoles |

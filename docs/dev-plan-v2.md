@@ -477,17 +477,16 @@ UI:
 
 ---
 
-### Фаза 6 — Аналитика
-**Оценка: 1 неделя**
+### ✅ Фаза 6 — Аналитика — DONE
 
 ```
 Бэкенд /analytics готов — нужен только UI:
-[ ] AnalyticsPage — финансовый срез (план/факт) + задачный срез (загрузка)
-[ ] ProfilePage   — личная статистика сотрудника
+[x] AnalyticsPage — 3 таба: Задачи (сводка+список), Смены (по сотрудникам), Проекты (таблица)
+[x] ProfilePage   — адаптирован под новую схему (userRoles[], workItem вместо statusRow)
 
 Адаптировать к новым сущностям:
-[ ] /analytics/projects → работает с Project + WorkItem
-[ ] /analytics/tasks    → работает с Task (дедлайны, загрузка)
+[x] /analytics/projects → работает с Project + WorkItem
+[x] /analytics/tasks    → работает с Task (дедлайны, загрузка)
 ```
 
 ---
