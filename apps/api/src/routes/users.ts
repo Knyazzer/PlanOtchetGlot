@@ -240,8 +240,8 @@ export async function usersRoutes(app: FastifyInstance) {
     for (const row of rows) {
       const name: string = row.name?.trim() ?? ''
       const tabNumber: string = row.tabNumber?.trim() ?? ''
-      if (!name) { skipped++; continue }
-      if (existingNames.has(name.toLowerCase()) || (tabNumber && existingTabs.has(tabNumber))) { skipped++; continue }
+      if (!name || !tabNumber) { skipped++; continue }
+      if (existingNames.has(name.toLowerCase()) || existingTabs.has(tabNumber)) { skipped++; continue }
 
       const email = generateEmail(name)
       try {
