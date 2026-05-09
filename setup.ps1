@@ -3,8 +3,6 @@
 # Docker Desktop dolzhen byt ustanovlen i zapushchen zaranee
 
 $projectRoot = $PSScriptRoot
-$dbDir = Join-Path $projectRoot "packages\db"
-$dbUrl = "postgresql://tvshifts:tvshifts_pass@localhost:5433/tvshifts"
 
 Write-Host ""
 Write-Host "=== TV Shifts Setup ===" -ForegroundColor Yellow
@@ -30,16 +28,14 @@ if (-not $pnpmVersion) {
 }
 Write-Host "      pnpm $pnpmVersion" -ForegroundColor DarkGray
 
-# -- 3. Ustanovit zavisimosti --
+# -- 3. Ustanovit zavisimosti + sgeneririvat Prisma client --
 Write-Host "[3/6] Ustanovka zavisimostey..." -ForegroundColor Cyan
 pnpm install --dir $projectRoot
 Write-Host "      Gotovo" -ForegroundColor DarkGray
 
-# -- 3b. Prisma generate --
 Write-Host "      Generiryu Prisma client..." -ForegroundColor DarkGray
-Set-Location $dbDir
-& "$projectRoot\node_modules\.pnpm\node_modules\.bin\prisma" generate
-Set-Location $projectRoot
+pnpm db:generate
+Write-Host "      Prisma client sgenerirovan" -ForegroundColor DarkGray
 
 # -- 4. Sozdat .env --
 Write-Host "[4/6] Nastroyka peremennykh okruzheniya..." -ForegroundColor Cyan
@@ -55,7 +51,6 @@ if (-not (Test-Path $envFile)) {
 # -- 5. Zapustit bazu dannykh i primenit migracii --
 Write-Host "[5/6] Baza dannykh..." -ForegroundColor Cyan
 
-# Proverit Docker
 $dockerRunning = docker info 2>$null
 if (-not $dockerRunning) {
     Write-Host "      OSHIBKA: Docker Desktop ne zapushchen." -ForegroundColor Red
@@ -70,14 +65,10 @@ Write-Host "      Ozhidanie gotovnosti BD - 10 sekund..." -ForegroundColor DarkG
 Start-Sleep -Seconds 10
 
 Write-Host "      Primenyayu migracii..." -ForegroundColor DarkGray
-$env:DATABASE_URL = $dbUrl
-Set-Location $dbDir
-& "$projectRoot\node_modules\.pnpm\node_modules\.bin\prisma" migrate deploy
+pnpm --filter @tv-shifts/db migrate:deploy
 
 Write-Host "      Zapolnyayu testovymi dannymi..." -ForegroundColor DarkGray
-npx ts-node --compiler-options '{\"lib\":[\"ES2020\",\"DOM\"],\"module\":\"commonjs\",\"esModuleInterop\":true,\"skipLibCheck\":true}' prisma/seed.ts
-
-Set-Location $projectRoot
+pnpm db:seed
 
 # -- 6. Zapustit prilozhenie --
 Write-Host "[6/6] Zapusk prilozheniya..." -ForegroundColor Cyan
