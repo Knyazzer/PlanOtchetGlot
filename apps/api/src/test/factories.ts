@@ -5,6 +5,7 @@
 import { randomUUID } from 'crypto'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@tv-shifts/db'
+import { ROLE_PERMISSIONS } from '../config/permissions'
 
 export const TEST_PASSWORD = 'testpassword123'
 
@@ -41,6 +42,16 @@ export async function createTestUser(options: CreateUserOptions = {}) {
       update: {},
       create: { userId: user.id, roleId: appRole.id },
     })
+    // Seed RolePermission rows from the fallback map so the JWT contains correct
+    // permissions even when the test DB has no seed data in role_permissions.
+    const perms = ROLE_PERMISSIONS[options.role] ?? []
+    for (const perm of perms) {
+      await prisma.rolePermission.upsert({
+        where:  { roleId_permission: { roleId: appRole.id, permission: perm } },
+        update: {},
+        create: { roleId: appRole.id, permission: perm },
+      }).catch(() => {})
+    }
   }
 
   return user
@@ -52,6 +63,8 @@ export async function cleanupTestUser(id: string) {
   await prisma.taskAssignment.deleteMany({ where: { userId: id } }).catch(() => {})
   await prisma.notification.deleteMany({ where: { userId: id } }).catch(() => {})
   await prisma.monthlySummary.deleteMany({ where: { userId: id } }).catch(() => {})
+  // tasks.created_by has ON DELETE RESTRICT — delete tasks created by user first
+  await prisma.task.deleteMany({ where: { createdBy: id } }).catch(() => {})
   // user_notification_reads удалится каскадно при удалении user (onDelete: Cascade)
   await prisma.user.delete({ where: { id } }).catch(() => {})
 }
@@ -151,4 +164,33 @@ export async function createTestMonthlySummary(options: CreateMonthlySummaryOpti
       vacationDays:  options.vacationDays ?? 0,
     },
   })
+}
+
+// ─── Task ─────────────────────────────────────────────────────────────────────
+
+interface CreateTaskOptions {
+  title?: string
+  createdBy: string
+  deptId?: string | null
+  wiId?: string | null
+  deadline?: Date | null
+  status?: 'open' | 'in_progress' | 'done'
+}
+
+export async function createTestTask(options: CreateTaskOptions) {
+  return prisma.task.create({
+    data: {
+      title: options.title ?? `Test Task ${randomUUID().slice(0, 8)}`,
+      createdBy: options.createdBy,
+      deptId: options.deptId ?? null,
+      wiId: options.wiId ?? null,
+      deadline: options.deadline ?? null,
+      status: (options.status ?? 'open') as any,
+    },
+  })
+}
+
+export async function cleanupTestTask(id: string) {
+  await prisma.taskAssignment.deleteMany({ where: { taskId: id } }).catch(() => {})
+  await prisma.task.delete({ where: { id } }).catch(() => {})
 }
