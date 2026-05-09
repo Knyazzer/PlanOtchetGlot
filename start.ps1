@@ -1,20 +1,31 @@
 # TV Shifts -- skript zapuska dlya razrabotki
 $projectRoot = $PSScriptRoot
 
-# Ubivaem starye processy na portakh 4000 i 5173
-foreach ($port in @(4000, 5173)) {
-  $pids = netstat -ano | Select-String ":$port\s.*LISTENING" | ForEach-Object {
-    ($_ -split '\s+')[-1]
-  }
-  foreach ($p in $pids) {
-    if ($p -match '^\d+$' -and $p -ne '0') {
-      Write-Host "Killing old process on port $port (PID $p)" -ForegroundColor DarkGray
-      taskkill /PID $p /F 2>$null | Out-Null
+function Kill-Port($port) {
+    $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+    if ($conn) {
+        foreach ($c in $conn) {
+            $pid = $c.OwningProcess
+            if ($pid -and $pid -ne 0) {
+                Write-Host "  Killing PID $pid on port $port..." -ForegroundColor DarkGray
+                Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+            }
+        }
+        # Zhdat' poka port osvoboditsya (do 3 sekund)
+        $i = 0
+        while ((Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue) -and $i -lt 15) {
+            Start-Sleep -Milliseconds 200
+            $i++
+        }
     }
-  }
 }
 
-Start-Sleep -Milliseconds 500
+Write-Host ""
+Write-Host "Stopping old processes..." -ForegroundColor DarkGray
+Kill-Port 4000
+Kill-Port 5173
+Write-Host "  Ports cleared" -ForegroundColor DarkGray
+Write-Host ""
 
 # API
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "
@@ -30,7 +41,6 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "
   pnpm --filter @tv-shifts/web dev
 " -WindowStyle Normal
 
-Write-Host ""
 Write-Host "TV Shifts started!" -ForegroundColor Yellow
 Write-Host "  API:  http://localhost:4000" -ForegroundColor Cyan
 Write-Host "  Web:  http://localhost:5173" -ForegroundColor Green
