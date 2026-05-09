@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useCurrentUser, useIsAdmin, useIsDeptDirector, usePrimaryDept } from '../hooks/useAuth'
@@ -135,6 +135,11 @@ export function DeptProjectsPage() {
   const canSwitchDept = isAdmin || isDeptDirector
 
   const [deptId, setDeptId] = useState<string | null>(primaryDept?.id ?? null)
+
+  // Auto-select primary dept once auth loads (handles async auth init)
+  useEffect(() => {
+    if (primaryDept && deptId === null) setDeptId(primaryDept.id)
+  }, [primaryDept?.id])
 
   const { data: allDepts = [] } = useQuery<Department[]>({
     queryKey: ['departments'],
