@@ -29,7 +29,8 @@ export function OrgChartTab() {
     candidates: { userId: string; fullName: string }[]
   } | null>(null)
 
-  const canvasRef = useRef<HTMLDivElement>(null)
+  const [canvasEl, setCanvasEl] = useState<HTMLDivElement | null>(null)
+  const canvasRef = useCallback((el: HTMLDivElement | null) => setCanvasEl(el), [])
   const worldRef  = useRef<HTMLDivElement>(null)
   const svgRef    = useRef<SVGSVGElement>(null)
   const chartRef  = useRef<HTMLDivElement>(null)
@@ -129,39 +130,38 @@ export function OrgChartTab() {
 
   // ── Pan / Zoom ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvasEl) return
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return
-      dragging.current = true; lastPos.current = { x: e.clientX, y: e.clientY }; canvas.style.cursor = 'grabbing'
+      dragging.current = true; lastPos.current = { x: e.clientX, y: e.clientY }; canvasEl.style.cursor = 'grabbing'
     }
     const onMouseMove = (e: MouseEvent) => {
       if (!dragging.current) return
       setOffset(o => ({ x: o.x + e.clientX - lastPos.current.x, y: o.y + e.clientY - lastPos.current.y }))
       lastPos.current = { x: e.clientX, y: e.clientY }
     }
-    const onMouseUp = () => { dragging.current = false; canvas.style.cursor = 'grab' }
+    const onMouseUp = () => { dragging.current = false; canvasEl.style.cursor = 'grab' }
     const onWheel = (e: WheelEvent) => {
       e.preventDefault()
       const delta = e.deltaY > 0 ? -0.1 : 0.1
-      const rect = canvas.getBoundingClientRect()
+      const rect = canvasEl.getBoundingClientRect()
       const mx = e.clientX - rect.left, my = e.clientY - rect.top
       const s0 = scaleRef.current
       const s1 = Math.max(0.3, Math.min(2.5, s0 + delta))
       const bx = (mx - offsetRef.current.x) / s0, by = (my - offsetRef.current.y) / s0
       setScale(s1); setOffset({ x: mx - bx * s1, y: my - by * s1 })
     }
-    canvas.addEventListener('mousedown', onMouseDown)
+    canvasEl.addEventListener('mousedown', onMouseDown)
     window.addEventListener('mousemove', onMouseMove)
     window.addEventListener('mouseup', onMouseUp)
-    canvas.addEventListener('wheel', onWheel, { passive: false })
+    canvasEl.addEventListener('wheel', onWheel, { passive: false })
     return () => {
-      canvas.removeEventListener('mousedown', onMouseDown)
+      canvasEl.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mouseup', onMouseUp)
-      canvas.removeEventListener('wheel', onWheel)
+      canvasEl.removeEventListener('wheel', onWheel)
     }
-  })
+  }, [canvasEl])
 
   // ── SVG connector lines ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -202,13 +202,13 @@ export function OrgChartTab() {
   })
 
   const doZoom = useCallback((delta: number) => {
-    const canvas = canvasRef.current; if (!canvas) return
-    const rect = canvas.getBoundingClientRect()
+    if (!canvasEl) return
+    const rect = canvasEl.getBoundingClientRect()
     const cx = rect.width / 2, cy = rect.height / 2
     const s0 = scaleRef.current, s1 = Math.max(0.3, Math.min(2.5, s0 + delta))
     const bx = (cx - offsetRef.current.x) / s0, by = (cy - offsetRef.current.y) / s0
     setScale(s1); setOffset({ x: cx - bx * s1, y: cy - by * s1 })
-  }, [])
+  }, [canvasEl])
 
   // ── Head picker: find users in this sub-dept from staff import ────────────────
   const openHeadPicker = (col: DeptColumn, sub: SubCard) => {
