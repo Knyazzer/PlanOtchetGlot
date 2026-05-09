@@ -79,8 +79,8 @@ export async function tasksRoutes(app: FastifyInstance) {
     })
   })
 
-  // POST /tasks — create (tasks:write permission)
-  app.post('/', { preHandler: requirePermission('tasks:write') }, async (request, reply) => {
+  // POST /tasks — create (any authenticated user can create tasks for their dept)
+  app.post('/', { preHandler: authenticate }, async (request, reply) => {
     const body = createTaskSchema.safeParse(request.body)
     if (!body.success) {
       return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })

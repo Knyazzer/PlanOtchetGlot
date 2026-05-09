@@ -73,7 +73,7 @@ export function AppShell() {
   ]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: '#f8fafc' }}>
       {/* Header */}
       <header style={{
         background: '#1e293b',
@@ -147,23 +147,29 @@ export function AppShell() {
         </div>
       </header>
 
-      {/* Main */}
-      <main style={{ flex: 1, padding: '20px 16px' }}>
+      {/* Main — full-height pages get no padding; scrollable pages get their own wrapper */}
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {/* Full-height pages (manage own layout) */}
         {page === 'calendar'     && <CalendarPage />}
         {page === 'tasks'        && <TasksPage />}
-        {page === 'deptprojects' && <DeptProjectsPage />}
-        {page === 'profile'      && <ProfilePage />}
         {page === 'workflow'     && (isAdmin || isProducer) && <WorkflowPage />}
-        {page === 'analytics'    && (isAdminOrDirector || isProducer) && <AnalyticsPage />}
-        {page === 'users'        && isAdminOrDirector && <UsersPage />}
         {page === 'syncdata'     && isAdminOrDirector && <SyncDataPage />}
-        {page === 'database'     && isAdminOrDirector && <DatabasePage />}
-        {page === 'admindept'    && isAdminOrDirector && <AdminDeptPage />}
-        {/* скрытые страницы — доступны пока не переехали в Календарь */}
-        {page === 'projects'     && <ProjectsPage />}
-        {page === 'hr'           && <HRPage />}
-        {page === 'studios'      && <StudioCalendar />}
-        {page === 'deals'        && <DealsPage />}
+
+        {/* Scrollable padded pages */}
+        {['deptprojects','profile','analytics','users','database','admindept','projects','hr','studios','deals'].includes(page) && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px' }}>
+            {page === 'deptprojects' && <DeptProjectsPage />}
+            {page === 'profile'      && <ProfilePage />}
+            {page === 'analytics'    && (isAdminOrDirector || isProducer) && <AnalyticsPage />}
+            {page === 'users'        && isAdminOrDirector && <UsersPage />}
+            {page === 'database'     && isAdminOrDirector && <DatabasePage />}
+            {page === 'admindept'    && isAdminOrDirector && <AdminDeptPage />}
+            {page === 'projects'     && <ProjectsPage />}
+            {page === 'hr'           && <HRPage />}
+            {page === 'studios'      && <StudioCalendar />}
+            {page === 'deals'        && <DealsPage />}
+          </div>
+        )}
       </main>
     </div>
   )

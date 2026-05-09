@@ -234,10 +234,10 @@ export function CalendarPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, background: '#fff' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, background: '#fff' }}>
       {/* Панель слоёв */}
       <div style={{
-        padding: '10px 20px', borderBottom: '1px solid #e2e8f0',
+        padding: '8px 20px', borderBottom: '1px solid #e2e8f0',
         display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0,
       }}>
         <span style={{ fontSize: 12, color: '#94a3b8', marginRight: 4 }}>Показать:</span>
@@ -262,7 +262,7 @@ export function CalendarPage() {
       </div>
 
       {/* Сетка FullCalendar */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '0 4px' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 8px 8px' }}>
         <FullCalendar
           ref={calRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -279,7 +279,7 @@ export function CalendarPage() {
           dateClick={handleDateClick}
           eventClick={handleEventClick}
           selectable
-          height="100%"
+          height="auto"
           slotMinTime="07:00:00"
           slotMaxTime="23:00:00"
           allDayText="Весь день"
