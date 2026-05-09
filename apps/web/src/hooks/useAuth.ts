@@ -31,9 +31,13 @@ export function useIsAdmin() {
 
 export function useIsProducer() {
   return useAuthStore((s) =>
-    s.user?.roles?.some((r) => r === 'producer' || r === 'admin') ??
+    s.user?.roles?.some((r) => r === 'producer' || r === 'admin' || r === 'spec_projects') ??
     (s.user?.role === 'producer' || s.user?.role === 'admin')
   )
+}
+
+export function useIsDeptDirector() {
+  return useAuthStore((s) => s.user?.roles?.includes('dept_director') ?? false)
 }
 
 export function useHasPermission(permission: string) {

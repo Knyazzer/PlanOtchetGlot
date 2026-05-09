@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
-import { useCurrentUser, useIsAdmin, useIsProducer } from '../hooks/useAuth'
+import { useCurrentUser, useIsAdmin, useIsProducer, useIsDeptDirector } from '../hooks/useAuth'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
 import { CalendarPage } from '../pages/CalendarPage'
@@ -25,6 +25,9 @@ export function AppShell() {
   const user = useCurrentUser()
   const isAdmin = useIsAdmin()
   const isProducer = useIsProducer()
+  const isDeptDirector = useIsDeptDirector()
+  const isAdminOrDirector = isAdmin || isDeptDirector
+  const canWriteProjects = user?.permissions?.includes('projects:write') ?? false
   const setUser = useAuthStore((s) => s.setUser)
   const [page, setPage] = useState<Page>(() => {
     const saved = localStorage.getItem('app-page') as Page | null
@@ -46,21 +49,21 @@ export function AppShell() {
     setUser(null)
   }
 
-  const navItems: { id: Page; label: string; adminOnly?: boolean; adminOrProducer?: boolean }[] = [
-    { id: 'calendar', label: 'Календарь' },
-    { id: 'tasks', label: 'Задачи' },
-    { id: 'analytics', label: 'Аналитика', adminOnly: true },
-    { id: 'users', label: 'Персонал', adminOnly: true },
-    { id: 'workflow', label: 'Workflow', adminOrProducer: true },
-    { id: 'projects', label: 'Проекты', adminOrProducer: true },
-    { id: 'deptboard', label: 'Отделы' },
-    { id: 'hr',       label: 'HR' },
-    { id: 'studios',  label: 'Студии' },
-    { id: 'syncdata', label: 'Данные', adminOnly: true },
-    { id: 'admindept', label: 'Упр. отделами', adminOnly: true },
-    { id: 'database', label: 'БД', adminOnly: true },
-    { id: 'deals', label: 'Клиенты' },
-    { id: 'profile', label: 'Профиль' },
+  const navItems: { id: Page; label: string; show?: boolean }[] = [
+    { id: 'calendar',  label: 'Календарь',     show: true },
+    { id: 'tasks',     label: 'Задачи',         show: true },
+    { id: 'analytics', label: 'Аналитика',      show: isAdminOrDirector || isProducer },
+    { id: 'users',     label: 'Персонал',        show: isAdminOrDirector },
+    { id: 'workflow',  label: 'Workflow',         show: isAdmin || isProducer },
+    { id: 'projects',  label: 'Проекты',         show: canWriteProjects },
+    { id: 'deptboard', label: 'Отделы',          show: true },
+    { id: 'hr',        label: 'HR',              show: true },
+    { id: 'studios',   label: 'Студии',          show: true },
+    { id: 'syncdata',  label: 'Данные',          show: isAdminOrDirector },
+    { id: 'admindept', label: 'Упр. отделами',   show: isAdminOrDirector },
+    { id: 'database',  label: 'БД',              show: isAdminOrDirector },
+    { id: 'deals',     label: 'Клиенты',         show: true },
+    { id: 'profile',   label: 'Профиль',         show: true },
   ]
 
   return (
@@ -83,8 +86,7 @@ export function AppShell() {
           <span style={{ fontWeight: 700, fontSize: 18, letterSpacing: '-0.3px' }}>TV Shifts</span>
           <nav style={{ display: 'flex', gap: 4 }}>
             {navItems.map((item) => {
-              if (item.adminOnly && !isAdmin) return null
-              if (item.adminOrProducer && !isAdmin && !isProducer) return null
+              if (!item.show) return null
               return (
                 <button
                   key={item.id}
@@ -116,11 +118,11 @@ export function AppShell() {
             fontSize: 12,
             padding: '3px 10px',
             borderRadius: 10,
-            background: roleColor(user?.role),
+            background: roleColor(user?.roles),
             color: '#fff',
             fontWeight: 500,
           }}>
-            {roleLabel(user?.role)}
+            {roleLabel(user?.roles)}
           </span>
           <button
             onClick={handleLogout}
@@ -141,20 +143,20 @@ export function AppShell() {
 
       {/* Main */}
       <main style={{ flex: 1, padding: '20px 16px' }}>
-        {page === 'calendar' && <CalendarPage />}
-        {page === 'workflow' && (isAdmin || isProducer) && <WorkflowPage />}
-        {page === 'projects' && (isAdmin || isProducer) && <ProjectsPage />}
-        {page === 'tasks' && <TasksPage />}
-        {page === 'analytics' && (isAdmin || isProducer) && <AnalyticsPage />}
-        {page === 'users' && isAdmin && <UsersPage />}
-        {page === 'syncdata' && isAdmin && <SyncDataPage />}
-        {page === 'database' && isAdmin && <DatabasePage />}
+        {page === 'calendar'  && <CalendarPage />}
+        {page === 'workflow'  && (isAdmin || isProducer) && <WorkflowPage />}
+        {page === 'projects'  && canWriteProjects && <ProjectsPage />}
+        {page === 'tasks'     && <TasksPage />}
+        {page === 'analytics' && (isAdminOrDirector || isProducer) && <AnalyticsPage />}
+        {page === 'users'     && isAdminOrDirector && <UsersPage />}
+        {page === 'syncdata'  && isAdminOrDirector && <SyncDataPage />}
+        {page === 'database'  && isAdminOrDirector && <DatabasePage />}
         {page === 'deptboard' && <DeptPage />}
-        {page === 'admindept' && isAdmin && <AdminDeptPage />}
-        {page === 'hr'      && <HRPage />}
-        {page === 'studios' && <StudioCalendar />}
-        {page === 'deals' && <DealsPage />}
-        {page === 'profile' && <ProfilePage />}
+        {page === 'admindept' && isAdminOrDirector && <AdminDeptPage />}
+        {page === 'hr'        && <HRPage />}
+        {page === 'studios'   && <StudioCalendar />}
+        {page === 'deals'     && <DealsPage />}
+        {page === 'profile'   && <ProfilePage />}
       </main>
     </div>
   )
@@ -756,14 +758,24 @@ function DriveExportButton() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function roleLabel(role?: string) {
-  if (role === 'admin') return 'Администратор'
-  if (role === 'producer') return 'Продюсер'
+function roleLabel(roles?: string[]) {
+  if (!roles?.length) return 'Сотрудник'
+  if (roles.includes('admin'))        return 'Администратор'
+  if (roles.includes('dept_director')) return 'Директор отдела'
+  if (roles.includes('producer'))     return 'Продюсер'
+  if (roles.includes('spec_projects')) return 'Спецпроекты'
+  if (roles.includes('accountant'))   return 'Бухгалтер'
+  if (roles.includes('hr_manager'))   return 'HR-специалист'
   return 'Сотрудник'
 }
 
-function roleColor(role?: string) {
-  if (role === 'admin') return '#7c3aed'
-  if (role === 'producer') return '#0891b2'
+function roleColor(roles?: string[]) {
+  if (!roles?.length) return '#16a34a'
+  if (roles.includes('admin'))        return '#7c3aed'
+  if (roles.includes('dept_director')) return '#0284c7'
+  if (roles.includes('producer'))     return '#0891b2'
+  if (roles.includes('spec_projects')) return '#d97706'
+  if (roles.includes('accountant'))   return '#059669'
+  if (roles.includes('hr_manager'))   return '#db2777'
   return '#16a34a'
 }

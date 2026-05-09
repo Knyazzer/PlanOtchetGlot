@@ -47,14 +47,28 @@ const ALL_PERMISSIONS: Permission[] = [
 // Fallback permissions by role name string (used when RBAC tables are empty)
 export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
   admin: ALL_PERMISSIONS,
+  dept_director: [
+    'analytics:read', 'sync:logs',
+    'projects:write', 'tasks:write', 'shifts:write', 'kanban:delete',
+    'members:read', 'members:write', 'members:bulk',
+    'departments:manage', 'users:manage', 'database:manage',
+  ],
   producer: [
-    'analytics:read',
-    'sync:trigger',
-    'sync:logs',
-    'matrix:write',
-    'members:read',
-    'members:bulk',
-    'kanban:delete',
+    'analytics:read', 'sync:trigger', 'sync:logs',
+    'projects:write', 'matrix:write',
+    'members:read', 'members:bulk', 'kanban:delete',
+  ],
+  spec_projects: [
+    'analytics:read', 'sync:trigger', 'sync:logs',
+    'projects:write', 'matrix:write', 'internal-matrix:manage',
+    'members:read', 'members:bulk',
+    'shifts:write', 'tasks:write', 'kanban:delete',
+  ],
+  accountant: [
+    'analytics:read', 'deals:write', 'members:read',
+  ],
+  hr_manager: [
+    'analytics:read', 'users:manage', 'members:read', 'members:write', 'tasks:write',
   ],
   employee: [],
 }

@@ -46,10 +46,35 @@ async function main() {
 
   const ROLE_PERMISSIONS: Record<string, string[]> = {
     admin: ALL_PERMISSIONS.map((p) => p.name),
+
+    dept_director: [
+      'analytics:read', 'sync:logs',
+      'projects:write', 'tasks:write', 'shifts:write', 'kanban:delete',
+      'members:read', 'members:write', 'members:bulk',
+      'departments:manage', 'users:manage', 'database:manage',
+    ],
+
     producer: [
-      'analytics:read', 'sync:trigger', 'sync:logs', 'matrix:write',
+      'analytics:read', 'sync:trigger', 'sync:logs',
+      'projects:write', 'matrix:write',
       'members:read', 'members:bulk', 'kanban:delete',
     ],
+
+    spec_projects: [
+      'analytics:read', 'sync:trigger', 'sync:logs',
+      'projects:write', 'matrix:write', 'internal-matrix:manage',
+      'members:read', 'members:bulk',
+      'shifts:write', 'tasks:write', 'kanban:delete',
+    ],
+
+    accountant: [
+      'analytics:read', 'deals:write', 'members:read',
+    ],
+
+    hr_manager: [
+      'analytics:read', 'users:manage', 'members:read', 'members:write', 'tasks:write',
+    ],
+
     employee: [],
   }
 
@@ -58,16 +83,14 @@ async function main() {
     const role = await prisma.appRole.upsert({
       where:  { name: roleName },
       update: {},
-      create: { name: roleName, description: `Стандартная роль: ${roleName}` },
+      create: { name: roleName, description: `Роль: ${roleName}` },
     })
     roleMap[roleName] = role.id
 
+    // Delete old bindings so removed perms don't linger
+    await prisma.rolePermission.deleteMany({ where: { roleId: role.id } })
     for (const perm of perms) {
-      await prisma.rolePermission.upsert({
-        where:  { roleId_permission: { roleId: role.id, permission: perm } },
-        update: {},
-        create: { roleId: role.id, permission: perm },
-      })
+      await prisma.rolePermission.create({ data: { roleId: role.id, permission: perm } })
     }
   }
 
@@ -88,6 +111,18 @@ async function main() {
     },
   })
 
+  const director = await prisma.user.upsert({
+    where:  { email: 'director@tvshifts.ru' },
+    update: {},
+    create: {
+      fullName:     'Новиков Андрей Валерьевич',
+      email:        'director@tvshifts.ru',
+      passwordHash: userHash,
+      tabNumber:    '010',
+      isStaff:      true,
+    },
+  })
+
   const producer = await prisma.user.upsert({
     where:  { email: 'producer@tvshifts.ru' },
     update: {},
@@ -96,6 +131,42 @@ async function main() {
       email:        'producer@tvshifts.ru',
       passwordHash: userHash,
       isStaff:      false,
+    },
+  })
+
+  const specUser = await prisma.user.upsert({
+    where:  { email: 'spec@tvshifts.ru' },
+    update: {},
+    create: {
+      fullName:     'Громов Сергей Александрович',
+      email:        'spec@tvshifts.ru',
+      passwordHash: userHash,
+      tabNumber:    '020',
+      isStaff:      true,
+    },
+  })
+
+  const accountantUser = await prisma.user.upsert({
+    where:  { email: 'accountant@tvshifts.ru' },
+    update: {},
+    create: {
+      fullName:     'Фёдорова Елена Борисовна',
+      email:        'accountant@tvshifts.ru',
+      passwordHash: userHash,
+      tabNumber:    '030',
+      isStaff:      true,
+    },
+  })
+
+  const hrUser = await prisma.user.upsert({
+    where:  { email: 'hr@tvshifts.ru' },
+    update: {},
+    create: {
+      fullName:     'Климова Ольга Николаевна',
+      email:        'hr@tvshifts.ru',
+      passwordHash: userHash,
+      tabNumber:    '040',
+      isStaff:      true,
     },
   })
 
@@ -138,32 +209,25 @@ async function main() {
   // ── RBAC user → role assignments ─────────────────────────────────────────────
 
   const userRoleAssignments: [string, string][] = [
-    [admin.id,    'admin'],
-    [producer.id, 'producer'],
-    [ivanov.id,   'employee'],
-    [petrov.id,   'employee'],
-    [sidorova.id, 'employee'],
+    [admin.id,          'admin'],
+    [director.id,       'dept_director'],
+    [producer.id,       'producer'],
+    [specUser.id,       'spec_projects'],
+    [accountantUser.id, 'accountant'],
+    [hrUser.id,         'hr_manager'],
+    [ivanov.id,         'employee'],
+    [petrov.id,         'employee'],
+    [sidorova.id,       'employee'],
   ]
 
   for (const [userId, roleName] of userRoleAssignments) {
+    // Remove old role bindings to avoid stale assignments
+    await prisma.userAppRole.deleteMany({ where: { userId } })
     const roleId = roleMap[roleName]
-    await prisma.userAppRole.upsert({
-      where:  { userId_roleId: { userId, roleId } },
-      update: {},
-      create: { userId, roleId },
-    })
+    await prisma.userAppRole.create({ data: { userId, roleId } })
   }
 
   // ── Departments ───────────────────────────────────────────────────────────────
-  // Структура: Продюсерский центр (production)
-  //   ├── ТВ
-  //   ├── Радио
-  //   ├── Дизайн
-  //   ├── Бренд медиа
-  //   └── Корпоративные медиа
-  // Технический (support)
-  // Спецпроекты (support)
-  // Финансы / Персонал / Администрация (internal)
 
   const deptCenter = await prisma.department.upsert({
     where:  { name: 'Продюсерский центр' },
@@ -194,26 +258,27 @@ async function main() {
     deptMap[d.name] = dept.id
   }
 
-  // Admin → member of Администрация (head)
-  await prisma.deptMember.upsert({
-    where:  { userId_deptId: { userId: admin.id, deptId: deptMap['Администрация'] } },
-    update: {},
-    create: { userId: admin.id, deptId: deptMap['Администрация'], isHead: true },
-  })
+  // ── Dept memberships ──────────────────────────────────────────────────────────
 
-  // Producer → member of ТВ (head)
-  await prisma.deptMember.upsert({
-    where:  { userId_deptId: { userId: producer.id, deptId: deptMap['ТВ'] } },
-    update: {},
-    create: { userId: producer.id, deptId: deptMap['ТВ'], isHead: true },
-  })
+  type DeptAssignment = { user: { id: string }; deptName: string; isHead: boolean }
+  const deptAssignments: DeptAssignment[] = [
+    { user: admin,          deptName: 'Администрация',  isHead: true },
+    { user: director,       deptName: 'ТВ',             isHead: true },
+    { user: producer,       deptName: 'ТВ',             isHead: false },
+    { user: specUser,       deptName: 'Спецпроекты',    isHead: true },
+    { user: accountantUser, deptName: 'Финансы',        isHead: false },
+    { user: hrUser,         deptName: 'Персонал',       isHead: true },
+    { user: ivanov,         deptName: 'ТВ',             isHead: false },
+    { user: petrov,         deptName: 'ТВ',             isHead: false },
+    { user: sidorova,       deptName: 'Радио',          isHead: false },
+  ]
 
-  // Employees → members of ТВ
-  for (const u of [ivanov, petrov, sidorova]) {
+  for (const { user, deptName, isHead } of deptAssignments) {
+    const deptId = deptMap[deptName]
     await prisma.deptMember.upsert({
-      where:  { userId_deptId: { userId: u.id, deptId: deptMap['ТВ'] } },
-      update: {},
-      create: { userId: u.id, deptId: deptMap['ТВ'], isHead: false },
+      where:  { userId_deptId: { userId: user.id, deptId } },
+      update: { isHead },
+      create: { userId: user.id, deptId, isHead },
     })
   }
 
@@ -268,13 +333,20 @@ async function main() {
   })
 
   console.log('\n✅ Seed complete!')
-  console.log('─────────────────────────────────────────')
-  console.log('Admin:    admin@tvshifts.ru    / admin123')
-  console.log('Producer: producer@tvshifts.ru / user123')
-  console.log('Users:    ivanov / petrov / sidorova @tvshifts.ru / user123')
-  console.log('─────────────────────────────────────────')
+  console.log('─────────────────────────────────────────────────────────────')
+  console.log('Роль               Email                       Пароль')
+  console.log('─────────────────────────────────────────────────────────────')
+  console.log('admin              admin@tvshifts.ru           admin123')
+  console.log('dept_director      director@tvshifts.ru        user123')
+  console.log('producer           producer@tvshifts.ru        user123')
+  console.log('spec_projects      spec@tvshifts.ru            user123')
+  console.log('accountant         accountant@tvshifts.ru      user123')
+  console.log('hr_manager         hr@tvshifts.ru              user123')
+  console.log('employee           ivanov@tvshifts.ru          user123')
+  console.log('employee           petrov@tvshifts.ru          user123')
+  console.log('employee           sidorova@tvshifts.ru        user123')
+  console.log('─────────────────────────────────────────────────────────────')
   console.log(`Departments: ${Object.keys(deptMap).length}`)
-  console.log(`Roles: admin, producer, employee`)
 }
 
 main()
