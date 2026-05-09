@@ -254,3 +254,62 @@ export async function createTestCalendarEvent(options: CreateCalendarEventOption
 export async function cleanupTestCalendarEvent(id: string) {
   await prisma.calendarEvent.delete({ where: { id } }).catch(() => {})
 }
+
+// ─── HRStatus ─────────────────────────────────────────────────────────────────
+
+interface CreateHRStatusOptions {
+  userId: string
+  type?: 'vacation' | 'sick' | 'remote' | 'business_trip' | 'day_off'
+  dateFrom?: Date
+  dateTo?: Date
+  status?: 'pending' | 'approved' | 'rejected'
+}
+
+export async function createTestHRStatus(opts: CreateHRStatusOptions) {
+  const from = opts.dateFrom ?? new Date()
+  const to   = opts.dateTo   ?? new Date(Date.now() + 86_400_000)
+  return prisma.hRStatus.create({
+    data: {
+      userId:   opts.userId,
+      type:     (opts.type   ?? 'vacation')  as any,
+      status:   (opts.status ?? 'pending')   as any,
+      dateFrom: from,
+      dateTo:   to,
+    },
+  })
+}
+
+export async function cleanupTestHRStatus(id: string) {
+  await prisma.hRStatus.delete({ where: { id } }).catch(() => {})
+}
+
+// ─── StudioBooking ────────────────────────────────────────────────────────────
+
+interface CreateStudioBookingOptions {
+  createdBy: string
+  studio?: string
+  title?: string
+  date?: Date
+  timeFrom?: string
+  timeTo?: string
+  status?: 'preliminary' | 'confirmed' | 'blocked'
+}
+
+export async function createTestStudioBooking(opts: CreateStudioBookingOptions) {
+  return prisma.studioBooking.create({
+    data: {
+      studio:    opts.studio    ?? 'znamyanka_kamin',
+      title:     opts.title     ?? 'Test booking',
+      date:      opts.date      ?? new Date(),
+      timeFrom:  opts.timeFrom  ?? '10:00',
+      timeTo:    opts.timeTo    ?? '12:00',
+      status:    (opts.status   ?? 'confirmed') as any,
+      createdBy: opts.createdBy,
+    },
+  })
+}
+
+export async function cleanupTestStudioBooking(id: string) {
+  await prisma.studioBookingParticipant.deleteMany({ where: { bookingId: id } }).catch(() => {})
+  await prisma.studioBooking.delete({ where: { id } }).catch(() => {})
+}

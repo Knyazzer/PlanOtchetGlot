@@ -184,9 +184,10 @@ model User {
   managedProjects     Project[]             @relation("AccountManager")
   hrStatuses          HRStatus[]            @relation("HRUser")
   approvedHRStatuses  HRStatus[]            @relation("HRApprover")
-  studioBookings      StudioBooking[]
-  createdEvents       CalendarEvent[]
-  eventParticipations CalendarEventParticipant[]
+  studioBookings               StudioBooking[]
+  studioBookingParticipations  StudioBookingParticipant[]
+  createdEvents                CalendarEvent[]
+  eventParticipations          CalendarEventParticipant[]
 
   @@map("users")
 }
@@ -366,21 +367,34 @@ model HRStatus {
 
 model StudioBooking {
   id        String        @id @default(uuid())
-  studio    String        // "znamyanka_black" | "znamyanka_white" | "radio" | ...
+  studio    String
+  title     String
   wiId      String?       @map("wi_id")
   date      DateTime
   timeFrom  String?       @map("time_from")
   timeTo    String?       @map("time_to")
   status    BookingStatus @default(preliminary)
-  reason    String?       // для блокировок
+  reason    String?
   createdBy String        @map("created_by")
   createdAt DateTime      @default(now()) @map("created_at")
 
-  workItem WorkItem? @relation(fields: [wiId],      references: [id])
-  creator  User      @relation(fields: [createdBy], references: [id])
+  workItem     WorkItem?                  @relation(fields: [wiId],      references: [id])
+  creator      User                       @relation(fields: [createdBy], references: [id])
+  participants StudioBookingParticipant[]
 
   @@index([studio, date])
   @@map("studio_bookings")
+}
+
+model StudioBookingParticipant {
+  bookingId String @map("booking_id")
+  userId    String @map("user_id")
+
+  booking StudioBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId],    references: [id])
+
+  @@id([bookingId, userId])
+  @@map("studio_booking_participants")
 }
 
 // ─── Calendar ─────────────────────────────────────────────────────────────────
