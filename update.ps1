@@ -30,18 +30,25 @@ Write-Host "      Prisma client obnovlen" -ForegroundColor DarkGray
 
 # -- 3. Primenit novye migracii --
 Write-Host "[3/4] Primeneniye migraciy..." -ForegroundColor Cyan
-# Load .env so Prisma sees DATABASE_URL
+# Read DATABASE_URL directly from .env and pass it inline to prisma
 $envFile = "$projectRoot\.env"
+$dbUrl = $null
 if (Test-Path $envFile) {
     Get-Content $envFile | ForEach-Object {
-        if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
-            [System.Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
-        }
+        if ($_ -match '^\s*DATABASE_URL\s*=\s*(.+)$') { $dbUrl = $matches[1].Trim() }
     }
 }
-pnpm --filter @tv-shifts/db migrate:deploy
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "      OSHIBKA: migracii ne primeneny (BD nedostupna?)" -ForegroundColor Red
+if (-not $dbUrl) {
+    Write-Host "      OSHIBKA: DATABASE_URL ne nayden v .env" -ForegroundColor Red
+    exit 1
+}
+$env:DATABASE_URL = $dbUrl
+Set-Location "$projectRoot\packages\db"
+npx prisma migrate deploy
+$migrateExit = $LASTEXITCODE
+Set-Location $projectRoot
+if ($migrateExit -ne 0) {
+    Write-Host "      OSHIBKA: migracii ne primeneny" -ForegroundColor Red
     exit 1
 }
 Write-Host "      Migracii primeneny" -ForegroundColor Green
