@@ -1,5 +1,5 @@
-# TV Shifts — branch-aware dev launcher
-# Каждая ветка использует свою базу данных. Переключил ветку — запускай этот скрипт.
+# TV Shifts - branch-aware dev launcher
+# Each branch uses its own database. Switch branch -> run this script.
 
 $projectRoot = $PSScriptRoot
 $PG_USER     = "tvshifts"
@@ -7,7 +7,7 @@ $PG_PASS     = "tvshifts_pass"
 $PG_PORT     = "5433"
 $CONTAINER   = "planotchetglot-postgres-1"
 
-# ── Определяем ветку → имя БД ─────────────────────────────────────────────
+# Detect branch -> database name
 $branch = (git -C $projectRoot rev-parse --abbrev-ref HEAD 2>$null).Trim()
 if (-not $branch) { $branch = "development" }
 
@@ -21,63 +21,61 @@ $dbUrl = "postgresql://${PG_USER}:${PG_PASS}@localhost:${PG_PORT}/${dbName}"
 
 Write-Host ""
 Write-Host "=== TV Shifts ===" -ForegroundColor Yellow
-Write-Host "  Ветка:  $branch" -ForegroundColor Cyan
-Write-Host "  БД:     $dbName" -ForegroundColor Cyan
+Write-Host "  Branch: $branch" -ForegroundColor Cyan
+Write-Host "  DB:     $dbName" -ForegroundColor Cyan
 Write-Host ""
 
-# ── Проверяем Docker ────────────────────────────────────────────────────────
+# Check Docker
 $running = docker compose -f "$projectRoot\docker-compose.dev.yml" ps --status running --quiet 2>$null
 if (-not $running) {
-    Write-Host "Запускаю Docker..." -ForegroundColor DarkGray
+    Write-Host "Starting Docker..." -ForegroundColor DarkGray
     docker compose -f "$projectRoot\docker-compose.dev.yml" up -d
-    Write-Host "Жду готовности БД..." -ForegroundColor DarkGray
+    Write-Host "Waiting for DB..." -ForegroundColor DarkGray
     Start-Sleep -Seconds 5
 }
 
-# ── Создаём БД если не существует ───────────────────────────────────────────
+# Create DB if not exists
 $exists = docker exec $CONTAINER psql -U $PG_USER -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$dbName'" 2>$null
 if ($exists -ne "1") {
-    Write-Host "Создаю базу данных '$dbName'..." -ForegroundColor DarkGray
+    Write-Host "Creating database '$dbName'..." -ForegroundColor DarkGray
     docker exec $CONTAINER psql -U $PG_USER -d postgres -c "CREATE DATABASE `"$dbName`";" 2>$null | Out-Null
 
-    # Применяем миграции
-    Write-Host "Применяю миграции..." -ForegroundColor DarkGray
+    Write-Host "Applying migrations..." -ForegroundColor DarkGray
     $env:DATABASE_URL = $dbUrl
     Set-Location "$projectRoot\packages\db"
     npx prisma migrate deploy | Out-Null
     Set-Location $projectRoot
 
-    # Сид
-    Write-Host "Заполняю начальные данные..." -ForegroundColor DarkGray
+    Write-Host "Seeding initial data..." -ForegroundColor DarkGray
     $env:DATABASE_URL = $dbUrl
     pnpm db:seed | Out-Null
 
-    Write-Host "  База '$dbName' готова" -ForegroundColor Green
+    Write-Host "  Database '$dbName' ready" -ForegroundColor Green
 } else {
-    # БД уже есть — только применяем новые миграции
-    $pendingCheck = $null
+    # DB exists - only apply pending migrations
     $env:DATABASE_URL = $dbUrl
     Set-Location "$projectRoot\packages\db"
     $migrateOut = npx prisma migrate deploy 2>&1
     Set-Location $projectRoot
-    if ($migrateOut -match "migrations have been applied|No pending migrations") {
-        # ok
-    } else {
+    if ($migrateOut -notmatch "migrations have been applied|No pending migrations") {
         Write-Host $migrateOut -ForegroundColor DarkGray
     }
 }
 
-# ── Обновляем .env ──────────────────────────────────────────────────────────
+# Update .env
 $envPath = "$projectRoot\.env"
-$envContent = Get-Content $envPath -Raw
-$envContent = $envContent -replace 'DATABASE_URL=.*', "DATABASE_URL=$dbUrl"
-# Обновляем также POSTGRES_DB
-$envContent = $envContent -replace 'POSTGRES_DB=.*', "POSTGRES_DB=$dbName"
-Set-Content $envPath $envContent -Encoding UTF8 -NoNewline
-Write-Host "  .env обновлён (DATABASE_URL → $dbName)" -ForegroundColor DarkGray
+if (Test-Path $envPath) {
+    $envContent = Get-Content $envPath -Raw -Encoding UTF8
+    $envContent = $envContent -replace 'DATABASE_URL=.*', "DATABASE_URL=$dbUrl"
+    $envContent = $envContent -replace 'POSTGRES_DB=.*', "POSTGRES_DB=$dbName"
+    Set-Content $envPath $envContent -Encoding UTF8 -NoNewline
+    Write-Host "  .env updated (DATABASE_URL -> $dbName)" -ForegroundColor DarkGray
+} else {
+    Write-Host "  WARNING: .env not found at $envPath" -ForegroundColor Yellow
+}
 Write-Host ""
 
-# ── Убиваем старые процессы ─────────────────────────────────────────────────
+# Kill old processes
 function Kill-Port($port) {
     $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($conn) {
@@ -96,7 +94,7 @@ function Kill-Port($port) {
 Kill-Port 4000
 Kill-Port 5173
 
-# ── Запускаем API и Web ─────────────────────────────────────────────────────
+# Start API and Web
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "
   `$env:DATABASE_URL = '$dbUrl'
   Set-Location '$projectRoot'
@@ -110,11 +108,11 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "
   pnpm --filter @tv-shifts/web dev
 " -WindowStyle Normal
 
-Write-Host "TV Shifts запущен!" -ForegroundColor Yellow
+Write-Host "TV Shifts started!" -ForegroundColor Yellow
 Write-Host "  API: http://localhost:4000" -ForegroundColor Cyan
 Write-Host "  Web: http://localhost:5173" -ForegroundColor Green
 Write-Host ""
-Write-Host "Чтобы переключить ветку:" -ForegroundColor DarkGray
+Write-Host "To switch branch:" -ForegroundColor DarkGray
 Write-Host "  git checkout rebuild-v3" -ForegroundColor DarkGray
 Write-Host "  .\start.ps1" -ForegroundColor DarkGray
 Write-Host ""
