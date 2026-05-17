@@ -30,6 +30,15 @@ Write-Host "      Prisma client obnovlen" -ForegroundColor DarkGray
 
 # -- 3. Primenit novye migracii --
 Write-Host "[3/4] Primeneniye migraciy..." -ForegroundColor Cyan
+# Load .env so Prisma sees DATABASE_URL
+$envFile = "$projectRoot\.env"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
+            [System.Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
+        }
+    }
+}
 pnpm --filter @tv-shifts/db migrate:deploy
 if ($LASTEXITCODE -ne 0) {
     Write-Host "      OSHIBKA: migracii ne primeneny (BD nedostupna?)" -ForegroundColor Red
