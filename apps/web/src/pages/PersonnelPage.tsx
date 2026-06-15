@@ -17,6 +17,7 @@ interface PersonUser {
   userType:  string
   role:      string
   isAdmin:   boolean
+  canAccessPlatform: boolean
   isActive:  boolean
   authId:    string | null
   tempPassword: string | null
@@ -273,6 +274,17 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
   const [isWorking, setIsWorking] = useState(person.isActive)  // занятость: активен/уволен
   const [saved,         setSaved]         = useState(false)
   const [tempPw,        setTempPw]        = useState<string | null>(null)
+  const [platformAccess, setPlatformAccess] = useState(person.canAccessPlatform)
+  useEffect(() => { setPlatformAccess(person.canAccessPlatform) }, [person.canAccessPlatform])
+
+  const togglePlatform = useMutation({
+    mutationFn: (value: boolean) => api.patch(`/users/${person.id}`, { canAccessPlatform: value }),
+    onSuccess: () => qc.invalidateQueries({ queryKey, refetchType: 'all' }),
+    onError: (err: any) => {
+      setPlatformAccess(person.canAccessPlatform)  // откат оптимистичного переключения
+      alert(err?.response?.data?.error ?? 'Не удалось изменить доступ в платформу')
+    },
+  })
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -462,6 +474,31 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
               </div>
             )}
           </div>
+
+          {/* Доступ в платформу (бета): пускает не-админа внутрь AppShell вместо заглушки-кабинета */}
+          {person.authId && !isAdminUser && (
+            <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Доступ в платформу (бета)</span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Пускает внутрь Nexus вместо кабинета</span>
+              </div>
+              <button
+                onClick={() => { const next = !platformAccess; setPlatformAccess(next); togglePlatform.mutate(next) }}
+                disabled={togglePlatform.isPending}
+                style={{
+                  width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: platformAccess ? 'var(--success)' : 'rgba(255,255,255,0.1)',
+                  position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: platformAccess ? 21 : 3,
+                  width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s',
+                }} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
