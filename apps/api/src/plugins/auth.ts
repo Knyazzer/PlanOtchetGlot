@@ -32,7 +32,7 @@ async function loadUser(request: FastifyRequest, reply: FastifyReply): Promise<b
 
     const user = await prisma.user.findUnique({
       where,
-      select: { id: true, email: true, name: true, isAdmin: true, canAccessInventory: true, isActive: true },
+      select: { id: true, email: true, name: true, isAdmin: true, canAccessInventory: true, canAccessPlatform: true, isActive: true },
     })
     if (!user || !user.isActive) {
       reply.code(401).send({ error: 'Unauthorized' })
@@ -52,6 +52,7 @@ async function loadUser(request: FastifyRequest, reply: FastifyReply): Promise<b
       name: user.name,
       isAdmin: user.isAdmin,
       canAccessInventory: user.canAccessInventory,
+      canAccessPlatform: user.canAccessPlatform,
       roles: user.isAdmin ? ['admin'] : [],
     }
     ;(request as any).__nexusUserLoaded = true

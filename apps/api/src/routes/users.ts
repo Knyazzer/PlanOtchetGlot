@@ -55,7 +55,7 @@ const USER_SELECT = {
   id: true, name: true, email: true, tabNumber: true,
   position: true, department: true, subDept: true,
   userType: true, role: true, isAdmin: true, isActive: true,
-  canAccessInventory: true, authId: true, createdAt: true,
+  canAccessInventory: true, canAccessPlatform: true, authId: true, createdAt: true,
   mustChangePassword: true, tempPassword: true,
 } as const
 
@@ -183,6 +183,7 @@ export async function usersRoutes(app: FastifyInstance) {
       role:                z.string().optional(),
       isActive:            z.boolean().optional(),
       canAccessInventory:  z.boolean().optional(),
+      canAccessPlatform:   z.boolean().optional(),
     })
     const body = schema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
@@ -212,6 +213,7 @@ export async function usersRoutes(app: FastifyInstance) {
           ...(d.role               !== undefined && { role:               d.role }),
           ...(d.isActive           !== undefined && { isActive:           d.isActive }),
           ...(d.canAccessInventory !== undefined && { canAccessInventory: d.canAccessInventory }),
+          ...(d.canAccessPlatform  !== undefined && { canAccessPlatform:  d.canAccessPlatform }),
         },
         select: USER_SELECT,
       })
