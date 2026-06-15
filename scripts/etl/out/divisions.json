@@ -1,0 +1,134 @@
+[
+ {
+  "id": "Бренд_медиа_департамент_Администрация",
+  "name": "Администрация",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "Бренд_медиа_департамент_Музыкальная_редакция",
+  "name": "Музыкальная редакция",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "brand_div",
+  "name": "Отдел бренд медиа",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "Радио_департамент_Администрация",
+  "name": "Администрация",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "radio_red",
+  "name": "Радио редакция",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "ТВ_департамент_Администрация",
+  "name": "Администрация",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "tv_edit",
+  "name": "Отдел видеомонтажа",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "tv",
+  "name": "ТВ отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "tv_prod",
+  "name": "Продюсерский отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "tv_tech",
+  "name": "Технический отдел ТВ",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "ТВ_департамент_Креативный_отде",
+  "name": "Креативный отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "Департамент_персонала_АХО",
+  "name": "АХО",
+  "departmentId": "hr",
+  "departmentName": "Департамент персонала"
+ },
+ {
+  "id": "hr_hr",
+  "name": "Отдел персонала",
+  "departmentId": "hr",
+  "departmentName": "Департамент персонала"
+ },
+ {
+  "id": "design_graph",
+  "name": "Отдел графического дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "design_motion",
+  "name": "Отдел моушн-дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "name": "Отдел копр медиа",
+  "departmentId": "corp",
+  "departmentName": "Корп медиа департамент"
+ },
+ {
+  "id": "special_sp",
+  "name": "Отдел спецпроектов",
+  "departmentId": "special",
+  "departmentName": "Коммерческий департамент"
+ },
+ {
+  "id": "Коммерческий_департамент_Отдел",
+  "name": "Отдел маркетинга",
+  "departmentId": "special",
+  "departmentName": "Коммерческий департамент"
+ },
+ {
+  "id": "tech_tech",
+  "name": "Технический отдел",
+  "departmentId": "tech",
+  "departmentName": "Технический департамент"
+ },
+ {
+  "id": "fin_fin",
+  "name": "Финансовый отдел",
+  "departmentId": "fin",
+  "departmentName": "Финансовый департамент"
+ },
+ {
+  "id": "Финансовый_департамент_Юридиче",
+  "name": "Юридический отдел",
+  "departmentId": "fin",
+  "departmentName": "Финансовый департамент"
+ },
+ {
+  "id": "Администрация_Администрация",
+  "name": "Администрация",
+  "departmentId": "Администрация",
+  "departmentName": "Администрация"
+ }
+]

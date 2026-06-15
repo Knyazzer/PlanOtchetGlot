@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Shifts — Календарь</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Urbanist', sans-serif;
+    background: #0A0A0C;
+    color: #FFFFFF;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ===== LEFT SIDEBAR ===== */
+  .left-sidebar {
+    width: 200px;
+    flex-shrink: 0;
+    background: #131318;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 18px 14px;
+    gap: 6px;
+  }
+
+  .sidebar-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    color: #464658;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .calendar-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 6px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+    user-select: none;
+  }
+  .calendar-item:hover { background: rgba(255,255,255,0.04); }
+
+  .cal-checkbox {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #FFFFFF;
+    transition: background 0.12s, border-color 0.12s;
+    border: 2px solid;
+    line-height: 1;
+  }
+
+  .cal-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #C0C0CC;
+    transition: color 0.12s;
+  }
+  .calendar-item:hover .cal-name { color: #FFFFFF; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+  /* Header */
+  .app-header {
+    background: #131318;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .logo {
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #FF6B35, #E8194B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.3px;
+    white-space: nowrap;
+  }
+
+  .header-divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(255,255,255,0.07);
+  }
+
+  .nav-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.07);
+    color: #8A8A9A;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s ease;
+    font-family: 'Urbanist', sans-serif;
+  }
+  .nav-btn:hover {
+    border-color: rgba(255,255,255,0.15);
+    color: #FFFFFF;
+    background: rgba(255,255,255,0.04);
+  }
+
+  .current-period {
+    font-size: 16px;
+    font-weight: 600;
+    color: #FFFFFF;
+    min-width: 160px;
+    text-align: center;
+  }
+
+  .today-btn {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #8A8A9A;
+    padding: 0 14px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Urbanist', sans-serif;
+    transition: all 0.15s ease;
+  }
+  .today-btn:hover {
+    border-color: rgba(255,107,53,0.4);
+    color: #FF6B35;
+    background: rgba(255,107,53,0.06);
+  }
+
+  /* View Toggle */
+  .view-toggle {
+    display: flex;
+    background: #0A0A0C;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+    margin-left: auto;
+  }
+
+  .view-btn {
+    background: none;
+    border: none;
+    color: #8A8A9A;
+    padding: 5px 16px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'Urbanist', sans-serif;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .view-btn:hover:not(.active) {
+    color: #FFFFFF;
+    background: rgba(255,255,255,0.04);
+  }
+  .view-btn.active {
+    background: linear-gradient(135deg, #FF6B35, #E8194B);
+    color: #FFFFFF;
+    font-weight: 600;
+  }
+
+  /* Main Layout */
+  .app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Calendar Main */
+  .calendar-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ===== MONTH VIEW ===== */
+  .month-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+  .weekday-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #131318;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-shrink: 0;
+  }
+  .weekday-label {
+    padding: 10px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #464658;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-align: center;
+  }
+
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    flex: 1;
+    overflow-y: auto;
+    grid-auto-rows: minmax(100px, 1fr);
+  }
+
+  .day-cell {
+    border-right: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    padding: 8px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+    min-height: 100px;
+    overflow: hidden;
+    position: relative;
+  }
+  .day-cell:nth-child(7n) { border-right: none; }
+  .day-cell:hover { background: rgba(255,255,255,0.02); }
+  .day-cell.other-month { opacity: 0.35; }
+  .day-cell.has-events:hover { background: rgba(255,255,255,0.03); }
+
+  .day-number {
+    font-size: 13px;
+    font-weight: 500;
+    color: #8A8A9A;
+    margin-bottom: 6px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.12s ease;
+  }
+  .day-cell:hover .day-number { color: #FFFFFF; }
+  .day-cell.today .day-number {
+    background: linear-gradient(135deg, #FF6B35, #E8194B);
+    color: #FFFFFF;
+    font-weight: 700;
+  }
+  .day-cell.selected .day-number {
+    background: rgba(255,107,53,0.15);
+    color: #FF6B35;
+    outline: 1px solid rgba(255,107,53,0.4);
+  }
+
+  .month-event-pill {
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    opacity: 0.9;
+    transition: opacity 0.1s;
+  }
+  .month-event-pill:hover { opacity: 1; }
+
+  .more-events {
+    font-size: 10px;
+    color: #8A8A9A;
+    padding: 1px 4px;
+    font-weight: 500;
+  }
+
+  /* ===== WEEK VIEW ===== */
+  .week-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+  .week-header-row {
+    display: grid;
+    grid-template-columns: 52px repeat(7, 1fr);
+    background: #131318;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-shrink: 0;
+  }
+  .week-time-gutter-header { border-right: 1px solid rgba(255,255,255,0.07); }
+  .week-day-header {
+    padding: 10px 8px;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.04);
+  }
+  .week-day-header:last-child { border-right: none; }
+  .week-day-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #464658;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .week-day-num {
+    font-size: 18px;
+    font-weight: 700;
+    color: #8A8A9A;
+    margin-top: 2px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px auto 0;
+    transition: all 0.12s;
+  }
+  .week-day-header.today .week-day-num {
+    background: linear-gradient(135deg, #FF6B35, #E8194B);
+    color: #FFFFFF;
+  }
+
+  .week-body {
+    display: flex;
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  .time-gutter {
+    width: 52px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .hour-row-container {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    position: relative;
+  }
+
+  .hour-label {
+    height: 60px;
+    padding: 4px 8px 0;
+    font-size: 10px;
+    font-weight: 500;
+    color: #464658;
+    text-align: right;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    user-select: none;
+  }
+  .hour-label.midnight { border-bottom: none; }
+
+  .day-column {
+    border-right: 1px solid rgba(255,255,255,0.04);
+    position: relative;
+    min-height: 1440px; /* 24 * 60px */
+  }
+  .day-column:last-child { border-right: none; }
+  .day-column.today-col { background: rgba(255,107,53,0.015); }
+
+  .hour-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    pointer-events: none;
+  }
+  .hour-line.half { border-top-style: dashed; opacity: 0.4; }
+
+  .time-event-block {
+    position: absolute;
+    border-radius: 6px;
+    padding: 4px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    overflow: hidden;
+    cursor: pointer;
+    transition: opacity 0.12s, transform 0.12s;
+    z-index: 2;
+  }
+  .time-event-block:hover { opacity: 0.9; transform: translateX(1px); }
+  .time-event-block .evt-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .time-event-block .evt-time { font-size: 10px; font-weight: 400; opacity: 0.8; margin-top: 1px; }
+
+  /* ===== DAY VIEW ===== */
+  .day-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+  .day-view-header {
+    background: #131318;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    padding: 12px 24px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .day-view-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #FFFFFF;
+  }
+  .day-view-sub {
+    font-size: 13px;
+    color: #8A8A9A;
+    font-weight: 400;
+  }
+
+  .day-body {
+    display: flex;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .day-content-col {
+    flex: 1;
+    position: relative;
+    min-height: 1440px;
+  }
+
+  .day-event-block {
+    position: absolute;
+    left: 56px;
+    right: 16px;
+    /* left/width overridden inline when events overlap */
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    overflow: hidden;
+    cursor: pointer;
+    transition: opacity 0.12s, transform 0.12s;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .day-event-block:hover { opacity: 0.9; transform: translateX(2px); }
+  .day-event-block .evt-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    flex-shrink: 0;
+  }
+  .day-event-block .evt-info { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+  .day-event-block .evt-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-event-block .evt-time { font-size: 11px; font-weight: 400; opacity: 0.75; }
+
+  /* ===== SIDE PANEL ===== */
+  .side-panel {
+    width: 0;
+    overflow: hidden;
+    background: #131318;
+    border-left: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+  }
+  .side-panel.open { width: 280px; }
+
+  .side-panel-inner { width: 280px; display: flex; flex-direction: column; height: 100%; }
+
+  .panel-header {
+    padding: 18px 18px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .panel-date-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #FFFFFF;
+    line-height: 1.3;
+  }
+  .panel-date-sub {
+    font-size: 12px;
+    color: #8A8A9A;
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  .panel-close {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.07);
+    color: #8A8A9A;
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    transition: all 0.12s;
+    font-family: monospace;
+    line-height: 1;
+  }
+  .panel-close:hover { background: rgba(255,255,255,0.1); color: #FFFFFF; }
+
+  .panel-events {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .panel-empty {
+    color: #464658;
+    font-size: 13px;
+    text-align: center;
+    margin-top: 24px;
+    line-height: 1.6;
+  }
+
+  .panel-event-card {
+    background: #1C1C24;
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    transition: background 0.12s;
+  }
+  .panel-event-card:hover { background: #242430; }
+
+  .panel-event-color {
+    width: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    align-self: stretch;
+    min-height: 36px;
+  }
+
+  .panel-event-info { flex: 1; overflow: hidden; }
+  .panel-event-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #FFFFFF;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+  }
+  .panel-event-time {
+    font-size: 11px;
+    color: #8A8A9A;
+    font-weight: 500;
+  }
+
+  /* Current time indicator */
+  .now-line {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #FF6B35, #E8194B);
+    z-index: 5;
+    pointer-events: none;
+  }
+  .now-dot {
+    position: absolute;
+    left: -4px;
+    top: -4px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #FF6B35;
+  }
+
+  /* Gutter time labels */
+  .gutter-col {
+    width: 52px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(255,255,255,0.07);
+    position: relative;
+    min-height: 1440px;
+  }
+  .gutter-label {
+    position: absolute;
+    right: 8px;
+    font-size: 10px;
+    font-weight: 500;
+    color: #464658;
+    transform: translateY(-50%);
+    user-select: none;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<!-- App Header -->
+<header class="app-header">
+  <span class="logo">TV Shifts</span>
+  <div class="header-divider"></div>
+
+  <div class="nav-section">
+    <button class="nav-btn" id="prevBtn" title="Назад">&#8249;</button>
+    <div class="current-period" id="currentPeriod">Май 2026</div>
+    <button class="nav-btn" id="nextBtn" title="Вперёд">&#8250;</button>
+  </div>
+
+  <button class="today-btn" id="todayBtn">Сегодня</button>
+
+  <div class="view-toggle">
+    <button class="view-btn active" data-view="month">Месяц</button>
+    <button class="view-btn" data-view="week">Неделя</button>
+    <button class="view-btn" data-view="day">День</button>
+  </div>
+</header>
+
+<!-- App Body -->
+<div class="app-body">
+  <!-- Left Sidebar: Calendar list -->
+  <div class="left-sidebar" id="leftSidebar"></div>
+
+  <div class="calendar-main" id="calendarMain"></div>
+  <div class="side-panel" id="sidePanel">
+    <div class="side-panel-inner">
+      <div class="panel-header">
+        <div>
+          <div class="panel-date-title" id="panelDateTitle">—</div>
+          <div class="panel-date-sub" id="panelDateSub"></div>
+        </div>
+        <button class="panel-close" id="panelClose">&#x2715;</button>
+      </div>
+      <div class="panel-events" id="panelEvents"></div>
+      <div style="padding:14px 16px;border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0">
+        <button id="panelCreateBtn" onclick="openCreateModal()" style="
+          width:100%;font-family:Urbanist,sans-serif;font-size:13px;font-weight:700;
+          background:linear-gradient(135deg,#FF6B35,#E8194B);border:none;color:#fff;
+          border-radius:8px;padding:10px 0;cursor:pointer;letter-spacing:.3px">
+          + Создать событие
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create event modal -->
+<div id="createModal" style="
+  display:none;position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);
+  align-items:center;justify-content:center">
+  <div style="
+    background:#1C1C24;border:1px solid rgba(255,255,255,0.1);
+    border-radius:16px;padding:28px;width:400px;max-width:90vw;
+    box-shadow:0 24px 64px rgba(0,0,0,0.5);font-family:Urbanist,sans-serif">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <div id="modalTitle" style="font-size:16px;font-weight:700">Новое событие</div>
+      <button onclick="closeCreateModal()" style="
+        background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.07);
+        color:#8A8A9A;border-radius:6px;width:28px;height:28px;cursor:pointer;
+        font-size:14px;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <!-- Title -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;color:#464658;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Название</div>
+      <input id="evtTitle" placeholder="Название события" style="
+        width:100%;background:#131318;border:1px solid rgba(255,255,255,0.1);
+        border-radius:8px;padding:10px 12px;color:#fff;font-family:Urbanist,sans-serif;
+        font-size:14px;outline:none" onfocus="this.style.borderColor='rgba(255,107,53,.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+    </div>
+    <!-- Date -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;color:#464658;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Дата</div>
+      <input id="evtDate" type="date" style="
+        width:100%;background:#131318;border:1px solid rgba(255,255,255,0.1);
+        border-radius:8px;padding:10px 12px;color:#fff;font-family:Urbanist,sans-serif;
+        font-size:14px;outline:none;color-scheme:dark" onfocus="this.style.borderColor='rgba(255,107,53,.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+    </div>
+    <!-- Time row -->
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:#464658;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Начало</div>
+        <input id="evtStart" type="time" value="09:00" style="
+          width:100%;background:#131318;border:1px solid rgba(255,255,255,0.1);
+          border-radius:8px;padding:10px 12px;color:#fff;font-family:Urbanist,sans-serif;
+          font-size:14px;outline:none;color-scheme:dark" onfocus="this.style.borderColor='rgba(255,107,53,.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:#464658;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Конец</div>
+        <input id="evtEnd" type="time" value="10:00" style="
+          width:100%;background:#131318;border:1px solid rgba(255,255,255,0.1);
+          border-radius:8px;padding:10px 12px;color:#fff;font-family:Urbanist,sans-serif;
+          font-size:14px;outline:none;color-scheme:dark" onfocus="this.style.borderColor='rgba(255,107,53,.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+      </div>
+    </div>
+    <!-- Calendar selector -->
+    <div style="margin-bottom:24px">
+      <div style="font-size:10px;font-weight:700;color:#464658;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Календарь</div>
+      <div id="calPickerList" style="display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+    <!-- Actions -->
+    <div style="display:flex;gap:10px">
+      <button id="modalDeleteBtn" onclick="deleteEvent()" style="display:none;
+        flex:1;font-family:Urbanist,sans-serif;font-size:13px;font-weight:600;
+        background:rgba(232,25,75,0.12);border:1px solid rgba(232,25,75,0.3);
+        color:#E8194B;border-radius:8px;padding:10px 0;cursor:pointer">Удалить</button>
+      <button onclick="closeCreateModal()" style="
+        flex:1;font-family:Urbanist,sans-serif;font-size:13px;font-weight:600;
+        background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+        color:#8A8A9A;border-radius:8px;padding:10px 0;cursor:pointer">Отмена</button>
+      <button id="modalSubmitBtn" onclick="submitCreateEvent()" style="
+        flex:2;font-family:Urbanist,sans-serif;font-size:13px;font-weight:700;
+        background:linear-gradient(135deg,#FF6B35,#E8194B);border:none;
+        color:#fff;border-radius:8px;padding:10px 0;cursor:pointer">Создать</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CALENDARS = [
+  { id: 'editorial',  name: 'Редакция',     color: '#0EA5E9', checked: true },
+  { id: 'production', name: 'Производство', color: '#8B5CF6', checked: true },
+  { id: 'broadcast',  name: 'Эфир',         color: '#E8194B', checked: true },
+  { id: 'personal',   name: 'Личное',       color: '#29BF12', checked: true },
+  { id: 'deadlines',  name: 'Дедлайны',     color: '#F59E0B', checked: false },
+  { id: 'meetings',   name: 'Совещания',    color: '#FF6B35', checked: true },
+];
+
+const EVENTS = [
+  { id:1,  title:'Утренний эфир',     date:'2026-05-11', start:'06:00', end:'09:00', color:'#FF6B35', calendar:'broadcast' },
+  { id:2,  title:'Планёрка редакции', date:'2026-05-11', start:'10:00', end:'11:00', color:'#0EA5E9', calendar:'meetings' },
+  { id:3,  title:'Прямой эфир',       date:'2026-05-12', start:'20:00', end:'23:00', color:'#E8194B', calendar:'broadcast' },
+  { id:4,  title:'Монтаж выпуска',    date:'2026-05-13', start:'09:00', end:'13:00', color:'#8B5CF6', calendar:'production' },
+  { id:5,  title:'Съёмки',            date:'2026-05-14', start:'11:00', end:'17:00', color:'#29BF12', calendar:'production' },
+  { id:6,  title:'Вечерний эфир',     date:'2026-05-14', start:'19:00', end:'21:00', color:'#F59E0B', calendar:'broadcast' },
+  { id:7,  title:'Совещание',         date:'2026-05-15', start:'09:00', end:'10:00', color:'#0EA5E9', calendar:'meetings' },
+  { id:8,  title:'Запись подкаста',   date:'2026-05-16', start:'14:00', end:'16:00', color:'#8B5CF6', calendar:'editorial' },
+  { id:9,  title:'Утренний эфир',     date:'2026-05-18', start:'06:00', end:'09:00', color:'#FF6B35', calendar:'broadcast' },
+  { id:10, title:'Дедлайн монтажа',   date:'2026-05-20', start:'18:00', end:'19:00', color:'#E8194B', calendar:'deadlines' },
+];
+
+const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+                    'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const MONTHS_RU_GEN = ['января','февраля','марта','апреля','мая','июня',
+                        'июля','августа','сентября','октября','ноября','декабря'];
+const WEEKDAYS_SHORT = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const WEEKDAYS_FULL = ['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
+
+// State
+let state = {
+  view: 'month',
+  cursor: new Date(2026, 4, 10), // May 2026
+  selectedDate: null,
+  panelOpen: false,
+};
+
+const today = new Date(2026, 4, 10); // "today" in demo = May 10 2026
+
+function toYMD(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function parseYMD(s) {
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function timeToMinutes(t) {
+  const [h,m] = t.split(':').map(Number);
+  return h*60+m;
+}
+function isCalendarVisible(calendarId) {
+  const cal = CALENDARS.find(c => c.id === calendarId);
+  return cal ? cal.checked : true;
+}
+function getEventsForDate(ymd) {
+  return EVENTS.filter(e => e.date === ymd && isCalendarVisible(e.calendar));
+}
+function getEventsForWeek(startDate) {
+  const days = [];
+  for (let i=0; i<7; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate()+i);
+    days.push(toYMD(d));
+  }
+  return EVENTS.filter(e => days.includes(e.date) && isCalendarVisible(e.calendar));
+}
+
+// ── LEFT SIDEBAR ─────────────────────────────────────────────────
+function renderSidebar() {
+  const sidebar = document.getElementById('leftSidebar');
+  sidebar.innerHTML = '';
+
+  const title = document.createElement('div');
+  title.className = 'sidebar-section-title';
+  title.textContent = 'Мои календари';
+  sidebar.appendChild(title);
+
+  CALENDARS.forEach(cal => {
+    const item = document.createElement('div');
+    item.className = 'calendar-item';
+
+    const box = document.createElement('div');
+    box.className = 'cal-checkbox';
+    box.style.borderColor = cal.color;
+    if (cal.checked) {
+      box.style.background = cal.color;
+      box.textContent = '✓';
+    } else {
+      box.style.background = 'transparent';
+      box.textContent = '';
+    }
+
+    const name = document.createElement('div');
+    name.className = 'cal-name';
+    name.textContent = cal.name;
+
+    item.appendChild(box);
+    item.appendChild(name);
+
+    item.addEventListener('click', () => {
+      cal.checked = !cal.checked;
+      renderSidebar();
+      render();
+    });
+
+    sidebar.appendChild(item);
+  });
+}
+
+// ── HEADER ──────────────────────────────────────────────────────
+function updateHeader() {
+  const p = document.getElementById('currentPeriod');
+  if (state.view === 'month') {
+    p.textContent = `${MONTHS_RU[state.cursor.getMonth()]} ${state.cursor.getFullYear()}`;
+  } else if (state.view === 'week') {
+    const start = getWeekStart(state.cursor);
+    const end = new Date(start); end.setDate(end.getDate()+6);
+    if (start.getMonth() === end.getMonth()) {
+      p.textContent = `${start.getDate()}–${end.getDate()} ${MONTHS_RU_GEN[start.getMonth()]} ${start.getFullYear()}`;
+    } else {
+      p.textContent = `${start.getDate()} ${MONTHS_RU_GEN[start.getMonth()]} – ${end.getDate()} ${MONTHS_RU_GEN[end.getMonth()]} ${start.getFullYear()}`;
+    }
+  } else {
+    p.textContent = `${state.cursor.getDate()} ${MONTHS_RU_GEN[state.cursor.getMonth()]} ${state.cursor.getFullYear()}`;
+  }
+}
+
+// ── WEEK HELPERS ─────────────────────────────────────────────────
+function getWeekStart(d) {
+  const day = d.getDay(); // 0=Sun
+  const diff = day === 0 ? -6 : 1 - day; // Monday start
+  const s = new Date(d);
+  s.setDate(d.getDate() + diff);
+  s.setHours(0,0,0,0);
+  return s;
+}
+
+// ── MONTH VIEW ───────────────────────────────────────────────────
+function renderMonthView() {
+  const container = document.getElementById('calendarMain');
+  container.innerHTML = '';
+
+  const monthView = document.createElement('div');
+  monthView.className = 'month-view';
+
+  // Weekday labels
+  const header = document.createElement('div');
+  header.className = 'weekday-header';
+  WEEKDAYS_SHORT.forEach(d => {
+    const lbl = document.createElement('div');
+    lbl.className = 'weekday-label';
+    lbl.textContent = d;
+    header.appendChild(lbl);
+  });
+  monthView.appendChild(header);
+
+  // Grid
+  const grid = document.createElement('div');
+  grid.className = 'month-grid';
+
+  const year = state.cursor.getFullYear();
+  const month = state.cursor.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month+1, 0);
+
+  // Start from Monday of the week containing firstDay
+  let startDay = new Date(firstDay);
+  const dow = firstDay.getDay();
+  startDay.setDate(firstDay.getDate() - (dow === 0 ? 6 : dow - 1));
+
+  // End at Sunday of the week containing lastDay
+  let endDay = new Date(lastDay);
+  const edow = lastDay.getDay();
+  endDay.setDate(lastDay.getDate() + (edow === 0 ? 0 : 7 - edow));
+
+  let current = new Date(startDay);
+  while (current <= endDay) {
+    const cell = document.createElement('div');
+    cell.className = 'day-cell';
+    const isCurrentMonth = current.getMonth() === month;
+    if (!isCurrentMonth) cell.classList.add('other-month');
+    const ymd = toYMD(current);
+    const isTodayCell = toYMD(current) === toYMD(today);
+    if (isTodayCell) cell.classList.add('today');
+    if (state.selectedDate === ymd) cell.classList.add('selected');
+
+    // Day number
+    const num = document.createElement('div');
+    num.className = 'day-number';
+    num.textContent = current.getDate();
+    cell.appendChild(num);
+
+    // Events
+    const dayEvents = getEventsForDate(ymd);
+    if (dayEvents.length > 0) cell.classList.add('has-events');
+    const maxVisible = 3;
+    dayEvents.slice(0, maxVisible).forEach(evt => {
+      const pill = document.createElement('div');
+      pill.className = 'month-event-pill';
+      pill.textContent = evt.title;
+      pill.style.background = evt.color + '28';
+      pill.style.color = evt.color;
+      pill.style.borderLeft = `2px solid ${evt.color}`;
+      pill.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(evt.id); });
+      cell.appendChild(pill);
+    });
+    if (dayEvents.length > maxVisible) {
+      const more = document.createElement('div');
+      more.className = 'more-events';
+      more.textContent = `+${dayEvents.length - maxVisible} ещё`;
+      cell.appendChild(more);
+    }
+
+    // Click
+    const capturedYmd = ymd;
+    const capturedDate = new Date(current);
+    cell.addEventListener('click', () => openSidePanel(capturedYmd, capturedDate));
+
+    grid.appendChild(cell);
+    current.setDate(current.getDate() + 1);
+  }
+
+  monthView.appendChild(grid);
+  container.appendChild(monthView);
+}
+
+// ── SIDE PANEL ───────────────────────────────────────────────────
+function openSidePanel(ymd, date) {
+  state.selectedDate = ymd;
+  state.panelOpen = true;
+
+  const panel = document.getElementById('sidePanel');
+  panel.classList.add('open');
+
+  const dowIndex = (date.getDay() + 6) % 7;
+  document.getElementById('panelDateTitle').textContent =
+    `${date.getDate()} ${MONTHS_RU_GEN[date.getMonth()]} ${date.getFullYear()}`;
+  document.getElementById('panelDateSub').textContent = WEEKDAYS_FULL[dowIndex];
+
+  const eventsContainer = document.getElementById('panelEvents');
+  eventsContainer.innerHTML = '';
+
+  const dayEvents = getEventsForDate(ymd);
+  if (dayEvents.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'panel-empty';
+    empty.textContent = 'Нет событий\nна этот день';
+    eventsContainer.appendChild(empty);
+  } else {
+    dayEvents.sort((a,b) => a.start.localeCompare(b.start)).forEach(evt => {
+      const card = document.createElement('div');
+      card.className = 'panel-event-card';
+
+      const colorBar = document.createElement('div');
+      colorBar.className = 'panel-event-color';
+      colorBar.style.background = evt.color;
+
+      const info = document.createElement('div');
+      info.className = 'panel-event-info';
+
+      const title = document.createElement('div');
+      title.className = 'panel-event-title';
+      title.textContent = evt.title;
+
+      const time = document.createElement('div');
+      time.className = 'panel-event-time';
+      time.textContent = `${evt.start} — ${evt.end}`;
+
+      info.appendChild(title);
+      info.appendChild(time);
+      card.appendChild(colorBar);
+      card.appendChild(info);
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => openEditModal(evt.id));
+      eventsContainer.appendChild(card);
+    });
+  }
+
+  // Re-render to show selected state
+  if (state.view === 'month') renderMonthView();
+}
+
+function closeSidePanel() {
+  state.selectedDate = null;
+  state.panelOpen = false;
+  document.getElementById('sidePanel').classList.remove('open');
+  if (state.view === 'month') renderMonthView();
+}
+
+// ── WEEK VIEW ────────────────────────────────────────────────────
+function renderWeekView() {
+  const container = document.getElementById('calendarMain');
+  container.innerHTML = '';
+
+  const weekView = document.createElement('div');
+  weekView.className = 'week-view';
+
+  const weekStart = getWeekStart(state.cursor);
+
+  // Header row
+  const headerRow = document.createElement('div');
+  headerRow.className = 'week-header-row';
+
+  const gutterHead = document.createElement('div');
+  gutterHead.className = 'week-time-gutter-header';
+  headerRow.appendChild(gutterHead);
+
+  for (let i=0; i<7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate()+i);
+    const dh = document.createElement('div');
+    dh.className = 'week-day-header';
+    if (toYMD(d) === toYMD(today)) dh.classList.add('today');
+
+    const name = document.createElement('div');
+    name.className = 'week-day-name';
+    name.textContent = WEEKDAYS_SHORT[i];
+
+    const num = document.createElement('div');
+    num.className = 'week-day-num';
+    num.textContent = d.getDate();
+
+    dh.appendChild(name);
+    dh.appendChild(num);
+    headerRow.appendChild(dh);
+  }
+  weekView.appendChild(headerRow);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'week-body';
+
+  // Gutter
+  const gutter = document.createElement('div');
+  gutter.className = 'gutter-col';
+  for (let h=0; h<=24; h++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'gutter-label';
+    lbl.style.top = (h * 60) + 'px';
+    lbl.textContent = h === 0 ? '' : `${String(h).padStart(2,'0')}:00`;
+    gutter.appendChild(lbl);
+  }
+  body.appendChild(gutter);
+
+  // Day columns
+  const colsContainer = document.createElement('div');
+  colsContainer.style.cssText = 'flex:1; display:grid; grid-template-columns:repeat(7,1fr); position:relative; min-height:1440px;';
+
+  for (let i=0; i<7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate()+i);
+    const ymd = toYMD(d);
+
+    const col = document.createElement('div');
+    col.className = 'day-column';
+    if (toYMD(d) === toYMD(today)) col.classList.add('today-col');
+
+    // Working hours highlight 10:00–18:30
+    const workBand = document.createElement('div');
+    workBand.style.cssText = 'position:absolute;left:0;right:0;top:600px;height:510px;background:rgba(255,255,255,0.025);pointer-events:none;z-index:0';
+    col.appendChild(workBand);
+
+    // Hour lines
+    for (let h=0; h<24; h++) {
+      const line = document.createElement('div');
+      line.className = 'hour-line';
+      line.style.top = (h*60) + 'px';
+      if (h >= 10 && h <= 18) line.style.borderTopColor = 'rgba(255,255,255,0.09)';
+      col.appendChild(line);
+
+      const halfLine = document.createElement('div');
+      halfLine.className = 'hour-line half';
+      halfLine.style.top = (h*60+30) + 'px';
+      col.appendChild(halfLine);
+    }
+
+    // Events with overlap layout
+    const dayEvents = getEventsForDate(ymd);
+    const layout = layoutEvents(dayEvents);
+    dayEvents.forEach(evt => {
+      const startMin = timeToMinutes(evt.start);
+      const endMin   = timeToMinutes(evt.end);
+      const { col: subCol, total } = layout.get(evt.id) ?? { col: 0, total: 1 };
+      const pct = 100 / total;
+      const pad = 2;
+
+      const block = document.createElement('div');
+      block.className = 'time-event-block';
+      block.style.top    = startMin + 'px';
+      block.style.height = Math.max(endMin - startMin, 20) + 'px';
+      block.style.left   = `calc(${subCol * pct}% + ${pad}px)`;
+      block.style.right  = 'auto';
+      block.style.width  = `calc(${pct}% - ${pad * 2}px)`;
+      block.style.background   = evt.color + '22';
+      block.style.borderLeft   = `3px solid ${evt.color}`;
+      block.style.color        = evt.color;
+
+      const title = document.createElement('div');
+      title.className = 'evt-title';
+      title.textContent = evt.title;
+      const time = document.createElement('div');
+      time.className = 'evt-time';
+      time.style.color = evt.color;
+      time.textContent = `${evt.start} – ${evt.end}`;
+
+      block.appendChild(title);
+      block.appendChild(time);
+      block.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(evt.id); });
+      col.appendChild(block);
+    });
+
+    // Today line
+    if (toYMD(d) === toYMD(today)) {
+      const now = new Date();
+      const nowMin = now.getHours()*60 + now.getMinutes();
+      const nowLine = document.createElement('div');
+      nowLine.className = 'now-line';
+      nowLine.style.top = nowMin + 'px';
+      const dot = document.createElement('div');
+      dot.className = 'now-dot';
+      nowLine.appendChild(dot);
+      col.appendChild(nowLine);
+    }
+
+    // Drag-to-create on this column
+    attachDragCreate(col, ymd);
+
+    colsContainer.appendChild(col);
+  }
+
+  body.appendChild(colsContainer);
+  weekView.appendChild(body);
+  container.appendChild(weekView);
+
+  // Scroll to 6am
+  requestAnimationFrame(() => { body.scrollTop = 6*60 - 30; });
+}
+
+// ── DAY VIEW ─────────────────────────────────────────────────────
+function renderDayView() {
+  const container = document.getElementById('calendarMain');
+  container.innerHTML = '';
+
+  const dayView = document.createElement('div');
+  dayView.className = 'day-view';
+
+  const ymd = toYMD(state.cursor);
+  const dowIndex = (state.cursor.getDay() + 6) % 7;
+
+  // Day header
+  const dayHeader = document.createElement('div');
+  dayHeader.className = 'day-view-header';
+
+  const isTodayDay = ymd === toYMD(today);
+  const titleEl = document.createElement('div');
+  titleEl.className = 'day-view-title';
+
+  if (isTodayDay) {
+    titleEl.innerHTML = `<span style="background:linear-gradient(135deg,#FF6B35,#E8194B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${state.cursor.getDate()} ${MONTHS_RU_GEN[state.cursor.getMonth()]}</span>`;
+  } else {
+    titleEl.textContent = `${state.cursor.getDate()} ${MONTHS_RU_GEN[state.cursor.getMonth()]}`;
+  }
+
+  const subEl = document.createElement('div');
+  subEl.className = 'day-view-sub';
+  subEl.textContent = WEEKDAYS_FULL[dowIndex] + (isTodayDay ? ' · Сегодня' : '');
+
+  dayHeader.appendChild(titleEl);
+  dayHeader.appendChild(subEl);
+  dayView.appendChild(dayHeader);
+
+  // Body
+  const body = document.createElement('div');
+  body.className = 'day-body';
+
+  // Gutter
+  const gutter = document.createElement('div');
+  gutter.className = 'gutter-col';
+  for (let h=0; h<=24; h++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'gutter-label';
+    lbl.style.top = (h * 60) + 'px';
+    lbl.textContent = h === 0 ? '' : `${String(h).padStart(2,'0')}:00`;
+    gutter.appendChild(lbl);
+  }
+  body.appendChild(gutter);
+
+  // Content column
+  const contentCol = document.createElement('div');
+  contentCol.className = 'day-content-col';
+  contentCol.style.background = isTodayDay ? 'rgba(255,107,53,0.01)' : 'transparent';
+
+  // Working hours highlight 10:00–18:30
+  const workBandDay = document.createElement('div');
+  workBandDay.style.cssText = 'position:absolute;left:0;right:0;top:600px;height:510px;background:rgba(255,255,255,0.025);pointer-events:none;z-index:0';
+  contentCol.appendChild(workBandDay);
+
+  // Hour lines
+  for (let h=0; h<24; h++) {
+    const line = document.createElement('div');
+    line.className = 'hour-line';
+    line.style.position = 'absolute';
+    line.style.left = '0'; line.style.right = '0';
+    line.style.top = (h*60) + 'px';
+    line.style.borderTop = h >= 10 && h <= 18 ? '1px solid rgba(255,255,255,0.09)' : '1px solid rgba(255,255,255,0.04)';
+    contentCol.appendChild(line);
+
+    const halfLine = document.createElement('div');
+    halfLine.className = 'hour-line';
+    halfLine.style.position = 'absolute';
+    halfLine.style.left = '0'; halfLine.style.right = '0';
+    halfLine.style.top = (h*60+30) + 'px';
+    halfLine.style.borderTop = '1px dashed rgba(255,255,255,0.03)';
+    contentCol.appendChild(halfLine);
+  }
+
+  // Events with overlap layout
+  const dayEvents = getEventsForDate(ymd);
+  const dayLayout = layoutEvents(dayEvents);
+  dayEvents.sort((a,b) => a.start.localeCompare(b.start)).forEach(evt => {
+    const startMin = timeToMinutes(evt.start);
+    const endMin   = timeToMinutes(evt.end);
+    const { col: subCol, total } = dayLayout.get(evt.id) ?? { col: 0, total: 1 };
+    const pct = 100 / total;
+    const pad = 3;
+
+    const block = document.createElement('div');
+    block.className = 'day-event-block';
+    const gutter = 56, rightPad = 16;
+    block.style.top    = startMin + 'px';
+    block.style.height = Math.max(endMin - startMin, 30) + 'px';
+    block.style.left   = `calc(${gutter}px + ${subCol * pct}% - ${subCol * pct / 100 * gutter}px + ${pad}px)`;
+    block.style.right  = 'auto';
+    block.style.width  = `calc((100% - ${gutter}px - ${rightPad}px) * ${pct / 100} - ${pad * 2}px)`;
+    block.style.background = evt.color + '18';
+    block.style.borderLeft = `3px solid ${evt.color}`;
+
+    const dot = document.createElement('div');
+    dot.className = 'evt-dot';
+    dot.style.background = evt.color;
+
+    const info = document.createElement('div');
+    info.className = 'evt-info';
+
+    const title = document.createElement('div');
+    title.className = 'evt-title';
+    title.style.color = '#FFFFFF';
+    title.style.fontSize = '14px';
+    title.textContent = evt.title;
+
+    const time = document.createElement('div');
+    time.className = 'evt-time';
+    time.style.color = evt.color;
+    time.textContent = `${evt.start} — ${evt.end}`;
+
+    info.appendChild(title);
+    info.appendChild(time);
+    block.appendChild(dot);
+    block.appendChild(info);
+    block.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(evt.id); });
+    contentCol.appendChild(block);
+  });
+
+  // No events message
+  if (dayEvents.length === 0) {
+    const noEvt = document.createElement('div');
+    noEvt.style.cssText = 'position:absolute;top:120px;left:56px;right:16px;color:#464658;font-size:13px;text-align:center;';
+    noEvt.textContent = 'Нет событий на этот день';
+    contentCol.appendChild(noEvt);
+  }
+
+  // Now line
+  if (isTodayDay) {
+    const now = new Date();
+    const nowMin = now.getHours()*60 + now.getMinutes();
+    const nowLine = document.createElement('div');
+    nowLine.style.cssText = `position:absolute;left:0;right:0;top:${nowMin}px;height:2px;background:linear-gradient(90deg,#FF6B35,#E8194B);z-index:5;pointer-events:none;`;
+    const dot = document.createElement('div');
+    dot.style.cssText = 'position:absolute;left:-4px;top:-4px;width:10px;height:10px;border-radius:50%;background:#FF6B35;';
+    nowLine.appendChild(dot);
+    contentCol.appendChild(nowLine);
+  }
+
+  // Drag-to-create on day column
+  attachDragCreate(contentCol, ymd);
+
+  body.appendChild(contentCol);
+  dayView.appendChild(body);
+  container.appendChild(dayView);
+
+  requestAnimationFrame(() => { body.scrollTop = Math.max(0, (dayEvents.length > 0 ? timeToMinutes(dayEvents[0].start) : 6*60) - 60); });
+}
+
+// ── NAVIGATE ─────────────────────────────────────────────────────
+function navigate(dir) {
+  if (state.view === 'month') {
+    state.cursor = new Date(state.cursor.getFullYear(), state.cursor.getMonth() + dir, 1);
+  } else if (state.view === 'week') {
+    state.cursor.setDate(state.cursor.getDate() + dir * 7);
+  } else {
+    state.cursor.setDate(state.cursor.getDate() + dir);
+  }
+  render();
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render() {
+  updateHeader();
+  if (state.view === 'month') renderMonthView();
+  else if (state.view === 'week') renderWeekView();
+  else renderDayView();
+}
+
+// ── EVENT LISTENERS ──────────────────────────────────────────────
+document.getElementById('prevBtn').addEventListener('click', () => navigate(-1));
+document.getElementById('nextBtn').addEventListener('click', () => navigate(1));
+
+document.getElementById('todayBtn').addEventListener('click', () => {
+  state.cursor = new Date(today);
+  render();
+});
+
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.view = btn.dataset.view;
+    closeSidePanel();
+    render();
+  });
+});
+
+document.getElementById('panelClose').addEventListener('click', closeSidePanel);
+
+// ── DRAG-TO-CREATE ───────────────────────────────────────────────
+function minutesToTime(min) {
+  min = Math.max(0, Math.min(1439, min));
+  return `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
+}
+
+function snapTo15(min) { return Math.round(min / 15) * 15; }
+
+// Layout overlapping events into sub-columns
+// Returns Map: evt.id → { col: 0-based sub-col, total: sub-cols in this overlap group }
+function layoutEvents(events) {
+  if (!events.length) return new Map();
+  const sorted = [...events].sort((a,b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+  const result = new Map();
+
+  // Build overlap clusters
+  const overlaps = (a, b) => timeToMinutes(a.start) < timeToMinutes(b.end) && timeToMinutes(b.start) < timeToMinutes(a.end);
+
+  // Group events into clusters of mutually overlapping events
+  const clusters = [];
+  sorted.forEach(evt => {
+    let added = false;
+    for (const cluster of clusters) {
+      if (cluster.some(e => overlaps(e, evt))) {
+        cluster.push(evt);
+        added = true;
+        break;
+      }
+    }
+    if (!added) clusters.push([evt]);
+  });
+
+  // Within each cluster assign sub-columns greedily
+  clusters.forEach(cluster => {
+    const cols = []; // cols[i] = endMin of last event placed in sub-col i
+    cluster.forEach(evt => {
+      const startMin = timeToMinutes(evt.start);
+      const endMin   = timeToMinutes(evt.end);
+      let placed = false;
+      for (let i = 0; i < cols.length; i++) {
+        if (cols[i] <= startMin) {
+          cols[i] = endMin;
+          result.set(evt.id, { col: i, total: 0 }); // total filled below
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        result.set(evt.id, { col: cols.length, total: 0 });
+        cols.push(endMin);
+      }
+    });
+    // total = number of sub-cols used in this cluster
+    const total = cols.length;
+    cluster.forEach(evt => { result.get(evt.id).total = total; });
+  });
+
+  return result;
+}
+
+// Compute Y offset of pointer relative to the scrollable column (1px = 1min)
+function getColMinutes(e, col) {
+  const scrollEl = col.closest('.week-body,.day-body');
+  // col is position:absolute inside the scroll container
+  // offsetTop gives col's top relative to scrollEl's content
+  const colOffsetTop = col.offsetTop;
+  const scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+  const containerRect = scrollEl ? scrollEl.getBoundingClientRect() : col.getBoundingClientRect();
+  return (e.clientY - containerRect.top + scrollTop) - colOffsetTop;
+}
+
+function attachDragCreate(col, ymd) {
+  let ghost = null;
+  let dragStartMin = null;
+  let isDragging = false;
+
+  col.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.time-event-block,.day-event-block')) return;
+    if (e.button !== 0) return;
+
+    dragStartMin = snapTo15(getColMinutes(e, col));
+    isDragging = true;
+
+    ghost = document.createElement('div');
+    ghost.style.cssText = `
+      position:absolute;left:4px;right:4px;border-radius:6px;z-index:50;pointer-events:none;
+      background:rgba(255,107,53,0.2);border:2px dashed #FF6B35;
+      display:flex;align-items:flex-start;padding:4px 8px;
+      font-family:Urbanist,sans-serif;font-size:11px;font-weight:600;color:#FF6B35;`;
+    ghost.style.top = dragStartMin + 'px';
+    ghost.style.height = '15px';
+    col.appendChild(ghost);
+    e.preventDefault();
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging || !ghost) return;
+    const currentMin = snapTo15(getColMinutes(e, col));
+    const startMin = Math.min(dragStartMin, currentMin);
+    const endMin   = Math.max(dragStartMin + 15, currentMin);
+    ghost.style.top    = startMin + 'px';
+    ghost.style.height = Math.max(endMin - startMin, 15) + 'px';
+    ghost.textContent  = `${minutesToTime(startMin)} – ${minutesToTime(endMin)}`;
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (!isDragging || !ghost) return;
+    isDragging = false;
+    const currentMin = snapTo15(getColMinutes(e, col));
+    const startMin = Math.min(dragStartMin, currentMin);
+    const endMin   = Math.max(dragStartMin + 15, currentMin);
+    ghost.remove(); ghost = null; dragStartMin = null;
+    if (endMin - startMin < 15) return;
+    state.selectedDate = ymd;
+    openCreateModal();
+    document.getElementById('evtDate').value  = ymd;
+    document.getElementById('evtStart').value = minutesToTime(startMin);
+    document.getElementById('evtEnd').value   = minutesToTime(endMin);
+  });
+}
+
+// ── CREATE EVENT MODAL ───────────────────────────────────────────
+let selectedCalendarId = CALENDARS.find(c => c.checked)?.id ?? CALENDARS[0].id;
+let editingEventId = null; // null = create mode, number = edit mode
+
+function openCreateModal() {
+  editingEventId = null;
+  document.getElementById('modalTitle').textContent = 'Новое событие';
+  document.getElementById('modalSubmitBtn').textContent = 'Создать';
+  document.getElementById('modalDeleteBtn').style.display = 'none';
+
+  document.getElementById('evtTitle').value = '';
+  document.getElementById('evtDate').value  = state.selectedDate ?? new Date().toISOString().slice(0, 10);
+  document.getElementById('evtStart').value = '09:00';
+  document.getElementById('evtEnd').value   = '10:00';
+  selectedCalendarId = CALENDARS.find(c => c.checked)?.id ?? CALENDARS[0].id;
+  renderCalPicker();
+
+  document.getElementById('createModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('evtTitle').focus(), 50);
+}
+
+function openEditModal(evtId) {
+  const evt = EVENTS.find(e => e.id === evtId);
+  if (!evt) return;
+  editingEventId = evtId;
+
+  document.getElementById('modalTitle').textContent = 'Редактировать';
+  document.getElementById('modalSubmitBtn').textContent = 'Сохранить';
+  document.getElementById('modalDeleteBtn').style.display = 'block';
+
+  document.getElementById('evtTitle').value = evt.title;
+  document.getElementById('evtDate').value  = evt.date;
+  document.getElementById('evtStart').value = evt.start;
+  document.getElementById('evtEnd').value   = evt.end;
+  selectedCalendarId = evt.calendar ?? (CALENDARS.find(c => c.checked)?.id ?? CALENDARS[0].id);
+  renderCalPicker();
+
+  document.getElementById('createModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('evtTitle').focus(), 50);
+}
+
+function closeCreateModal() {
+  document.getElementById('createModal').style.display = 'none';
+  editingEventId = null;
+}
+
+function deleteEvent() {
+  if (editingEventId === null) return;
+  const idx = EVENTS.findIndex(e => e.id === editingEventId);
+  if (idx >= 0) EVENTS.splice(idx, 1);
+  closeCreateModal();
+  render();
+  if (state.selectedDate) {
+    const [y,m,d] = state.selectedDate.split('-').map(Number);
+    openSidePanel(state.selectedDate, new Date(y, m-1, d));
+  }
+}
+
+function renderCalPicker() {
+  const list = document.getElementById('calPickerList');
+  list.innerHTML = '';
+  CALENDARS.forEach(cal => {
+    const row = document.createElement('div');
+    const isSelected = cal.id === selectedCalendarId;
+    row.style.cssText = `
+      display:flex;align-items:center;gap:10px;padding:8px 12px;
+      border-radius:8px;cursor:pointer;transition:background .12s;
+      background:${isSelected ? 'rgba(255,255,255,0.07)' : 'transparent'};
+      border:1px solid ${isSelected ? 'rgba(255,255,255,0.12)' : 'transparent'}`;
+    row.onmouseenter = () => { if (!isSelected) row.style.background = 'rgba(255,255,255,0.04)'; };
+    row.onmouseleave = () => { if (!isSelected) row.style.background = 'transparent'; };
+    row.onclick = () => { selectedCalendarId = cal.id; renderCalPicker(); };
+
+    const dot = document.createElement('div');
+    dot.style.cssText = `width:10px;height:10px;border-radius:50%;background:${cal.color};flex-shrink:0`;
+
+    const name = document.createElement('div');
+    name.style.cssText = `font-size:13px;font-weight:${isSelected ? '600' : '400'};color:${isSelected ? '#fff' : '#8A8A9A'}`;
+    name.textContent = cal.name;
+
+    if (isSelected) {
+      const check = document.createElement('div');
+      check.style.cssText = 'margin-left:auto;color:#29BF12;font-size:14px;font-weight:700';
+      check.textContent = '✓';
+      row.appendChild(dot); row.appendChild(name); row.appendChild(check);
+    } else {
+      row.appendChild(dot); row.appendChild(name);
+    }
+    list.appendChild(row);
+  });
+}
+
+function submitCreateEvent() {
+  const title = document.getElementById('evtTitle').value.trim();
+  const date  = document.getElementById('evtDate').value;
+  const start = document.getElementById('evtStart').value;
+  const end   = document.getElementById('evtEnd').value;
+
+  if (!title) { const t = document.getElementById('evtTitle'); t.focus(); t.style.borderColor = '#E8194B'; return; }
+  if (!date)  { document.getElementById('evtDate').focus(); return; }
+  if (start >= end) { document.getElementById('evtEnd').style.borderColor = '#E8194B'; return; }
+
+  const cal = CALENDARS.find(c => c.id === selectedCalendarId) ?? CALENDARS[0];
+
+  if (editingEventId !== null) {
+    // Edit existing
+    const evt = EVENTS.find(e => e.id === editingEventId);
+    if (evt) { evt.title = title; evt.date = date; evt.start = start; evt.end = end; evt.color = cal.color; evt.calendar = cal.id; }
+  } else {
+    EVENTS.push({ id: Date.now(), title, date, start, end, color: cal.color, calendar: cal.id });
+  }
+
+  closeCreateModal();
+  render();
+  const [y, m, d] = date.split('-').map(Number);
+  openSidePanel(date, new Date(y, m - 1, d));
+}
+
+// Close modal on backdrop click
+document.getElementById('createModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('createModal')) closeCreateModal();
+});
+
+// ── INIT ─────────────────────────────────────────────────────────
+renderSidebar();
+render();
+</script>
+</body>
+</html>

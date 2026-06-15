@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Shifts — Brand Book</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0D0D0D;
+    --surface-1: #161616;
+    --surface-2: #1E1E1E;
+    --surface-3: #262626;
+    --border: rgba(255,255,255,0.07);
+    --text-1: #FFFFFF;
+    --text-2: #A0A0A0;
+    --text-3: #555555;
+    --accent-start: #FF6B35;
+    --accent-end: #E8194B;
+    --green: #29BF12;
+    --radius-card: 14px;
+    --radius-btn: 8px;
+    --radius-badge: 6px;
+    --font: 'Urbanist', system-ui, sans-serif;
+    --dot-color: rgba(255,255,255,.07);
+    --glass-bg: rgba(255,255,255,0.05);
+    --glass-border: rgba(255,255,255,0.10);
+  }
+
+  /* ── Light theme overrides ── */
+  :root.light {
+    --bg: #F0F2F5;
+    --surface-1: #FFFFFF;
+    --surface-2: #F4F6F9;
+    --surface-3: #E8EBF0;
+    --border: rgba(0,0,0,0.08);
+    --text-1: #0F172A;
+    --text-2: #64748B;
+    --text-3: #94A3B8;
+    --dot-color: rgba(0,0,0,.05);
+    --glass-bg: rgba(255,255,255,0.7);
+    --glass-border: rgba(255,255,255,0.9);
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-1);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    transition: background .3s, color .3s;
+  }
+
+  /* ── Controls panel ── */
+  .controls {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--surface-1);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    transition: background .3s, border-color .3s;
+  }
+
+  .controls-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .control-group { display: flex; flex-direction: column; gap: 12px; }
+  .control-group-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .control-row { display: flex; flex-direction: column; gap: 5px; }
+  .control-label {
+    font-size: 12px;
+    color: var(--text-2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .control-val {
+    font-size: 11px;
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type=range] {
+    width: 100%;
+    accent-color: #FF6B35;
+    cursor: pointer;
+    height: 3px;
+  }
+
+  /* Theme switcher */
+  .theme-switcher {
+    display: flex;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 3px;
+  }
+  .theme-btn {
+    flex: 1;
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 0;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-3);
+    transition: all .2s;
+  }
+  .theme-btn.active {
+    background: var(--surface-1);
+    color: var(--text-1);
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  }
+  :root.light .theme-btn.active { box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+
+  .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .preset-btn {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--text-2);
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 7px 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: all .15s;
+  }
+  .preset-btn:hover { border-color: rgba(128,128,128,.4); color: var(--text-1); }
+  .preset-btn.active { border-color: var(--accent-start); color: var(--accent-start); }
+
+  .swatch-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .swatch {
+    width: 28px; height: 28px; border-radius: 7px;
+    cursor: pointer; border: 2px solid transparent;
+    transition: all .15s; flex-shrink: 0;
+  }
+  .swatch.active { border-color: var(--text-1); transform: scale(1.1); }
+
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; }
+  .toggle-label { font-size: 12px; color: var(--text-2); }
+  .toggle {
+    width: 36px; height: 20px; background: var(--surface-3);
+    border-radius: 10px; cursor: pointer; position: relative;
+    border: 1px solid var(--border); transition: background .2s;
+  }
+  .toggle.on { background: #29BF12; border-color: #29BF12; }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #fff; top: 2px; left: 2px; transition: left .2s;
+  }
+  .toggle.on::after { left: 18px; }
+
+  /* ── Main area ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    transition: background .3s;
+  }
+
+  .preview-area {
+    flex: 1;
+    padding: 32px 36px;
+    overflow-y: auto;
+  }
+
+  .section { margin-bottom: 40px; }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* COLORS */
+  .color-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+  .color-chip { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .color-swatch-big {
+    width: 80px; height: 52px; border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .color-name { font-size: 11px; color: var(--text-2); font-weight: 600; }
+  .color-hex { font-size: 10px; color: var(--text-3); font-family: monospace; }
+
+  /* TYPOGRAPHY */
+  .type-row { margin-bottom: 12px; }
+  .type-label { font-size: 10px; color: var(--text-3); margin-bottom: 4px; font-family: monospace; }
+
+  /* CARDS */
+  .cards-row { display: flex; gap: 16px; flex-wrap: wrap; }
+
+  /* BUTTONS */
+  .btns-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  .btn {
+    font-family: var(--font);
+    font-weight: 600;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    border-radius: var(--radius-btn);
+    padding: 9px 18px;
+    transition: all .15s;
+    display: inline-flex; align-items: center; gap: 6px;
+    letter-spacing: .2px;
+  }
+  .btn-secondary {
+    background: var(--surface-2);
+    color: var(--text-1);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface-3); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-2);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { color: var(--text-1); }
+  .btn-danger {
+    background: rgba(232,25,75,.1);
+    color: #E8194B;
+    border: 1px solid rgba(232,25,75,.2);
+  }
+  .btn-danger:hover { background: rgba(232,25,75,.2); }
+  .btn-sm { font-size: 11px; padding: 6px 12px; }
+  .btn-lg { font-size: 15px; padding: 12px 24px; }
+
+  /* BADGES */
+  .badges-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .badge {
+    font-family: var(--font);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    padding: 4px 10px;
+    border-radius: var(--radius-badge);
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .badge::before {
+    content: '';
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; opacity: .7; flex-shrink: 0;
+  }
+  .badge-active   { background: rgba(41,191,18,.12); color: #29BF12; }
+  .badge-pending  { background: rgba(255,165,0,.12);  color: #D97706; }
+  .badge-done     { background: rgba(100,100,100,.12); color: var(--text-2); }
+  .badge-error    { background: rgba(232,25,75,.12);  color: #E8194B; }
+  .badge-draft    { background: rgba(100,149,237,.12); color: #6495ED; }
+
+  /* INPUTS */
+  .inputs-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .input-wrap { display: flex; flex-direction: column; gap: 5px; min-width: 180px; flex: 1; }
+  .input-lbl { font-size: 11px; font-weight: 600; color: var(--text-2); }
+  .input-field {
+    font-family: var(--font);
+    font-size: 13px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text-1);
+    outline: none;
+    transition: border-color .15s, background .3s;
+    width: 100%;
+  }
+  .input-field:focus { border-color: rgba(255,107,53,.5); }
+  .input-field::placeholder { color: var(--text-3); }
+  .input-field.error { border-color: rgba(232,25,75,.5); }
+
+  /* CUSTOM SELECT */
+  .custom-select { position: relative; user-select: none; }
+  .custom-select-trigger {
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--font); font-size: 13px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px;
+    color: var(--text-1); cursor: pointer;
+    transition: border-color .15s, background .3s;
+  }
+  .custom-select-trigger:hover { border-color: rgba(128,128,128,.3); }
+  .custom-select-trigger.open { border-color: rgba(255,107,53,.5); }
+  .custom-select-trigger.placeholder { color: var(--text-3); }
+  .cs-arrow {
+    width: 16px; height: 16px; flex-shrink: 0; margin-left: 8px;
+    color: var(--text-3); transition: transform .2s;
+  }
+  .cs-arrow.open { transform: rotate(180deg); }
+  .cs-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0; margin-right: 8px;
+  }
+  .custom-select-dropdown {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    display: none;
+    animation: dropDown .15s ease;
+  }
+  .custom-select-dropdown.open { display: block; }
+  @keyframes dropDown { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
+  .cs-option {
+    display: flex; align-items: center;
+    padding: 9px 12px; font-size: 13px; color: var(--text-2);
+    cursor: pointer; transition: background .1s, color .1s;
+    gap: 8px;
+  }
+  .cs-option:hover { background: var(--surface-2); color: var(--text-1); }
+  .cs-option.selected { color: var(--text-1); background: var(--surface-2); }
+  .cs-option.selected .cs-check { opacity: 1; }
+  .cs-check { margin-left: auto; opacity: 0; color: #29BF12; font-size: 13px; }
+  .cs-divider { height: 1px; background: var(--border); margin: 3px 0; }
+  .cs-group-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; color: var(--text-3);
+    padding: 8px 12px 4px;
+  }
+
+  /* DATE / TIME PICKERS */
+  .dt-field { position: relative; }
+  .dt-trigger {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--font); font-size: 13px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px;
+    color: var(--text-1); cursor: pointer;
+    transition: border-color .15s; user-select: none;
+  }
+  .dt-trigger:hover { border-color: rgba(128,128,128,.3); }
+  .dt-trigger.open { border-color: rgba(255,107,53,.5); }
+  .dt-icon { color: var(--text-3); font-size: 14px; flex-shrink: 0; }
+  .dt-val { flex: 1; }
+  .dt-val.placeholder { color: var(--text-3); }
+  .dt-popup {
+    position: absolute; top: calc(100% + 4px); left: 0;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    z-index: 200; display: none; padding: 16px;
+    animation: dropDown .15s ease;
+  }
+  .dt-popup.open { display: block; }
+
+  /* Calendar */
+  .cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .cal-title { font-size: 13px; font-weight: 700; }
+  .cal-nav {
+    width: 26px; height: 26px; border-radius: 6px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-2); cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font); transition: all .15s;
+  }
+  .cal-nav:hover { color: var(--text-1); border-color: rgba(128,128,128,.3); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 34px); gap: 2px; }
+  .cal-dow {
+    width: 34px; height: 24px; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: .5px;
+  }
+  .cal-day {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: var(--text-2); cursor: pointer;
+    transition: all .1s; position: relative;
+  }
+  .cal-day:hover:not(.empty):not(.range-start):not(.range-end) { background: var(--surface-2); color: var(--text-1); }
+  .cal-day.today { color: var(--text-1); font-weight: 700; }
+  .cal-day.range-start,
+  .cal-day.range-end { color: #fff; font-weight: 700; border-radius: 8px; }
+  .cal-day.in-range { background: rgba(255,107,53,.12); color: var(--text-1); border-radius: 0; }
+  .cal-day.range-start { border-radius: 8px 0 0 8px; }
+  .cal-day.range-end   { border-radius: 0 8px 8px 0; }
+  .cal-day.range-start.range-end { border-radius: 8px; }
+  .cal-day.other-month { color: var(--text-3); }
+  .cal-day.empty { cursor: default; }
+  .cal-day.hover-range { background: rgba(255,107,53,.07); }
+
+  /* Mode toggle */
+  .dpick-mode-toggle {
+    display: flex; background: var(--surface-2); border-radius: 8px;
+    padding: 3px; gap: 2px; margin-bottom: 12px;
+  }
+  .dpick-mode-btn {
+    flex: 1; font-family: var(--font); font-size: 12px; font-weight: 600;
+    background: none; border: none; color: var(--text-3);
+    border-radius: 6px; padding: 6px 0; cursor: pointer; transition: all .15s;
+  }
+  .dpick-mode-btn.active {
+    background: var(--surface-3); color: var(--text-1);
+  }
+  .cal-day.picked {
+    background: linear-gradient(135deg, var(--accent-start), var(--accent-end));
+    color: #fff; font-weight: 700;
+  }
+
+  /* Range input bar */
+  .range-inputs {
+    display: flex; gap: 6px; align-items: center; margin-bottom: 12px;
+  }
+  .range-input-wrap { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .range-input-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-3);
+  }
+  .range-text-input {
+    font-family: var(--font); font-size: 13px; font-weight: 600;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 10px;
+    color: var(--text-1); outline: none; width: 100%;
+    letter-spacing: .5px; transition: border-color .15s;
+  }
+  .range-text-input::placeholder { color: var(--text-3); font-weight: 400; }
+  .range-text-input:focus { border-color: rgba(255,107,53,.5); }
+  .range-text-input.active-input { border-color: rgba(255,107,53,.5); }
+  .range-arrow { color: var(--text-3); font-size: 14px; flex-shrink: 0; margin-top: 16px; }
+
+  /* Clock range picker */
+  .clk-labels-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .clk-label-wrap { flex: 1; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; }
+  .clk-label-title { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-3); margin-bottom: 2px; }
+  .clk-label-val { font-size: 18px; font-weight: 700; color: var(--text-1); font-variant-numeric: tabular-nums; min-height: 26px; }
+  .clk-arrow { color: var(--text-3); font-size: 14px; flex-shrink: 0; }
+  .clk-hint { font-size: 11px; color: var(--text-3); text-align: center; margin-bottom: 12px; min-height: 16px; }
+
+  /* Time picker */
+  .time-picker { display: flex; gap: 8px; align-items: flex-start; }
+  .time-col { display: flex; flex-direction: column; align-items: center; }
+  .time-col-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 6px;
+  }
+  .time-scroll {
+    height: 144px; overflow-y: auto; width: 64px;
+    border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border);
+    scrollbar-width: none; position: relative;
+  }
+  .time-scroll::-webkit-scrollbar { display: none; }
+  .time-scroll::before,
+  .time-scroll::after {
+    content: ''; position: sticky; display: block; height: 48px;
+    pointer-events: none; z-index: 1;
+  }
+  .time-scroll::before {
+    top: 0;
+    background: linear-gradient(to bottom, var(--surface-2), transparent);
+  }
+  .time-scroll::after {
+    bottom: 0;
+    background: linear-gradient(to top, var(--surface-2), transparent);
+  }
+  .time-item {
+    height: 36px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 600; color: var(--text-3);
+    cursor: pointer; transition: all .12s; font-variant-numeric: tabular-nums;
+    border-radius: 6px; margin: 1px 4px;
+  }
+  .time-item:hover:not(.selected) { color: var(--text-1); background: var(--surface-3); }
+  .time-item.selected { color: #fff; border-radius: 8px; }
+
+  /* Manual time input */
+  .time-manual-row {
+    display: flex; align-items: center; gap: 4px; margin-bottom: 10px;
+  }
+  .time-manual-input {
+    font-family: var(--font); font-size: 22px; font-weight: 700;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 0; text-align: center;
+    color: var(--text-1); outline: none; width: 56px;
+    transition: border-color .15s; font-variant-numeric: tabular-nums;
+  }
+  .time-manual-input:focus { border-color: rgba(255,107,53,.5); }
+  .time-manual-input::placeholder { color: var(--text-3); font-size: 16px; }
+  .time-manual-sep { font-size: 22px; font-weight: 700; color: var(--text-3); }
+
+  .time-actions { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; }
+  .time-action-btn {
+    font-family: var(--font); font-size: 11px; font-weight: 700;
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 12px; cursor: pointer; transition: all .15s;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .time-action-btn:hover { color: var(--text-1); border-color: rgba(128,128,128,.3); }
+  .time-action-btn.confirm { color: #fff; border-color: transparent; }
+
+  /* NAV PREVIEW */
+  .nav-preview {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+  }
+  .nav-header {
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 20px;
+    background: var(--surface-1);
+  }
+  .nav-logo { font-size: 15px; font-weight: 800; letter-spacing: -.5px; }
+  .nav-items { display: flex; gap: 4px; flex: 1; }
+  .nav-item {
+    font-size: 12px; font-weight: 500;
+    padding: 6px 12px; border-radius: 7px; cursor: pointer;
+    color: var(--text-2); transition: all .15s;
+  }
+  .nav-item:hover { color: var(--text-1); background: var(--surface-2); }
+  .nav-item.active { color: var(--text-1); background: var(--surface-2); }
+  .nav-right { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+  .nav-avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #fff;
+  }
+  .nav-body { padding: 20px; height: 80px; display: flex; align-items: center; justify-content: center; }
+  .nav-placeholder { font-size: 13px; color: var(--text-3); }
+
+  /* TABLE */
+  .table-preview { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table-preview th {
+    text-align: left; font-size: 10px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--text-3);
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+  }
+  .table-preview td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+  }
+  .table-preview tr:hover td { background: var(--surface-2); color: var(--text-1); }
+  .table-preview td:first-child { color: var(--text-1); font-weight: 500; }
+
+  /* PROMPT AREA */
+  .prompt-area {
+    border-top: 1px solid var(--border);
+    padding: 14px 36px;
+    background: var(--surface-1);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    transition: background .3s;
+  }
+  .prompt-text {
+    flex: 1;
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.5;
+    font-family: monospace;
+  }
+  .copy-btn {
+    font-family: var(--font);
+    font-size: 11px; font-weight: 700;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    border-radius: 7px;
+    padding: 7px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+    flex-shrink: 0;
+  }
+  .copy-btn:hover { color: var(--text-1); border-color: rgba(128,128,128,.4); }
+  .copy-btn.copied { color: #29BF12; border-color: #29BF12; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- ── CONTROLS ── -->
+<div class="controls">
+  <div class="controls-title">TV Shifts — Brand Book</div>
+
+  <!-- Theme -->
+  <div class="control-group">
+    <div class="control-group-label">Тема</div>
+    <div class="theme-switcher">
+      <button class="theme-btn active" id="theme-dark" onclick="setTheme('dark')">🌙 Тёмная</button>
+      <button class="theme-btn" id="theme-light" onclick="setTheme('light')">☀️ Светлая</button>
+    </div>
+  </div>
+
+  <!-- Presets -->
+  <div class="control-group">
+    <div class="control-group-label">Пресеты</div>
+    <div class="preset-grid">
+      <button class="preset-btn active" onclick="applyPreset('fire')"   id="preset-fire">🔥 Fire</button>
+      <button class="preset-btn"        onclick="applyPreset('ocean')"  id="preset-ocean">🌊 Ocean</button>
+      <button class="preset-btn"        onclick="applyPreset('violet')" id="preset-violet">💜 Violet</button>
+      <button class="preset-btn"        onclick="applyPreset('mono')"   id="preset-mono">◾ Mono</button>
+    </div>
+  </div>
+
+  <!-- Accent color -->
+  <div class="control-group">
+    <div class="control-group-label">Акцентный цвет</div>
+    <div class="control-row">
+      <div class="control-label">Начало <span class="control-val" id="val-start">#FF6B35</span></div>
+      <input type="color" id="ctrl-start" value="#FF6B35" oninput="state.accentStart=this.value;updateAll()">
+    </div>
+    <div class="control-row">
+      <div class="control-label">Конец <span class="control-val" id="val-end">#E8194B</span></div>
+      <input type="color" id="ctrl-end" value="#E8194B" oninput="state.accentEnd=this.value;updateAll()">
+    </div>
+  </div>
+
+  <!-- Quick swatches -->
+  <div class="control-group">
+    <div class="control-group-label">Быстрые акценты</div>
+    <div class="swatch-row" id="swatch-row"></div>
+  </div>
+
+  <!-- Typography -->
+  <div class="control-group">
+    <div class="control-group-label">Типографика</div>
+    <div class="control-row">
+      <div class="control-label">Базовый размер <span class="control-val" id="val-base">14px</span></div>
+      <input type="range" id="ctrl-base" min="12" max="18" value="14" oninput="state.baseFontSize=+this.value;updateAll()">
+    </div>
+    <div class="control-row">
+      <div class="control-label">Межстрочный <span class="control-val" id="val-lh">1.5</span></div>
+      <input type="range" id="ctrl-lh" min="1.2" max="1.8" step="0.05" value="1.5" oninput="state.lineHeight=+this.value;updateAll()">
+    </div>
+  </div>
+
+  <!-- Surfaces -->
+  <div class="control-group">
+    <div class="control-group-label">Поверхности</div>
+    <div class="control-row">
+      <div class="control-label">Радиус карточек <span class="control-val" id="val-radius">14px</span></div>
+      <input type="range" id="ctrl-radius" min="6" max="24" value="14" oninput="state.radius=+this.value;updateAll()">
+    </div>
+    <div class="control-row">
+      <div class="control-label">Радиус кнопок <span class="control-val" id="val-btnr">8px</span></div>
+      <input type="range" id="ctrl-btnr" min="4" max="24" value="8" oninput="state.btnRadius=+this.value;updateAll()">
+    </div>
+    <div class="control-row">
+      <div class="control-label">Тень карточек <span class="control-val" id="val-shadow">средняя</span></div>
+      <input type="range" id="ctrl-shadow" min="0" max="3" value="1" oninput="state.shadowLevel=+this.value;updateAll()">
+    </div>
+  </div>
+
+  <!-- Toggles -->
+  <div class="control-group">
+    <div class="control-group-label">Эффекты</div>
+    <div class="toggle-row">
+      <span class="toggle-label">Dot-pattern фон</span>
+      <div class="toggle on" id="tgl-dot" onclick="toggle('dotPattern')"></div>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Glassmorphism карточка</span>
+      <div class="toggle on" id="tgl-glass" onclick="toggle('glass')"></div>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Accent border-top</span>
+      <div class="toggle on" id="tgl-accent" onclick="toggle('accentBorder')"></div>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">Hover lift</span>
+      <div class="toggle on" id="tgl-hover" onclick="toggle('hoverLift')"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main">
+  <div class="preview-area" id="preview-area">
+
+    <!-- COLORS -->
+    <div class="section">
+      <div class="section-title">Палитра</div>
+      <div class="color-grid" id="color-grid"></div>
+    </div>
+
+    <!-- TYPOGRAPHY -->
+    <div class="section">
+      <div class="section-title">Типографика — Urbanist</div>
+      <div id="typo-preview"></div>
+    </div>
+
+    <!-- CARDS -->
+    <div class="section">
+      <div class="section-title">Карточки</div>
+      <div id="dot-area"></div>
+    </div>
+
+    <!-- BUTTONS -->
+    <div class="section">
+      <div class="section-title">Кнопки</div>
+      <div class="btns-row" id="btns-preview"></div>
+    </div>
+
+    <!-- BADGES -->
+    <div class="section">
+      <div class="section-title">Бейджи статусов</div>
+      <div class="badges-row">
+        <span class="badge badge-active">Активен</span>
+        <span class="badge badge-pending">В работе</span>
+        <span class="badge badge-draft">Черновик</span>
+        <span class="badge badge-done">Завершён</span>
+        <span class="badge badge-error">Ошибка</span>
+      </div>
+    </div>
+
+    <!-- INPUTS -->
+    <div class="section">
+      <div class="section-title">Поля ввода</div>
+      <div class="inputs-row">
+        <div class="input-wrap">
+          <div class="input-lbl">Название проекта</div>
+          <input class="input-field" type="text" placeholder="Введите название...">
+        </div>
+        <div class="input-wrap">
+          <div class="input-lbl">Ошибка</div>
+          <input class="input-field error" type="text" value="Некорректное значение">
+        </div>
+        <div class="input-wrap">
+          <div class="input-lbl">Поиск с иконкой</div>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:13px">🔍</span>
+            <input class="input-field" type="text" placeholder="Поиск..." style="padding-left:32px">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOM SELECT -->
+    <div class="section">
+      <div class="section-title">Выпадающий список</div>
+      <div class="inputs-row" style="align-items:flex-start">
+
+        <!-- Simple select -->
+        <div class="input-wrap" style="max-width:220px">
+          <div class="input-lbl">Статус проекта</div>
+          <div class="custom-select" id="cs1">
+            <div class="custom-select-trigger placeholder" onclick="toggleSelect('cs1')">
+              <span id="cs1-val">Выберите статус...</span>
+              <svg class="cs-arrow" id="cs1-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4,6 8,10 12,6"/>
+              </svg>
+            </div>
+            <div class="custom-select-dropdown" id="cs1-dropdown">
+              <div class="cs-option" onclick="selectOption('cs1','Активен','#29BF12')">
+                <span class="cs-dot" style="background:#29BF12"></span>Активен<span class="cs-check">✓</span>
+              </div>
+              <div class="cs-option" onclick="selectOption('cs1','В работе','#D97706')">
+                <span class="cs-dot" style="background:#D97706"></span>В работе<span class="cs-check">✓</span>
+              </div>
+              <div class="cs-option" onclick="selectOption('cs1','На паузе','#6495ED')">
+                <span class="cs-dot" style="background:#6495ED"></span>На паузе<span class="cs-check">✓</span>
+              </div>
+              <div class="cs-divider"></div>
+              <div class="cs-option" onclick="selectOption('cs1','Завершён','#555')">
+                <span class="cs-dot" style="background:#555"></span>Завершён<span class="cs-check">✓</span>
+              </div>
+              <div class="cs-option" onclick="selectOption('cs1','Отменён','#E8194B')">
+                <span class="cs-dot" style="background:#E8194B"></span>Отменён<span class="cs-check">✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grouped select -->
+        <div class="input-wrap" style="max-width:240px">
+          <div class="input-lbl">Отдел</div>
+          <div class="custom-select" id="cs2">
+            <div class="custom-select-trigger placeholder" onclick="toggleSelect('cs2')">
+              <span id="cs2-val">Выберите отдел...</span>
+              <svg class="cs-arrow" id="cs2-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4,6 8,10 12,6"/>
+              </svg>
+            </div>
+            <div class="custom-select-dropdown" id="cs2-dropdown">
+              <div class="cs-group-label">Производство</div>
+              <div class="cs-option" onclick="selectOption('cs2','🎬 Монтажный цех')">🎬 Монтажный цех<span class="cs-check">✓</span></div>
+              <div class="cs-option" onclick="selectOption('cs2','📹 Съёмочная группа')">📹 Съёмочная группа<span class="cs-check">✓</span></div>
+              <div class="cs-option" onclick="selectOption('cs2','🎙️ Звуковой отдел')">🎙️ Звуковой отдел<span class="cs-check">✓</span></div>
+              <div class="cs-divider"></div>
+              <div class="cs-group-label">Постпродакшн</div>
+              <div class="cs-option" onclick="selectOption('cs2','✂️ Монтаж')">✂️ Монтаж<span class="cs-check">✓</span></div>
+              <div class="cs-option" onclick="selectOption('cs2','🎨 Графика и VFX')">🎨 Графика и VFX<span class="cs-check">✓</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Multi select -->
+        <div class="input-wrap" style="max-width:240px">
+          <div class="input-lbl">Участники (мульти)</div>
+          <div class="custom-select" id="cs3">
+            <div class="custom-select-trigger placeholder" onclick="toggleSelect('cs3')">
+              <span id="cs3-val">Выберите участников...</span>
+              <svg class="cs-arrow" id="cs3-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4,6 8,10 12,6"/>
+              </svg>
+            </div>
+            <div class="custom-select-dropdown" id="cs3-dropdown">
+              <div class="cs-option" onclick="toggleMulti('cs3','u1','А. Иванов')">
+                <span style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#FF6B35,#E8194B);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">АИ</span>
+                А. Иванов<span class="cs-check" id="cs3-u1">✓</span>
+              </div>
+              <div class="cs-option" onclick="toggleMulti('cs3','u2','М. Петрова')">
+                <span style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#0EA5E9,#6366F1);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">МП</span>
+                М. Петрова<span class="cs-check" id="cs3-u2">✓</span>
+              </div>
+              <div class="cs-option" onclick="toggleMulti('cs3','u3','С. Громов')">
+                <span style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#29BF12,#0EA5E9);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">СГ</span>
+                С. Громов<span class="cs-check" id="cs3-u3">✓</span>
+              </div>
+              <div class="cs-option" onclick="toggleMulti('cs3','u4','Т. Орлова')">
+                <span style="width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#8B5CF6,#E8194B);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0">ТО</span>
+                Т. Орлова<span class="cs-check" id="cs3-u4">✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- DATE / TIME -->
+    <div class="section">
+      <div class="section-title">Дата и время</div>
+      <div class="inputs-row" style="align-items:flex-start;flex-wrap:wrap">
+
+        <!-- Single date picker -->
+        <!-- Smart date picker: dates / range toggle -->
+        <div class="input-wrap" style="max-width:340px">
+          <div class="input-lbl">Дата</div>
+          <div class="dt-field" id="drange">
+            <div class="dt-trigger" onclick="toggleRangePicker()">
+              <span class="dt-icon">📅</span>
+              <span class="dt-val" id="drange-val" style="color:var(--text-3)">Выбрать даты</span>
+            </div>
+            <div class="dt-popup" id="drange-popup" style="min-width:308px">
+              <!-- Mode toggle -->
+              <div class="dpick-mode-toggle">
+                <button class="dpick-mode-btn active" id="dpick-btn-dates" onclick="setPickMode('dates')">Даты</button>
+                <button class="dpick-mode-btn" id="dpick-btn-range" onclick="setPickMode('range')">Диапазон</button>
+              </div>
+              <!-- Range inputs (shown only in range mode) -->
+              <div class="range-inputs" id="drange-inputs" style="display:none">
+                <div class="range-input-wrap">
+                  <div class="range-input-label">Начало</div>
+                  <input class="range-text-input active-input" id="range-start-input"
+                    placeholder="09.05.2026"
+                    oninput="onRangeTextInput('start',this.value)"
+                    onfocus="rangeActiveFocus='start';highlightRangeInput()">
+                </div>
+                <div class="range-arrow">→</div>
+                <div class="range-input-wrap">
+                  <div class="range-input-label">Конец</div>
+                  <input class="range-text-input" id="range-end-input"
+                    placeholder="20.05.2026"
+                    oninput="onRangeTextInput('end',this.value)"
+                    onfocus="rangeActiveFocus='end';highlightRangeInput()">
+                </div>
+              </div>
+              <div class="cal-header">
+                <button class="cal-nav" onclick="calNav('drange',-1)">‹</button>
+                <span class="cal-title" id="drange-title"></span>
+                <button class="cal-nav" onclick="calNav('drange',1)">›</button>
+              </div>
+              <div class="cal-grid" id="drange-grid"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Time picker -->
+        <div class="input-wrap" style="max-width:220px">
+          <div class="input-lbl">Время</div>
+          <div class="dt-field" id="tp1">
+            <div class="dt-trigger" onclick="toggleTimepicker('tp1')">
+              <span class="dt-icon">🕐</span>
+              <span class="dt-val placeholder" id="tp1-val">чч:мм</span>
+            </div>
+            <div class="dt-popup" id="tp1-popup" style="min-width:200px">
+              <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-3);margin-bottom:10px">Время</div>
+              <!-- manual input -->
+              <div class="time-manual-row">
+                <input class="time-manual-input" id="tp1-h-input" placeholder="--" maxlength="2"
+                  oninput="onTimeManualInput('tp1','h',this.value)">
+                <span class="time-manual-sep">:</span>
+                <input class="time-manual-input" id="tp1-m-input" placeholder="--" maxlength="2"
+                  oninput="onTimeManualInput('tp1','m',this.value)">
+              </div>
+              <div class="time-picker">
+                <div class="time-col">
+                  <div class="time-col-label">Часы</div>
+                  <div class="time-scroll" id="tp1-hours"></div>
+                </div>
+                <div class="time-col">
+                  <div class="time-col-label">Минуты</div>
+                  <div class="time-scroll" id="tp1-minutes"></div>
+                </div>
+              </div>
+              <div class="time-actions">
+                <button class="time-action-btn" onclick="closeAll()">Отмена</button>
+                <button class="time-action-btn confirm" onclick="confirmTime('tp1')" style="background:linear-gradient(135deg,#FF6B35,#E8194B)">Применить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clock range picker -->
+        <div class="input-wrap" style="max-width:260px">
+          <div class="input-lbl">Диапазон времени</div>
+          <div class="dt-field" id="clk">
+            <div class="dt-trigger" onclick="toggleClockPicker()">
+              <span class="dt-icon">⏱️</span>
+              <span class="dt-val placeholder" id="clk-val">чч:мм — чч:мм</span>
+            </div>
+            <div class="dt-popup" id="clk-popup" style="min-width:340px;padding:20px">
+              <div class="clk-labels-row">
+                <div class="clk-label-wrap">
+                  <div class="clk-label-title">Начало</div>
+                  <div class="clk-label-val" id="clk-start-val">—</div>
+                </div>
+                <div class="clk-arrow">→</div>
+                <div class="clk-label-wrap">
+                  <div class="clk-label-title">Конец</div>
+                  <div class="clk-label-val" id="clk-end-val">—</div>
+                </div>
+              </div>
+              <div class="clk-hint" id="clk-hint">Выберите начало диапазона</div>
+              <canvas id="clk-canvas" width="340" height="340" style="display:block;margin:0 auto;cursor:pointer"></canvas>
+              <div class="time-actions">
+                <button class="time-action-btn" onclick="closeAll()">Отмена</button>
+                <button class="time-action-btn confirm" id="clk-apply" onclick="applyClockRange()" style="background:linear-gradient(135deg,#FF6B35,#E8194B);opacity:.4;pointer-events:none">Применить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <div class="section">
+      <div class="section-title">Навигация</div>
+      <div class="nav-preview">
+        <div class="nav-header">
+          <div class="nav-logo">TV Shifts</div>
+          <div class="nav-items">
+            <div class="nav-item active">Проекты</div>
+            <div class="nav-item">Смены</div>
+            <div class="nav-item">Персонал</div>
+            <div class="nav-item">Аналитика</div>
+          </div>
+          <div class="nav-right">
+            <span class="badge badge-active" style="font-size:10px">3 активных</span>
+            <div class="nav-avatar" id="nav-avatar">АД</div>
+          </div>
+        </div>
+        <div class="nav-body"><div class="nav-placeholder">Контент страницы</div></div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="section">
+      <div class="section-title">Таблица</div>
+      <div id="table-wrap" style="border-radius:var(--radius-card);overflow:hidden;border:1px solid var(--border);">
+        <table class="table-preview">
+          <thead>
+            <tr>
+              <th>Проект</th><th>Статус</th><th>Режиссёр</th><th>Дата</th><th>Смены</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Прямой эфир — Новости 21:00</td>
+              <td><span class="badge badge-active">Активен</span></td>
+              <td>А. Иванов</td><td>10 мая 2026</td><td>12</td>
+            </tr>
+            <tr>
+              <td>Документальный «Арктика»</td>
+              <td><span class="badge badge-pending">В работе</span></td>
+              <td>М. Петрова</td><td>15 мая 2026</td><td>8</td>
+            </tr>
+            <tr>
+              <td>Ток-шоу «Утро с нами»</td>
+              <td><span class="badge badge-draft">Черновик</span></td>
+              <td>С. Сидоров</td><td>20 мая 2026</td><td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PROMPT -->
+  <div class="prompt-area">
+    <div class="prompt-text" id="prompt-text"></div>
+    <button class="copy-btn" id="copy-btn" onclick="copyPrompt()">Копировать правила</button>
+  </div>
+</div>
+
+<script>
+const PRESETS = {
+  fire:   { accentStart: '#FF6B35', accentEnd: '#E8194B', radius: 14, btnRadius: 8, shadowLevel: 1 },
+  ocean:  { accentStart: '#0EA5E9', accentEnd: '#6366F1', radius: 12, btnRadius: 8, shadowLevel: 1 },
+  violet: { accentStart: '#BB2C90', accentEnd: '#6730DC', radius: 14, btnRadius: 8, shadowLevel: 2 },
+  mono:   { accentStart: '#888888', accentEnd: '#CCCCCC', radius: 8,  btnRadius: 6, shadowLevel: 0 },
+};
+
+const SWATCHES = [
+  { label: 'Fire',   start: '#FF6B35', end: '#E8194B' },
+  { label: 'Violet', start: '#BB2C90', end: '#6730DC' },
+  { label: 'Ocean',  start: '#0EA5E9', end: '#6366F1' },
+  { label: 'Neon',   start: '#39FF14', end: '#00D4FF' },
+  { label: 'Gold',   start: '#F59E0B', end: '#EF4444' },
+  { label: 'Rose',   start: '#FB7185', end: '#A855F7' },
+];
+
+const SHADOWS = ['none', '0 2px 8px rgba(0,0,0,.12)', '0 4px 16px rgba(0,0,0,.18)', '0 8px 32px rgba(0,0,0,.25)'];
+const SHADOW_LABELS = ['нет', 'мягкая', 'средняя', 'глубокая'];
+
+const state = {
+  theme: 'dark',
+  accentStart: '#FF6B35',
+  accentEnd:   '#E8194B',
+  baseFontSize: 14,
+  lineHeight: 1.5,
+  radius: 14,
+  btnRadius: 8,
+  shadowLevel: 1,
+  dotPattern: true,
+  glass: true,
+  accentBorder: true,
+  hoverLift: true,
+  activePreset: 'fire',
+};
+
+// Build swatches
+const swatchRow = document.getElementById('swatch-row');
+SWATCHES.forEach((s, i) => {
+  const el = document.createElement('div');
+  el.className = 'swatch' + (i === 0 ? ' active' : '');
+  el.title = s.label;
+  el.style.background = `linear-gradient(135deg,${s.start},${s.end})`;
+  el.onclick = () => {
+    state.accentStart = s.start;
+    state.accentEnd = s.end;
+    document.getElementById('ctrl-start').value = s.start;
+    document.getElementById('ctrl-end').value = s.end;
+    document.querySelectorAll('.swatch').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    updateAll();
+  };
+  swatchRow.appendChild(el);
+});
+
+function setTheme(t) {
+  state.theme = t;
+  document.documentElement.classList.toggle('light', t === 'light');
+  document.getElementById('theme-dark').classList.toggle('active', t === 'dark');
+  document.getElementById('theme-light').classList.toggle('active', t === 'light');
+  updateAll();
+}
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+  Object.assign(state, p, { activePreset: name });
+  document.getElementById('ctrl-start').value = state.accentStart;
+  document.getElementById('ctrl-end').value = state.accentEnd;
+  document.getElementById('ctrl-radius').value = state.radius;
+  document.getElementById('ctrl-btnr').value = state.btnRadius;
+  document.getElementById('ctrl-shadow').value = state.shadowLevel;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('preset-' + name).classList.add('active');
+  updateAll();
+}
+
+function toggle(key) {
+  state[key] = !state[key];
+  const map = { dotPattern:'tgl-dot', glass:'tgl-glass', accentBorder:'tgl-accent', hoverLift:'tgl-hover' };
+  document.getElementById(map[key]).classList.toggle('on', state[key]);
+  updateAll();
+}
+
+function grad() {
+  return `linear-gradient(135deg,${state.accentStart},${state.accentEnd})`;
+}
+
+function isLight() { return state.theme === 'light'; }
+
+function getBg() {
+  return isLight() ? '#F0F2F5' : '#0D0D0D';
+}
+function getSurf1() {
+  return isLight() ? '#FFFFFF' : `rgb(22,22,22)`;
+}
+function getSurf2() {
+  return isLight() ? '#F4F6F9' : `rgb(30,30,30)`;
+}
+function getBorder() {
+  return isLight() ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)';
+}
+function getText1() { return isLight() ? '#0F172A' : '#FFFFFF'; }
+function getText2() { return isLight() ? '#64748B' : '#A0A0A0'; }
+function getText3() { return isLight() ? '#94A3B8' : '#555555'; }
+function getDot()   { return isLight() ? 'rgba(0,0,0,.05)' : 'rgba(255,255,255,.07)'; }
+function getGlassBg()  { return isLight() ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.05)'; }
+function getGlassBdr() { return isLight() ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.10)'; }
+
+function renderPreview() {
+  const g = grad();
+  const r = state.radius + 'px';
+  const br = state.btnRadius + 'px';
+  const shadow = SHADOWS[state.shadowLevel];
+  const hoverShadow = state.shadowLevel < 3 ? SHADOWS[state.shadowLevel + 1] : SHADOWS[3];
+  const bg = getBg();
+  const surf1 = getSurf1();
+  const surf2 = getSurf2();
+  const border = getBorder();
+  const t1 = getText1();
+  const t2 = getText2();
+  const t3 = getText3();
+  const dot = getDot();
+
+  document.documentElement.style.setProperty('--radius-card', r);
+  document.documentElement.style.setProperty('--radius-btn', br);
+
+  // Palette
+  const colorGrid = document.getElementById('color-grid');
+  const palette = [
+    { name: 'Background', hex: bg,    style: `background:${bg};border:1px solid ${border}` },
+    { name: 'Surface 1',  hex: surf1, style: `background:${surf1};border:1px solid ${border}` },
+    { name: 'Surface 2',  hex: surf2, style: `background:${surf2};border:1px solid ${border}` },
+    { name: 'Accent',     hex: `${state.accentStart}→${state.accentEnd}`, style: `background:${g}` },
+    { name: 'Green',      hex: '#29BF12', style: 'background:#29BF12' },
+    { name: 'Error',      hex: '#E8194B', style: 'background:#E8194B' },
+    { name: 'Text 1',     hex: t1,    style: `background:${t1}` },
+    { name: 'Text 2',     hex: t2,    style: `background:${t2}` },
+    { name: 'Text 3',     hex: t3,    style: `background:${t3};border:1px solid ${border}` },
+  ];
+  colorGrid.innerHTML = palette.map(c => `
+    <div class="color-chip">
+      <div class="color-swatch-big" style="${c.style}"></div>
+      <div class="color-name">${c.name}</div>
+      <div class="color-hex">${c.hex}</div>
+    </div>
+  `).join('');
+
+  // Typography
+  const fs = state.baseFontSize;
+  const lh = state.lineHeight;
+  document.getElementById('typo-preview').innerHTML = `
+    <div class="type-row">
+      <div class="type-label">H1 · ${Math.round(fs*2.57)}px · 800</div>
+      <div style="font-size:${Math.round(fs*2.57)}px;font-weight:800;line-height:${lh};letter-spacing:-1px">Управление командой</div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">H2 · ${Math.round(fs*1.86)}px · 700</div>
+      <div style="font-size:${Math.round(fs*1.86)}px;font-weight:700;line-height:${lh};letter-spacing:-.5px">Расписание смен</div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">H3 · ${Math.round(fs*1.43)}px · 600</div>
+      <div style="font-size:${Math.round(fs*1.43)}px;font-weight:600;line-height:${lh}">Проект: Прямой эфир</div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">Body · ${fs}px · 400</div>
+      <div style="font-size:${fs}px;font-weight:400;line-height:${lh};color:${t2}">Текст описания проекта. Состав команды, даты съёмок, загруженность сотрудников по отделам.</div>
+    </div>
+    <div class="type-row">
+      <div class="type-label">Caption · ${Math.round(fs*0.857)}px · 600 · UPPERCASE</div>
+      <div style="font-size:${Math.round(fs*0.857)}px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:${t3}">Статус · Отдел · Дата</div>
+    </div>
+  `;
+
+  // Cards
+  const dotBg = state.dotPattern
+    ? `background-image:radial-gradient(circle,${dot} 1px,transparent 1px);background-size:24px 24px;background-color:${bg};`
+    : `background:${bg};`;
+  const hoverStyle = state.hoverLift ? `cursor:pointer;` : '';
+  const accentTop = state.accentBorder
+    ? `border-top:2px solid ${state.accentStart};`
+    : '';
+  const glassCard = state.glass ? `
+    <div style="background:${getGlassBg()};backdrop-filter:blur(16px);border:1px solid ${getGlassBdr()};border-radius:${r};padding:20px;min-width:180px;flex:1;box-shadow:${shadow};${hoverStyle}transition:box-shadow .2s,transform .2s"
+      onmouseenter="if(${state.hoverLift}){this.style.transform='translateY(-2px)';this.style.boxShadow='${hoverShadow}'}"
+      onmouseleave="this.style.transform='';this.style.boxShadow='${shadow}'">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${t3};margin-bottom:8px">Glassmorphism</div>
+      <div style="font-size:16px;font-weight:700;color:${t1};margin-bottom:4px">Постпродакшн</div>
+      <div style="font-size:13px;color:${t2}">4 сотрудника активно</div>
+      <div style="font-size:12px;color:${t3};margin-top:12px">Обновлено 2 мин назад</div>
+    </div>
+  ` : '';
+
+  document.getElementById('dot-area').innerHTML = `
+    <div style="${dotBg}border:1px solid ${border};border-radius:${r};padding:20px;display:flex;gap:14px;flex-wrap:wrap;flex:1;">
+      <div style="background:${surf1};border:1px solid ${border};${accentTop}border-radius:${r};padding:20px;min-width:180px;flex:1;box-shadow:${shadow};${hoverStyle}transition:box-shadow .2s,transform .2s"
+        onmouseenter="if(${state.hoverLift}){this.style.transform='translateY(-2px)';this.style.boxShadow='${hoverShadow}'}"
+        onmouseleave="this.style.transform='';this.style.boxShadow='${shadow}'">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${t3};margin-bottom:8px">Стандартная</div>
+        <div style="font-size:16px;font-weight:700;color:${t1};margin-bottom:4px">Монтажный цех</div>
+        <div style="font-size:13px;color:${t2}">7 смен на этой неделе</div>
+        <div style="font-size:12px;color:${t3};margin-top:12px">Загруженность 85%</div>
+      </div>
+      ${glassCard}
+      <div style="background:${g};border-radius:${r};padding:20px;min-width:180px;flex:1;box-shadow:${shadow};${hoverStyle}transition:box-shadow .2s,transform .2s"
+        onmouseenter="if(${state.hoverLift}){this.style.transform='translateY(-2px)';this.style.boxShadow='${hoverShadow}'}"
+        onmouseleave="this.style.transform='';this.style.boxShadow='${shadow}'">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:8px">Акцентная</div>
+        <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:4px">Эфир сегодня</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.75)">Студия А · 21:00</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:12px">Готовность 100%</div>
+      </div>
+    </div>
+  `;
+
+  // Buttons
+  document.getElementById('btns-preview').innerHTML = `
+    <button class="btn btn-sm" style="background:${g};color:#fff;border-radius:${br};box-shadow:${shadow}">Сохранить</button>
+    <button class="btn" style="background:${g};color:#fff;border-radius:${br};box-shadow:${shadow}">Создать проект</button>
+    <button class="btn btn-lg" style="background:${g};color:#fff;border-radius:${br};box-shadow:${shadow}">Добавить смену</button>
+    <button class="btn btn-secondary" style="border-radius:${br}">Отмена</button>
+    <button class="btn btn-ghost" style="border-radius:${br}">Подробнее</button>
+    <button class="btn btn-danger" style="border-radius:${br}">Удалить</button>
+  `;
+
+  document.getElementById('nav-avatar').style.background = g;
+  document.getElementById('table-wrap').style.background = surf1;
+}
+
+function updatePrompt() {
+  const text = `Дизайн-система TV Shifts (${state.theme === 'light' ? 'светлая тема' : 'тёмная тема'}):
+• Тема: ${state.theme === 'light' ? 'светлая (bg #F0F2F5, surface #FFFFFF / #F4F6F9)' : 'тёмная (bg #0D0D0D, surface #161616 / #1E1E1E)'}
+• Акцент-градиент: ${state.accentStart} → ${state.accentEnd} (linear-gradient 135deg)
+• Зелёный (успех): #29BF12 | Красный (ошибка): #E8194B
+• Шрифт: Urbanist, базовый ${state.baseFontSize}px, межстрочный ${state.lineHeight}
+• Радиус карточек: ${state.radius}px | Радиус кнопок: ${state.btnRadius}px
+• Тень: ${SHADOW_LABELS[state.shadowLevel]}
+• Dot-pattern: ${state.dotPattern ? 'radial-gradient(circle, dot 1px) / 24px' : 'выключен'}
+• Glassmorphism: ${state.glass ? 'включён (blur 16px)' : 'выключен'}
+• Accent border-top: ${state.accentBorder ? 'включён' : 'выключен'}
+• Hover lift: ${state.hoverLift ? 'translateY(-2px)' : 'выключен'}`;
+  document.getElementById('prompt-text').textContent = text;
+}
+
+function updateAll() {
+  document.getElementById('val-start').textContent = state.accentStart;
+  document.getElementById('val-end').textContent = state.accentEnd;
+  document.getElementById('val-base').textContent = state.baseFontSize + 'px';
+  document.getElementById('val-lh').textContent = state.lineHeight;
+  document.getElementById('val-radius').textContent = state.radius + 'px';
+  document.getElementById('val-btnr').textContent = state.btnRadius + 'px';
+  document.getElementById('val-shadow').textContent = SHADOW_LABELS[state.shadowLevel];
+  renderPreview();
+  updatePrompt();
+}
+
+function copyPrompt() {
+  navigator.clipboard.writeText(document.getElementById('prompt-text').textContent).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Скопировано';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Копировать правила'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+
+updateAll();
+
+// ── Custom select ──
+const multiState = { cs3: {} };
+
+function closeAll() {
+  document.querySelectorAll('.custom-select-dropdown.open').forEach(d => {
+    d.classList.remove('open');
+    const id = d.id.replace('-dropdown','');
+    document.getElementById(id+'-arrow')?.classList.remove('open');
+    document.getElementById(id+'-trigger')?.classList.remove('open');
+    document.querySelector(`#${id} .custom-select-trigger`)?.classList.remove('open');
+  });
+  document.querySelectorAll('.dt-popup.open').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.dt-trigger.open').forEach(t => t.classList.remove('open'));
+}
+
+document.addEventListener('click', e => {
+  // Use composedPath so detached nodes (after innerHTML rebuild) still resolve correctly
+  const path = e.composedPath();
+  const inside = path.some(el => el.classList && (el.classList.contains('custom-select') || el.classList.contains('dt-field')));
+  if (!inside) closeAll();
+});
+
+function toggleSelect(id) {
+  const dd = document.getElementById(id+'-dropdown');
+  const arrow = document.getElementById(id+'-arrow');
+  const trigger = document.querySelector(`#${id} .custom-select-trigger`);
+  const wasOpen = dd.classList.contains('open');
+  closeAll();
+  if (!wasOpen) {
+    dd.classList.add('open');
+    arrow?.classList.add('open');
+    trigger?.classList.add('open');
+  }
+}
+
+function selectOption(id, label, dotColor) {
+  const valEl = document.getElementById(id+'-val');
+  const trigger = document.querySelector(`#${id} .custom-select-trigger`);
+  valEl.textContent = label;
+  trigger?.classList.remove('placeholder');
+  // mark selected
+  document.querySelectorAll(`#${id}-dropdown .cs-option`).forEach(opt => {
+    opt.classList.toggle('selected', opt.textContent.trim().startsWith(label.replace(/^[^ ]+ /,'')));
+  });
+  closeAll();
+}
+
+function toggleMulti(id, key, label) {
+  if (!multiState[id]) multiState[id] = {};
+  multiState[id][key] = !multiState[id][key];
+  const checkEl = document.getElementById(id+'-'+key);
+  const optEl = checkEl?.closest('.cs-option');
+  if (checkEl) checkEl.style.opacity = multiState[id][key] ? '1' : '0';
+  if (optEl) optEl.classList.toggle('selected', multiState[id][key]);
+  const selected = Object.entries(multiState[id]).filter(([,v])=>v);
+  const valEl = document.getElementById(id+'-val');
+  const trigger = document.querySelector(`#${id} .custom-select-trigger`);
+  if (selected.length === 0) {
+    valEl.textContent = 'Выберите участников...';
+    trigger?.classList.add('placeholder');
+  } else {
+    valEl.textContent = selected.length + ' выбрано';
+    trigger?.classList.remove('placeholder');
+  }
+}
+
+// ── Date picker ──
+const calState = {};
+const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DAYS_RU = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const today = new Date();
+
+// Single date picker
+function initCal(id) {
+  if (calState[id]) return;
+  calState[id] = { year: today.getFullYear(), month: today.getMonth(), selected: null };
+  renderSingleCal(id);
+}
+
+function renderSingleCal(id) {
+  const s = calState[id];
+  document.getElementById(id+'-title').textContent = `${MONTHS_RU[s.month]} ${s.year}`;
+  const grid = document.getElementById(id+'-grid');
+  let html = DAYS_RU.map(d => `<div class="cal-dow">${d}</div>`).join('');
+  let startDow = new Date(s.year, s.month, 1).getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+  const dim = new Date(s.year, s.month+1, 0).getDate();
+  for (let i = 0; i < startDow; i++) html += `<div class="cal-day empty"></div>`;
+  for (let d = 1; d <= dim; d++) {
+    const isToday = d===today.getDate() && s.month===today.getMonth() && s.year===today.getFullYear();
+    const isSel = s.selected && s.selected.d===d && s.selected.m===s.month && s.selected.y===s.year;
+    const selStyle = isSel ? `background:linear-gradient(135deg,${state.accentStart},${state.accentEnd});color:#fff` : '';
+    html += `<div class="cal-day${isToday?' today':''}${isSel?' range-start range-end':''}" style="${selStyle}" onclick="pickSingleDay('${id}',${d})">${d}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function pickSingleDay(id, d) {
+  const s = calState[id];
+  s.selected = { d, m: s.month, y: s.year };
+  renderSingleCal(id);
+  const valEl = document.getElementById(id+'-val');
+  valEl.textContent = `${pad(d)}.${pad(s.month+1)}.${s.year}`;
+  valEl.classList.remove('placeholder');
+  const inp = document.getElementById(id+'-text');
+  if (inp) inp.value = `${pad(d)} ${pad(s.month+1)} ${String(s.year).slice(2)}`;
+  closeAll();
+}
+
+function onSingleTextInput(id, val) {
+  const digits = val.replace(/\D/g,'');
+  initCal(id);
+  const s = calState[id];
+  if (digits.length >= 2) {
+    const d = parseInt(digits.slice(0,2), 10);
+    if (d >= 1 && d <= 31) s.selected = s.selected ? { ...s.selected, d } : { d, m: s.month, y: s.year };
+  }
+  if (digits.length >= 4) {
+    const m = parseInt(digits.slice(2,4), 10) - 1;
+    if (m >= 0 && m <= 11) { s.month = m; if (s.selected) s.selected.m = m; }
+  }
+  if (digits.length >= 6) {
+    let y = parseInt(digits.slice(4,6), 10);
+    y = y < 50 ? 2000 + y : 1900 + y;
+    s.year = y; if (s.selected) s.selected.y = y;
+  }
+  renderSingleCal(id);
+  if (s.selected) {
+    const valEl = document.getElementById(id+'-val');
+    valEl.textContent = `${pad(s.selected.d)}.${pad(s.selected.m+1)}.${s.selected.y}`;
+    valEl.classList.remove('placeholder');
+  }
+}
+
+function onSingleTextKey(id, e) {
+  if (e.key === 'Enter') {
+    const inp = document.getElementById(id+'-text');
+    onSingleTextInput(id, inp.value);
+    closeAll();
+  }
+}
+
+function calNav(id, dir) {
+  if (id === 'drange') { rangeCalNav(dir); return; }
+  initCal(id);
+  const s = calState[id];
+  s.month += dir;
+  if (s.month > 11) { s.month = 0; s.year++; }
+  if (s.month < 0)  { s.month = 11; s.year--; }
+  renderSingleCal(id);
+}
+
+function toggleDatepicker(id) {
+  initCal(id);
+  const popup = document.getElementById(id+'-popup');
+  const trigger = document.querySelector(`#${id} .dt-trigger`);
+  const wasOpen = popup.classList.contains('open');
+  closeAll();
+  if (!wasOpen) {
+    popup.classList.add('open');
+    trigger?.classList.add('open');
+    setTimeout(() => document.getElementById(id+'-text')?.focus(), 50);
+  }
+}
+
+// ── Smart date picker (dates / range toggle) ──
+const rangeState = {
+  year: today.getFullYear(), month: today.getMonth(),
+  mode: 'dates',       // 'dates' | 'range'
+  picked: [],          // mode=dates: array of {d,m,y}
+  start: null,         // mode=range
+  end: null,           // mode=range
+  hoverDay: null
+};
+let rangeActiveFocus = 'start';
+
+function pad(n) { return String(n).padStart(2,'0'); }
+function dateVal(d, m, y) { return y * 10000 + (m+1) * 100 + d; }
+function fmtRangeDate(o) { return `${pad(o.d)}.${pad(o.m+1)}.${o.y}`; }
+
+function setPickMode(mode) {
+  rangeState.mode = mode;
+  rangeState.picked = [];
+  rangeState.start = null;
+  rangeState.end = null;
+  rangeState.hoverDay = null;
+
+  document.getElementById('dpick-btn-dates').classList.toggle('active', mode === 'dates');
+  document.getElementById('dpick-btn-range').classList.toggle('active', mode === 'range');
+  document.getElementById('drange-inputs').style.display = mode === 'range' ? 'flex' : 'none';
+  document.getElementById('range-start-input').value = '';
+  document.getElementById('range-end-input').value = '';
+
+  const valEl = document.getElementById('drange-val');
+  valEl.textContent = 'Выбрать даты';
+  valEl.style.color = 'var(--text-3)';
+
+  renderRangeCal();
+}
+
+function highlightRangeInput() {
+  document.getElementById('range-start-input')?.classList.toggle('active-input', rangeActiveFocus === 'start');
+  document.getElementById('range-end-input')?.classList.toggle('active-input', rangeActiveFocus === 'end');
+}
+
+function toggleRangePicker() {
+  const popup = document.getElementById('drange-popup');
+  const trigger = document.querySelector('#drange .dt-trigger');
+  const wasOpen = popup.classList.contains('open');
+  closeAll();
+  if (!wasOpen) {
+    popup.classList.add('open');
+    trigger?.classList.add('open');
+    renderRangeCal();
+  }
+}
+
+function rangeCalNav(dir) {
+  rangeState.month += dir;
+  if (rangeState.month > 11) { rangeState.month = 0; rangeState.year++; }
+  if (rangeState.month < 0)  { rangeState.month = 11; rangeState.year--; }
+  renderRangeCal();
+}
+
+function renderRangeCal() {
+  const { year, month, mode, picked, start, end } = rangeState;
+  document.getElementById('drange-title').textContent = `${MONTHS_RU[month]} ${year}`;
+  const grid = document.getElementById('drange-grid');
+  let html = DAYS_RU.map(d => `<div class="cal-dow">${d}</div>`).join('');
+
+  let startDow = new Date(year, month, 1).getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+  const dim = new Date(year, month+1, 0).getDate();
+  for (let i = 0; i < startDow; i++) html += `<div class="cal-day empty"></div>`;
+
+  const pickedVals = new Set(picked.map(p => dateVal(p.d, p.m, p.y)));
+  const startVal = start ? dateVal(start.d, start.m, start.y) : null;
+  const endVal   = end   ? dateVal(end.d, end.m, end.y) : null;
+
+  for (let d = 1; d <= dim; d++) {
+    const dv = dateVal(d, month, year);
+    const isToday = d===today.getDate() && month===today.getMonth() && year===today.getFullYear();
+
+    let cls = 'cal-day';
+    let selStyle = '';
+
+    if (mode === 'dates') {
+      const isPicked = pickedVals.has(dv);
+      if (isPicked) { cls += ' picked'; selStyle = `background:linear-gradient(135deg,${state.accentStart},${state.accentEnd})`; }
+      else if (isToday) cls += ' today';
+    } else {
+      const isStart = startVal && dv === startVal;
+      const isEnd   = endVal   && dv === endVal;
+      let inRange = false;
+      if (startVal && endVal) inRange = dv > startVal && dv < endVal;
+      if (isStart) cls += ' range-start';
+      if (isEnd)   cls += ' range-end';
+      if (inRange) cls += ' in-range';
+      if (isToday && !isStart && !isEnd) cls += ' today';
+      if (isStart || isEnd) selStyle = `background:linear-gradient(135deg,${state.accentStart},${state.accentEnd})`;
+    }
+
+    html += `<div class="${cls}" style="${selStyle}" data-day="${d}" onclick="pickDay(${d})">${d}</div>`;
+  }
+  grid.innerHTML = html;
+
+  // Hover preview for range mode only
+  grid.onmousemove = (e) => {
+    if (rangeState.mode !== 'range') return;
+    const cell = e.target.closest('[data-day]');
+    const d = cell ? parseInt(cell.dataset.day) : null;
+    if (d === rangeState.hoverDay) return;
+    rangeState.hoverDay = d;
+    updateRangeHoverClasses();
+  };
+  grid.onmouseleave = () => {
+    if (rangeState.mode !== 'range') return;
+    rangeState.hoverDay = null;
+    updateRangeHoverClasses();
+  };
+}
+
+function updateRangeHoverClasses() {
+  const { year, month, start, end, hoverDay } = rangeState;
+  if (end) return;
+  const startVal = start ? dateVal(start.d, start.m, start.y) : null;
+  const hoverVal = hoverDay ? dateVal(hoverDay, month, year) : null;
+  document.getElementById('drange-grid').querySelectorAll('[data-day]').forEach(cell => {
+    const dv = dateVal(parseInt(cell.dataset.day), month, year);
+    cell.classList.toggle('in-range', !!(startVal && hoverVal && hoverVal > startVal && dv > startVal && dv < hoverVal));
+  });
+}
+
+function pickDay(d) {
+  const { year, month, mode } = rangeState;
+
+  if (mode === 'dates') {
+    // Toggle individual date
+    const dv = dateVal(d, month, year);
+    const idx = rangeState.picked.findIndex(p => dateVal(p.d, p.m, p.y) === dv);
+    if (idx >= 0) rangeState.picked.splice(idx, 1);
+    else rangeState.picked.push({ d, m: month, y: year });
+    rangeState.picked.sort((a, b) => dateVal(a.d, a.m, a.y) - dateVal(b.d, b.m, b.y));
+    renderRangeCal();
+    updateDatesModeTrigger();
+  } else {
+    // Range: first click = start, second = end
+    if (!rangeState.start || (rangeState.start && rangeState.end)) {
+      rangeState.start = { d, m: month, y: year };
+      rangeState.end = null;
+      rangeActiveFocus = 'end';
+    } else {
+      const sv = dateVal(rangeState.start.d, rangeState.start.m, rangeState.start.y);
+      const dv = dateVal(d, month, year);
+      if (dv < sv) {
+        rangeState.end = rangeState.start;
+        rangeState.start = { d, m: month, y: year };
+      } else {
+        rangeState.end = { d, m: month, y: year };
+      }
+      rangeActiveFocus = 'start';
+    }
+    rangeState.hoverDay = null;
+    highlightRangeInput();
+    syncRangeInputs();
+    renderRangeCal();
+    if (rangeState.start && rangeState.end) updateRangeModeTrigger();
+  }
+}
+
+function updateDatesModeTrigger() {
+  const valEl = document.getElementById('drange-val');
+  const { picked } = rangeState;
+  if (picked.length === 0) {
+    valEl.textContent = 'Выбрать даты';
+    valEl.style.color = 'var(--text-3)';
+  } else {
+    valEl.textContent = picked.map(p => `${pad(p.d)}.${pad(p.m+1)}`).join(', ');
+    valEl.style.color = '';
+  }
+}
+
+function updateRangeModeTrigger() {
+  const { start, end } = rangeState;
+  const valEl = document.getElementById('drange-val');
+  if (start && end) {
+    valEl.textContent = `${fmtRangeDate(start)} — ${fmtRangeDate(end)}`;
+    valEl.style.color = '';
+  }
+}
+
+function syncRangeInputs() {
+  const s = rangeState.start;
+  const e = rangeState.end;
+  if (s) document.getElementById('range-start-input').value = fmtRangeDate(s);
+  if (e) document.getElementById('range-end-input').value   = fmtRangeDate(e);
+}
+
+function onRangeTextInput(which, val) {
+  const digits = val.replace(/\D/g,'');
+  if (digits.length < 6) return;
+  const d = parseInt(digits.slice(0,2), 10);
+  const m = parseInt(digits.slice(2,4), 10) - 1;
+  let y;
+  if (digits.length >= 8) {
+    y = parseInt(digits.slice(4,8), 10);
+  } else {
+    const yy = parseInt(digits.slice(4,6), 10);
+    y = yy < 50 ? 2000 + yy : 1900 + yy;
+  }
+  if (d < 1 || d > 31 || m < 0 || m > 11 || y < 2000) return;
+  const obj = { d, m, y };
+  if (which === 'start') rangeState.start = obj;
+  else rangeState.end = obj;
+  rangeState.month = m; rangeState.year = y;
+  renderRangeCal();
+  if (rangeState.start && rangeState.end) updateRangeModeTrigger();
+}
+
+// ── Clock range picker ──
+const clkState = { start: null, end: null, hover: null }; // slots 0–47 (30min steps)
+
+function slotToLabel(slot) {
+  const h = Math.floor(slot / 2);
+  const m = slot % 2 === 1 ? '30' : '00';
+  return `${pad(h)}:${m}`;
+}
+
+function toggleClockPicker() {
+  const popup = document.getElementById('clk-popup');
+  const trigger = document.querySelector('#clk .dt-trigger');
+  const wasOpen = popup.classList.contains('open');
+  closeAll();
+  if (!wasOpen) {
+    popup.classList.add('open');
+    trigger?.classList.add('open');
+    drawClock();
+    setupClockEvents();
+  }
+}
+
+function slotFromAngle(angle) {
+  // 48 slots around 360°, 0 slot = top (12 o'clock = 00:00)
+  let a = (angle + 90 + 360) % 360;   // rotate so 0° = top
+  return Math.round(a / (360 / 48)) % 48;
+}
+
+function angleFromSlot(slot) {
+  return (slot / 48) * 2 * Math.PI - Math.PI / 2;
+}
+
+function slotXY(slot, r, cx, cy) {
+  const a = angleFromSlot(slot);
+  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+}
+
+function drawClock() {
+  const canvas = document.getElementById('clk-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const R = W / 2 - 52;    // leave room for labels all around
+  const trackW = 16;        // thinner ring
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background track
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = trackW;
+  ctx.stroke();
+
+  // Filled arc between start and end
+  const { start, end, hover } = clkState;
+  const effectiveEnd = end !== null ? end : hover;
+
+  if (start !== null && effectiveEnd !== null) {
+    const grad = ctx.createLinearGradient(cx - R, cy, cx + R, cy);
+    grad.addColorStop(0, state.accentStart);
+    grad.addColorStop(1, state.accentEnd);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = trackW;
+    // start === effectiveEnd means full 24h circle
+    if (end !== null && end === start) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+    } else {
+      const startA = angleFromSlot(start);
+      let endA = angleFromSlot(effectiveEnd);
+      if (effectiveEnd <= start) endA += 2 * Math.PI;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, startA, endA);
+    }
+    ctx.stroke();
+  }
+
+  // Tick + label for every hour (slot % 2 === 0 = every 1h)
+  // Half-hour slots get a tiny tick only
+  for (let slot = 0; slot < 48; slot++) {
+    const isHour = slot % 2 === 0;
+    const a = angleFromSlot(slot);
+
+    // Tick inside the ring
+    const tickLen = isHour ? 5 : 3;
+    const ti = R - trackW / 2 - tickLen;
+    const to = R - trackW / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + ti * Math.cos(a), cy + ti * Math.sin(a));
+    ctx.lineTo(cx + to * Math.cos(a), cy + to * Math.sin(a));
+    ctx.strokeStyle = isHour ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = isHour ? 1.5 : 1;
+    ctx.stroke();
+
+    if (isHour) {
+      const h = slot / 2;
+      const labelR = R + trackW / 2 + 14;
+      const lx = cx + labelR * Math.cos(a);
+      const ly = cy + labelR * Math.sin(a);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.font = '500 9px Urbanist, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pad(h) + ':00', lx, ly);
+    }
+  }
+
+  // Draw dot handles
+  function drawDot(slot, color) {
+    const { x, y } = slotXY(slot, R, cx, cy);
+    ctx.beginPath();
+    ctx.arc(x, y, 8, 0, 2 * Math.PI);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, 2 * Math.PI);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
+  }
+
+  if (start !== null) drawDot(start, state.accentStart);
+  if (end !== null)   drawDot(end, state.accentEnd);
+  else if (hover !== null && start !== null) drawDot(hover, 'rgba(255,255,255,0.4)');
+
+  // Center text
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const previewEnd = end !== null ? end : (start !== null && hover !== null ? hover : null);
+  if (start !== null && previewEnd !== null) {
+    const isPreview = end === null;
+    ctx.fillStyle = isPreview ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)';
+    ctx.font = '700 15px Urbanist, system-ui, sans-serif';
+    ctx.fillText(slotToLabel(start) + ' – ' + slotToLabel(previewEnd), cx, cy - 9);
+    const isFullCircle = end !== null && end === start;
+    const slots = isFullCircle ? 48 : (previewEnd - start + 48) % 48 || (end !== null ? 48 : 0);
+    const dur = slots * 30;
+    const dh = Math.floor(dur / 60), dm = dur % 60;
+    const durStr = dh > 0 ? (dh + ' ч' + (dm ? ' ' + dm + ' мин' : '')) : dm + ' мин';
+    ctx.fillStyle = isPreview ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.45)';
+    ctx.font = '500 11px Urbanist, system-ui, sans-serif';
+    ctx.fillText(durStr, cx, cy + 10);
+  } else if (start !== null) {
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '700 15px Urbanist, system-ui, sans-serif';
+    ctx.fillText(slotToLabel(start) + ' – ?', cx, cy);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.font = '500 12px Urbanist, system-ui, sans-serif';
+    ctx.fillText('00:00 – 24:00', cx, cy);
+  }
+}
+
+function getCanvasXY(e) {
+  const canvas = document.getElementById('clk-canvas');
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (canvas.width / rect.width) - canvas.width / 2,
+    y: (e.clientY - rect.top) * (canvas.height / rect.height) - canvas.height / 2,
+  };
+}
+
+function clkR() { return document.getElementById('clk-canvas').width / 2 - 52; }
+
+function getSlotFromXY(x, y) {
+  const R = clkR();
+  const trackW = 16;
+  const dist = Math.sqrt(x * x + y * y);
+  if (dist < R - trackW || dist > R + trackW) return null;
+  return slotFromAngle(Math.atan2(y, x) * 180 / Math.PI);
+}
+
+// Returns 'start' | 'end' | 'arc' | null based on where the pointer hit
+function hitTest(x, y) {
+  const R = clkR();
+  const { start, end } = clkState;
+  const HIT_DOT = 14; // px radius for dot hit
+
+  if (start !== null) {
+    const sp = slotXY(start, R, 0, 0);
+    if (Math.hypot(x - sp.x, y - sp.y) < HIT_DOT) return 'start';
+  }
+  if (end !== null) {
+    const ep = slotXY(end, R, 0, 0);
+    if (Math.hypot(x - ep.x, y - ep.y) < HIT_DOT) return 'end';
+  }
+  // Arc center hit — inside the ring band, within the arc
+  if (start !== null && end !== null) {
+    const dist = Math.sqrt(x * x + y * y);
+    if (dist >= R - 14 && dist <= R + 14) {
+      const angle = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      const slotAtAngle = slotFromAngle(Math.atan2(y, x) * 180 / Math.PI);
+      const s = start, en = end;
+      // Is slotAtAngle inside the arc (clockwise from s to en)?
+      const arcLen = en === s ? 48 : (en - s + 48) % 48;
+      const testDist = (slotAtAngle - s + 48) % 48;
+      if (testDist >= 0 && testDist < arcLen) return 'arc';
+    }
+  }
+  return null;
+}
+
+function updateClkLabels() {
+  document.getElementById('clk-start-val').textContent = clkState.start !== null ? slotToLabel(clkState.start) : '—';
+  document.getElementById('clk-end-val').textContent   = clkState.end   !== null ? slotToLabel(clkState.end)   : '—';
+  const hint = document.getElementById('clk-hint');
+  if (clkState.start === null)      hint.textContent = 'Выберите начало диапазона';
+  else if (clkState.end === null)   hint.textContent = 'Теперь выберите конец';
+  else                              hint.textContent = 'Тяните точки или дугу для изменения';
+  const ready = clkState.start !== null && clkState.end !== null;
+  const btn = document.getElementById('clk-apply');
+  btn.style.opacity = ready ? '1' : '.4';
+  btn.style.pointerEvents = ready ? 'auto' : 'none';
+}
+
+function setupClockEvents() {
+  const canvas = document.getElementById('clk-canvas');
+  let dragMode = null;  // null | 'start' | 'end' | 'arc'
+  let arcDragBase = null; // { startSnap, endSnap, pointerSlot } when dragging arc
+
+  canvas.onmousedown = (e) => {
+    if (e.button !== 0) return;
+    const { x, y } = getCanvasXY(e);
+    const hit = hitTest(x, y);
+
+    if (hit === 'start' || hit === 'end' || hit === 'arc') {
+      dragMode = hit;
+      if (hit === 'arc') {
+        const slot = getSlotFromXY(x, y) ?? clkState.start;
+        arcDragBase = { startSnap: clkState.start, endSnap: clkState.end, pointerSlot: slot };
+      }
+      canvas.style.cursor = 'grabbing';
+      e.preventDefault();
+    }
+  };
+
+  window.addEventListener('mousemove', (e) => {
+    if (!document.getElementById('clk-popup').classList.contains('open')) return;
+    const { x, y } = getCanvasXY(e);
+
+    if (dragMode) {
+      const slot = getSlotFromXY(x, y);
+      if (slot === null) return;
+      if (dragMode === 'start') {
+        clkState.start = slot;
+      } else if (dragMode === 'end') {
+        clkState.end = slot;
+      } else if (dragMode === 'arc' && arcDragBase) {
+        const delta = (slot - arcDragBase.pointerSlot + 48) % 48;
+        // Move whole arc, preserve length
+        const len = (arcDragBase.endSnap - arcDragBase.startSnap + 48) % 48;
+        clkState.start = (arcDragBase.startSnap + delta) % 48;
+        clkState.end   = (clkState.start + len) % 48;
+      }
+      clkState.hover = null;
+      drawClock();
+      updateClkLabels();
+      return;
+    }
+
+    // Hover cursor feedback
+    const hit = hitTest(x, y);
+    if (hit === 'start' || hit === 'end') canvas.style.cursor = 'grab';
+    else if (hit === 'arc') canvas.style.cursor = 'move';
+    else canvas.style.cursor = 'pointer';
+
+    // Hover preview (only when no range yet complete, or nothing dragging)
+    if (clkState.start !== null && clkState.end === null) {
+      const slot = getSlotFromXY(x, y);
+      if (slot !== clkState.hover) { clkState.hover = slot; drawClock(); }
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (dragMode) {
+      dragMode = null;
+      arcDragBase = null;
+      canvas.style.cursor = 'pointer';
+    }
+  });
+
+  canvas.onmouseleave = () => {
+    if (!dragMode) { clkState.hover = null; drawClock(); }
+  };
+
+  canvas.onclick = (e) => {
+    // Only handle clicks when no drag happened
+    const { x, y } = getCanvasXY(e);
+    const hit = hitTest(x, y);
+    if (hit) return; // was a drag target, not a plain click
+
+    const slot = getSlotFromXY(x, y);
+    if (slot === null) return;
+
+    if (clkState.start === null || (clkState.start !== null && clkState.end !== null)) {
+      clkState.start = slot; clkState.end = null;
+    } else {
+      clkState.end = slot;
+    }
+    clkState.hover = null;
+    drawClock();
+    updateClkLabels();
+  };
+}
+
+function applyClockRange() {
+  const { start, end } = clkState;
+  if (start === null || end === null) return;
+  const valEl = document.getElementById('clk-val');
+  valEl.textContent = `${slotToLabel(start)} — ${slotToLabel(end)}`;
+  valEl.classList.remove('placeholder');
+  closeAll();
+}
+
+// ── Time picker ──
+const timeState = {};
+
+function initTime(id) {
+  if (timeState[id]) return;
+  timeState[id] = { h: null, m: null };
+  buildTimeScroll(id);
+}
+
+function buildTimeScroll(id) {
+  const hEl = document.getElementById(id+'-hours');
+  const mEl = document.getElementById(id+'-minutes');
+  if (!hEl || !mEl) return;
+  hEl.innerHTML = '';
+  mEl.innerHTML = '';
+  // Hours 0–23
+  for (let i = 0; i < 24; i++) {
+    const el = document.createElement('div');
+    el.className = 'time-item';
+    el.dataset.val = i;
+    el.textContent = pad(i);
+    el.onclick = () => selectTimeItem(id, 'h', i);
+    hEl.appendChild(el);
+  }
+  // Minutes 0, 15, 30, 45
+  for (let i = 0; i < 60; i += 15) {
+    const el = document.createElement('div');
+    el.className = 'time-item';
+    el.dataset.val = i;
+    el.textContent = pad(i);
+    el.onclick = () => selectTimeItem(id, 'm', i);
+    mEl.appendChild(el);
+  }
+}
+
+function selectTimeItem(id, col, val) {
+  timeState[id][col] = val;
+  const colId = col === 'h' ? id+'-hours' : id+'-minutes';
+  const inp = col === 'h' ? id+'-h-input' : id+'-m-input';
+  document.getElementById(colId).querySelectorAll('.time-item').forEach(x => {
+    const active = parseInt(x.dataset.val) === val;
+    x.classList.toggle('selected', active);
+    x.style.background = active ? `linear-gradient(135deg,${state.accentStart},${state.accentEnd})` : '';
+  });
+  // Sync manual input
+  document.getElementById(inp).value = pad(val);
+  // Auto-jump: after hour selected, focus minutes
+  if (col === 'h') {
+    const mInp = document.getElementById(id+'-m-input');
+    if (mInp && timeState[id].m === null) mInp.focus();
+  }
+}
+
+function scrollToSelected(id) {
+  ['hours','minutes'].forEach(col => {
+    const el = document.getElementById(id+'-'+col);
+    if (!el) return;
+    const sel = el.querySelector('.selected');
+    if (sel) el.scrollTop = sel.offsetTop - el.clientHeight / 2 + sel.clientHeight / 2;
+  });
+}
+
+function onTimeManualInput(id, col, val) {
+  const digits = val.replace(/\D/g,'');
+  const n = parseInt(digits, 10);
+  if (isNaN(n)) return;
+  if (col === 'h' && n >= 0 && n <= 23) {
+    selectTimeItem(id, 'h', n);
+    // auto-jump to minutes after 2 digits
+    if (digits.length === 2) document.getElementById(id+'-m-input')?.focus();
+  }
+  if (col === 'm') {
+    // snap to nearest 15
+    const snapped = Math.round(n / 15) * 15;
+    const clamped = Math.min(45, Math.max(0, snapped));
+    if (digits.length >= 1) selectTimeItem(id, 'm', clamped);
+  }
+}
+
+function toggleTimepicker(id) {
+  initTime(id);
+  const popup = document.getElementById(id+'-popup');
+  const trigger = document.querySelector(`#${id} .dt-trigger`);
+  const wasOpen = popup.classList.contains('open');
+  closeAll();
+  if (!wasOpen) {
+    popup.classList.add('open');
+    trigger?.classList.add('open');
+    setTimeout(() => {
+      scrollToSelected(id);
+      document.getElementById(id+'-h-input')?.focus();
+    }, 50);
+  }
+}
+
+function confirmTime(id) {
+  const s = timeState[id];
+  const h = s.h !== null ? pad(s.h) : '00';
+  const m = s.m !== null ? pad(s.m) : '00';
+  const valEl = document.getElementById(id+'-val');
+  valEl.textContent = `${h}:${m}`;
+  valEl.classList.remove('placeholder');
+  closeAll();
+}
+</script>
+</body>
+</html>

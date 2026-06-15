@@ -1,0 +1,41 @@
+node_modules
+dist
+.env
+.env.local
+.env.staging
+backups/
+*.log
+.DS_Store
+
+# Prisma generated
+packages/db/node_modules
+
+# Excel примеры таблиц (не нужны в репо)
+_TABLES EXMPL/
+*.xlsx
+.playwright-mcp/
+wi-v3-*.png
+docs/screenshots/
+
+# Git worktrees
+.worktrees/
+
+.superpowers/
+.claude/
+.pencildev/
+.pencil/
+
+# Credentials (никогда не коммитить)
+docs/CREDENTIALS.md
+docs/ACCOUNTS.md
+.claude-memory.json
+
+# Локальный конфиг MCP (содержит dev-креденшелы)
+.mcp.json
+
+# Инфраструктурные доки (только локально)
+docs/VDS-SETUP.md
+docs/DEPLOY-RUNBOOK.md
+
+# Дизайн-ассеты Figma
+.figma/

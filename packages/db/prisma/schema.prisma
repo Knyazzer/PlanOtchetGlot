@@ -1,0 +1,690 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "nexus"]
+}
+
+// Lean identity table shared across all apps (id = Supabase auth.uid)
+model PublicUser {
+  id         String   @id
+  email      String   @unique
+  name       String
+  position   String?
+  department String?
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("users")
+  @@schema("public")
+}
+
+model User {
+  id                 String   @id @default(uuid())
+  email              String?  @unique
+  name               String
+  authId             String?  @unique @map("auth_id")          // = Supabase auth.uid = public.users.id
+  canAccessInventory Boolean  @default(false) @map("can_access_inventory")
+  mustChangePassword Boolean  @default(false) @map("must_change_password") // форс-смена пароля при первом входе
+  tempPassword       String?  @map("temp_password")                        // временный пароль (виден админу, чистится после смены)
+  isAdmin            Boolean  @default(false)
+  isSystemAccount    Boolean  @default(false) @map("is_system_account")
+  isActive           Boolean  @default(true)
+  theme              String   @default("dark")
+  status             String?
+  userType           String   @default("staff")
+  role               String   @default("user")
+  tabNumber          String?
+  position           String?
+  department         String?
+  subDept            String?
+  legacyEmpId        String?  @unique @map("legacy_emp_id") // empId донора (S017) — на время миграции
+  createdAt          DateTime @default(now())
+
+  deptDirectorOf   Department[]   @relation("DeptDirector")
+  divHeadOf        Division[]     @relation("DivHead")
+  divMemberships   UserDivision[]
+  tasksAssigned    Task[]         @relation("TasksAssignedBy")
+  tasksAssignee    Task[]         @relation("TasksAssignee")
+  taskLogs         TaskLog[]      @relation("TaskLogs")
+  chatMemberships  ChatMember[]      @relation("ChatMembers")
+  sentMessages     Message[]         @relation("SentMessages")
+  messageReactions MessageReaction[] @relation("MessageReactions")
+  messageMentions  MessageMention[]  @relation("MessageMentions")
+  eventsAuthored   Event[]           @relation("EventsAuthor")
+  eventParticipations EventParticipant[] @relation("EventParticipants")
+  calEntriesCreated   CalendarEntry[] @relation("CalEntryCreator")
+  calEntriesTargeted  CalendarEntry[] @relation("CalEntryTarget")
+  tracksLed           Track[]         @relation("TrackLeader")
+  trackMemberships    TrackMember[]   @relation("TrackMembers")
+  producedProjects         Project[]  @relation("ProjectProducer")
+  execProducedWorkItems    WorkItem[] @relation("WorkItemExecProducer")
+  lineProducedWorkItems    WorkItem[] @relation("WorkItemLineProducer")
+  accountManagedWorkItems  WorkItem[] @relation("WorkItemAccountManager")
+  expensesCreated          Expense[]  @relation("ExpenseCreator")
+  dayEntries               DayEntry[]      @relation("UserDayEntries")
+  boardColumns             BoardColumn[]   @relation("UserBoardColumns")
+  taskPlacements           TaskPlacement[] @relation("UserTaskPlacements")
+
+  @@map("users")
+  @@schema("nexus")
+}
+
+model Department {
+  id         String     @id @default(uuid())
+  name       String
+  color      String     @default("#1e40af")
+  directorId String?
+  director   User?      @relation("DeptDirector", fields: [directorId], references: [id])
+  divisions  Division[]
+  modules    DepartmentModule[]
+  createdAt  DateTime   @default(now())
+
+  @@map("departments")
+  @@schema("nexus")
+}
+
+model Division {
+  id           String         @id @default(uuid())
+  name         String
+  deptId       String
+  department   Department     @relation(fields: [deptId], references: [id], onDelete: Cascade)
+  headId       String?
+  head         User?          @relation("DivHead", fields: [headId], references: [id])
+  memberships       UserDivision[]
+  workItemDivisions WorkItemDivision[]
+  tasks             Task[]             @relation("DivisionTasks")
+  dayEntries        DayEntry[]         @relation("DivisionDayEntries")
+  createdAt    DateTime       @default(now())
+
+  @@map("divisions")
+  @@schema("nexus")
+}
+
+model UserDivision {
+  userId    String
+  divId     String
+  position  String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  division  Division @relation(fields: [divId], references: [id], onDelete: Cascade)
+
+  @@id([userId, divId])
+  @@map("user_divisions")
+  @@schema("nexus")
+}
+
+model SheetConfig {
+  id           String   @id @default(uuid())
+  tableKey     String   @unique
+  sheetUrl     String?
+  apiKey       String?
+  cachedData   Json?
+  lastSyncedAt DateTime?
+  updatedAt    DateTime @updatedAt
+
+  @@map("sheet_configs")
+  @@schema("nexus")
+}
+
+enum TaskStatus {
+  backlog
+  inprogress
+  done
+
+  @@schema("nexus")
+}
+
+enum TrackType {
+  internal
+  external
+
+  @@schema("nexus")
+}
+
+enum TrackStatus {
+  active
+  done
+  archived
+
+  @@schema("nexus")
+}
+
+model Track {
+  id          String      @id @default(uuid())
+  title       String
+  description String      @default("")
+  type        TrackType   @default(internal)
+  status      TrackStatus @default(active)
+  clientName  String?     @map("client_name")
+  projectName String?     @map("project_name")
+  deadline    DateTime?
+  leaderId    String      @map("leader_id")
+  leader      User        @relation("TrackLeader", fields: [leaderId], references: [id])
+  members     TrackMember[]
+  tasks       Task[]
+  stages      Stage[]
+  workItemId  String?     @map("work_item_id")
+  workItem    WorkItem?   @relation(fields: [workItemId], references: [id], onDelete: SetNull)
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt      @map("updated_at")
+
+  @@index([leaderId])
+  @@index([workItemId])
+  @@map("tracks")
+  @@schema("nexus")
+}
+
+model Stage {
+  id      String  @id
+  trackId String  @map("track_id")
+  title   String
+  order   Int     @default(0)
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@index([trackId])
+  @@map("stages")
+  @@schema("nexus")
+}
+
+model TrackMember {
+  trackId  String   @map("track_id")
+  userId   String   @map("user_id")
+  track    Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  user     User     @relation("TrackMembers", fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  @@id([trackId, userId])
+  @@index([userId])
+  @@map("track_members")
+  @@schema("nexus")
+}
+
+model Task {
+  id             String     @id @default(uuid())
+  title          String
+  description    String     @default("")
+  status         TaskStatus @default(backlog)
+  // startDate = «дата задачи» (день в плане/своде); deadline — опциональный жёсткий срок.
+  // Диапазонов нет (вердикт В-1, GOLDEN-STANDARD): регулярная работа = экземпляры серии.
+  startDate      DateTime   @default(now())
+  deadline       DateTime?
+  assignedById   String
+  assignedBy     User       @relation("TasksAssignedBy", fields: [assignedById], references: [id])
+  assigneeId     String
+  assignee       User       @relation("TasksAssignee", fields: [assigneeId], references: [id])
+  // — планирование (заполняемость донора: client 95%, type 94%, минуты 83/80%) —
+  type           String     @default("task")  // task|zoom|meeting_offline|air|build|event
+  client         String?                       // строкой, как у донора; FK на Client — v2
+  projectId      String?    @map("project_id")
+  project        Project?   @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: SetNull)
+  divisionId     String?    @map("division_id") // денормализация из assignee — для свода/аналитики
+  division       Division?  @relation("DivisionTasks", fields: [divisionId], references: [id], onDelete: SetNull)
+  plannedMinutes Int?       @map("planned_minutes") // медиана донора 45, шаг ввода 15
+  actualMinutes  Int?       @map("actual_minutes")  // автокопия из plan при done
+  doneAt         DateTime?  @map("done_at")
+  archived       Boolean    @default(false)
+  manualOrder    Float?     @map("manual_order")    // дробный порядок на доске
+  legacyId       String?    @unique @map("legacy_id")
+  // — повторы: «генерация экземпляров» (В-2) — правило материализует задачу на каждый день серии —
+  repeatRule     String?    @map("repeat_rule")     // daily|weekdays
+  repeatUntil    DateTime?  @map("repeat_until")
+  recurringParentId String? @map("recurring_parent_id")
+  recurringParent   Task?   @relation("TaskRecurrence", fields: [recurringParentId], references: [id], onDelete: SetNull)
+  recurringInstances Task[] @relation("TaskRecurrence")
+  seenAt            DateTime?  @map("seen_at")
+  calendarEventId   String?    @map("calendar_event_id")
+  calendarEventEnd  DateTime?  @map("calendar_event_end")
+  trackId           String?    @map("track_id")
+  track             Track?     @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  stageId           String?    @map("stage_id")
+  stage             Stage?     @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  logs           TaskLog[]
+  messages       Message[]
+  placements     TaskPlacement[]
+
+  @@index([assigneeId, startDate])
+  @@index([divisionId, startDate])
+  @@index([projectId])
+  @@index([recurringParentId])
+  @@map("tasks")
+  @@schema("nexus")
+}
+
+model TaskLog {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("TaskLogs", fields: [userId], references: [id])
+  action    String
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@map("task_logs")
+  @@schema("nexus")
+}
+
+// ── Chats ──────────────────────────────────────────────────────────────────────
+
+enum ChatType {
+  direct    // личный чат между двумя пользователями
+  self      // заметки — чат с самим собой
+  support   // техподдержка (чат с администратором)
+  project   // проектный чат (будущее)
+  group     // групповой чат (ручное создание)
+
+  @@schema("nexus")
+}
+
+model Chat {
+  id           String      @id @default(uuid())
+  type         ChatType    @default(direct)
+  name         String?     // название для группового чата
+  color        String?     // hex-цвет аватарки группового чата
+  description  String?     // описание/тема группового чата
+  inviteToken  String?     @unique  // токен для инвайт-ссылки (заготовка)
+  // для project-чатов: привязка к клиенту/проекту (заготовка)
+  projectId    String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt   // обновляется при новом сообщении — для сортировки
+
+  members      ChatMember[]
+  messages     Message[]
+
+  @@index([type])
+  @@index([updatedAt])
+  @@map("chats")
+  @@schema("nexus")
+}
+
+model ChatMember {
+  chatId      String
+  userId      String
+  chat        Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user        User     @relation("ChatMembers", fields: [userId], references: [id])
+
+  // состояние участника
+  lastReadAt    DateTime?  // всё до этого момента прочитано; null = ничего не читал
+  isFavorite    Boolean    @default(false)  // в папке Избранное
+  isPinned      Boolean    @default(false)  // закреплён внутри папки (сверху списка)
+  isArchived    Boolean    @default(false)  // заготовка для архива
+  isGroupAdmin  Boolean    @default(false)  // создатель группового чата
+  joinedAt      DateTime   @default(now())
+  leftAt        DateTime?  // заготовка для выхода из группового чата
+
+  @@id([chatId, userId])
+  @@index([userId, isFavorite])   // быстрый запрос: избранные чаты пользователя
+  @@index([userId, isPinned])     // быстрый запрос: закреплённые
+  @@index([chatId])               // участники конкретного чата
+  @@map("chat_members")
+  @@schema("nexus")
+}
+
+model Message {
+  id            String    @id @default(uuid())
+  chatId        String
+  senderId      String
+  text          String
+  editedAt      DateTime?  // null = не редактировалось
+  deletedAt     DateTime?  // soft delete: сообщение скрыто но хранится в БД
+  scheduledAt   DateTime?  // отложенная отправка: null = обычное сообщение
+
+  // заготовки для будущего функционала
+  replyToId     String?    // ответ на сообщение
+  forwardFromId String?    // пересылка: оригинальное сообщение
+  isPinned      Boolean    @default(false)  // закреплённое сообщение в чате
+  taskId        String?    // прикреплённая задача
+  taskTitle     String?    @map("tasktitle") // снапшот названия задачи (сохраняется при отправке)
+
+  createdAt     DateTime   @default(now())
+
+  chat          Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender        User        @relation("SentMessages", fields: [senderId], references: [id])
+  replyTo       Message?    @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies       Message[]   @relation("MessageReplies")
+  forwardFrom   Message?    @relation("MessageForwards", fields: [forwardFromId], references: [id])
+  forwards      Message[]   @relation("MessageForwards")
+  task          Task?       @relation(fields: [taskId], references: [id])
+  reactions     MessageReaction[]
+  mentions      MessageMention[]
+
+  // индексы — основа производительности
+  @@index([chatId, createdAt])            // история чата (главный запрос)
+  @@index([chatId, deletedAt, createdAt]) // фильтр удалённых при загрузке истории
+  @@index([senderId, createdAt])          // аналитика: сообщения пользователя
+  @@index([chatId, isPinned])             // закреплённые сообщения
+  @@index([chatId, scheduledAt])          // отложенные сообщения в чате
+  @@map("messages")
+  @@schema("nexus")
+}
+
+// Реакции на сообщения (emoji-реакции)
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String   // unicode emoji: "👍", "❤️", "😂" и т.д.
+  createdAt DateTime @default(now())
+
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation("MessageReactions", fields: [userId], references: [id])
+
+  @@unique([messageId, userId, emoji])  // один пользователь — одна реакция каждого типа
+  @@index([messageId])
+  @@map("message_reactions")
+  @@schema("nexus")
+}
+
+// Упоминания пользователей (@имя в сообщении)
+model MessageMention {
+  messageId String
+  userId    String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User    @relation("MessageMentions", fields: [userId], references: [id])
+
+  @@id([messageId, userId])
+  @@index([userId])  // быстрый запрос: все упоминания конкретного пользователя
+  @@map("message_mentions")
+  @@schema("nexus")
+}
+
+// ── Calendar ───────────────────────────────────────────────────────────────────
+
+// Личные события, встречи, задачи (создаёт любой пользователь)
+model Event {
+  id           String   @id @default(uuid())
+  type         String   @default("task")  // 'meeting' | 'task' | 'personal'
+  title        String
+  description  String   @default("")
+  date         DateTime
+  startTime    String   @map("start_time")
+  endTime      String   @map("end_time")
+  location     String[] @default([])
+  status       String   @default("pending")  // 'pending' | 'done'
+  authorId     String   @map("author_id")
+  author       User     @relation("EventsAuthor", fields: [authorId], references: [id])
+  participants EventParticipant[]
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt      @map("updated_at")
+
+  @@index([authorId])
+  @@index([date])
+  @@map("events")
+  @@schema("nexus")
+}
+
+model EventParticipant {
+  eventId String @map("event_id")
+  userId  String @map("user_id")
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User   @relation("EventParticipants", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+  @@index([userId])
+  @@map("event_participants")
+  @@schema("nexus")
+}
+
+// Общие записи календаря (Знаменки, HR-статусы, общие события — только admin/HR)
+model CalendarEntry {
+  id           String    @id @default(uuid())
+  type         String    // 'global'|'znamenka_kaminoka'|'znamenka_chernaya'|'znamenka_kupol'|'hr_sick'|'hr_vacation'|'hr_unpaid'|'hr_dayoff'
+  title        String
+  description  String    @default("")
+  date         DateTime
+  startTime    String?   @map("start_time")
+  endTime      String?   @map("end_time")
+  isAllDay     Boolean   @default(false) @map("is_all_day")
+  targetUserId String?   @map("target_user_id")
+  targetUser   User?     @relation("CalEntryTarget",   fields: [targetUserId], references: [id], onDelete: SetNull)
+  createdById  String    @map("created_by_id")
+  createdBy    User      @relation("CalEntryCreator",  fields: [createdById],  references: [id])
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([date])
+  @@index([type])
+  @@map("calendar_entries")
+  @@schema("nexus")
+}
+
+// ── Projects ───────────────────────────────────────────────────────────────────
+
+enum ProjectStatus {
+  draft
+  active
+  done
+  cancelled
+
+  @@schema("nexus")
+}
+
+enum WorkItemStatus {
+  request
+  active
+  done
+  rejected
+  cancelled
+
+  @@schema("nexus")
+}
+
+model Client {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  projects  Project[]
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("clients")
+  @@schema("nexus")
+}
+
+model Project {
+  id         String        @id @default(uuid())
+  title      String
+  clientId   String?       @map("client_id")
+  client     Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  status     ProjectStatus @default(draft)
+  producerId String?       @map("producer_id")
+  producer   User?         @relation("ProjectProducer", fields: [producerId], references: [id], onDelete: SetNull)
+  brief      String?
+  kpLink     String?       @map("kp_link")
+  workItems  WorkItem[]
+  tasks      Task[]        @relation("ProjectTasks")
+  aliases    ProjectAlias[]
+  createdAt  DateTime      @default(now()) @map("created_at")
+  updatedAt  DateTime      @updatedAt      @map("updated_at")
+
+  @@index([clientId])
+  @@index([producerId])
+  @@map("projects")
+  @@schema("nexus")
+}
+
+// Алиасы имён проекта (legacyNames донора) — резолв строковых имён из задач при ETL
+model ProjectAlias {
+  id        String  @id @default(uuid())
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String  @unique
+
+  @@index([projectId])
+  @@map("project_aliases")
+  @@schema("nexus")
+}
+
+model WorkItem {
+  id               String         @id @default(uuid())
+  projectId        String         @map("project_id")
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  status           WorkItemStatus @default(request)
+  execProducerId   String?        @map("exec_producer_id")
+  execProducer     User?          @relation("WorkItemExecProducer", fields: [execProducerId], references: [id], onDelete: SetNull)
+  lineProducerId   String?        @map("line_producer_id")
+  lineProducer     User?          @relation("WorkItemLineProducer", fields: [lineProducerId], references: [id], onDelete: SetNull)
+  accountManagerId String?        @map("account_manager_id")
+  accountManager   User?          @relation("WorkItemAccountManager", fields: [accountManagerId], references: [id], onDelete: SetNull)
+  date             String?
+  format           String?
+  location         String?
+  budget           Decimal?         @db.Decimal(12,2) @map("budget")
+  tracks           Track[]
+  departments      WorkItemDivision[]
+  expenses         Expense[]
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt      @map("updated_at")
+
+  @@index([projectId])
+  @@map("work_items")
+  @@schema("nexus")
+}
+
+model WorkItemDivision {
+  workItemId String   @map("work_item_id")
+  divisionId String   @map("division_id")
+  workItem   WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  division   Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+
+  @@id([workItemId, divisionId])
+  @@index([divisionId])
+  @@map("work_item_divisions")
+  @@schema("nexus")
+}
+
+enum ExpenseCategory {
+  equipment
+  transport
+  fees
+  postproduction
+  other
+
+  @@schema("nexus")
+}
+
+model Expense {
+  id          String          @id @default(uuid())
+  workItemId  String          @map("work_item_id")
+  workItem    WorkItem        @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  amount      Decimal         @db.Decimal(12,2)
+  category    ExpenseCategory @default(other)
+  description String          @default("")
+  date        String?
+  createdById String          @map("created_by_id")
+  createdBy   User            @relation("ExpenseCreator", fields: [createdById], references: [id])
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt      @map("updated_at")
+
+  @@index([workItemId])
+  @@map("expenses")
+  @@schema("nexus")
+}
+
+// ── День / Свод (ядро ПланОтчета) ──────────────────────────────────────────────
+
+// Запись дня сотрудника: формат + время. Задачи дня живут в Task (startDate = дата).
+model DayEntry {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  user        User      @relation("UserDayEntries", fields: [userId], references: [id], onDelete: Cascade)
+  // снапшот подразделения на момент записи — перевод сотрудника не пересчитывает прошлый свод
+  divisionId  String?   @map("division_id")
+  division    Division? @relation("DivisionDayEntries", fields: [divisionId], references: [id], onDelete: SetNull)
+  date        DateTime  @db.Date
+  dayFormat   String    @map("day_format") // ключ из DayFormatVersion (office|remote|shift_air|...)
+  startTime   String?   @map("start_time") // "HH:MM"
+  endTime     String?   @map("end_time")
+  breakMin    Int       @default(0) @map("break_min")
+  // задел под ужесточение до табеля (v1 не использует)
+  lockedAt    DateTime? @map("locked_at")
+  lockedById  String?   @map("locked_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt      @map("updated_at")
+
+  @@unique([userId, date])
+  @@index([divisionId, date])
+  @@index([date])
+  @@map("day_entries")
+  @@schema("nexus")
+}
+
+// Версионируемый справочник форматов дня: изменения действуют с effectiveFrom,
+// прошлые периоды считаются по старым правилам. score=null — формат вне баллов (выходной).
+model DayFormatVersion {
+  id            String   @id @default(uuid())
+  key           String   // office|remote|shift_air|shift_edit|shift_prep|trip|vacation|sick|dayoff|unpaid
+  label         String
+  isWork        Boolean  @map("is_work")
+  score         Float?
+  effectiveFrom DateTime @db.Date @map("effective_from")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([key, effectiveFrom])
+  @@index([key, effectiveFrom])
+  @@map("day_format_versions")
+  @@schema("nexus")
+}
+
+// ── Личные доски (кастомизация только личная — Q-TASK-1a) ─────────────────────
+
+model BoardColumn {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation("UserBoardColumns", fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  order     Float    @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  placements TaskPlacement[]
+
+  @@index([userId, order])
+  @@map("board_columns")
+  @@schema("nexus")
+}
+
+// Позиция задачи в кастомной колонке личной доски пользователя
+model TaskPlacement {
+  id       String      @id @default(uuid())
+  taskId   String      @map("task_id")
+  task     Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId   String      @map("user_id")
+  user     User        @relation("UserTaskPlacements", fields: [userId], references: [id], onDelete: Cascade)
+  columnId String      @map("column_id")
+  column   BoardColumn @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  sort     Float       @default(0)
+
+  @@unique([taskId, userId]) // одна позиция задачи на личной доске пользователя
+  @@index([columnId, sort])
+  @@map("task_placements")
+  @@schema("nexus")
+}
+
+// ── RBAC: функциональные модули департаментов (спека research/20) ─────────────
+// Роль — производная от оргструктуры (UserDivision / Division.headId / Department.directorId).
+// БД хранит только гранты модулей; реестр модулей фиксирован в коде.
+
+enum OrgLevel {
+  member
+  head
+  director
+
+  @@schema("nexus")
+}
+
+model DepartmentModule {
+  deptId    String     @map("dept_id")
+  department Department @relation(fields: [deptId], references: [id], onDelete: Cascade)
+  moduleKey String     @map("module_key") // hr.absences | fin.expenses | prod.board | ...
+  editLevel OrgLevel   @default(member) @map("edit_level") // минимальный уровень для edit; ниже — view
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  @@id([deptId, moduleKey])
+  @@map("department_modules")
+  @@schema("nexus")
+}

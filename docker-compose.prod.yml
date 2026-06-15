@@ -1,0 +1,30 @@
+services:
+  api:
+    image: ghcr.io/knyazzer/nexus-api:latest
+    container_name: nexus-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+    networks:
+      - internal
+      - web_proxy
+      - supabase_default
+
+  web:
+    image: ghcr.io/knyazzer/nexus-web:latest
+    container_name: nexus-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - internal
+      - web_proxy
+
+networks:
+  internal:
+  web_proxy:
+    external: true
+  supabase_default:
+    external: true

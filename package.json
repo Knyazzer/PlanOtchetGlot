@@ -1,0 +1,17 @@
+{
+  "name": "nexus",
+  "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "esbuild", "prisma", "msw"]
+  },
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "db:generate": "pnpm --filter @nexus/db generate",
+    "db:migrate": "pnpm --filter @nexus/db migrate",
+    "db:seed": "pnpm --filter @nexus/db seed",
+    "test": "pnpm -r test",
+    "db:studio": "prisma studio --schema packages/db/prisma/schema.prisma",
+    "db:migrate:test": "node scripts/migrate-test.cjs"
+  }
+}

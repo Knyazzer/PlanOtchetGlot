@@ -1,0 +1,6797 @@
+[
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-02",
+  "dayFormat": "remote",
+  "startTime": "11:00",
+  "endTime": "21:30",
+  "breakMin": 210
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-03",
+  "dayFormat": "remote",
+  "startTime": "09:00",
+  "endTime": "11:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-01",
+  "dayFormat": "remote",
+  "startTime": "11:00",
+  "endTime": "19:30",
+  "breakMin": 90
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "08:10",
+  "endTime": "18:50",
+  "breakMin": 20
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 40
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "17:00",
+  "breakMin": 120
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-03",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "20:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "21:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-04",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 90
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "08:45",
+  "endTime": "17:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-08",
+  "dayFormat": "vacation",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:40",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-04",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "19:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:15",
+  "breakMin": 30
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "08:50",
+  "endTime": "17:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 120
+ },
+ {
+  "empId": "S090",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S002",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Музыкальная_редакция",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S002",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Музыкальная_редакция",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:32",
+  "breakMin": 30
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S002",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Музыкальная_редакция",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:45",
+  "breakMin": 20
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "08:30",
+  "endTime": "17:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S002",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Музыкальная_редакция",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S016",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "08:40",
+  "endTime": "18:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "20:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S012",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-04",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-04",
+  "dayFormat": "trip",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-05",
+  "dayFormat": "trip",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-06",
+  "dayFormat": "trip",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "08:30",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-04",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "23:59",
+  "breakMin": 0
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "08:00",
+  "endTime": "18:45",
+  "breakMin": 20
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-05",
+  "dayFormat": "vacation",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-06",
+  "dayFormat": "vacation",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "08:50",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "08:55",
+  "endTime": "19:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "11:00",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S090",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-05",
+  "dayFormat": "shift_prep",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "23:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "09:20",
+  "endTime": "18:10",
+  "breakMin": 30
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "20:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "05:30",
+  "endTime": "18:30",
+  "breakMin": 70
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "19:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "08:00",
+  "endTime": "18:58",
+  "breakMin": 20
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-07",
+  "dayFormat": "shift_air",
+  "startTime": "07:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "08:00",
+  "endTime": "22:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "08:40",
+  "endTime": "18:20",
+  "breakMin": 20
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-06",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-06",
+  "dayFormat": "shift_edit",
+  "startTime": "09:30",
+  "endTime": "21:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-06",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "20:00",
+  "breakMin": 60
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:45",
+  "breakMin": 20
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "19:20",
+  "breakMin": 30
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-06",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": "18:45",
+  "breakMin": 10
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-06",
+  "dayFormat": "shift_edit",
+  "startTime": "11:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-06",
+  "dayFormat": "shift_edit",
+  "startTime": "11:00",
+  "endTime": "22:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "16:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S016",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "12:00",
+  "endTime": "16:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S016",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "14:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "07:30",
+  "endTime": "18:55",
+  "breakMin": 20
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-07",
+  "dayFormat": "shift_air",
+  "startTime": "05:30",
+  "endTime": "13:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "06:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-07",
+  "dayFormat": "vacation",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-08",
+  "dayFormat": "vacation",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "06:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 150
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-07",
+  "dayFormat": "shift_air",
+  "startTime": "05:30",
+  "endTime": "15:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:17",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S090",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S090",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "12:00",
+  "endTime": "23:59",
+  "breakMin": 30
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "08:00",
+  "endTime": "18:50",
+  "breakMin": 20
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "23:59",
+  "breakMin": 60
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-08",
+  "dayFormat": "dayoff",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "08:45",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S002",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Музыкальная_редакция",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 40
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-07",
+  "dayFormat": "shift_air",
+  "startTime": "05:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "12:00",
+  "endTime": "16:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S016",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "12:00",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S016",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "14:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-04",
+  "dayFormat": "vacation",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "20:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-04",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-05",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-06",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-07",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-08",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-09",
+  "dayFormat": "vacation",
+  "startTime": "19:03",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-10",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S090",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-06",
+  "dayFormat": "remote",
+  "startTime": "09:05",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "09:35",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-04",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-02",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "18:00",
+  "breakMin": 60
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-09",
+  "dayFormat": "remote",
+  "startTime": "12:00",
+  "endTime": "16:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-06",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 20
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:20",
+  "breakMin": 20
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "09:07",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "09:22",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "09:07",
+  "endTime": "17:37",
+  "breakMin": 30
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "22:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "13:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S080",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-06",
+  "dayFormat": "shift_edit",
+  "startTime": "11:00",
+  "endTime": "22:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S080",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-07",
+  "dayFormat": "shift_air",
+  "startTime": "05:00",
+  "endTime": "15:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-07",
+  "dayFormat": "shift_air",
+  "startTime": "05:30",
+  "endTime": "14:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-11",
+  "dayFormat": "shift_edit",
+  "startTime": "12:30",
+  "endTime": "19:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-11",
+  "dayFormat": "shift_edit",
+  "startTime": "12:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S002",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Музыкальная_редакция",
+  "date": "2026-05-11",
+  "dayFormat": "shift_edit",
+  "startTime": "10:00",
+  "endTime": "18:20",
+  "breakMin": 0
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "09:00",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-11",
+  "dayFormat": "remote",
+  "startTime": "09:50",
+  "endTime": "18:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:40",
+  "breakMin": 20
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "19:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S080",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-11",
+  "dayFormat": "shift_edit",
+  "startTime": "12:00",
+  "endTime": "18:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S016",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "13:30",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-12",
+  "dayFormat": "shift_air",
+  "startTime": "09:15",
+  "endTime": "14:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-11",
+  "dayFormat": "remote",
+  "startTime": "21:00",
+  "endTime": "23:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "08:58",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "08:50",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "08:33",
+  "endTime": "17:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "08:22",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "08:20",
+  "endTime": "22:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "08:50",
+  "endTime": "17:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-12",
+  "dayFormat": "shift_air",
+  "startTime": "09:50",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S080",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-12",
+  "dayFormat": "shift_air",
+  "startTime": "08:45",
+  "endTime": "17:15",
+  "breakMin": 0
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-12",
+  "dayFormat": "shift_air",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-11",
+  "dayFormat": "shift_edit",
+  "startTime": "13:37",
+  "endTime": "18:56",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "08:30",
+  "endTime": "17:45",
+  "breakMin": 0
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-12",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "14:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:18",
+  "breakMin": 30
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "12:20",
+  "endTime": "18:45",
+  "breakMin": 0
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "09:58",
+  "endTime": "18:56",
+  "breakMin": 30
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "19:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-12",
+  "dayFormat": "shift_air",
+  "startTime": "09:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-11",
+  "dayFormat": "shift_edit",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-12",
+  "dayFormat": "shift_air",
+  "startTime": "08:30",
+  "endTime": "14:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "20:36",
+  "breakMin": 0
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "09:40",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "21:05",
+  "breakMin": 20
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "08:00",
+  "endTime": "19:18",
+  "breakMin": 20
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:05",
+  "breakMin": 30
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:45",
+  "breakMin": 20
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-11",
+  "dayFormat": "shift_edit",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-07",
+  "dayFormat": "shift_air",
+  "startTime": "05:30",
+  "endTime": "17:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-05",
+  "dayFormat": "shift_prep",
+  "startTime": "11:00",
+  "endTime": "18:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-13",
+  "dayFormat": "trip",
+  "startTime": "08:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-12",
+  "dayFormat": "trip",
+  "startTime": "09:50",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "18:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:06",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:40",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:35",
+  "endTime": "18:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "18:30",
+  "breakMin": 40
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-12",
+  "dayFormat": "remote",
+  "startTime": "09:40",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:40",
+  "breakMin": 20
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-13",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:46",
+  "breakMin": 0
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-13",
+  "dayFormat": "shift_edit",
+  "startTime": "11:20",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "08:35",
+  "endTime": "17:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "18:53",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "08:33",
+  "endTime": "19:00",
+  "breakMin": 10
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:16",
+  "endTime": "19:10",
+  "breakMin": 30
+ },
+ {
+  "empId": "S080",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-13",
+  "dayFormat": "shift_edit",
+  "startTime": "10:00",
+  "endTime": "20:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:10",
+  "breakMin": 30
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-13",
+  "dayFormat": "shift_edit",
+  "startTime": "12:00",
+  "endTime": "21:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "07:50",
+  "endTime": "20:08",
+  "breakMin": 20
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-13",
+  "dayFormat": "trip",
+  "startTime": "08:45",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "20:18",
+  "breakMin": 20
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-13",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 40
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-12",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": "19:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-13",
+  "dayFormat": "remote",
+  "startTime": "09:57",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "18:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-14",
+  "dayFormat": "shift_air",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "19:00",
+  "breakMin": 45
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "21:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-15",
+  "dayFormat": "dayoff",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "23:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "12:00",
+  "endTime": "19:00",
+  "breakMin": 15
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "09:35",
+  "endTime": "20:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "17:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "08:45",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "08:30",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "08:50",
+  "endTime": "17:45",
+  "breakMin": 20
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "18:45",
+  "breakMin": 20
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "08:40",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "18:30",
+  "breakMin": 65
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "09:15",
+  "endTime": "18:20",
+  "breakMin": 30
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:25",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "18:35",
+  "breakMin": 30
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "07:50",
+  "endTime": "18:45",
+  "breakMin": 20
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "19:05",
+  "breakMin": 60
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:05",
+  "breakMin": 0
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:50",
+  "endTime": "19:10",
+  "breakMin": 20
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "09:58",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "20:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "09:25",
+  "endTime": "20:20",
+  "breakMin": 60
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-14",
+  "dayFormat": "shift_air",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-13",
+  "dayFormat": "shift_edit",
+  "startTime": "10:00",
+  "endTime": "20:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "19:00",
+  "breakMin": 60
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "09:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-14",
+  "dayFormat": "trip",
+  "startTime": "08:45",
+  "endTime": "22:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "12:30",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-14",
+  "dayFormat": "shift_air",
+  "startTime": "11:59",
+  "endTime": "22:32",
+  "breakMin": 30
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "20:00",
+  "breakMin": 15
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-14",
+  "dayFormat": "shift_air",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-15",
+  "dayFormat": "unpaid",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "09:55",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-13",
+  "dayFormat": "remote",
+  "startTime": "09:31",
+  "endTime": "18:40",
+  "breakMin": 0
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-12",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "23:00",
+  "breakMin": 60
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-04",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-13",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "21:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-06",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "19:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:05",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-06",
+  "dayFormat": "shift_edit",
+  "startTime": "08:00",
+  "endTime": "20:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:50",
+  "breakMin": 20
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "10:15",
+  "endTime": "20:53",
+  "breakMin": 60
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "23:40",
+  "breakMin": 40
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-13",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "14:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-13",
+  "dayFormat": "remote",
+  "startTime": "10:10",
+  "endTime": "21:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:50",
+  "endTime": "18:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "10:10",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "10:15",
+  "endTime": "20:00",
+  "breakMin": 60
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-05",
+  "dayFormat": "remote",
+  "startTime": "10:15",
+  "endTime": "20:00",
+  "breakMin": 60
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-04",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "20:00",
+  "breakMin": 60
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "08:55",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "14:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-13",
+  "dayFormat": "shift_edit",
+  "startTime": "10:58",
+  "endTime": "19:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "07:50",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "09:40",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-15",
+  "dayFormat": "shift_air",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:35",
+  "breakMin": 20
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:45",
+  "breakMin": 50
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:52",
+  "breakMin": 50
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:53",
+  "breakMin": 30
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 20
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "09:40",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:20",
+  "endTime": "19:25",
+  "breakMin": 60
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "20:00",
+  "breakMin": 50
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-14",
+  "dayFormat": "shift_air",
+  "startTime": "10:05",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "11:10",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-14",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "14:06",
+  "endTime": "10:05",
+  "breakMin": 0
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "21:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-08",
+  "dayFormat": "remote",
+  "startTime": "12:00",
+  "endTime": "20:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "08:22",
+  "endTime": "18:35",
+  "breakMin": 20
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-17",
+  "dayFormat": "remote",
+  "startTime": "11:30",
+  "endTime": "13:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-15",
+  "dayFormat": "shift_air",
+  "startTime": "08:30",
+  "endTime": "19:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-18",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-15",
+  "dayFormat": "shift_air",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:03",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-12",
+  "dayFormat": "remote",
+  "startTime": "09:02",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "19:00",
+  "breakMin": 40
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "20:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-14",
+  "dayFormat": "shift_air",
+  "startTime": "10:15",
+  "endTime": "18:50",
+  "breakMin": 0
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-15",
+  "dayFormat": "shift_air",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-17",
+  "dayFormat": "remote",
+  "startTime": "12:00",
+  "endTime": "17:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "09:49",
+  "endTime": "20:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": "20:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-15",
+  "dayFormat": "shift_air",
+  "startTime": "08:30",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-18",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-18",
+  "dayFormat": "remote",
+  "startTime": "09:00",
+  "endTime": "17:40",
+  "breakMin": 0
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-18",
+  "dayFormat": "remote",
+  "startTime": "09:29",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-18",
+  "dayFormat": "shift_air",
+  "startTime": "07:00",
+  "endTime": "17:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-18",
+  "dayFormat": "shift_edit",
+  "startTime": "10:00",
+  "endTime": "18:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-20",
+  "dayFormat": "dayoff",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "09:58",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:40",
+  "breakMin": 20
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:26",
+  "endTime": "18:42",
+  "breakMin": 25
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "08:10",
+  "endTime": "18:44",
+  "breakMin": 20
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "07:30",
+  "endTime": "18:40",
+  "breakMin": 0
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "19:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "20:01",
+  "breakMin": 20
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "21:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "20:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "19:15",
+  "breakMin": 30
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "06:50",
+  "endTime": "20:44",
+  "breakMin": 0
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-19",
+  "dayFormat": "sick",
+  "startTime": "08:40",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "08:55",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "08:50",
+  "endTime": "18:00",
+  "breakMin": 10
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "09:15",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "09:10",
+  "endTime": "18:25",
+  "breakMin": 60
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "09:05",
+  "endTime": "18:30",
+  "breakMin": 45
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "09:07",
+  "endTime": "18:30",
+  "breakMin": 50
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "17:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "19:00",
+  "breakMin": 15
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-18",
+  "dayFormat": "shift_edit",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-15",
+  "dayFormat": "shift_air",
+  "startTime": "08:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:05",
+  "endTime": "18:35",
+  "breakMin": 20
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-18",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "15:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-07",
+  "dayFormat": "remote",
+  "startTime": "08:30",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "08:58",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "09:40",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "09:20",
+  "endTime": "17:50",
+  "breakMin": 30
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "16:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "08:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "07:50",
+  "endTime": "18:49",
+  "breakMin": 20
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:40",
+  "breakMin": 0
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:25",
+  "endTime": "18:50",
+  "breakMin": 25
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-19",
+  "dayFormat": "shift_air",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-19",
+  "dayFormat": "shift_air",
+  "startTime": "09:45",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-18",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "19:22",
+  "breakMin": 60
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:45",
+  "endTime": "19:20",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "13:45",
+  "endTime": "19:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-19",
+  "dayFormat": "shift_air",
+  "startTime": "09:15",
+  "endTime": "20:00",
+  "breakMin": 10
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-19",
+  "dayFormat": "shift_air",
+  "startTime": "09:30",
+  "endTime": "21:00",
+  "breakMin": 60
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "09:21",
+  "endTime": "21:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:49",
+  "breakMin": 0
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:14",
+  "endTime": "19:05",
+  "breakMin": 50
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": null,
+  "breakMin": 30
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:05",
+  "endTime": "19:07",
+  "breakMin": 35
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-19",
+  "dayFormat": "shift_air",
+  "startTime": "10:00",
+  "endTime": "18:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:18",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "11:25",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S076",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-20",
+  "dayFormat": "vacation",
+  "startTime": "13:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S037",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "13:04",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S101",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-20",
+  "dayFormat": "vacation",
+  "startTime": "13:05",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-15",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-16",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-17",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-18",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-19",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-20",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-21",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-22",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-23",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-24",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-25",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-26",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-27",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-06-28",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "08:56",
+  "endTime": "16:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "16:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "21:00",
+  "breakMin": 25
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:50",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "17:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:30",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:05",
+  "endTime": "17:55",
+  "breakMin": 30
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:48",
+  "endTime": "18:30",
+  "breakMin": 100
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "09:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "18:20",
+  "breakMin": 30
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "08:02",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-15",
+  "dayFormat": "remote",
+  "startTime": "09:33",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "18:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:55",
+  "endTime": "18:33",
+  "breakMin": 30
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:55",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "18:30",
+  "breakMin": 5
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "11:24",
+  "endTime": "18:41",
+  "breakMin": 0
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "08:00",
+  "endTime": "18:56",
+  "breakMin": 20
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:49",
+  "breakMin": 20
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:54",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:55",
+  "breakMin": 30
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:10",
+  "endTime": "20:59",
+  "breakMin": 60
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "21:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:06",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "07:45",
+  "endTime": "19:50",
+  "breakMin": 0
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:05",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-19",
+  "dayFormat": "remote",
+  "startTime": "10:20",
+  "endTime": "18:51",
+  "breakMin": 30
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-18",
+  "dayFormat": "remote",
+  "startTime": "10:02",
+  "endTime": "18:56",
+  "breakMin": 47
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-14",
+  "dayFormat": "trip",
+  "startTime": "08:30",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:03",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-18",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-28",
+  "dayFormat": "shift_air",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-29",
+  "dayFormat": "shift_air",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S016",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "13:30",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "17:40",
+  "breakMin": 20
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "09:44",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:40",
+  "endTime": "18:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-19",
+  "dayFormat": "vacation",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:45",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:40",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:20",
+  "breakMin": 30
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "19:20",
+  "breakMin": 40
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:40",
+  "breakMin": 10
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:26",
+  "endTime": "18:35",
+  "breakMin": 30
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:04",
+  "endTime": "18:47",
+  "breakMin": 20
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-06",
+  "dayFormat": "shift_air",
+  "startTime": "09:00",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:59",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:31",
+  "endTime": "18:56",
+  "breakMin": 30
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "10:30",
+  "endTime": "19:02",
+  "breakMin": 30
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "09:00",
+  "endTime": "19:15",
+  "breakMin": 0
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:10",
+  "endTime": "19:20",
+  "breakMin": 30
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "19:00",
+  "breakMin": 40
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-21",
+  "dayFormat": "shift_edit",
+  "startTime": "10:00",
+  "endTime": "19:32",
+  "breakMin": 20
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "17:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-18",
+  "dayFormat": "shift_air",
+  "startTime": "09:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "11:30",
+  "endTime": "19:40",
+  "breakMin": 20
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S029",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:40",
+  "breakMin": 10
+ },
+ {
+  "empId": "S007",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-21",
+  "dayFormat": "trip",
+  "startTime": "05:30",
+  "endTime": "19:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "08:31",
+  "endTime": "20:40",
+  "breakMin": 0
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:20",
+  "endTime": "21:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-21",
+  "dayFormat": "shift_edit",
+  "startTime": "10:10",
+  "endTime": "19:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-21",
+  "dayFormat": "shift_edit",
+  "startTime": "10:14",
+  "endTime": "23:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-21",
+  "dayFormat": "shift_edit",
+  "startTime": "11:38",
+  "endTime": "23:59",
+  "breakMin": 0
+ },
+ {
+  "empId": "S009",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": null,
+  "breakMin": 30
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "18:30",
+  "breakMin": 50
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "08:50",
+  "endTime": "17:40",
+  "breakMin": 20
+ },
+ {
+  "empId": "S028",
+  "donorDivisionSlug": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 60
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:07",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "11:00",
+  "endTime": "18:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-20",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "17:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S015",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "10:22",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S105",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-21",
+  "dayFormat": "shift_edit",
+  "startTime": "10:30",
+  "endTime": "19:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S050",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "09:15",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S005",
+  "donorDivisionSlug": "ТВ_департамент_Администрация",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-21",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S092",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "10:30",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S106",
+  "donorDivisionSlug": "Коммерческий_департамент_Отдел",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-19",
+  "dayFormat": "office",
+  "startTime": "08:06",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-20",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S094",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "10:15",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-16",
+  "dayFormat": "dayoff",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-10",
+  "dayFormat": "dayoff",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-09",
+  "dayFormat": "dayoff",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-02",
+  "dayFormat": "dayoff",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-03",
+  "dayFormat": "dayoff",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-01",
+  "dayFormat": "dayoff",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-04",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-05",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-06",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 15
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-07",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-08",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-12",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "19:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-14",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:45",
+  "breakMin": 30
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-15",
+  "dayFormat": "office",
+  "startTime": "10:30",
+  "endTime": "19:00",
+  "breakMin": 50
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-18",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 40
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-21",
+  "dayFormat": "office",
+  "startTime": "10:05",
+  "endTime": "18:40",
+  "breakMin": 30
+ },
+ {
+  "empId": "S095",
+  "donorDivisionSlug": "ТВ_департамент_Креативный_отде",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S035",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "08:00",
+  "endTime": "13:01",
+  "breakMin": 0
+ },
+ {
+  "empId": "S008",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "08:00",
+  "endTime": "15:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "08:10",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-13",
+  "dayFormat": "office",
+  "startTime": "09:10",
+  "endTime": "18:10",
+  "breakMin": 35
+ },
+ {
+  "empId": "S010",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:05",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S065",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S060",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "08:58",
+  "endTime": "17:50",
+  "breakMin": 0
+ },
+ {
+  "empId": "S096",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S027",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "07:54",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S102",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "08:30",
+  "endTime": "18:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S079",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "09:50",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S061",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "18:30",
+  "breakMin": 15
+ },
+ {
+  "empId": "S051",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "09:10",
+  "endTime": "18:00",
+  "breakMin": 40
+ },
+ {
+  "empId": "S110",
+  "donorDivisionSlug": "Финансовый_департамент_Юридиче",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": "19:00",
+  "breakMin": 40
+ },
+ {
+  "empId": "S074",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S030",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:10",
+  "endTime": "18:30",
+  "breakMin": 10
+ },
+ {
+  "empId": "S026",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "09:30",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "08:30",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S018",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S003",
+  "donorDivisionSlug": "tech_tech",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "08:45",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S083",
+  "donorDivisionSlug": "design_motion",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:27",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S042",
+  "donorDivisionSlug": "design_graph",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S033",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "18:30",
+  "breakMin": 40
+ },
+ {
+  "empId": "S055",
+  "donorDivisionSlug": "radio_red",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S097",
+  "donorDivisionSlug": "hr_hr",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:15",
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S080",
+  "donorDivisionSlug": "tv_tech",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "09:00",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S013",
+  "donorDivisionSlug": "Радио_департамент_Администрация",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "10:00",
+  "endTime": "19:30",
+  "breakMin": 45
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-25",
+  "dayFormat": "shift_air",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "09:00",
+  "endTime": "20:00",
+  "breakMin": 30
+ },
+ {
+  "empId": "S063",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-26",
+  "dayFormat": "shift_air",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S047",
+  "donorDivisionSlug": "fin_fin",
+  "date": "2026-05-22",
+  "dayFormat": "office",
+  "startTime": "11:25",
+  "endTime": "19:30",
+  "breakMin": 30
+ },
+ {
+  "empId": "S017",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "19:00",
+  "breakMin": 20
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "08:45",
+  "endTime": "19:40",
+  "breakMin": 0
+ },
+ {
+  "empId": "S082",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "09:15",
+  "endTime": "19:46",
+  "breakMin": 20
+ },
+ {
+  "empId": "S073",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "10:15",
+  "endTime": "19:56",
+  "breakMin": 60
+ },
+ {
+  "empId": "S004",
+  "donorDivisionSlug": "Бренд_медиа_департамент_Администрация",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "09:30",
+  "endTime": "18:54",
+  "breakMin": 20
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-23",
+  "dayFormat": "office",
+  "startTime": "15:00",
+  "endTime": "21:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S011",
+  "donorDivisionSlug": "tv_edit",
+  "date": "2026-05-22",
+  "dayFormat": "shift_air",
+  "startTime": "10:00",
+  "endTime": "21:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S043",
+  "donorDivisionSlug": "brand_div",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "09:55",
+  "endTime": "18:30",
+  "breakMin": 0
+ },
+ {
+  "empId": "S046",
+  "donorDivisionSlug": "special_sp",
+  "date": "2026-05-22",
+  "dayFormat": "remote",
+  "startTime": "10:00",
+  "endTime": "18:30",
+  "breakMin": 20
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-23",
+  "dayFormat": "remote",
+  "startTime": "11:00",
+  "endTime": "16:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S052",
+  "donorDivisionSlug": "tv",
+  "date": "2026-05-24",
+  "dayFormat": "remote",
+  "startTime": "18:00",
+  "endTime": "21:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S093",
+  "donorDivisionSlug": "tv_prod",
+  "date": "2026-05-25",
+  "dayFormat": "remote",
+  "startTime": null,
+  "endTime": null,
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-24",
+  "dayFormat": "office",
+  "startTime": "09:06",
+  "endTime": "21:00",
+  "breakMin": 0
+ },
+ {
+  "empId": "S085",
+  "donorDivisionSlug": "Департамент_персонала_АХО",
+  "date": "2026-05-23",
+  "dayFormat": "office",
+  "startTime": "09:00",
+  "endTime": "21:15",
+  "breakMin": 0
+ }
+]

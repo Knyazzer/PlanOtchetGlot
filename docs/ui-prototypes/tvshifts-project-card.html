@@ -1,0 +1,3361 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Карточка проекта · ТВ-Шифты</title>
+<meta name="viewport" content="width=1440">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+/* ── Reset & Base ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Urbanist', system-ui, sans-serif;
+  font-size: 13px;
+  color: #ffffff;
+  background: #0D0D0D;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Tokens ───────────────────────────────────────────────────────────────── */
+:root {
+  --bg:        #0D0D0D;
+  --surface-1: #161616;
+  --surface-2: #1E1E1E;
+  --surface-3: #262626;
+  --border:        rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.13);
+  --text:            #FFFFFF;
+  --text-2:          #FFFFFF;
+  --text-muted:      #A0A0A0;
+  --text-placeholder:#555555;
+
+  --accent-s: #FF6B35;
+  --accent-e: #E8194B;
+
+  --blue:   #6495ED;  --blue-bg:  rgba(100,149,237,0.13); --blue-light: rgba(100,149,237,0.07);
+  --green:  #29BF12;  --green-bg: rgba(41,191,18,0.13);
+  --amber:  #D97706;  --amber-bg: rgba(217,119,6,0.13);
+  --red:    #E8194B;  --red-bg:   rgba(232,25,75,0.13);
+  --purple: #a78bfa;  --purple-bg:rgba(167,139,250,0.13);
+  --teal:   #22d3ee;  --teal-bg:  rgba(34,211,238,0.13);
+
+  /* WI stage */
+  --req:  #6495ED;  --req-bg:  rgba(100,149,237,0.13);
+  --pre:  #D97706;  --pre-bg:  rgba(217,119,6,0.13);
+  --prod: #29BF12;  --prod-bg: rgba(41,191,18,0.13);
+  --post: #a78bfa;  --post-bg: rgba(167,139,250,0.13);
+  --done: #4ade80;  --done-bg: rgba(74,222,128,0.10);
+
+  /* dept palette (dark) */
+  --tv-fg: #93c5fd;  --tv-bg: rgba(37,99,235,0.18);
+  --mo-fg: #f9a8d4;  --mo-bg: rgba(236,72,153,0.18);
+  --pp-fg: #c4b5fd;  --pp-bg: rgba(139,92,246,0.18);
+  --ds-fg: #fcd34d;  --ds-bg: rgba(217,119,6,0.18);
+  --sn-fg: #67e8f9;  --sn-bg: rgba(6,182,212,0.18);
+
+  --sh-card: 0 1px 6px rgba(0,0,0,0.4);
+  --sh-pop:  0 8px 40px rgba(0,0,0,0.6);
+  --radius: 14px;
+}
+
+/* ── Page shell ───────────────────────────────────────────────────────────── */
+.page { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* ── Topbar ───────────────────────────────────────────────────────────────── */
+.topbar {
+  background: var(--surface-1);
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 0 24px;
+  height: 36px;
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.topbar a { color: var(--text-muted); text-decoration: none; cursor: pointer; }
+.topbar a:hover { color: var(--text); }
+.topbar .sep { opacity: 0.4; }
+.topbar .cur { color: var(--text); font-weight: 600; }
+
+/* ── Project card ─────────────────────────────────────────────────────────── */
+.project-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-1);
+}
+
+/* ── Project header ───────────────────────────────────────────────────────── */
+.proj-head {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-strong);
+  padding: 14px 26px 0;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.proj-head::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent-s), var(--accent-e));
+}
+.proj-head::after { display: none; }
+
+/* строка 1: eyebrow + бейджи справа */
+.proj-head-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.proj-head .eyebrow {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--text-placeholder);
+  display: flex; align-items: center; gap: 8px;
+}
+.proj-head .eyebrow .id { color: var(--accent-s); font-family: 'JetBrains Mono', monospace; }
+.proj-head-top-right { display: flex; align-items: center; gap: 8px; }
+
+/* шапка: название слева, вкладки справа по нижнему краю */
+.proj-head-main {
+  display: flex; align-items: flex-end; justify-content: space-between;
+}
+.proj-head-title {
+  display: flex; flex-direction: column; gap: 5px; padding-bottom: 10px;
+}
+.proj-head-name-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.proj-head h1 {
+  font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text);
+  white-space: nowrap; line-height: 1.2;
+}
+.proj-status-select {
+  appearance: none; border: none; outline: none; cursor: pointer;
+  font-family: 'Urbanist', sans-serif; font-size: 12px; font-weight: 600;
+  color: var(--green); background: var(--green-bg);
+  padding: 3px 10px; border-radius: 99px;
+  transition: opacity .1s;
+}
+.proj-status-select:hover { opacity: 0.8; }
+.proj-status-select option { background: var(--surface-3); color: var(--text); font-weight: 500; }
+
+/* блок людей */
+.proj-people {
+  display: flex; align-items: center; gap: 6px; flex: 1;
+}
+.proj-person {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 5px 10px 5px 6px;
+}
+.proj-person .av {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.proj-person .pinfo { display: flex; flex-direction: column; gap: 1px; }
+.proj-person .prole {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-placeholder); font-weight: 600; line-height: 1;
+}
+.proj-person .pname { font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.2; }
+
+/* финансовая сводка */
+.proj-finance {
+  display: flex; align-items: center; gap: 0;
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  flex-shrink: 0;
+}
+.fin-cell {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 6px 14px; border-right: 1px solid var(--border);
+}
+.fin-cell:last-child { border-right: none; }
+.fin-cell .lbl {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-placeholder); font-weight: 600;
+}
+.fin-cell .val {
+  font-size: 14px; font-weight: 700; color: var(--text);
+  display: flex; align-items: baseline; gap: 3px;
+}
+.fin-cell .val .sub { font-size: 10px; font-weight: 400; color: var(--text-muted); }
+.fin-cell .val .pct { font-size: 12px; font-weight: 700; }
+
+/* убираем старые */
+.proj-head .meta { display: none; }
+.meta-sep { display: none; }
+.head-stat { display: none; }
+
+/* ── Project tabs — browser-tab style ────────────────────────────────────── */
+.proj-tabs {
+  display: flex; align-items: flex-end; gap: 3px; flex-shrink: 0;
+  padding-bottom: 0;
+}
+.proj-tabs button {
+  position: relative;
+  background: transparent; border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 7px 7px 0 0;
+  padding: 7px 15px 9px; font: inherit; font-size: 12.5px; font-weight: 500;
+  color: var(--text-placeholder); cursor: pointer;
+  transition: color .12s, background .12s;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+.proj-tabs button:hover { color: var(--text-muted); background: rgba(255,255,255,.03); }
+.proj-tabs button.active {
+  color: var(--text);
+  font-weight: 600;
+  background: #0D0D0D;
+  border-color: rgba(255,255,255,0.14);
+  border-bottom-color: #0D0D0D;
+  border-top: 2px solid var(--accent-s);
+  padding-top: 5px;
+  z-index: 1;
+}
+.proj-tabs .badge {
+  margin-left: 5px; font-size: 10px; font-weight: 700;
+  background: var(--surface-3); color: var(--text-muted);
+  padding: 1px 6px; border-radius: 99px;
+  display: inline-block; vertical-align: middle;
+}
+.proj-tabs button.active .badge {
+  background: rgba(255,107,53,0.18); color: var(--accent-s);
+}
+
+/* ── Tab bodies ───────────────────────────────────────────────────────────── */
+.tab-body { display: none; flex: 1; overflow: hidden; }
+.tab-body.active { display: flex; flex-direction: column; }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* TAB: СТРУКТУРА — трёхколоночный layout                                      */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+.structure-cols {
+  flex: 1; display: grid;
+  grid-template-columns: 360px 280px 1fr;
+  overflow: hidden;
+  transition: grid-template-columns .22s cubic-bezier(.4,0,.2,1);
+}
+.structure-cols.wi-collapsed { grid-template-columns: 36px 280px 1fr; }
+.structure-cols.depts-collapsed { grid-template-columns: 360px 36px 1fr; }
+.structure-cols.wi-collapsed.depts-collapsed { grid-template-columns: 36px 36px 1fr; }
+
+/* ── Collapse button ── */
+.col-collapse-btn {
+  width: 24px; height: 24px; border-radius: 5px; flex-shrink: 0;
+  background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text-muted);
+  font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all .12s, transform .22s cubic-bezier(.4,0,.2,1); line-height: 1;
+}
+.col-collapse-btn:hover { border-color: rgba(255,255,255,.22); color: var(--text); background: var(--surface-2); }
+
+/* ── Collapsed strip ── */
+.col-collapsed-strip {
+  display: none; flex-direction: column; align-items: center;
+  padding: 10px 0; gap: 6px; overflow: hidden;
+}
+
+/* скрываем контент во время анимации grid — исчезает мгновенно, появляется с задержкой */
+.col-wi.expanding .wi-scroll { opacity: 0; }
+.col-wi .wi-scroll { transition: opacity .18s ease; }
+.col-depts.expanding .dept-floating { opacity: 0; }
+.col-depts .dept-floating { transition: opacity .18s ease; }
+
+/* fade-in карточек отделов при смене WI */
+@keyframes deptCardIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dept-card-f.entering {
+  animation: deptCardIn .2s ease both;
+}
+.col-wi.collapsed .wi-scroll,
+.col-wi.collapsed .col-wi-head .lbl,
+.col-wi.collapsed .col-wi-head .wi-add-inline { display: none; }
+.col-wi.collapsed .col-collapsed-strip { display: flex; }
+.col-wi.collapsed .col-wi-head { padding: 0; justify-content: center; }
+.col-wi.collapsed .col-collapse-btn { transform: rotate(180deg); }
+
+.col-depts.collapsed .dept-floating,
+.col-depts.collapsed .col-depts-head .lbl { display: none; }
+.col-depts.collapsed .col-collapsed-strip { display: flex; }
+.col-depts.collapsed .col-depts-head { padding: 0; justify-content: center; }
+.col-depts.collapsed .col-collapse-btn { transform: rotate(180deg); }
+
+/* strip items */
+.strip-item {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; flex-shrink: 0;
+  cursor: pointer; transition: background .12s, border-color .12s, box-shadow .12s;
+}
+.strip-wi {
+  background: rgba(245,158,11,.08);
+  color: rgba(245,158,11,.6);
+  border: 1px solid rgba(245,158,11,.15);
+}
+.strip-wi:hover {
+  background: rgba(245,158,11,.2);
+  color: rgba(245,158,11,.9);
+  border-color: rgba(245,158,11,.4);
+}
+.strip-wi.active-strip {
+  background: rgba(245,158,11,.3);
+  color: #F59E0B;
+  border-color: rgba(245,158,11,.7);
+  box-shadow: 0 0 0 1px rgba(245,158,11,.25);
+}
+
+/* ── Колонка 1: WI ── */
+.col-wi {
+  display: flex; flex-direction: column;
+  background: var(--bg); border-right: 1px solid var(--border); overflow: hidden;
+  min-width: 0;
+}
+.col-wi-head {
+  padding: 0 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  height: 40px;
+}
+.col-wi-head .lbl {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 700; color: var(--text-placeholder); flex: 1;
+}
+.col-wi-head .wi-add-inline {
+  background: none; border: none; font: inherit; font-size: 11.5px; font-weight: 600;
+  color: var(--text-placeholder); cursor: pointer; padding: 4px 8px;
+  border-radius: 5px; transition: all .1s; white-space: nowrap;
+}
+.col-wi-head .wi-add-inline:hover { color: var(--accent-s); background: rgba(255,107,53,.06); }
+.wi-scroll {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+  padding: 4px 2px 8px;
+  padding-bottom: 90vh; /* позволяет скроллить любой WI в начало списка */
+  direction: rtl;
+}
+.wi-scroll > * { direction: ltr; }
+.wi-scroll::-webkit-scrollbar { width: 3px; }
+.wi-scroll::-webkit-scrollbar-track { background: transparent; }
+.wi-scroll::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
+.wi-scroll:hover::-webkit-scrollbar-thumb { background: var(--surface-3); }
+.wi-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-placeholder); }
+
+/* ── WI folder cards ── */
+.wi-card {
+  position: relative;
+  padding-top: 11px;
+  cursor: pointer;
+  width: 80%;
+  align-self: flex-end;
+  transition: width .18s cubic-bezier(.4,0,.2,1);
+}
+.wi-card.active {
+  width: 100%;
+}
+.wi-card-tab {
+  position: absolute;
+  top: 0; left: 0;
+  height: 11px; width: 100px;
+  border-radius: 6px 8px 0 0;
+  background: rgba(245,158,11,0.6);
+}
+.wi-card-body {
+  border-radius: 0 8px 8px 8px;
+  border: 1.5px solid rgba(245,158,11,0.28);
+  background: rgba(245,158,11,0.10);
+  overflow: hidden;
+  transition: border-color .15s, background .15s;
+}
+.wi-card.active .wi-card-body {
+  border-color: rgba(245,158,11,0.55);
+  background: rgba(245,158,11,0.08);
+}
+.wi-card-body:hover { border-color: rgba(245,158,11,0.45); }
+.wi-card-strip { height: 3px; background: linear-gradient(90deg,#F59E0B,#FCD34D); }
+
+.wi-card-head { display: flex; flex-direction: column; gap: 5px; padding: 8px 12px 6px; }
+.wi-card-head-top { display: flex; align-items: center; gap: 6px; }
+.wi-card-head-bot { display: flex; align-items: center; gap: 6px; }
+.wi-card-num {
+  font-size: 10px; font-weight: 400;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(245,158,11,.85);
+  background: rgba(245,158,11,.1);
+  border: 1px solid rgba(245,158,11,.22);
+  padding: 1px 6px; border-radius: 4px; flex-shrink: 0;
+}
+.wi-card-name {
+  flex: 1; font-size: 13px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.wi-sbadge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; }
+.wi-sbadge::before { content:''; width:4px; height:4px; border-radius:50%; background:currentColor; opacity:.7; }
+
+.wi-card-sub {
+  padding: 0 12px 6px;
+  font-size: 11px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 10px;
+}
+.wi-card-foot {
+  padding: 6px 12px 9px;
+  border-top: 1px solid rgba(255,255,255,.05);
+  display: flex; align-items: center; gap: 8px;
+}
+.wi-prod-row { display: flex; align-items: center; gap: 5px; flex: 1; overflow: hidden; }
+.wi-av { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 800; flex-shrink: 0; }
+.wi-prod-name { font-size: 11px; color: #bbb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wi-ring { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.wi-ring-pct { font-size: 11px; font-weight: 800; }
+
+/* collapsed: hide date/location and expanded-only producer row */
+.wi-card-sub { display: none; }
+.wi-card-foot { display: none; }
+.wi-card.active .wi-card-sub { display: flex; }
+.wi-card.active .wi-card-foot { display: flex; }
+.wi-head-ring { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.wi-head-prod { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.wi-card.active .wi-head-prod { display: none; }
+/* открытый WI — шапка в одну строку: num + name + status + ring */
+.wi-card.active .wi-card-head { flex-direction: row; align-items: center; gap: 6px; }
+.wi-card.active .wi-card-head-top { display: contents; }
+.wi-card.active .wi-card-head-bot { display: contents; }
+
+/* expanded area (on click) */
+.wi-card-expanded { display: none; padding: 0 12px 10px; border-top: 1px solid rgba(245,158,11,.12); margin-top: 4px; }
+.wi-card.active .wi-card-expanded { display: block; }
+.wi-exp-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin: 8px 0 6px; }
+.wi-exp-details { display: flex; flex-direction: column; gap: 4px; }
+.wi-exp-row { display: flex; align-items: center; gap: 6px; }
+.wi-exp-lbl { font-size: 10px; color: var(--text-placeholder); width: 90px; flex-shrink: 0; }
+.wi-exp-val { font-size: 11px; color: var(--text); font-weight: 600; }
+.wi-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px; }
+.wi-chip { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 5px; }
+.chip-tv { background: var(--tv-bg); color: var(--tv-fg); }
+.chip-mo { background: var(--mo-bg); color: var(--mo-fg); }
+.chip-pp { background: var(--pp-bg); color: var(--pp-fg); }
+.chip-ds { background: var(--ds-bg); color: var(--ds-fg); }
+.chip-sn { background: var(--sn-bg); color: var(--sn-fg); }
+.wi-actions { display: flex; gap: 8px; }
+.wi-mini-bar { display: none; }
+
+/* legacy — keep for compat */
+.wi-prog-pct { font-size: 13px; font-weight: 700; min-width: 34px; text-align: right; }
+.wibtn {
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid var(--border-strong); background: var(--surface-3);
+  color: var(--text-muted); border-radius: 6px; padding: 6px 14px;
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .1s;
+}
+.wibtn:hover { color: var(--text); border-color: rgba(255,255,255,.18); }
+.wibtn.primary { background: linear-gradient(135deg, var(--accent-s), var(--accent-e)); border-color: transparent; color: #fff; }
+.chip { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 5px; }
+.wi-add-btn {
+  display: block; width: 100%; background: none; border: none;
+  border-top: 1px dashed var(--border-strong); font: inherit; font-size: 13px;
+  color: var(--text-placeholder); padding: 12px; cursor: pointer; transition: all .1s; text-align: center;
+}
+.wi-add-btn:hover { color: var(--accent-s); background: rgba(255,107,53,.04); }
+
+/* ── Колонка 2: Отделы ── */
+.col-depts {
+  display: flex; flex-direction: column;
+  background: var(--bg); border-right: 1px solid var(--border);
+  position: relative; overflow: hidden;
+  min-width: 0;
+}
+.col-depts-head {
+  padding: 0 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; flex-shrink: 0;
+  height: 40px;
+  position: relative; z-index: 2; background: var(--bg);
+}
+.col-depts-head .lbl {
+  flex: 1;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 700; color: var(--text-placeholder);
+}
+
+/* Scrollable dept area */
+.dept-floating {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.dept-floating { direction: rtl; } /* скроллбар слева */
+.dept-floating > * { direction: ltr; }
+.dept-floating::-webkit-scrollbar { width: 3px; }
+.dept-floating::-webkit-scrollbar-track { background: transparent; }
+.dept-floating::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background .2s;
+}
+.dept-floating:hover::-webkit-scrollbar-thumb { background: var(--surface-3); }
+.dept-floating::-webkit-scrollbar-thumb:hover { background: var(--text-placeholder); }
+
+.dept-cards-wrap {
+  padding: 8px 12px 12px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+/* dept card */
+.dept-card-f {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  padding: 8px 11px;
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+}
+.dept-card-f:hover { border-color: rgba(255,255,255,.18); background: var(--surface-3); }
+.dept-card-f.active {
+  border-color: var(--accent-s);
+  background: rgba(255,107,53,.06);
+}
+.dept-card-f .di {
+  width: 30px; height: 30px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; flex-shrink: 0;
+}
+.dept-card-f .dinfo { flex: 1; min-width: 0; }
+.dept-card-f .dname { font-size: 12px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dept-card-f .dsub  { font-size: 10.5px; color: var(--text-placeholder); margin-top: 1px; }
+.dept-card-f .dpct  { font-size: 12px; font-weight: 800; flex-shrink: 0; }
+
+/* dept icon colors — shared */
+.dept-icon, .di {
+  width: 34px; height: 34px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.icon-tv, .di-tv { background: var(--tv-bg); color: var(--tv-fg); }
+.icon-mo, .di-mo { background: var(--mo-bg); color: var(--mo-fg); }
+.icon-pp, .di-pp { background: var(--pp-bg); color: var(--pp-fg); }
+.icon-ds, .di-ds { background: var(--ds-bg); color: var(--ds-fg); }
+.icon-sn, .di-sn { background: var(--sn-bg); color: var(--sn-fg); }
+
+/* "add dept" button inline after cards */
+.dept-add-inline {
+  background: none; border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  font: inherit; font-size: 11.5px; font-weight: 600; color: var(--text-placeholder);
+  padding: 7px 12px; cursor: pointer; text-align: left; transition: all .1s;
+  width: 100%;
+}
+.dept-add-inline:hover { color: var(--accent-s); border-color: rgba(255,107,53,.35); }
+
+/* legacy names — kept for Finance tab HTML */
+.dept-row { display: flex; align-items: center; gap: 10px; padding: 11px 16px; }
+.dept-row .info { flex: 1; }
+.dept-row .dname { font-size: 14px; font-weight: 600; }
+.dept-row .dsub { font-size: 12px; color: var(--text-placeholder); }
+.dept-row .dpct { font-size: 13px; font-weight: 700; }
+.dept-row .dbar { width: 40px; height: 3px; background: var(--surface-3); border-radius: 2px; overflow: hidden; margin-top: 3px; }
+.dept-row .dbar > div { height: 100%; border-radius: 2px; }
+.dept-add, .dept-add-btn {
+  display: block; width: 100%; background: none; border: none;
+  font: inherit; font-size: 13px; color: var(--text-placeholder);
+  padding: 11px 16px; cursor: pointer; text-align: left; transition: all .1s;
+  border-top: 1px dashed var(--border-strong);
+}
+.dept-add:hover, .dept-add-btn:hover { color: var(--accent-s); }
+.dept-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px; color: var(--text-placeholder); text-align: center; padding: 24px;
+}
+.dept-empty .ico { font-size: 28px; opacity: .15; }
+
+/* ── Колонка 3: Детали отдела ── */
+.col-detail {
+  display: flex; flex-direction: column;
+  background: var(--surface-2); overflow: hidden;
+}
+
+/* шапка-полоска — одного уровня с col-wi-head и col-depts-head */
+.col-detail-head {
+  height: 40px; padding: 0 22px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 5px;
+}
+.col-detail-crumbs {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-placeholder);
+  white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis;
+}
+.col-detail-crumbs .sep { opacity: 0.5; }
+.col-detail-crumbs .crumb-wi { color: var(--text-muted); font-weight: 600; }
+.col-detail-crumbs .crumb-dept { color: var(--accent-s); font-weight: 700; }
+
+.detail-head { padding: 16px 22px 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.detail-crumbs {
+  font-size: 13px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 5px; margin-bottom: 10px;
+}
+.detail-crumbs .acc { color: var(--accent-s); font-weight: 600; }
+.detail-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+.detail-big-icon {
+  width: 46px; height: 46px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.detail-head h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.detail-meta { display: flex; gap: 12px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap; }
+.detail-meta b { color: var(--text); font-weight: 500; }
+.detail-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.dbtn {
+  display: inline-flex; align-items: center; border: 1px solid var(--border-strong);
+  background: var(--surface-3); color: var(--text-muted); border-radius: 5px;
+  padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .1s;
+}
+.dbtn:hover { color: var(--text); }
+.detail-tabs { display: flex; margin-top: 4px; margin-bottom: -1px; }
+.detail-tabs button {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 10px 14px; font: inherit; font-size: 14px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer; transition: all .12s; margin-bottom: -1px;
+}
+.detail-tabs button:hover { color: var(--text); }
+.detail-tabs button.active { color: var(--accent-s); border-bottom-color: var(--accent-s); }
+.detail-tabs .count {
+  margin-left: 5px; font-size: 11px; font-weight: 600;
+  background: var(--surface-3); color: var(--text-muted); padding: 1px 6px; border-radius: 99px;
+}
+.detail-body { flex: 1; overflow-y: auto; padding: 18px 22px; }
+.detail-body::-webkit-scrollbar { width: 4px; }
+.detail-body::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 2px; }
+
+.detail-empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 8px; color: var(--text-placeholder); text-align: center; padding: 40px;
+}
+.detail-empty .ico { font-size: 36px; opacity: .15; }
+.detail-empty p { font-size: 13px; max-width: 200px; line-height: 1.5; }
+
+/* member table переопределение под detail */
+.dept-body { flex: 1; overflow-y: auto; padding: 18px 22px; }
+.dept-body::-webkit-scrollbar { width: 4px; }
+.dept-body::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+
+/* обратная совместимость — pane-dept для JS openDept */
+.pane-dept { display: none; }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* TAB: ФИНАНСЫ                                                                 */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+/* ── Finance tab: 2-panel layout ── */
+.finance-layout {
+  flex: 1; display: flex; overflow: hidden;
+}
+
+/* Left: WI selector + freelancers */
+.finance-nav {
+  width: 260px; flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg);
+}
+.finance-nav-head {
+  padding: 10px 16px; height: 40px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-placeholder);
+  flex-shrink: 0;
+}
+.finance-nav-scroll {
+  flex: 1; overflow-y: auto;
+}
+.finance-nav-scroll::-webkit-scrollbar { width: 3px; }
+.finance-nav-scroll::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+
+/* Summary KPI strip at top of nav */
+.fin-summary-strip {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.fin-summary-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 11px;
+}
+.fin-summary-lbl { color: var(--text-muted); }
+.fin-summary-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text); }
+.fin-summary-bar {
+  height: 4px; border-radius: 2px; background: rgba(255,255,255,.07); overflow: hidden; margin-top: 2px;
+}
+.fin-summary-bar-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-s), var(--accent-e));
+}
+
+/* WI nav items */
+.fin-wi-nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .1s;
+}
+.fin-wi-nav-item:hover { background: var(--surface-2); }
+.fin-wi-nav-item.active {
+  background: rgba(255,107,53,.06);
+  border-left: 2px solid var(--accent-s);
+  padding-left: 12px;
+}
+.fin-wi-nav-item .wi-nav-pin {
+  width: 26px; height: 26px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 800; flex-shrink: 0;
+}
+.fin-wi-nav-item .wi-nav-info { flex: 1; min-width: 0; }
+.fin-wi-nav-item .wi-nav-name {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fin-wi-nav-item .wi-nav-meta {
+  display: flex; align-items: center; gap: 6px; margin-top: 2px;
+}
+.fin-wi-nav-item .wi-nav-stage { font-size: 10px; font-weight: 600; }
+.fin-wi-nav-item .wi-nav-budget { font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+/* Right: detail panel */
+.finance-detail {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column;
+  padding: 20px 24px; gap: 18px;
+}
+.finance-detail::-webkit-scrollbar { width: 6px; }
+.finance-detail::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+
+/* Detail: WI header */
+.fin-detail-head {
+  display: flex; align-items: center; gap: 12px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--border);
+}
+.fin-detail-title { font-size: 16px; font-weight: 700; flex: 1; }
+.fin-detail-stage { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 99px; }
+
+/* KPI cards in detail */
+.fin-kpi-row {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
+}
+.fin-kpi-card {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.fin-kpi-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-placeholder); }
+.fin-kpi-val { font-size: 22px; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1.1; }
+.fin-kpi-sub { font-size: 11px; color: var(--text-muted); }
+
+/* fin-wi-detail: fill available space */
+.fin-wi-detail { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+
+/* Compact plan/fact table */
+.finance-stats {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 24px;
+}
+.fin-stat {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px;
+}
+.fin-stat .lbl {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600; color: var(--text-muted); margin-bottom: 4px;
+}
+.fin-stat .val { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); }
+.fin-stat .val.green { color: var(--green); }
+.fin-stat .val.blue  { color: var(--accent-s); }
+.fin-stat .val.amber { color: var(--amber); }
+.fin-stat .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+
+.finance-body {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+}
+.finance-body::-webkit-scrollbar { width: 6px; }
+.finance-body::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+
+.section-title {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 700; color: var(--text-muted);
+  margin: 20px 0 10px; display: flex; align-items: center; gap: 8px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.section-title:first-child { margin-top: 0; }
+
+/* Finance table */
+.fin-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  font-size: 12.5px;
+}
+.fin-table th {
+  background: var(--surface-3); text-align: left; padding: 9px 14px;
+  font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); border-bottom: 1px solid var(--border);
+}
+.fin-table td {
+  padding: 11px 14px; border-bottom: 1px solid var(--border);
+  vertical-align: middle; color: var(--text-muted);
+}
+.fin-table td:first-child { color: var(--text); }
+.fin-table tr:last-child td { border-bottom: none; }
+.fin-table tr:hover td { background: var(--surface-3); color: var(--text); }
+.fin-table .mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text); }
+.fin-table .total td { font-weight: 700; background: var(--surface-3); color: var(--text); }
+.fin-table .bar-cell { width: 120px; }
+.bar-thin { height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+.bar-thin > div { height: 100%; border-radius: 3px; }
+.delta-pos  { color: var(--green); font-weight: 600; }
+.delta-neg  { color: var(--red); font-weight: 600; }
+.delta-zero { color: var(--text-muted); }
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* TAB: КОМАНДА                                                                 */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+.team-body {
+  flex: 1; overflow-y: auto; padding: 20px 24px;
+}
+.team-body::-webkit-scrollbar { width: 6px; }
+.team-body::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+.team-grid {
+  display: flex; flex-direction: column; gap: 20px;
+}
+.team-dept-group .group-head {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.team-dept-group .group-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10.5px; font-weight: 700; flex-shrink: 0;
+}
+.team-dept-group .group-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.team-dept-group .group-count {
+  font-size: 10.5px; font-weight: 600; background: var(--surface-3); color: var(--text-muted);
+  padding: 1px 7px; border-radius: 99px;
+}
+.member-table {
+  width: 100%; border-collapse: separate; border-spacing: 0;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  font-size: 12.5px;
+}
+.member-table th {
+  background: var(--surface-3); text-align: left; padding: 8px 12px;
+  font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.05em; color: var(--text-muted); border-bottom: 1px solid var(--border);
+}
+.member-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 12.5px; }
+.member-table tbody tr:nth-child(even) td { background: rgba(255,255,255,.018); }
+.member-table td:first-child { color: var(--text); }
+.member-table tr:last-child td { border-bottom: none; }
+.member-table tr:hover td { background: var(--surface-3); color: var(--text); }
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  color: white; font-weight: 700; font-size: 10.5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  vertical-align: middle; margin-right: 8px; flex-shrink: 0;
+}
+.av-a { background: linear-gradient(135deg,#f59e0b,#ef4444); }
+.av-b { background: linear-gradient(135deg,#3b82f6,#1e3a8a); }
+.av-c { background: linear-gradient(135deg,#10b981,#065f46); }
+.av-d { background: linear-gradient(135deg,#8b5cf6,#6d28d9); }
+.av-e { background: linear-gradient(135deg,#ec4899,#be185d); }
+.av-f { background: linear-gradient(135deg,#0ea5e9,#0369a1); }
+.av-g { background: linear-gradient(135deg,#f97316,#c2410c); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 99px; font-size: 10.5px; font-weight: 600;
+}
+.pill-staff    { background: var(--green-bg); color: var(--green); }
+.pill-contract { background: var(--amber-bg); color: var(--amber); }
+.pill-wi {
+  background: var(--surface-3); color: var(--text-muted);
+  font-size: 10px; padding: 1px 6px; border-radius: 5px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Skeleton loading ─────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-line {
+  height: 12px; border-radius: 4px; margin-bottom: 8px;
+  background: linear-gradient(90deg, var(--surface-3) 25%, var(--surface-2) 50%, var(--surface-3) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite;
+}
+.skeleton-line.short { width: 45%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.full { width: 100%; }
+.skeleton-block {
+  height: 44px; border-radius: 8px; margin-bottom: 10px;
+  background: linear-gradient(90deg, var(--surface-3) 25%, var(--surface-2) 50%, var(--surface-3) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite;
+}
+.skeleton-avatar {
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(90deg, var(--surface-3) 25%, var(--surface-2) 50%, var(--surface-3) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite;
+}
+
+/* ── Role badge ───────────────────────────────────────────────────────────── */
+.role-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 99px;
+  font-size: 10.5px; font-weight: 600;
+  background: var(--purple-bg); color: var(--purple);
+  margin-left: 8px;
+}
+
+/* ── Disabled button ──────────────────────────────────────────────────────── */
+.btn[disabled] {
+  opacity: 0.4; cursor: not-allowed; pointer-events: none;
+}
+.btn-wrap { position: relative; display: inline-block; }
+.btn-wrap .tooltip {
+  display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%); white-space: nowrap;
+  background: var(--surface-3); border: 1px solid var(--border-strong);
+  color: var(--text-muted); font-size: 11px; padding: 4px 8px; border-radius: 5px;
+  pointer-events: none; z-index: 100;
+}
+.btn-wrap:hover .tooltip { display: block; }
+
+/* ── Empty state (dept panel) ─────────────────────────────────────────────── */
+.dept-empty-state {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; color: var(--text-placeholder); text-align: center;
+  padding: 40px;
+}
+.dept-empty-state .icon {
+  font-size: 40px; opacity: 0.25;
+}
+.dept-empty-state h3 { font-size: 14px; font-weight: 600; color: var(--text-muted); }
+.dept-empty-state p { font-size: 12.5px; line-height: 1.55; max-width: 240px; color: var(--text-placeholder); }
+
+/* ── Finance sub-tabs ─────────────────────────────────────────────────────── */
+.finance-subtabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  background: var(--surface-2); flex-shrink: 0; padding: 0 24px;
+}
+.finance-subtabs button {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 9px 14px; font: inherit; font-size: 12.5px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer; transition: all .12s; margin-bottom: -1px;
+}
+.finance-subtabs button:hover { color: var(--text); }
+.finance-subtabs button.active { color: var(--accent-s); border-bottom-color: var(--accent-s); }
+
+/* ── Delta tempo ──────────────────────────────────────────────────────────── */
+.delta-ok   { color: var(--green); font-weight: 600; }
+.delta-warn { color: var(--amber); font-weight: 600; }
+/* delta-neg already exists for real overrun */
+
+/* ── Shared components ────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border-strong); background: var(--surface-3); color: var(--text);
+  border-radius: 7px; padding: 6px 13px;
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .1s;
+}
+.btn:hover { border-color: rgba(255,255,255,0.2); }
+.btn.primary { background: linear-gradient(135deg, var(--accent-s), var(--accent-e)); border-color: transparent; color: white; }
+.btn.primary:hover { opacity: 0.9; }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.close-btn { color: var(--text-muted); padding: 5px 10px; }
+
+.pbtn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--border-strong); background: var(--surface-3);
+  color: var(--text-muted); border-radius: 7px; padding: 7px 14px;
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: all .1s;
+}
+.pbtn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+.pbtn.primary { background: linear-gradient(135deg, var(--accent-s), var(--accent-e)); border-color: transparent; color: white; }
+.pbtn.primary:hover { opacity: 0.9; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px; border-radius: 99px;
+  font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.badge::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; opacity: 0.7; flex-shrink: 0; }
+.b-req  { background: var(--req-bg);  color: var(--req); }
+.b-pre  { background: var(--pre-bg);  color: var(--pre); }
+.b-prod { background: var(--prod-bg); color: var(--prod); }
+.b-done { background: var(--done-bg); color: var(--done); }
+.b-dark { background: var(--surface-3); color: var(--text-muted); }
+.b-amber { background: var(--amber-bg); color: var(--amber); }
+
+/* placeholder block */
+.placeholder {
+  border: 1.5px dashed var(--border-strong); border-radius: 12px;
+  background: var(--surface-2); padding: 48px 32px; text-align: center; color: var(--text-muted);
+}
+.placeholder .ph-icon { font-size: 36px; opacity: 0.35; margin-bottom: 10px; }
+.placeholder h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.placeholder p { font-size: 12.5px; line-height: 1.55; max-width: 380px; margin: 0 auto 12px; }
+.placeholder .stub {
+  display: inline-block; padding: 3px 10px;
+  background: var(--surface-3); border: 1px solid var(--border); border-radius: 99px;
+  font-size: 10.5px; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-placeholder);
+}
+
+/* ── Modals ─────────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  width: 560px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 60px);
+  display: flex; flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+  overflow: hidden;
+}
+.modal-sm { width: 400px; }
+
+.modal-head {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.modal-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.modal-head .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.modal-close {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: none; border: none; color: var(--text-muted);
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .1s, color .1s;
+}
+.modal-close:hover { background: var(--surface-3); color: var(--text); }
+
+.modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+.modal-body::-webkit-scrollbar { width: 4px; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 2px; }
+
+.modal-foot {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: flex-end; gap: 8px;
+  flex-shrink: 0;
+}
+
+/* form fields */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.form-row.single { grid-template-columns: 1fr; }
+.form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 700; color: var(--text-placeholder);
+}
+.form-group label .opt { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-placeholder); opacity: 0.6; margin-left: 4px; }
+.form-control {
+  background: var(--surface-3); border: 1px solid var(--border-strong);
+  border-radius: 7px; padding: 8px 11px;
+  font: inherit; font-size: 13px; color: var(--text);
+  outline: none; transition: border-color .12s;
+  width: 100%;
+}
+.form-control::placeholder { color: var(--text-placeholder); }
+.form-control:focus { border-color: var(--accent-s); }
+select.form-control { cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+textarea.form-control { resize: vertical; min-height: 72px; line-height: 1.5; }
+
+.form-section-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em;
+  font-weight: 700; color: var(--text-placeholder);
+  margin: 18px 0 10px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* producer row */
+.prod-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.prod-card {
+  background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.prod-card .prod-role {
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 700; color: var(--text-placeholder);
+}
+.prod-card select { background: none; border: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--text); outline: none; cursor: pointer; width: 100%; padding: 0; }
+
+/* modal buttons */
+.mbtn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border-radius: 7px; padding: 8px 16px;
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .1s;
+}
+.mbtn-ghost { background: none; border: 1px solid var(--border-strong); color: var(--text-muted); }
+.mbtn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+.mbtn-primary { background: linear-gradient(135deg, var(--accent-s), var(--accent-e)); border: none; color: #fff; }
+.mbtn-primary:hover { opacity: 0.9; }
+
+/* dept chips in modal */
+.dept-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.dept-chip-opt {
+  display: flex; align-items: center; gap: 6px;
+  border: 1px solid var(--border-strong); border-radius: 8px;
+  padding: 6px 10px; cursor: pointer; transition: all .1s;
+  background: var(--surface-3);
+}
+.dept-chip-opt:hover { border-color: rgba(255,255,255,.2); }
+.dept-chip-opt.selected { border-color: var(--accent-s); background: rgba(255,107,53,.1); }
+.dept-chip-opt .di { width: 22px; height: 22px; border-radius: 5px; font-size: 9px; }
+.dept-chip-opt span { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.dept-chip-opt.selected span { color: var(--text); }
+
+/* ── TAB: ИНФО — dashboard layout ────────────────────────────────────────── */
+.info-layout {
+  flex: 1; display: flex; overflow: hidden;
+}
+
+/* Левая колонка — метаданные */
+.info-sidebar {
+  width: 300px; flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  overflow-y: auto; display: flex; flex-direction: column;
+}
+.info-sidebar::-webkit-scrollbar { width: 4px; }
+.info-sidebar::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 2px; }
+
+.info-section-hd {
+  padding: 10px 20px 8px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--text-placeholder);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.015);
+}
+
+.info-row2 {
+  display: flex; align-items: center;
+  padding: 9px 20px; gap: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+  transition: background .1s;
+}
+.info-row2:hover { background: rgba(255,255,255,.02); }
+
+.info-lbl {
+  font-size: 11.5px; color: var(--text-placeholder); width: 100px; flex-shrink: 0; line-height: 1.4;
+}
+.info-val {
+  flex: 1; font-size: 12.5px; color: var(--text); display: flex; align-items: center; gap: 6px;
+}
+
+.info-lifespan-block {
+  padding: 10px 20px 12px; display: flex; flex-direction: column; gap: 7px;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.info-lifespan-dates { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* Правая часть — живые данные */
+.info-main {
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+  padding: 20px 24px; gap: 16px;
+  align-content: flex-start;
+}
+.info-main::-webkit-scrollbar { width: 4px; }
+.info-main::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 2px; }
+
+/* KPI карточки */
+.info-kpi-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+}
+.info-kpi-card {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.info-kpi-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--text-placeholder);
+}
+.info-kpi-value {
+  font-size: 28px; font-weight: 800; font-family: 'JetBrains Mono', monospace;
+  color: var(--text); line-height: 1.1;
+}
+.info-kpi-unit { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+.info-kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.info-kpi-progress-bar {
+  height: 3px; border-radius: 2px; background: rgba(255,255,255,.08);
+  overflow: hidden; margin-top: 6px;
+}
+
+/* Бюджет-бар */
+.info-budget-wrap {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 18px;
+}
+
+/* Команда */
+.info-team-block {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden;
+  flex: 1; display: flex; flex-direction: column; min-height: 0;
+}
+.info-team-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  flex: 1;
+}
+.info-team-person {
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.info-team-person:nth-child(even) { border-right: none; }
+.info-team-person:nth-last-child(-n+2) { border-bottom: none; }
+.info-team-role {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--text-placeholder);
+}
+.info-team-name {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 7px;
+}
+
+/* Общие */
+.info-mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); }
+.info-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface-3); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 4px 10px;
+  font-size: 12.5px; font-weight: 600; color: var(--text);
+}
+.info-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--surface-3); border: 1px solid var(--border-strong);
+  border-radius: 7px; padding: 4px 10px;
+  font-size: 12px; font-weight: 600; color: var(--blue); text-decoration: none;
+  transition: border-color .1s;
+}
+.info-link:hover { border-color: var(--blue); }
+.info-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.info-tag {
+  font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 6px;
+  background: var(--surface-3); border: 1px solid var(--border-strong); color: var(--text-muted);
+}
+.info-desc {
+  width: 100%; resize: none; overflow: hidden;
+  background: transparent; border: none; outline: none;
+  font: inherit; font-size: 12.5px; color: var(--text); line-height: 1.6; display: block;
+}
+.info-desc::placeholder { color: var(--text-placeholder); }
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* ДОРОЖНАЯ КАРТА (Gantt)                                                    */
+/* ══════════════════════════════════════════════════════════════════════════ */
+.roadmap-body {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+.roadmap-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.roadmap-legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.rml-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+.rml-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.roadmap-zoom { display: flex; align-items: center; gap: 6px; }
+.rz-btn {
+  width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border-strong);
+  background: var(--surface-2); color: var(--text); font-size: 14px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.rz-btn:hover { background: var(--surface-3); border-color: var(--accent-s); color: var(--accent-s); }
+.rz-label { font-size: 11px; font-weight: 700; color: var(--text-muted); min-width: 28px; text-align: center; }
+
+/* ── Ганта сетка ── */
+.roadmap-grid {
+  flex: 1; overflow: auto; display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: 32px 1fr;
+  grid-template-areas: "sb-head tl-head" "rows rows";
+}
+.roadmap-grid::-webkit-scrollbar { width: 6px; height: 6px; }
+.roadmap-grid::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 3px; }
+
+.rm-sidebar-head {
+  grid-area: sb-head; position: sticky; top: 0; left: 0; z-index: 10;
+  background: var(--surface-1); border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border); padding: 0 12px;
+  display: flex; align-items: center;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text-muted);
+}
+.rm-timeline-head {
+  grid-area: tl-head; position: sticky; top: 0; z-index: 9;
+  background: var(--surface-1); border-bottom: 1px solid var(--border);
+  display: flex; align-items: stretch; overflow: hidden;
+}
+.rm-day-col {
+  flex-shrink: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  border-right: 1px solid var(--border);
+  font-size: 9px; font-weight: 700; color: var(--text-muted);
+  transition: background .1s;
+}
+.rm-day-col.today { background: rgba(245,158,11,.08); color: var(--accent-s); }
+.rm-day-col.weekend { color: var(--text-placeholder); }
+.rm-day-col .day-num { font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.rm-day-col .day-name { font-size: 8px; opacity: .6; }
+
+.rm-rows { grid-area: rows; display: flex; flex-direction: column; }
+
+/* ── Группа отдела ── */
+.rm-dept-group { display: contents; }
+.rm-dept-header {
+  display: grid; grid-template-columns: 200px 1fr;
+  height: 26px; flex-shrink: 0;
+  position: sticky; left: 0; background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.rm-dept-label {
+  display: flex; align-items: center; gap: 7px; padding: 0 12px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .07em; color: var(--text-muted);
+  position: sticky; left: 0; z-index: 5;
+  background: var(--surface-2); border-right: 1px solid var(--border);
+}
+.rm-dept-spacer { background: var(--surface-2); border-bottom: 1px solid var(--border); }
+
+/* ── Строка задачи ── */
+.rm-row {
+  display: grid; grid-template-columns: 200px 1fr;
+  height: 38px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.rm-row-label {
+  display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  font-size: 11px; color: var(--text);
+  position: sticky; left: 0; z-index: 5;
+  background: var(--surface-1); border-right: 1px solid var(--border);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rm-row-label .task-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.rm-row-cells { position: relative; }
+
+/* ── Бар ── */
+.rm-bar {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  height: 20px; border-radius: 5px;
+  display: flex; align-items: center; padding: 0 8px;
+  font-size: 9px; font-weight: 700; color: rgba(0,0,0,.6);
+  white-space: nowrap; overflow: hidden;
+  cursor: default; transition: filter .12s;
+  z-index: 1;
+}
+.rm-bar:hover { filter: brightness(1.12); z-index: 2; }
+.rm-bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* milestone точка */
+.rm-milestone {
+  position: absolute; top: 50%; transform: translateY(-50%) rotate(45deg);
+  width: 12px; height: 12px; border-radius: 2px;
+  background: #F59E0B; border: 2px solid #FCD34D;
+  cursor: default; transition: transform .12s;
+  z-index: 2;
+}
+.rm-milestone:hover { transform: translateY(-50%) rotate(45deg) scale(1.2); }
+
+/* ── сегодня-линия ── */
+.rm-today-line {
+  position: absolute; top: 0; bottom: 0; width: 1.5px;
+  background: rgba(245,158,11,.7);
+  pointer-events: none; z-index: 4;
+}
+.rm-today-line::before {
+  content: ''; position: absolute; top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #F59E0B;
+}
+
+/* tooltip */
+.rm-tooltip {
+  position: fixed; z-index: 9999; pointer-events: none;
+  background: var(--surface-3); border: 1px solid var(--border-strong);
+  border-radius: 8px; padding: 8px 12px;
+  font-size: 11px; line-height: 1.5;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  opacity: 0; transition: opacity .1s;
+  max-width: 220px;
+}
+.rm-tooltip.visible { opacity: 1; }
+.rm-tooltip-title { font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.rm-tooltip-row { color: var(--text-muted); display: flex; gap: 8px; }
+.rm-tooltip-row span:first-child { color: var(--text-placeholder); min-width: 52px; }
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* ФИНАНСЫ — новые элементы                                                  */
+/* ══════════════════════════════════════════════════════════════════════════ */
+.fin-wi-block {
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.fin-wi-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.fin-wi-name { font-size: 13px; font-weight: 700; }
+
+.fin-wi-table { margin: 0; border-radius: 0; border: none; }
+.fin-wi-table th { background: var(--surface-2); }
+.fin-wi-table td, .fin-wi-table th { border-color: var(--border); }
+.fin-wi-table th:not(:first-child),
+.fin-wi-table td:not(:first-child) { text-align: right; }
+
+.fin-income-row td { background: rgba(41,191,18,.04); font-weight: 600; }
+.fin-section-head td {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-placeholder);
+  background: var(--surface-2); padding: 5px 14px;
+}
+.fin-sub { padding-left: 24px !important; color: var(--text-muted); }
+.fin-subtotal td { border-top: 1px solid var(--border-strong); font-weight: 600; }
+.fin-result td { background: rgba(245,158,11,.04); }
+
+.fin-fl-group-head td {
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  background: var(--surface-2);
+  padding: 6px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.delta-bad { color: #F87171; font-size: 11px; font-weight: 600; }
+
+/* ── Время жизни ── */
+.info-lifespan { display: flex; flex-direction: column; gap: 5px; width: 100%; }
+.info-lifespan-dates { display: flex; align-items: center; gap: 6px; }
+.info-lifespan-arrow { font-size: 11px; color: var(--text-placeholder); }
+.info-lifespan-bar {
+  position: relative; height: 4px; border-radius: 2px;
+  background: rgba(245,158,11,.12); overflow: visible;
+}
+.info-lifespan-fill {
+  height: 100%; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(245,158,11,.4), #F59E0B);
+}
+.info-lifespan-today {
+  position: absolute; top: 50%; transform: translate(-50%,-50%);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #F59E0B; border: 2px solid var(--surface-1);
+}
+.info-lifespan-sub {
+  font-size: 9px; color: var(--text-placeholder);
+  font-style: italic; letter-spacing: .02em;
+}
+
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Project card -->
+  <div class="project-card">
+
+    <!-- ── Хедер проекта ── -->
+    <div class="proj-head">
+      <div class="proj-head-main">
+        <!-- eyebrow + название + статус -->
+        <div class="proj-head-title">
+          <div class="eyebrow">
+            <span class="id">П-0142</span>
+            <span>·</span>
+            <span>СБЕРБАНК</span>
+          </div>
+          <div class="proj-head-name-row">
+            <h1>Зелёный день 2026</h1>
+            <select class="proj-status-select">
+              <option value="active" selected>В работе</option>
+              <option value="pause">На паузе</option>
+              <option value="done">Завершён</option>
+              <option value="hold">Заморожен</option>
+            </select>
+          </div>
+        </div>
+        <!-- вкладки справа -->
+        <div class="proj-tabs">
+          <button onclick="switchTab('info',this)">Инфо</button>
+          <button class="active" onclick="switchTab('structure',this)">Структура</button>
+          <button onclick="switchTab('finance',this)">Финансы</button>
+          <button onclick="switchTab('team-proj',this)">Команда проекта <span class="badge">12</span></button>
+          <button onclick="switchTab('roadmap',this)">Дорожная карта</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ВКЛАДКА: СТРУКТУРА                                                    -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-body active" id="tab-structure">
+      <div class="structure-cols">
+
+        <!-- ── Колонка 1: WI ── -->
+        <div class="col-wi" id="col-wi">
+          <div class="col-wi-head">
+            <span class="lbl">Work Items</span>
+            <button class="wi-add-inline" onclick="openModalWI()">+ Добавить</button>
+            <button class="col-collapse-btn" onclick="toggleColWI()" title="Свернуть">‹</button>
+          </div>
+          <div class="col-collapsed-strip" id="wi-strip"></div>
+          <div class="wi-scroll" id="wi-scroll">
+
+            <!-- WI #1 — Открывающий ролик -->
+            <div class="wi-card active" id="wi-t1" onclick="toggleWI('t1',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top">
+                    <span class="wi-card-num">01</span>
+                    <span class="wi-card-name">Открывающий ролик</span>
+                  </div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod">
+                      <div class="wi-av" style="background:rgba(99,179,237,.18);color:#63B3ED">АС</div>
+                      <span class="wi-prod-name">А. Соколова</span>
+                    </div>
+                    <span class="wi-sbadge b-prod" style="margin-left:auto">Production</span>
+                    <div class="wi-head-ring">
+                      <svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="#22C55E" stroke-width="3" stroke-dasharray="62.8" stroke-dashoffset="17.6" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg>
+                      <span class="wi-ring-pct" style="color:#22C55E">72%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Эфирный ролик-открывашка для вечернего блока. Съёмка на крыше Знаменки, два дня, дрон + операторская работа.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">12 мая</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Локация</span><span class="wi-exp-val">Знаменка, крыша</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Исп. продюсер</span><div class="wi-av" style="background:rgba(99,179,237,.18);color:#63B3ED">АС</div><span class="wi-exp-val">А. Соколова</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Лин. продюсер</span><div class="wi-av" style="background:rgba(167,139,250,.18);color:#A78BFA">МГ</div><span class="wi-exp-val">М. Гусева</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Аккаунт</span><div class="wi-av" style="background:rgba(52,211,153,.18);color:#34D399">АИ</div><span class="wi-exp-val">А. Иванов</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">980 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                    <button class="wibtn primary" onclick="openEditModalWI('t1')">Редактировать WI</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #2 — Заставка -->
+            <div class="wi-card" id="wi-t2" onclick="toggleWI('t2',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top">
+                    <span class="wi-card-num">02</span>
+                    <span class="wi-card-name">Заставка</span>
+                  </div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod">
+                      <div class="wi-av" style="background:rgba(167,139,250,.18);color:#A78BFA">АИ</div>
+                      <span class="wi-prod-name">А. Иванов</span>
+                    </div>
+                    <span class="wi-sbadge b-pre" style="margin-left:auto">Pre-prod</span>
+                    <div class="wi-head-ring">
+                      <svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="#F59E0B" stroke-width="3" stroke-dasharray="62.8" stroke-dashoffset="37.7" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg>
+                      <span class="wi-ring-pct" style="color:#F59E0B">40%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Анимированная заставка для премиум-пакета. Полностью графическая, без съёмки.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">8 мая</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Локация</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Исп. продюсер</span><div class="wi-av" style="background:rgba(167,139,250,.18);color:#A78BFA">АИ</div><span class="wi-exp-val">А. Иванов</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Лин. продюсер</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Аккаунт</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">460 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                    <button class="wibtn primary" onclick="openEditModalWI('t2')">Редактировать WI</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #3 — Backstage съёмка -->
+            <div class="wi-card" id="wi-t3" onclick="toggleWI('t3',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top">
+                    <span class="wi-card-num">03</span>
+                    <span class="wi-card-name">Backstage съёмка</span>
+                  </div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod">
+                      <div class="wi-av" style="background:rgba(255,255,255,.08);color:var(--text-placeholder)">—</div>
+                      <span class="wi-prod-name" style="color:var(--text-placeholder)">не назначен</span>
+                    </div>
+                    <span class="wi-sbadge b-prod" style="margin-left:auto">Production</span>
+                    <div class="wi-head-ring">
+                      <svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="#22C55E" stroke-width="3" stroke-dasharray="62.8" stroke-dashoffset="31.4" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg>
+                      <span class="wi-ring-pct" style="color:#22C55E">50%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Закулисная съёмка документального фильма. Выездная работа, неформат, продюсер не назначен.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">12 мая</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Локация</span><span class="wi-exp-val">Выезд</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Исп. продюсер</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Лин. продюсер</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Аккаунт</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">300 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                    <button class="wibtn primary" onclick="openEditModalWI('t3')">Редактировать WI</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #4 — Финальный монтаж -->
+            <div class="wi-card" id="wi-t4" onclick="toggleWI('t4',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top">
+                    <span class="wi-card-num">04</span>
+                    <span class="wi-card-name">Финальный монтаж</span>
+                  </div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod">
+                      <div class="wi-av" style="background:rgba(255,255,255,.08);color:var(--text-placeholder)">—</div>
+                      <span class="wi-prod-name" style="color:var(--text-placeholder)">не назначен</span>
+                    </div>
+                    <span class="wi-sbadge b-req" style="margin-left:auto">Заявка</span>
+                    <div class="wi-head-ring">
+                      <svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/></svg>
+                      <span class="wi-ring-pct" style="color:var(--text-placeholder)">0%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Финальный монтаж и сведение звука для ТВ-версии. Постпродакшн + саунд-дизайн, статус — в очереди.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">13–18 мая</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Локация</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Исп. продюсер</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Лин. продюсер</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Аккаунт</span><span class="wi-exp-val" style="color:var(--text-placeholder)">—</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">270 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px">
+                    <button class="wibtn primary" onclick="openEditModalWI('t4')">Редактировать WI</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #5 — Интервью с командой -->
+            <div class="wi-card" id="wi-t5" onclick="toggleWI('t5',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top"><span class="wi-card-num">05</span><span class="wi-card-name">Интервью с командой</span></div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod"><div class="wi-av" style="background:rgba(99,179,237,.18);color:#63B3ED">АС</div><span class="wi-prod-name">А. Соколова</span></div>
+                    <span class="wi-sbadge b-prod" style="margin-left:auto">Production</span>
+                    <div class="wi-head-ring"><svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="#22C55E" stroke-width="3" stroke-dasharray="62.8" stroke-dashoffset="10.5" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg><span class="wi-ring-pct" style="color:#22C55E">83%</span></div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Серия интервью с ключевыми участниками. Студийная съёмка, 7 эпизодов.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">5–10 мая</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Локация</span><span class="wi-exp-val">Студия А</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">650 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="wibtn primary" onclick="openEditModalWI('t5')">Редактировать WI</button></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #6 — Промо-ролик -->
+            <div class="wi-card" id="wi-t6" onclick="toggleWI('t6',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top"><span class="wi-card-num">06</span><span class="wi-card-name">Промо-ролик</span></div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod"><div class="wi-av" style="background:rgba(167,139,250,.18);color:#A78BFA">МГ</div><span class="wi-prod-name">М. Жилин</span></div>
+                    <span class="wi-sbadge b-done" style="margin-left:auto">Готово</span>
+                    <div class="wi-head-ring"><svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="#4ade80" stroke-width="3" stroke-dasharray="62.8" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg><span class="wi-ring-pct" style="color:#4ade80">100%</span></div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Короткий промо-ролик для соцсетей. Завершён, финальный рендер сдан клиенту.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">3 мая</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Локация</span><span class="wi-exp-val">Чёрная, крыша</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">220 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="wibtn primary" onclick="openEditModalWI('t6')">Редактировать WI</button></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #7 — Анонс сезона -->
+            <div class="wi-card" id="wi-t7" onclick="toggleWI('t7',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top"><span class="wi-card-num">07</span><span class="wi-card-name">Анонс сезона</span></div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod"><div class="wi-av" style="background:rgba(255,255,255,.08);color:var(--text-placeholder)">—</div><span class="wi-prod-name" style="color:var(--text-placeholder)">не назначен</span></div>
+                    <span class="wi-sbadge b-pre" style="margin-left:auto">Pre-prod</span>
+                    <div class="wi-head-ring"><svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="#D97706" stroke-width="3" stroke-dasharray="62.8" stroke-dashoffset="50.2" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg><span class="wi-ring-pct" style="color:#D97706">20%</span></div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Полноформатный анонс нового сезона. Восемь подразделений, сложная графика.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">1–14 мая</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Локация</span><span class="wi-exp-val">Купол</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">1 200 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="wibtn primary" onclick="openEditModalWI('t7')">Редактировать WI</button></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #8 — Документалка -->
+            <div class="wi-card" id="wi-t8" onclick="toggleWI('t8',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top"><span class="wi-card-num">08</span><span class="wi-card-name">Документалка</span></div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod"><div class="wi-av" style="background:rgba(99,179,237,.18);color:#63B3ED">АС</div><span class="wi-prod-name">А. Соколова</span></div>
+                    <span class="wi-sbadge b-prod" style="margin-left:auto">Production</span>
+                    <div class="wi-head-ring"><svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="#D97706" stroke-width="3" stroke-dasharray="62.8" stroke-dashoffset="37.7" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg><span class="wi-ring-pct" style="color:#D97706">40%</span></div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Документальный фильм о подготовке к фестивалю. Смешанная съёмка + анимация.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">2–11 мая</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Локация</span><span class="wi-exp-val">Знаменка, зал</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">870 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="wibtn primary" onclick="openEditModalWI('t8')">Редактировать WI</button></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #9 — Социальный ролик -->
+            <div class="wi-card" id="wi-t9" onclick="toggleWI('t9',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top"><span class="wi-card-num">09</span><span class="wi-card-name">Социальный ролик</span></div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod"><div class="wi-av" style="background:rgba(255,255,255,.08);color:var(--text-placeholder)">—</div><span class="wi-prod-name" style="color:var(--text-placeholder)">не назначен</span></div>
+                    <span class="wi-sbadge b-req" style="margin-left:auto">Заявка</span>
+                    <div class="wi-head-ring"><svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/><circle cx="13" cy="13" r="10" fill="none" stroke="#6495ED" stroke-width="3" stroke-dasharray="62.8" stroke-dashoffset="56.5" stroke-linecap="round" transform="rotate(-90 13 13)"/></svg><span class="wi-ring-pct" style="color:#6495ED">10%</span></div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Социальный ролик для ТВ-эфира. Шесть подразделений, сроки сжатые.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Дата</span><span class="wi-exp-val">Павильон 2</span></div>
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">430 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="wibtn primary" onclick="openEditModalWI('t9')">Редактировать WI</button></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- WI #10 — Гала-концерт -->
+            <div class="wi-card" id="wi-t10" onclick="toggleWI('t10',event)">
+              <div class="wi-card-tab"></div>
+              <div class="wi-card-body">
+                <div class="wi-card-strip"></div>
+                <div class="wi-card-head">
+                  <div class="wi-card-head-top"><span class="wi-card-num">10</span><span class="wi-card-name">Гала-концерт</span></div>
+                  <div class="wi-card-head-bot">
+                    <div class="wi-head-prod"><div class="wi-av" style="background:rgba(255,255,255,.08);color:var(--text-placeholder)">—</div><span class="wi-prod-name" style="color:var(--text-placeholder)">не назначен</span></div>
+                    <span class="wi-sbadge b-req" style="margin-left:auto">Заявка</span>
+                    <div class="wi-head-ring"><svg width="22" height="22" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3"/></svg><span class="wi-ring-pct" style="color:var(--text-placeholder)">0%</span></div>
+                  </div>
+                </div>
+                <div class="wi-card-expanded" onclick="event.stopPropagation()">
+                  <p class="wi-exp-desc">Многокамерная съёмка гала-концерта закрытия. Максимальная сложность, семь подразделений.</p>
+                  <div class="wi-exp-details">
+                    <div class="wi-exp-row"><span class="wi-exp-lbl">Бюджет</span><span class="wi-exp-val">1 800 000 ₽</span></div>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="wibtn primary" onclick="openEditModalWI('t10')">Редактировать WI</button></div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /wi-scroll -->
+        </div><!-- /col-wi -->
+
+        <!-- ── Колонка 2: Отделы ── -->
+        <div class="col-depts" id="col-depts">
+          <div class="col-depts-head">
+            <span class="lbl" id="depts-label">Отделы · T1</span>
+            <button class="col-collapse-btn" onclick="toggleColDepts()" title="Свернуть">‹</button>
+          </div>
+          <div class="col-collapsed-strip" id="depts-strip"></div>
+          <div class="dept-floating" id="dept-floating">
+            <div class="dept-cards-wrap" id="dept-cards-wrap"></div>
+          </div>
+        </div><!-- /col-depts -->
+
+        <!-- ── Колонка 3: Детали отдела ── -->
+        <div class="col-detail" id="col-detail-panel">
+          <div class="col-detail-head">
+            <div class="col-detail-crumbs" id="detail-crumbs-bar"></div>
+          </div>
+          <div id="detail-content" style="display:flex;flex-direction:column;flex:1;overflow:hidden"></div>
+        </div>
+
+      </div><!-- /structure-cols -->
+    </div><!-- /tab-structure -->
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ВКЛАДКА: ФИНАНСЫ                                                      -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-body" id="tab-finance">
+      <div class="finance-layout">
+
+        <!-- ── Левая панель: сводка + список WI ── -->
+        <div class="finance-nav">
+          <div class="finance-nav-head">Финансы проекта</div>
+          <div class="finance-nav-scroll">
+
+            <!-- Сводка -->
+            <div class="fin-summary-strip">
+              <div class="fin-summary-row">
+                <span class="fin-summary-lbl">Бюджет</span>
+                <span class="fin-summary-val" style="color:var(--accent-s)">3 200 000 &#x20BD;</span>
+              </div>
+              <div class="fin-summary-row">
+                <span class="fin-summary-lbl">Факт</span>
+                <span class="fin-summary-val">812 000 &#x20BD; <span style="font-size:10px;color:var(--text-muted);font-family:Urbanist,sans-serif">25%</span></span>
+              </div>
+              <div class="fin-summary-bar"><div class="fin-summary-bar-fill" style="width:25%"></div></div>
+              <div class="fin-summary-row" style="margin-top:4px">
+                <span class="fin-summary-lbl">Прибыль (план)</span>
+                <span class="fin-summary-val" style="color:var(--green)">2 388 000 &#x20BD;</span>
+              </div>
+              <div class="fin-summary-row">
+                <span class="fin-summary-lbl">Маржа</span>
+                <span class="fin-summary-val" style="color:var(--green)">74.6%</span>
+              </div>
+            </div>
+
+            <!-- WI nav list -->
+            <div class="fin-wi-nav-item active" onclick="selectFinWI(this,'fin-wi-1')">
+              <span class="wi-nav-pin" style="background:rgba(245,158,11,.18);color:#F59E0B">T1</span>
+              <div class="wi-nav-info">
+                <div class="wi-nav-name">Открывающий ролик &#xB7; Эфир</div>
+                <div class="wi-nav-meta">
+                  <span class="wi-nav-stage" style="color:var(--prod)">Production</span>
+                  <span class="wi-nav-budget">980 000 &#x20BD;</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="fin-wi-nav-item" onclick="selectFinWI(this,'fin-wi-2')">
+              <span class="wi-nav-pin" style="background:rgba(217,119,6,.18);color:#D97706">T2</span>
+              <div class="wi-nav-info">
+                <div class="wi-nav-name">Заставка &#xB7; Премиум-пакет</div>
+                <div class="wi-nav-meta">
+                  <span class="wi-nav-stage" style="color:var(--pre)">Pre-prod</span>
+                  <span class="wi-nav-budget">460 000 &#x20BD;</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="fin-wi-nav-item" onclick="selectFinWI(this,'fin-wi-3')">
+              <span class="wi-nav-pin" style="background:rgba(245,158,11,.18);color:#F59E0B">T3</span>
+              <div class="wi-nav-info">
+                <div class="wi-nav-name">Backstage съёмка</div>
+                <div class="wi-nav-meta">
+                  <span class="wi-nav-stage" style="color:var(--prod)">Production</span>
+                  <span class="wi-nav-budget">300 000 &#x20BD;</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="fin-wi-nav-item" onclick="selectFinWI(this,'fin-wi-4')">
+              <span class="wi-nav-pin" style="background:rgba(100,149,237,.18);color:#6495ED">T4</span>
+              <div class="wi-nav-info">
+                <div class="wi-nav-name">Монтаж и сведение</div>
+                <div class="wi-nav-meta">
+                  <span class="wi-nav-stage" style="color:var(--post)">Post-prod</span>
+                  <span class="wi-nav-budget">860 000 &#x20BD;</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="fin-wi-nav-item" onclick="selectFinWI(this,'fin-wi-5')">
+              <span class="wi-nav-pin" style="background:rgba(74,222,128,.10);color:#4ade80">T5</span>
+              <div class="wi-nav-info">
+                <div class="wi-nav-name">Сдача заказчику</div>
+                <div class="wi-nav-meta">
+                  <span class="wi-nav-stage" style="color:var(--done)">Сдан</span>
+                  <span class="wi-nav-budget">600 000 &#x20BD;</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ── Правая панель: детализация выбранного WI ── -->
+        <div class="finance-detail">
+
+          <!-- WI 1 -->
+          <div id="fin-wi-1" class="fin-wi-detail">
+            <div class="fin-detail-head">
+              <span style="width:32px;height:32px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(245,158,11,.18);color:#F59E0B;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">T1</span>
+              <div class="fin-detail-title">Открывающий ролик &#xB7; Эфир</div>
+              <span class="fin-detail-stage" style="background:var(--prod-bg);color:var(--prod)">Production</span>
+            </div>
+            <div class="fin-kpi-row">
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Доход (план)</div>
+                <div class="fin-kpi-val" style="color:var(--accent-s)">980 000</div>
+                <div class="fin-kpi-sub">&#x20BD; с клиента</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Расходы (план)</div>
+                <div class="fin-kpi-val">610 200</div>
+                <div class="fin-kpi-sub">&#x20BD; итого</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Прибыль (план)</div>
+                <div class="fin-kpi-val" style="color:var(--green)">369 800</div>
+                <div class="fin-kpi-sub">маржа 37.7%</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Факт расходов</div>
+                <div class="fin-kpi-val" style="color:var(--green)">558 740</div>
+                <div class="fin-kpi-sub">-8% от плана</div>
+              </div>
+            </div>
+            <table class="fin-table fin-wi-table">
+              <thead><tr><th style="width:50%">Статья расходов</th><th>План</th><th>Факт</th><th>% откл.</th></tr></thead>
+              <tbody>
+                <tr><td class="fin-sub">Специалисты</td><td class="mono">240 000 &#x20BD;</td><td class="mono">198 000 &#x20BD;</td><td class="delta-ok">-17%</td></tr>
+                <tr><td class="fin-sub">Услуги</td><td class="mono">180 000 &#x20BD;</td><td class="mono">162 000 &#x20BD;</td><td class="delta-ok">-10%</td></tr>
+                <tr><td class="fin-sub">Иные расходы</td><td class="mono">120 000 &#x20BD;</td><td class="mono">134 000 &#x20BD;</td><td class="delta-bad">+12%</td></tr>
+                <tr><td class="fin-sub">Налог 13%</td><td class="mono">70 200 &#x20BD;</td><td class="mono">64 740 &#x20BD;</td><td class="delta-ok">-8%</td></tr>
+                <tr class="fin-subtotal"><td><strong>Итого расходов</strong></td><td class="mono"><strong>610 200 &#x20BD;</strong></td><td class="mono"><strong>558 740 &#x20BD;</strong></td><td class="delta-ok">-8%</td></tr>
+                <tr class="fin-result"><td><strong>Прибыль</strong></td><td class="mono green"><strong>369 800 &#x20BD;</strong></td><td class="mono green"><strong>421 260 &#x20BD;</strong></td><td class="delta-ok">+14%</td></tr>
+                <tr class="fin-result"><td><strong>Маржинальность</strong></td><td class="mono green"><strong>37.7%</strong></td><td class="mono green"><strong>43.0%</strong></td><td></td></tr>
+              </tbody>
+            </table>
+            <div class="section-title">Фрилансеры</div>
+            <table class="fin-table">
+              <thead><tr><th>ФИО</th><th>Роль</th><th>Ставка</th><th>Статус</th></tr></thead>
+              <tbody>
+                <tr><td>Кузнецов Андрей</td><td style="color:var(--text-muted)">Оператор</td><td class="mono">45 000 &#x20BD;</td><td><span class="badge b-prod" style="font-size:10px">Подтверждён</span></td></tr>
+                <tr><td>Орлова Светлана</td><td style="color:var(--text-muted)">Стилист</td><td class="mono">28 000 &#x20BD;</td><td><span class="badge b-prod" style="font-size:10px">Подтверждён</span></td></tr>
+                <tr><td>Васильев Игорь</td><td style="color:var(--text-muted)">Звукорежиссёр</td><td class="mono">35 000 &#x20BD;</td><td><span class="badge b-req" style="font-size:10px">Ожидание</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- WI 2 -->
+          <div id="fin-wi-2" class="fin-wi-detail" style="display:none">
+            <div class="fin-detail-head">
+              <span style="width:32px;height:32px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(217,119,6,.18);color:#D97706;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">T2</span>
+              <div class="fin-detail-title">Заставка &#xB7; Премиум-пакет</div>
+              <span class="fin-detail-stage" style="background:var(--pre-bg);color:var(--pre)">Pre-prod</span>
+            </div>
+            <div class="fin-kpi-row">
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Доход (план)</div>
+                <div class="fin-kpi-val" style="color:var(--accent-s)">460 000</div>
+                <div class="fin-kpi-sub">&#x20BD; с клиента</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Расходы (план)</div>
+                <div class="fin-kpi-val">271 200</div>
+                <div class="fin-kpi-sub">&#x20BD; итого</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Прибыль (план)</div>
+                <div class="fin-kpi-val" style="color:var(--green)">188 800</div>
+                <div class="fin-kpi-sub">маржа 41.0%</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Факт расходов</div>
+                <div class="fin-kpi-val" style="color:var(--amber)">81 360</div>
+                <div class="fin-kpi-sub">в работе</div>
+              </div>
+            </div>
+            <table class="fin-table fin-wi-table">
+              <thead><tr><th style="width:50%">Статья расходов</th><th>План</th><th>Факт</th><th>% откл.</th></tr></thead>
+              <tbody>
+                <tr><td class="fin-sub">Специалисты</td><td class="mono">110 000 &#x20BD;</td><td class="mono">42 000 &#x20BD;</td><td class="delta-warn">-62%</td></tr>
+                <tr><td class="fin-sub">Услуги</td><td class="mono">80 000 &#x20BD;</td><td class="mono">20 000 &#x20BD;</td><td class="delta-warn">-75%</td></tr>
+                <tr><td class="fin-sub">Иные расходы</td><td class="mono">50 000 &#x20BD;</td><td class="mono">10 000 &#x20BD;</td><td class="delta-warn">-80%</td></tr>
+                <tr><td class="fin-sub">Налог 13%</td><td class="mono">31 200 &#x20BD;</td><td class="mono">9 360 &#x20BD;</td><td class="delta-warn">-70%</td></tr>
+                <tr class="fin-subtotal"><td><strong>Итого расходов</strong></td><td class="mono"><strong>271 200 &#x20BD;</strong></td><td class="mono"><strong>81 360 &#x20BD;</strong></td><td class="delta-warn">-70%</td></tr>
+                <tr class="fin-result"><td><strong>Прибыль</strong></td><td class="mono green"><strong>188 800 &#x20BD;</strong></td><td class="mono amber"><strong>— &#x20BD;</strong></td><td class="delta-zero">в работе</td></tr>
+                <tr class="fin-result"><td><strong>Маржинальность</strong></td><td class="mono green"><strong>41.0%</strong></td><td class="mono amber">—</td><td></td></tr>
+              </tbody>
+            </table>
+            <div class="section-title">Фрилансеры</div>
+            <table class="fin-table">
+              <thead><tr><th>ФИО</th><th>Роль</th><th>Ставка</th><th>Статус</th></tr></thead>
+              <tbody>
+                <tr><td>Михайлов Дмитрий</td><td style="color:var(--text-muted)">Motion-дизайнер</td><td class="mono">60 000 &#x20BD;</td><td><span class="badge b-prod" style="font-size:10px">Подтверждён</span></td></tr>
+                <tr><td>Попова Анна</td><td style="color:var(--text-muted)">Иллюстратор</td><td class="mono">22 000 &#x20BD;</td><td><span class="badge b-req" style="font-size:10px">Ожидание</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- WI 3 -->
+          <div id="fin-wi-3" class="fin-wi-detail" style="display:none">
+            <div class="fin-detail-head">
+              <span style="width:32px;height:32px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(245,158,11,.18);color:#F59E0B;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">T3</span>
+              <div class="fin-detail-title">Backstage съёмка</div>
+              <span class="fin-detail-stage" style="background:var(--prod-bg);color:var(--prod)">Production</span>
+            </div>
+            <div class="fin-kpi-row">
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Доход (план)</div>
+                <div class="fin-kpi-val" style="color:var(--accent-s)">300 000</div>
+                <div class="fin-kpi-sub">&#x20BD; с клиента</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Расходы (план)</div>
+                <div class="fin-kpi-val">192 100</div>
+                <div class="fin-kpi-sub">&#x20BD; итого</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Прибыль (план)</div>
+                <div class="fin-kpi-val" style="color:var(--green)">107 900</div>
+                <div class="fin-kpi-sub">маржа 36.0%</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Факт расходов</div>
+                <div class="fin-kpi-val" style="color:var(--amber)">63 280</div>
+                <div class="fin-kpi-sub">в работе</div>
+              </div>
+            </div>
+            <table class="fin-table fin-wi-table">
+              <thead><tr><th style="width:50%">Статья расходов</th><th>План</th><th>Факт</th><th>% откл.</th></tr></thead>
+              <tbody>
+                <tr><td class="fin-sub">Специалисты</td><td class="mono">80 000 &#x20BD;</td><td class="mono">30 000 &#x20BD;</td><td class="delta-warn">-63%</td></tr>
+                <tr><td class="fin-sub">Услуги</td><td class="mono">60 000 &#x20BD;</td><td class="mono">18 000 &#x20BD;</td><td class="delta-warn">-70%</td></tr>
+                <tr><td class="fin-sub">Иные расходы</td><td class="mono">30 000 &#x20BD;</td><td class="mono">8 000 &#x20BD;</td><td class="delta-warn">-73%</td></tr>
+                <tr><td class="fin-sub">Налог 13%</td><td class="mono">22 100 &#x20BD;</td><td class="mono">7 280 &#x20BD;</td><td class="delta-warn">-67%</td></tr>
+                <tr class="fin-subtotal"><td><strong>Итого расходов</strong></td><td class="mono"><strong>192 100 &#x20BD;</strong></td><td class="mono"><strong>63 280 &#x20BD;</strong></td><td class="delta-warn">-67%</td></tr>
+                <tr class="fin-result"><td><strong>Прибыль</strong></td><td class="mono green"><strong>107 900 &#x20BD;</strong></td><td class="mono amber">—</td><td class="delta-zero">в работе</td></tr>
+                <tr class="fin-result"><td><strong>Маржинальность</strong></td><td class="mono green"><strong>36.0%</strong></td><td class="mono amber">—</td><td></td></tr>
+              </tbody>
+            </table>
+            <div class="section-title">Фрилансеры</div>
+            <table class="fin-table">
+              <thead><tr><th>ФИО</th><th>Роль</th><th>Ставка</th><th>Статус</th></tr></thead>
+              <tbody>
+                <tr><td>Захаров Павел</td><td style="color:var(--text-muted)">Оператор (2-я камера)</td><td class="mono">40 000 &#x20BD;</td><td><span class="badge b-prod" style="font-size:10px">Подтверждён</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- WI 4 -->
+          <div id="fin-wi-4" class="fin-wi-detail" style="display:none">
+            <div class="fin-detail-head">
+              <span style="width:32px;height:32px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(100,149,237,.18);color:#6495ED;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">T4</span>
+              <div class="fin-detail-title">Монтаж и сведение</div>
+              <span class="fin-detail-stage" style="background:var(--post-bg);color:var(--post)">Post-prod</span>
+            </div>
+            <div class="fin-kpi-row">
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Доход (план)</div>
+                <div class="fin-kpi-val" style="color:var(--accent-s)">860 000</div>
+                <div class="fin-kpi-sub">&#x20BD; с клиента</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Расходы (план)</div>
+                <div class="fin-kpi-val">520 000</div>
+                <div class="fin-kpi-sub">&#x20BD; итого</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Прибыль (план)</div>
+                <div class="fin-kpi-val" style="color:var(--green)">340 000</div>
+                <div class="fin-kpi-sub">маржа 39.5%</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Факт расходов</div>
+                <div class="fin-kpi-val" style="color:var(--text-placeholder)">—</div>
+                <div class="fin-kpi-sub">не начато</div>
+              </div>
+            </div>
+            <table class="fin-table fin-wi-table">
+              <thead><tr><th style="width:50%">Статья расходов</th><th>План</th><th>Факт</th><th>% откл.</th></tr></thead>
+              <tbody>
+                <tr><td class="fin-sub">Специалисты</td><td class="mono">280 000 &#x20BD;</td><td class="mono">—</td><td class="mono">—</td></tr>
+                <tr><td class="fin-sub">Услуги</td><td class="mono">140 000 &#x20BD;</td><td class="mono">—</td><td class="mono">—</td></tr>
+                <tr><td class="fin-sub">Иные расходы</td><td class="mono">60 000 &#x20BD;</td><td class="mono">—</td><td class="mono">—</td></tr>
+                <tr><td class="fin-sub">Налог 13%</td><td class="mono">40 000 &#x20BD;</td><td class="mono">—</td><td class="mono">—</td></tr>
+                <tr class="fin-subtotal"><td><strong>Итого расходов</strong></td><td class="mono"><strong>520 000 &#x20BD;</strong></td><td class="mono">—</td><td class="mono">—</td></tr>
+                <tr class="fin-result"><td><strong>Прибыль</strong></td><td class="mono green"><strong>340 000 &#x20BD;</strong></td><td class="mono amber">—</td><td class="delta-zero">—</td></tr>
+                <tr class="fin-result"><td><strong>Маржинальность</strong></td><td class="mono green"><strong>39.5%</strong></td><td class="mono amber">—</td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- WI 5 -->
+          <div id="fin-wi-5" class="fin-wi-detail" style="display:none">
+            <div class="fin-detail-head">
+              <span style="width:32px;height:32px;border-radius:8px;font-size:11px;font-weight:800;background:rgba(74,222,128,.10);color:#4ade80;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">T5</span>
+              <div class="fin-detail-title">Сдача заказчику</div>
+              <span class="fin-detail-stage" style="background:var(--done-bg);color:var(--done)">Сдан</span>
+            </div>
+            <div class="fin-kpi-row">
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Доход (план)</div>
+                <div class="fin-kpi-val" style="color:var(--accent-s)">600 000</div>
+                <div class="fin-kpi-sub">&#x20BD; с клиента</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Расходы (факт)</div>
+                <div class="fin-kpi-val" style="color:var(--green)">358 000</div>
+                <div class="fin-kpi-sub">&#x20BD; итого</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Прибыль (факт)</div>
+                <div class="fin-kpi-val" style="color:var(--green)">242 000</div>
+                <div class="fin-kpi-sub">маржа 40.3%</div>
+              </div>
+              <div class="fin-kpi-card">
+                <div class="fin-kpi-lbl">Отклонение</div>
+                <div class="fin-kpi-val" style="color:var(--green)">+2.1%</div>
+                <div class="fin-kpi-sub">лучше плана</div>
+              </div>
+            </div>
+            <table class="fin-table fin-wi-table">
+              <thead><tr><th style="width:50%">Статья расходов</th><th>План</th><th>Факт</th><th>% откл.</th></tr></thead>
+              <tbody>
+                <tr><td class="fin-sub">Специалисты</td><td class="mono">180 000 &#x20BD;</td><td class="mono">165 000 &#x20BD;</td><td class="delta-ok">-8%</td></tr>
+                <tr><td class="fin-sub">Услуги</td><td class="mono">100 000 &#x20BD;</td><td class="mono">98 000 &#x20BD;</td><td class="delta-ok">-2%</td></tr>
+                <tr><td class="fin-sub">Иные расходы</td><td class="mono">60 000 &#x20BD;</td><td class="mono">58 000 &#x20BD;</td><td class="delta-ok">-3%</td></tr>
+                <tr><td class="fin-sub">Налог 13%</td><td class="mono">28 600 &#x20BD;</td><td class="mono">37 000 &#x20BD;</td><td class="delta-bad">+29%</td></tr>
+                <tr class="fin-subtotal"><td><strong>Итого расходов</strong></td><td class="mono"><strong>368 600 &#x20BD;</strong></td><td class="mono"><strong>358 000 &#x20BD;</strong></td><td class="delta-ok">-3%</td></tr>
+                <tr class="fin-result"><td><strong>Прибыль</strong></td><td class="mono green"><strong>231 400 &#x20BD;</strong></td><td class="mono green"><strong>242 000 &#x20BD;</strong></td><td class="delta-ok">+4.6%</td></tr>
+                <tr class="fin-result"><td><strong>Маржинальность</strong></td><td class="mono green"><strong>38.6%</strong></td><td class="mono green"><strong>40.3%</strong></td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div><!-- /finance-detail -->
+      </div><!-- /finance-layout -->
+    </div><!-- /tab-finance -->
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ВКЛАДКА: КОМАНДА ПРОЕКТА                                              -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-body" id="tab-team-proj">
+      <div class="team-body">
+        <div class="team-grid">
+
+          <!-- ТВ — Съёмки -->
+          <div class="team-dept-group">
+            <div class="group-head">
+              <span class="group-icon icon-tv">ТВ</span>
+              <span class="group-name">ТВ — Съёмки</span>
+              <span class="group-count">5 чел</span>
+            </div>
+            <table class="member-table">
+              <thead><tr><th>Сотрудник</th><th>Должность</th><th>Тип</th><th>WI</th><th>Смен</th></tr></thead>
+              <tbody>
+                <tr><td><span class="avatar av-a">КД</span>Кирилл Данилов</td><td>Оператор</td><td><span class="pill pill-staff">Штат</span></td><td><span class="pill-wi">T1</span> <span class="pill-wi">T3</span></td><td>9</td></tr>
+                <tr><td><span class="avatar av-b">МП</span>Мария Петрова</td><td>Ассистент оператора</td><td><span class="pill pill-staff">Штат</span></td><td><span class="pill-wi">T1</span></td><td>8</td></tr>
+                <tr><td><span class="avatar av-c">ВС</span>Виктор Смирнов</td><td>Режиссёр</td><td><span class="pill pill-staff">Штат</span></td><td><span class="pill-wi">T1</span> <span class="pill-wi">T3</span></td><td>9</td></tr>
+                <tr><td><span class="avatar av-d">НА</span>Нина Архипова</td><td>Режиссёр монтажа</td><td><span class="pill pill-contract">Договор</span></td><td><span class="pill-wi">T3</span></td><td>1</td></tr>
+                <tr><td><span class="avatar av-e">ДК</span>Дмитрий Козлов</td><td>Осветитель</td><td><span class="pill pill-staff">Штат</span></td><td><span class="pill-wi">T1</span></td><td>8</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Моушн -->
+          <div class="team-dept-group">
+            <div class="group-head">
+              <span class="group-icon icon-mo">МШ</span>
+              <span class="group-name">Моушн</span>
+              <span class="group-count">3 чел</span>
+            </div>
+            <table class="member-table">
+              <thead><tr><th>Сотрудник</th><th>Должность</th><th>Тип</th><th>WI</th><th>Смен</th></tr></thead>
+              <tbody>
+                <tr><td><span class="avatar av-f">АВ</span>Алексей Волков</td><td>Моушн-дизайнер</td><td><span class="pill pill-staff">Штат</span></td><td><span class="pill-wi">T1</span> <span class="pill-wi">T2</span></td><td>20</td></tr>
+                <tr><td><span class="avatar av-g">ЕИ</span>Екатерина Иванова</td><td>Аниматор</td><td><span class="pill pill-staff">Штат</span></td><td><span class="pill-wi">T1</span></td><td>12</td></tr>
+                <tr><td><span class="avatar av-a">ОН</span>Ольга Некрасова</td><td>3D-артист</td><td><span class="pill pill-contract">Договор</span></td><td><span class="pill-wi">T2</span></td><td>8</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Постпродакшн -->
+          <div class="team-dept-group">
+            <div class="group-head">
+              <span class="group-icon icon-pp">ПП</span>
+              <span class="group-name">Постпродакшн</span>
+              <span class="group-count">2 чел</span>
+            </div>
+            <table class="member-table">
+              <thead><tr><th>Сотрудник</th><th>Должность</th><th>Тип</th><th>WI</th><th>Смен</th></tr></thead>
+              <tbody>
+                <tr><td><span class="avatar av-b">АБ</span>Алексей Белов</td><td>Режиссёр монтажа</td><td><span class="pill pill-staff">Штат</span></td><td><span class="pill-wi">T1</span> <span class="pill-wi">T3</span></td><td>10</td></tr>
+                <tr><td><span class="avatar av-c">МК</span>Мария Крылова</td><td>Ассистент монтажа</td><td><span class="pill pill-staff">Штат</span></td><td><span class="pill-wi">T1</span></td><td>6</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ВКЛАДКА: ИНФО                                                         -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-body" id="tab-info">
+      <div class="info-layout">
+
+        <!-- Левая колонка: метаданные -->
+        <div class="info-sidebar">
+
+          <div class="info-section-hd">О проекте</div>
+
+          <div class="info-row2"><span class="info-lbl">Клиент</span>
+            <span class="info-val"><span class="info-pill"><span style="width:7px;height:7px;border-radius:50%;background:#F59E0B;flex-shrink:0"></span>ПАО «Газпромбанк»</span></span>
+          </div>
+          <div class="info-row2"><span class="info-lbl">Юнит</span><span class="info-val" style="font-weight:600">Спецпроекты</span></div>
+          <div class="info-row2"><span class="info-lbl">ID матрицы</span><span class="info-val"><span class="info-mono">PRJ-2024-0047</span></span></div>
+          <div class="info-row2"><span class="info-lbl">Google таблица</span><span class="info-val"><a class="info-link" href="#" onclick="return false">Открыть смету ↗</a></span></div>
+          <div class="info-row2"><span class="info-lbl">Ссылка на КП</span><span class="info-val"><a class="info-link" href="#" onclick="return false">Открыть КП ↗</a></span></div>
+          <div class="info-row2"><span class="info-lbl">Создан</span><span class="info-val"><span class="info-mono">3 апр 2024</span></span></div>
+
+          <div class="info-section-hd" style="margin-top:4px">Жизненный цикл</div>
+          <div class="info-lifespan-block">
+            <div class="info-lifespan-dates">
+              <span class="info-mono" style="font-size:12px">18 апр</span>
+              <span style="color:var(--text-placeholder);font-size:11px">→</span>
+              <span class="info-mono" style="font-size:12px;color:#F59E0B">30 июн 2024</span>
+              <span style="font-size:11px;color:var(--text-placeholder);margin-left:2px">· 73 дн.</span>
+            </div>
+            <div class="info-lifespan-bar">
+              <div class="info-lifespan-fill" style="width:62%"></div>
+              <div class="info-lifespan-today" style="left:62%"></div>
+            </div>
+            <span style="font-size:10px;color:var(--text-placeholder);font-style:italic">авто · по дедлайнам задач</span>
+          </div>
+
+          <div class="info-section-hd" style="margin-top:4px">Комментарий</div>
+          <div style="padding:0 20px 16px">
+            <textarea class="info-desc" placeholder="Описание, договорённости, особенности...">Корпоративный фильм к 30-летию банка. Основной акцент — история компании через людей. Студийные интервью + репортажные съёмки в 4 городах. Дедлайн финального монтажа — 25 июня, цветокоррекция и звук — 28 июня.</textarea>
+          </div>
+
+        </div>
+
+        <!-- Правая часть: живые данные -->
+        <div class="info-main">
+
+          <!-- KPI-карточки -->
+          <div class="info-kpi-row">
+            <div class="info-kpi-card">
+              <div class="info-kpi-label">До сдачи</div>
+              <div class="info-kpi-value" style="color:#F59E0B">36 <span class="info-kpi-unit">дней</span></div>
+              <div class="info-kpi-sub">30 июня 2024</div>
+            </div>
+            <div class="info-kpi-card">
+              <div class="info-kpi-label">Прогресс WI</div>
+              <div class="info-kpi-value" style="color:#29BF12">3 <span class="info-kpi-unit">/ 5</span></div>
+              <div class="info-kpi-progress-bar"><div style="width:60%;background:#29BF12;height:100%;border-radius:2px"></div></div>
+            </div>
+            <div class="info-kpi-card">
+              <div class="info-kpi-label">Задачи</div>
+              <div class="info-kpi-value" style="color:#F59E0B">28 <span class="info-kpi-unit">/ 47</span></div>
+              <div class="info-kpi-progress-bar"><div style="width:59%;background:#F59E0B;height:100%;border-radius:2px"></div></div>
+            </div>
+            <div class="info-kpi-card">
+              <div class="info-kpi-label">Бюджет освоен</div>
+              <div class="info-kpi-value">61<span class="info-kpi-unit">%</span></div>
+              <div class="info-kpi-sub" style="color:#29BF12">636 000 / 1 040 000 ₽</div>
+            </div>
+          </div>
+
+          <!-- Бюджет-бар -->
+          <div class="info-budget-wrap">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-placeholder)">Освоение бюджета</span>
+              <span style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">636 000 <span style="color:var(--text-placeholder)">/ 1 040 000 ₽</span></span>
+            </div>
+            <div style="height:6px;border-radius:3px;background:rgba(245,158,11,.12);overflow:hidden">
+              <div style="height:100%;width:61.2%;background:linear-gradient(90deg,#F59E0B,#FCD34D);border-radius:3px"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-placeholder)">
+              <span>61% освоено</span><span style="color:#29BF12;font-weight:600">в норме</span>
+            </div>
+          </div>
+
+          <!-- Команда -->
+          <div class="info-team-block">
+            <div class="info-section-hd">Команда</div>
+            <div class="info-team-grid">
+              <div class="info-team-person">
+                <div class="info-team-role">Exec Producer</div>
+                <div class="info-team-name"><span class="avatar av-a" style="width:22px;height:22px;font-size:9px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">АС</span>Алексей Смирнов</div>
+              </div>
+              <div class="info-team-person">
+                <div class="info-team-role">Line Producer</div>
+                <div class="info-team-name"><span class="avatar av-b" style="width:22px;height:22px;font-size:9px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">МК</span>Мария Козлова</div>
+              </div>
+              <div class="info-team-person">
+                <div class="info-team-role">Account Manager</div>
+                <div class="info-team-name"><span class="avatar av-c" style="width:22px;height:22px;font-size:9px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">НВ</span>Наталья Волкова</div>
+              </div>
+              <div class="info-team-person">
+                <div class="info-team-role">От заказчика</div>
+                <div class="info-team-name"><span class="avatar av-d" style="width:22px;height:22px;font-size:9px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">ДП</span>Дмитрий Петров</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:12px 20px;border-top:1px solid var(--border)">
+              <span style="font-size:12px;color:var(--text-placeholder)">Отделов:</span>
+              <div style="display:flex;gap:4px">
+                <span class="info-tag icon-tv">ТВ</span>
+                <span class="info-tag icon-mo">МШ</span>
+                <span class="info-tag icon-pp">ПП</span>
+                <span class="info-tag icon-ds">ДЗ</span>
+                <span class="info-tag icon-sn">СД</span>
+              </div>
+              <span style="font-size:12px;color:var(--text-placeholder);margin-left:auto">12 человек</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /tab-info -->
+
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <!-- ВКЛАДКА: ДОРОЖНАЯ КАРТА                                               -->
+    <!-- ══════════════════════════════════════════════════════════════════════ -->
+    <div class="tab-body" id="tab-roadmap">
+      <div class="roadmap-body">
+
+        <!-- Шапка: легенда + controls -->
+        <div class="roadmap-header">
+          <div class="roadmap-legend">
+            <span class="rml-item"><span class="rml-dot" style="background:#F59E0B"></span>ТВ — Съёмки</span>
+            <span class="rml-item"><span class="rml-dot" style="background:#818CF8"></span>Моушн</span>
+            <span class="rml-item"><span class="rml-dot" style="background:#34D399"></span>Постпродакшн</span>
+            <span class="rml-item"><span class="rml-dot" style="background:#FB7185"></span>Дизайн</span>
+            <span class="rml-item"><span class="rml-dot" style="background:#38BDF8"></span>Саунд</span>
+          </div>
+          <div class="roadmap-zoom">
+            <button class="rz-btn" onclick="rmZoom(-1)">−</button>
+            <span class="rz-label" id="rm-zoom-label">Нед</span>
+            <button class="rz-btn" onclick="rmZoom(1)">+</button>
+          </div>
+        </div>
+
+        <!-- Тело: сайдбар задач + сетка Ганта -->
+        <div class="roadmap-grid" id="rm-grid">
+
+          <!-- Заголовок таблицы (sticky) -->
+          <div class="rm-sidebar-head">Задача / Отдел</div>
+          <div class="rm-timeline-head" id="rm-timeline-head">
+            <!-- JS рисует дни/недели -->
+          </div>
+
+          <!-- Строки (генерируются JS) -->
+          <div class="rm-rows" id="rm-rows">
+            <!-- JS рисует строки -->
+          </div>
+
+        </div>
+
+      </div>
+    </div><!-- /tab-roadmap -->
+
+  </div><!-- /project-card -->
+</div><!-- /page -->
+
+<!-- ── ШАБЛОН: контент вкладок карточки отдела ──────────────────────────── -->
+<template id="tpl-dept-team">
+  <div class="placeholder">
+    <div class="ph-icon">👥</div>
+    <h3>Команда отдела</h3>
+    <p>Список штатных сотрудников и подрядчиков, подключённых к этому отделу: роли, тип занятости, количество смен, нагрузка.</p>
+    <span class="stub">— заглушка, в разработке —</span>
+  </div>
+</template>
+
+<template id="tpl-dept-planner">
+  <div class="placeholder">
+    <div class="ph-icon">📅</div>
+    <h3>Планировщик смен</h3>
+    <p>Сетка дней проекта × сотрудников отдела: типы смен (застройка / эфир / демонтаж), переработки, конфликты с другими проектами.</p>
+    <span class="stub">— заглушка, в разработке —</span>
+  </div>
+</template>
+
+<template id="tpl-dept-freelance">
+  <div class="placeholder">
+    <div class="ph-icon">🎬</div>
+    <h3>Фрилансеры</h3>
+    <p>Подтверждённые подрядчики, ожидающие ответа, кандидаты из базы — со ставками, статусом приглашения и историей сотрудничества.</p>
+    <span class="stub">— заглушка, в разработке —</span>
+  </div>
+</template>
+
+<template id="tpl-dept-expenses">
+  <table class="fin-table">
+    <thead><tr><th>Статья</th><th>Смета</th><th>Факт</th><th>Δ</th></tr></thead>
+    <tbody id="exp-rows"></tbody>
+  </table>
+</template>
+
+<script>
+/* ── Role config ──────────────────────────────────────────────────────────── */
+
+const ROLES = {
+  producer:      { canFinance: true,  canEdit: true  },
+  exec_producer: { canFinance: false, canEdit: true  },
+  user:          { canFinance: false, canEdit: false },
+};
+
+let currentRole = 'producer';
+
+function applyRole(role) {
+  currentRole = role;
+  const cfg = ROLES[role];
+
+  // Вкладка Финансы
+  const finTab = document.querySelector('.proj-tabs button[onclick*="finance"]');
+  if (finTab) {
+    finTab.style.display = cfg.canFinance ? '' : 'none';
+    // если финансы скрыты а сейчас активна — переключить на Структуру
+    if (!cfg.canFinance && finTab.classList.contains('active')) {
+      switchTab('structure', document.querySelector('.proj-tabs button'));
+    }
+  }
+
+  // Кнопка Изменить в dept-панели
+  const editBtn  = document.getElementById('edit-dept-btn');
+  const editWrap = document.getElementById('edit-btn-wrap');
+  if (editBtn) {
+    if (cfg.canEdit) {
+      editBtn.disabled = false;
+      editBtn.style.opacity = '';
+      editBtn.style.cursor = '';
+      if (editWrap) editWrap.style.pointerEvents = '';
+    } else {
+      editBtn.disabled = true;
+      editBtn.style.opacity = '0.4';
+      editBtn.style.cursor = 'not-allowed';
+      if (editWrap) {
+        editWrap.style.pointerEvents = 'all';
+        editWrap.onmouseenter = () => { document.getElementById('edit-tooltip').style.display = 'block'; };
+        editWrap.onmouseleave = () => { document.getElementById('edit-tooltip').style.display = 'none'; };
+      }
+    }
+  }
+
+}
+
+// Инициализация при загрузке
+window.addEventListener('DOMContentLoaded', () => {
+  applyRole('producer');
+  renderDepts('t1');
+
+});
+
+/* ── Data ─────────────────────────────────────────────────────────────────── */
+
+const EXPENSES = {
+  tv:  [['Гонорары (съёмочная группа)', '280 000', '240 000', '-14%', false],
+        ['Аренда техники', '120 000', '98 000', '-18%', false],
+        ['Транспорт / выезд', '40 000', '32 000', '-20%', false],
+        ['Итого', '440 000', '370 000', '-16%', true]],
+  mo:  [['Гонорары (аниматоры)', '200 000', '130 000', '-35%', false],
+        ['Лицензии и плагины', '30 000', '24 000', '-20%', false],
+        ['Итого', '230 000', '154 000', '-33%', true]],
+  pp:  [['Гонорары (монтаж)', '100 000', '45 000', '-55%', false],
+        ['Постпродакшн (внешний)', '80 000', '9 000', '-89%', false],
+        ['Итого', '180 000', '54 000', '-70%', true]],
+  ds:  [['Гонорары (дизайн)', '90 000', '50 000', '-44%', false],
+        ['Шрифты / ресурсы', '10 000', '8 000', '-20%', false],
+        ['Итого', '100 000', '58 000', '-42%', true]],
+  sn:  [['Звукозапись', '60 000', '0', '—', false],
+        ['Сведение / мастеринг', '30 000', '0', '—', false],
+        ['Итого', '90 000', '0', '—', true]],
+};
+
+/* ── Project tabs ─────────────────────────────────────────────────────────── */
+
+function goToFinanceDepts() {
+  closeDept();
+  const finBtn = document.querySelector('.proj-tabs button[onclick*="finance"]');
+  switchTab('finance', finBtn);
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-body').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.proj-tabs button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'roadmap') renderRoadmap();
+  if (name === 'info') initAutosizeAll();
+}
+
+function selectFinWI(navItem, detailId) {
+  document.querySelectorAll('.fin-wi-nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.fin-wi-detail').forEach(el => el.style.display = 'none');
+  navItem.classList.add('active');
+  const detail = document.getElementById(detailId);
+  if (detail) detail.style.display = '';
+}
+
+/* ── Structure 3-col WI/Dept/Detail ───────────────────────────────────────── */
+
+const D = (cls,code,name,sub,pct,execP,period,location) => {
+  const c = pct>=80?'var(--green)':pct>=40?'var(--amber)':pct>0?'#6495ED':'var(--text-placeholder)';
+  return { cls, code, name, sub, pct, color:c, barColor:c, execP, lineP:'—', period, location };
+};
+const DEPTS = {
+  t1: [
+    D('di-tv','ТВ','ТВ — Съёмки',   '5 чел · 8 смен',  80,'М. Жилин',  '11–13 мая','Знаменка, крыша'),
+    D('di-mo','МШ','Моушн',          '3 чел · 12 смен', 65,'—',          '1–14 мая', '—'),
+    D('di-pp','ПП','Постпродакшн',   '2 чел · 6 смен',  30,'—',          '13–18 мая','—'),
+    D('di-ds','ДЗ','Дизайн',         '2 чел · 4 дня',   72,'А. Иванов',  '8–11 мая', '—'),
+    D('di-sn','СД','Саунд-дизайн',   '1 чел · 3 дня',   15,'—',          '17–19 мая','—'),
+  ],
+  t2: [
+    D('di-ds','ДЗ','Дизайн',         '2 чел · 7 дней',  55,'А. Иванов',  '1–7 мая',  '—'),
+    D('di-mo','МШ','Моушн',          '3 чел · 8 смен',  25,'—',          '5–12 мая', '—'),
+    D('di-pp','ПП','Постпродакшн',   '1 чел · 2 дня',   10,'—',          '12–13 мая','—'),
+  ],
+  t3: [
+    D('di-tv','ТВ','ТВ — Съёмки',   '3 чел · 1 смена', 100,'—',         '12 мая',   'Выезд'),
+    D('di-pp','ПП','Постпродакшн',   '1 чел · 4 дня',   0, '—',          '13–20 мая','—'),
+    D('di-sn','СД','Саунд-дизайн',   '1 чел · 1 день',  0, '—',          '21 мая',   '—'),
+    D('di-ds','ДЗ','Дизайн',         '1 чел · 2 дня',   60,'—',          '10–11 мая','—'),
+    D('di-mo','МШ','Моушн',          '2 чел · 5 смен',  45,'—',          '6–10 мая', '—'),
+    D('di-tv','ТВ','ТВ — Спецпроекты','2 чел · 2 смены',80,'К. Морозов', '12 мая',   'Выезд'),
+  ],
+  t4: [
+    D('di-pp','ПП','Постпродакшн',   '— · ожидание',    0, '—','—','—'),
+    D('di-sn','СД','Саунд-дизайн',   '— · ожидание',    0, '—','—','—'),
+    D('di-mo','МШ','Моушн',          '2 чел · 4 смены', 0, '—','—','—'),
+    D('di-ds','ДЗ','Дизайн',         '1 чел · 2 дня',   20,'—','—','—'),
+  ],
+  t5: [
+    D('di-tv','ТВ','ТВ — Съёмки',   '4 чел · 6 смен',  90,'А. Соколова','5–10 мая', 'Студия А'),
+    D('di-mo','МШ','Моушн',          '3 чел · 10 смен', 75,'—',          '1–14 мая', '—'),
+    D('di-pp','ПП','Постпродакшн',   '2 чел · 8 смен',  50,'—',          '11–18 мая','—'),
+    D('di-ds','ДЗ','Дизайн',         '3 чел · 6 дней',  80,'А. Иванов',  '3–8 мая',  '—'),
+    D('di-sn','СД','Саунд-дизайн',   '2 чел · 4 дня',   30,'—',          '16–19 мая','—'),
+    D('di-tv','ТВ','ТВ — Спецпроекты','1 чел · 2 смены',60,'К. Морозов', '7–8 мая',  'Студия А'),
+    D('di-mo','МШ','3D-студия',       '2 чел · 7 дней',  40,'—',          '2–8 мая',  '—'),
+  ],
+  t6: [
+    D('di-tv','ТВ','ТВ — Съёмки',   '2 чел · 2 смены', 100,'М. Жилин',  '3 мая',    'Чёрная, крыша'),
+    D('di-pp','ПП','Постпродакшн',   '3 чел · 7 смен',  85,'—',          '4–10 мая', '—'),
+    D('di-sn','СД','Саунд-дизайн',   '2 чел · 3 дня',   70,'—',          '9–11 мая', '—'),
+  ],
+  t7: [
+    D('di-ds','ДЗ','Дизайн',         '4 чел · 10 дней', 35,'А. Иванов',  '1–10 мая', '—'),
+    D('di-mo','МШ','Моушн',          '5 чел · 14 смен', 20,'—',          '1–14 мая', '—'),
+    D('di-pp','ПП','Постпродакшн',   '2 чел · 4 дня',   5, '—',          '12–15 мая','—'),
+    D('di-sn','СД','Саунд-дизайн',   '1 чел · 2 дня',   0, '—','—','—'),
+    D('di-tv','ТВ','ТВ — Съёмки',   '3 чел · 4 смены', 60,'—',          '7–10 мая', 'Купол'),
+    D('di-tv','ТВ','ТВ — Спецпроекты','2 чел · 3 смены',25,'К. Морозов', '8–10 мая', 'Купол'),
+    D('di-mo','МШ','3D-студия',       '1 чел · 5 дней',  10,'—',         '5–9 мая',  '—'),
+    D('di-ds','ДЗ','Арт-отдел',       '2 чел · 3 дня',   45,'—',         '6–8 мая',  '—'),
+  ],
+  t8: [
+    D('di-tv','ТВ','ТВ — Съёмки',   '6 чел · 10 смен', 55,'А. Соколова','2–11 мая', 'Знаменка, зал'),
+    D('di-mo','МШ','Моушн',          '2 чел · 6 смен',  40,'—',          '5–10 мая', '—'),
+    D('di-ds','ДЗ','Дизайн',         '2 чел · 5 дней',  65,'А. Иванов',  '4–8 мая',  '—'),
+    D('di-sn','СД','Саунд-дизайн',   '3 чел · 5 дней',  20,'—',          '9–13 мая', '—'),
+    D('di-pp','ПП','Постпродакшн',   '4 чел · 9 смен',  30,'—',          '11–19 мая','—'),
+  ],
+  t9: [
+    D('di-mo','МШ','Моушн',          '4 чел · 12 смен', 10,'—',          '1–12 мая', '—'),
+    D('di-ds','ДЗ','Дизайн',         '3 чел · 8 дней',  5, 'А. Иванов',  '1–8 мая',  '—'),
+    D('di-pp','ПП','Постпродакшн',   '1 чел · 2 дня',   0, '—','—','—'),
+    D('di-sn','СД','Саунд-дизайн',   '1 чел · 1 день',  0, '—','—','—'),
+    D('di-tv','ТВ','ТВ — Съёмки',   '2 чел · 3 смены', 15,'—',          '10–12 мая','Павильон 2'),
+    D('di-mo','МШ','3D-студия',       '3 чел · 6 дней',  0, '—','—','—'),
+  ],
+  t10: [
+    D('di-tv','ТВ','ТВ — Съёмки',   '7 чел · 14 смен', 0,'А. Соколова', '—','—'),
+    D('di-mo','МШ','Моушн',          '4 чел · 10 смен', 0,'—',           '—','—'),
+    D('di-pp','ПП','Постпродакшн',   '3 чел · 6 смен',  0,'—',           '—','—'),
+    D('di-ds','ДЗ','Дизайн',         '2 чел · 5 дней',  0,'А. Иванов',   '—','—'),
+    D('di-sn','СД','Саунд-дизайн',   '2 чел · 3 дня',   0,'—',           '—','—'),
+    D('di-tv','ТВ','ТВ — Спецпроекты','3 чел · 5 смен', 0,'К. Морозов',  '—','—'),
+    D('di-mo','МШ','3D-студия',       '2 чел · 4 дня',   0,'—',           '—','—'),
+  ],
+};
+
+const PINS = { t1:'T1',t2:'T2',t3:'T3',t4:'T4',t5:'T5',t6:'T6',t7:'T7',t8:'T8',t9:'T9',t10:'T10' };
+const WI_NAMES = {
+  t1:'Открывающий ролик', t2:'Заставка', t3:'Backstage съёмка', t4:'Финальный монтаж',
+  t5:'Интервью с командой', t6:'Промо-ролик', t7:'Анонс сезона', t8:'Документалка',
+  t9:'Социальный ролик', t10:'Гала-концерт',
+};
+
+let activeWI = 't1';
+
+/* ── Column collapse ─────────────────────────────────────────── */
+const WI_IDS = ['t1','t2','t3','t4','t5','t6','t7','t8','t9','t10'];
+
+function buildWIStrip() {
+  const strip = document.getElementById('wi-strip');
+  strip.innerHTML = WI_IDS.map(id => {
+    const num = id.replace('t','');
+    const isActive = id === activeWI;
+    return `<div class="strip-item strip-wi${isActive?' active-strip':''}" data-id="${id}" title="${PINS[id]||id}" onclick="selectFromStrip('${id}')">
+      ${num.padStart(2,'0')}
+    </div>`;
+  }).join('');
+}
+
+function buildDeptsStrip() {
+  const depts = DEPTS[activeWI] || [];
+  const strip = document.getElementById('depts-strip');
+  const clsMap = { 'ТВ':'di-tv','МШ':'di-mo','ПП':'di-pp','ДЗ':'di-ds','СД':'di-sn' };
+  strip.innerHTML = depts.map((d,i) => {
+    const cls = clsMap[d.code] || '';
+    return `<div class="strip-item di ${cls}" title="${d.name}" onclick="selectDeptsFromStrip(${i})">
+      ${d.code}
+    </div>`;
+  }).join('');
+}
+
+function selectFromStrip(id) {
+  if (activeWI !== id) toggleWI(id, null);
+}
+
+function selectDeptsFromStrip(idx) {
+  // разворачиваем колонку и выбираем нужный отдел
+  toggleColDepts();
+  setTimeout(() => {
+    const cards = document.querySelectorAll('#dept-cards-wrap .dept-card-f');
+    if (cards[idx]) cards[idx].click();
+  }, 250);
+}
+
+function toggleColWI() {
+  const colWI = document.getElementById('col-wi');
+  const grid = document.querySelector('.structure-cols');
+  const collapsing = !colWI.classList.contains('collapsed');
+  if (collapsing) {
+    colWI.classList.add('collapsed');
+    grid.classList.add('wi-collapsed');
+    buildWIStrip();
+  } else {
+    // разворачиваем: скрываем контент, запускаем grid-анимацию, потом показываем
+    colWI.classList.add('expanding');
+    colWI.classList.remove('collapsed');
+    grid.classList.remove('wi-collapsed');
+    setTimeout(() => colWI.classList.remove('expanding'), 260);
+  }
+}
+
+function toggleColDepts() {
+  const colDepts = document.getElementById('col-depts');
+  const grid = document.querySelector('.structure-cols');
+  const collapsing = !colDepts.classList.contains('collapsed');
+  if (collapsing) {
+    colDepts.classList.add('collapsed');
+    grid.classList.add('depts-collapsed');
+    buildDeptsStrip();
+  } else {
+    colDepts.classList.add('expanding');
+    colDepts.classList.remove('collapsed');
+    grid.classList.remove('depts-collapsed');
+    setTimeout(() => colDepts.classList.remove('expanding'), 260);
+  }
+}
+
+function toggleWI(id, e) {
+  if (activeWI === id) return;
+  document.getElementById('wi-' + activeWI)?.classList.remove('active');
+  document.getElementById('wi-' + id).classList.add('active');
+  activeWI = id;
+  renderDepts(id);
+  // обновляем подсветку в стрипе если колонка свёрнута
+  const colWI = document.getElementById('col-wi');
+  if (colWI.classList.contains('collapsed')) {
+    document.querySelectorAll('#wi-strip .strip-item').forEach(el => {
+      el.classList.toggle('active-strip', el.dataset.id === id);
+    });
+  }
+  // после анимации раскрытия — прокручиваем WI в начало списка
+  const wiEl = document.getElementById('wi-' + id);
+  const wiScroll = document.getElementById('wi-scroll');
+  setTimeout(() => {
+    const scrollRect = wiScroll.getBoundingClientRect();
+    const wiRect = wiEl.getBoundingClientRect();
+    const currentOffset = wiRect.top - scrollRect.top + wiScroll.scrollTop;
+    wiScroll.scrollTo({ top: Math.max(0, currentOffset - 8), behavior: 'smooth' });
+  }, 180);
+}
+
+function renderDepts(wiId) {
+  document.getElementById('depts-label').textContent = `Отделы · ${PINS[wiId] || wiId.toUpperCase()}`;
+  const depts = DEPTS[wiId] || [];
+  const wrap = document.getElementById('dept-cards-wrap');
+
+  wrap.innerHTML = depts.map((d, i) => `
+    <div class="dept-card-f entering${i===0?' active':''}" onclick="selectDeptCard(this,${i},'${wiId}')"
+         style="animation-delay:${i * 40}ms">
+      <span class="di ${d.cls}" style="width:30px;height:30px;border-radius:7px;font-size:10px">${d.code}</span>
+      <div class="dinfo">
+        <div class="dname">${d.name}</div>
+        <div class="dsub">${d.sub}</div>
+      </div>
+      <div class="dpct" style="color:${d.color}">${d.pct}%</div>
+    </div>
+  `).join('') + `<button class="dept-add-inline" onclick="openModalDept()">+ Подключить отдел</button>`;
+
+  if (depts.length) renderDetail(depts[0], wiId);
+
+  document.getElementById('dept-floating').scrollTop = 0;
+}
+
+function selectDeptCard(el, idx, wiId) {
+  document.querySelectorAll('#dept-cards-wrap .dept-card-f').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  const d = DEPTS[wiId]?.[idx];
+  if (d) renderDetail(d, wiId);
+}
+
+function selectDept(row, idx, wiId) {
+  // legacy — kept for backward compat (Finance tab dept rows)
+  const d = DEPTS[wiId]?.[idx];
+  if (d) renderDetail(d, wiId);
+}
+
+function renderDetail(d, wiId) {
+  const canEdit = ROLES[currentRole]?.canEdit;
+  const statusText = d.pct >= 100 ? 'Готово' : d.pct > 0 ? `В работе · ${d.pct}%` : 'Не начато';
+  const statusCls  = d.pct >= 100 ? 'b-done' : d.pct > 0 ? 'b-prod' : 'b-req';
+  const wiName = WI_NAMES[wiId] || wiId;
+  const panel = document.getElementById('col-detail-panel');
+  const content = document.getElementById('detail-content');
+
+  // хлебные крошки — мгновенно
+  document.getElementById('detail-crumbs-bar').innerHTML = `
+    <span class="crumb-wi">${wiName}</span>
+    <span class="sep">›</span>
+    <span class="crumb-dept">${d.name}</span>
+  `;
+
+  // скелетон в контентную зону
+  content.innerHTML = `
+    <div class="detail-head">
+      <div style="display:flex;align-items:center;gap:14px;padding:16px 22px 14px">
+        <div class="skeleton-avatar" style="border-radius:10px;width:44px;height:44px"></div>
+        <div style="flex:1">
+          <div class="skeleton-line medium" style="height:16px;margin-bottom:9px"></div>
+          <div class="skeleton-line short"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:0;padding:0 22px;border-bottom:1px solid var(--border)">
+        ${[80,60,90,130].map(w=>`<div class="skeleton-line" style="width:${w}px;height:26px;border-radius:4px;margin:8px 8px 8px 0"></div>`).join('')}
+      </div>
+    </div>
+    <div style="padding:18px 22px;flex:1">
+      ${[100,70,85,60].map(()=>`<div class="skeleton-block"></div>`).join('')}
+    </div>
+  `;
+
+  setTimeout(() => {
+    content.innerHTML = `
+      <div class="detail-head">
+        <div class="detail-top">
+          <span class="detail-big-icon ${d.cls}" style="width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${d.code}</span>
+          <div style="flex:1">
+            <h2>${d.name}</h2>
+            <div class="detail-meta">
+              <span class="badge ${statusCls}" style="font-size:10.5px">${statusText}</span>
+              ${d.period !== '—' ? `<span>📅 <b>${d.period}</b></span>` : ''}
+              ${d.location !== '—' ? `<span>📍 <b>${d.location}</b></span>` : ''}
+              ${d.execP !== '—' ? `<span>👤 Рук: <b>${d.execP}</b></span>` : ''}
+            </div>
+          </div>
+          <div class="detail-actions">
+            <button class="dbtn" ${canEdit ? '' : 'disabled style="opacity:0.4;cursor:not-allowed"'}>Изменить</button>
+          </div>
+        </div>
+        <div class="detail-tabs" id="detail-tabs">
+          <button class="active" onclick="switchDetailTab('team',this)">Команда</button>
+          <button onclick="switchDetailTab('planner',this)">Планировщик</button>
+          <button onclick="switchDetailTab('freelance',this)">Фрилы</button>
+          <button onclick="switchDetailTab('expenses',this)">Расходы</button>
+          <button onclick="goToFinanceDepts()" style="margin-left:auto;border:none;background:none;color:var(--accent-s);font:inherit;font-size:12px;cursor:pointer;padding:9px 14px">→ Финансы</button>
+        </div>
+      </div>
+      <div class="detail-body" id="detail-body"></div>
+    `;
+    panel.dataset.deptKey = d.cls.replace('di-','');
+    switchDetailTab('team', content.querySelector('#detail-tabs button'));
+  }, 400);
+}
+
+function switchDetailTab(name, btn) {
+  document.querySelectorAll('#detail-tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const body = document.getElementById('detail-body');
+  const deptKey = document.getElementById('col-detail-panel').dataset.deptKey || 'tv';
+  if (name === 'expenses') {
+    const tpl = document.getElementById('tpl-dept-expenses')?.content.cloneNode(true);
+    if (!tpl) { body.innerHTML = '<p style="color:var(--text-muted);padding:20px">Нет данных</p>'; return; }
+    body.innerHTML = '';
+    body.appendChild(tpl);
+    const rows = document.getElementById('exp-rows');
+    const data = EXPENSES[deptKey] || EXPENSES.pp;
+    data.forEach(([cat, plan, fact, delta, isTotal]) => {
+      const tr = document.createElement('tr');
+      if (isTotal) tr.className = 'total';
+      const deltaCls = delta === '—' ? 'delta-zero' : 'delta-neg';
+      tr.innerHTML = `<td>${isTotal ? '<strong>'+cat+'</strong>' : cat}</td><td class="mono">${isTotal ? '<strong>'+plan+' ₽</strong>' : plan+' ₽'}</td><td class="mono">${isTotal ? '<strong>'+fact+' ₽</strong>' : fact+' ₽'}</td><td class="${deltaCls}">${delta}</td>`;
+      rows.appendChild(tr);
+    });
+  } else {
+    const tpl = document.getElementById('tpl-dept-' + name)?.content.cloneNode(true);
+    body.innerHTML = '';
+    if (tpl) body.appendChild(tpl);
+  }
+}
+
+/* kept for Finance/Team tabs backward compat */
+function switchDeptTab(name, btn) { switchDetailTab(name, btn); }
+
+/* ── Modals ───────────────────────────────────────────────────────────────── */
+
+const WI_DATA = {
+  t1: { name:'Открывающий ролик', status:'prod', type:'Эфирный ролик',    date:'2026-05-11', location:'Знаменка, крыша', execP:'А. Соколова', lineP:'П. Гусева', acctP:'' },
+  t2: { name:'Заставка',          status:'pre',  type:'Анонс',            date:'2026-05-08', location:'',               execP:'А. Иванов',   lineP:'',          acctP:'' },
+  t3: { name:'Backstage съёмка',  status:'prod', type:'Backstage съёмка', date:'2026-05-12', location:'Выезд',           execP:'',            lineP:'',          acctP:'' },
+  t4: { name:'Финальный монтаж',  status:'req',  type:'Монтаж',           date:'',           location:'',               execP:'',            lineP:'',          acctP:'' },
+};
+
+function openModalWI() {
+  document.getElementById('wi-modal-title').textContent = 'Новый Work Item';
+  document.getElementById('wi-status-create').style.display = '';
+  document.getElementById('wi-status-edit').style.display = 'none';
+  document.getElementById('wi-modal-submit').textContent = 'Создать WI';
+  document.getElementById('modal-wi').classList.add('open');
+}
+
+function openEditModalWI(wiId) {
+  const d = WI_DATA[wiId];
+  if (!d) return;
+  document.getElementById('wi-modal-title').textContent = 'Редактировать WI · ' + (WI_NAMES[wiId] || d.name);
+  document.getElementById('wi-status-create').style.display = 'none';
+  document.getElementById('wi-status-edit').style.display = '';
+  document.getElementById('wi-status-select').value = d.status;
+  document.getElementById('wi-modal-submit').textContent = 'Сохранить';
+  document.getElementById('modal-wi').classList.add('open');
+}
+
+function closeModalWI() {
+  document.getElementById('modal-wi').classList.remove('open');
+}
+
+function openModalDept() {
+  document.getElementById('modal-dept').classList.add('open');
+}
+function closeModalDept() {
+  document.getElementById('modal-dept').classList.remove('open');
+}
+
+// закрытие по клику на оверлей
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('open');
+  }
+});
+
+// выбор отделов в модале — множественный
+function toggleDeptChip(el) {
+  el.classList.toggle('selected');
+}
+
+// textarea autosize
+function autosizeTextarea(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+function initAutosizeAll() {
+  document.querySelectorAll('.info-desc').forEach(ta => {
+    autosizeTextarea(ta);
+    ta.addEventListener('input', () => autosizeTextarea(ta));
+  });
+}
+// запуск и при переключении на вкладку Инфо
+initAutosizeAll();
+
+/* ══════════════════════════════════════════════════════════════════════════ */
+/* ДОРОЖНАЯ КАРТА — Gantt                                                    */
+/* ══════════════════════════════════════════════════════════════════════════ */
+
+const RM_DEPT_COLORS = {
+  tv: '#F59E0B',
+  mo: '#818CF8',
+  pp: '#34D399',
+  ds: '#FB7185',
+  sn: '#38BDF8',
+};
+
+// Данные: задачи по отделам
+const RM_TASKS = [
+  // ── ТВ — Съёмки ──
+  { dept: 'tv', deptName: 'ТВ — Съёмки', label: 'Открывающий ролик (эфир)', start: '2024-05-11', end: '2024-05-13', wi: 'T1' },
+  { dept: 'tv', deptName: 'ТВ — Съёмки', label: 'Backstage (выезд)', start: '2024-05-12', end: '2024-05-12', wi: 'T3' },
+  // ── Моушн ──
+  { dept: 'mo', deptName: 'Моушн', label: 'Концепция заставки', start: '2024-05-01', end: '2024-05-07', wi: 'T2' },
+  { dept: 'mo', deptName: 'Моушн', label: 'Моушн-анимация', start: '2024-05-08', end: '2024-05-14', wi: 'T2' },
+  { dept: 'mo', deptName: 'Моушн', label: 'Финальный рендер', start: '2024-05-18', end: '2024-05-22', wi: 'T1' },
+  // ── Постпродакшн ──
+  { dept: 'pp', deptName: 'Постпродакшн', label: 'Монтаж черновика', start: '2024-05-13', end: '2024-05-16', wi: 'T1' },
+  { dept: 'pp', deptName: 'Постпродакшн', label: 'Цветокоррекция', start: '2024-05-17', end: '2024-05-19', wi: 'T1' },
+  { dept: 'pp', deptName: 'Постпродакшн', label: 'Монтаж backstage', start: '2024-05-13', end: '2024-05-17', wi: 'T3' },
+  // ── Дизайн ──
+  { dept: 'ds', deptName: 'Дизайн', label: 'Брендинг / графика', start: '2024-05-08', end: '2024-05-11', wi: 'T2' },
+  { dept: 'ds', deptName: 'Дизайн', label: 'Ключевые кадры', start: '2024-05-14', end: '2024-05-17', wi: 'T1' },
+  // ── Саунд ──
+  { dept: 'sn', deptName: 'Саунд-дизайн', label: 'Запись VO', start: '2024-05-17', end: '2024-05-18', wi: 'T1' },
+  { dept: 'sn', deptName: 'Саунд-дизайн', label: 'Сведение + мастеринг', start: '2024-05-20', end: '2024-05-22', wi: 'T1' },
+  // ── Дедлайн (milestone) ──
+  { dept: '_milestone', deptName: '', label: 'Сдача проекта', start: '2024-05-25', end: '2024-05-25', wi: '' },
+];
+
+// Настройки масштаба
+const RM_ZOOM_LEVELS = ['Нед', 'Дек', 'Мес'];
+let rmZoomIdx = 0;
+let rmColW = 32; // px на колонку (день)
+
+function rmZoom(dir) {
+  rmZoomIdx = Math.max(0, Math.min(RM_ZOOM_LEVELS.length - 1, rmZoomIdx + dir));
+  document.getElementById('rm-zoom-label').textContent = RM_ZOOM_LEVELS[rmZoomIdx];
+  rmColW = [32, 20, 12][rmZoomIdx];
+  renderRoadmap();
+}
+
+function parseDate(s) { return new Date(s + 'T00:00:00'); }
+function daysBetween(a, b) { return Math.round((b - a) / 86400000); }
+function addDays(d, n) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function fmtDay(d) { return d.getDate(); }
+function fmtDayName(d) { return ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()]; }
+function isWeekend(d) { return d.getDay() === 0 || d.getDay() === 6; }
+
+function renderRoadmap() {
+  // Определяем диапазон дат
+  const allDates = RM_TASKS.flatMap(t => [parseDate(t.start), parseDate(t.end)]);
+  const minDate = new Date(Math.min(...allDates));
+  const maxDate = new Date(Math.max(...allDates));
+  minDate.setDate(minDate.getDate() - 2);
+  maxDate.setDate(maxDate.getDate() + 3);
+  const totalDays = daysBetween(minDate, maxDate) + 1;
+  const today = new Date('2024-05-15T00:00:00'); // имитация «сегодня»
+
+  // ── Timeline header ──
+  const tlHead = document.getElementById('rm-timeline-head');
+  tlHead.innerHTML = '';
+  tlHead.style.width = (totalDays * rmColW) + 'px';
+  for (let i = 0; i < totalDays; i++) {
+    const d = addDays(minDate, i);
+    const col = document.createElement('div');
+    col.className = 'rm-day-col' +
+      (isWeekend(d) ? ' weekend' : '') +
+      (daysBetween(d, today) === 0 ? ' today' : '');
+    col.style.width = rmColW + 'px';
+    col.innerHTML = rmColW >= 24
+      ? `<span class="day-num">${fmtDay(d)}</span><span class="day-name">${fmtDayName(d)}</span>`
+      : `<span class="day-num" style="font-size:9px">${fmtDay(d)}</span>`;
+    tlHead.appendChild(col);
+  }
+
+  // ── Группировка по отделам ──
+  const groups = {};
+  for (const t of RM_TASKS) {
+    const key = t.dept;
+    if (!groups[key]) groups[key] = { name: t.deptName, color: RM_DEPT_COLORS[key] || '#888', tasks: [] };
+    groups[key].tasks.push(t);
+  }
+
+  // ── Строки ──
+  const rows = document.getElementById('rm-rows');
+  rows.innerHTML = '';
+
+  // Линия «сегодня» рисуется поверх всех строк
+  const todayOffset = daysBetween(minDate, today);
+  const todayLine = document.createElement('div');
+  todayLine.className = 'rm-today-line';
+  todayLine.style.cssText = `left:${200 + todayOffset * rmColW + rmColW / 2}px;top:0;bottom:0;position:absolute;z-index:4`;
+  rows.style.position = 'relative';
+  rows.appendChild(todayLine);
+
+  for (const [key, group] of Object.entries(groups)) {
+    if (key === '_milestone') continue;
+
+    // Заголовок группы
+    const dh = document.createElement('div');
+    dh.style.cssText = 'display:flex;height:26px;flex-shrink:0;border-bottom:1px solid var(--border)';
+    dh.innerHTML = `
+      <div class="rm-dept-label" style="width:200px;position:sticky;left:0;z-index:5;background:var(--surface-2);border-right:1px solid var(--border)">
+        <span style="width:8px;height:8px;border-radius:2px;background:${group.color};flex-shrink:0;display:inline-block;margin-right:7px"></span>
+        ${group.name}
+      </div>
+      <div style="flex:1;background:var(--surface-2);width:${totalDays * rmColW}px">
+        ${Array.from({length: totalDays}, (_, i) => {
+          const d = addDays(minDate, i);
+          return `<div style="display:inline-block;width:${rmColW}px;height:100%;border-right:1px solid var(--border);${isWeekend(d)?'background:rgba(255,255,255,.02)':''}"></div>`;
+        }).join('')}
+      </div>`;
+    rows.appendChild(dh);
+
+    // Задачи группы
+    for (const t of group.tasks) {
+      const row = document.createElement('div');
+      row.className = 'rm-row';
+      row.style.position = 'relative';
+
+      const startOff = daysBetween(minDate, parseDate(t.start));
+      const dur = Math.max(1, daysBetween(parseDate(t.start), parseDate(t.end)) + 1);
+      const barLeft = 200 + startOff * rmColW;
+      const barW = dur * rmColW - 4;
+      const color = group.color;
+
+      row.innerHTML = `
+        <div class="rm-row-label" style="width:200px">
+          <span class="task-dot" style="background:${color}"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis">${t.label}</span>
+          ${t.wi ? `<span class="pill-wi" style="margin-left:auto;flex-shrink:0">${t.wi}</span>` : ''}
+        </div>
+        <div class="rm-row-cells" style="position:relative;flex:1;width:${totalDays * rmColW}px">
+          ${Array.from({length: totalDays}, (_, i) => {
+            const d = addDays(minDate, i);
+            return `<div style="display:inline-block;width:${rmColW}px;height:100%;border-right:1px solid var(--border);${isWeekend(d)?'background:rgba(255,255,255,.018)':''}"></div>`;
+          }).join('')}
+          <div class="rm-bar"
+               style="left:${startOff * rmColW}px;width:${barW}px;background:${color};opacity:.85"
+               onmouseenter="rmShowTip(event,'${t.label}','${t.start}','${t.end}','${t.wi}')"
+               onmouseleave="rmHideTip()">
+            <span class="rm-bar-label" style="${barW < 60 ? 'display:none' : ''}">${t.label}</span>
+          </div>
+        </div>`;
+      rows.appendChild(row);
+    }
+  }
+
+  // Milestone строки
+  const milestones = RM_TASKS.filter(t => t.dept === '_milestone');
+  if (milestones.length) {
+    const mh = document.createElement('div');
+    mh.style.cssText = 'display:flex;height:26px;flex-shrink:0;border-bottom:1px solid var(--border)';
+    mh.innerHTML = `
+      <div class="rm-dept-label" style="width:200px;position:sticky;left:0;z-index:5;background:var(--surface-2);border-right:1px solid var(--border)">
+        <span style="width:8px;height:8px;border-radius:2px;background:#F59E0B;flex-shrink:0;display:inline-block;margin-right:7px"></span>
+        Контрольные точки
+      </div>
+      <div style="flex:1;background:var(--surface-2);width:${totalDays * rmColW}px"></div>`;
+    rows.appendChild(mh);
+
+    for (const t of milestones) {
+      const row = document.createElement('div');
+      row.className = 'rm-row';
+      const startOff = daysBetween(minDate, parseDate(t.start));
+      row.innerHTML = `
+        <div class="rm-row-label" style="width:200px">
+          <span style="color:#F59E0B;font-size:10px">◆</span>
+          <span>${t.label}</span>
+        </div>
+        <div class="rm-row-cells" style="position:relative;flex:1;width:${totalDays * rmColW}px">
+          ${Array.from({length: totalDays}, (_, i) => {
+            const d = addDays(minDate, i);
+            return `<div style="display:inline-block;width:${rmColW}px;height:100%;border-right:1px solid var(--border);${isWeekend(d)?'background:rgba(255,255,255,.018)':''}"></div>`;
+          }).join('')}
+          <div class="rm-milestone"
+               style="left:${startOff * rmColW + rmColW / 2 - 6}px"
+               onmouseenter="rmShowTip(event,'${t.label}','${t.start}','${t.start}','')"
+               onmouseleave="rmHideTip()"></div>
+        </div>`;
+      rows.appendChild(row);
+    }
+  }
+}
+
+// Tooltip
+let rmTip = null;
+function rmShowTip(e, label, start, end, wi) {
+  if (!rmTip) {
+    rmTip = document.createElement('div');
+    rmTip.className = 'rm-tooltip';
+    rmTip.innerHTML = `<div class="rm-tooltip-title" id="rmt-title"></div>
+      <div class="rm-tooltip-row"><span>Начало</span><span id="rmt-start"></span></div>
+      <div class="rm-tooltip-row"><span>Конец</span><span id="rmt-end"></span></div>
+      <div class="rm-tooltip-row" id="rmt-wi-row"><span>WI</span><span id="rmt-wi"></span></div>`;
+    document.body.appendChild(rmTip);
+  }
+  rmTip.querySelector('#rmt-title').textContent = label;
+  rmTip.querySelector('#rmt-start').textContent = start;
+  rmTip.querySelector('#rmt-end').textContent = end;
+  rmTip.querySelector('#rmt-wi').textContent = wi || '—';
+  rmTip.querySelector('#rmt-wi-row').style.display = wi ? '' : 'none';
+  rmTip.style.left = (e.clientX + 12) + 'px';
+  rmTip.style.top  = (e.clientY + 12) + 'px';
+  rmTip.classList.add('visible');
+}
+function rmHideTip() {
+  if (rmTip) rmTip.classList.remove('visible');
+}
+
+// renderRoadmap вызывается из оригинального switchTab напрямую
+
+</script>
+
+<!-- ── Модал: Создание WI ──────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-wi">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2 id="wi-modal-title">Новый Work Item</h2>
+        <div class="sub">Зелёный день 2026 · П-0142</div>
+      </div>
+      <button class="modal-close" onclick="closeModalWI()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-row" style="align-items:flex-end;gap:16px">
+        <!-- create mode: статус нередактируемый -->
+        <div class="form-group" id="wi-status-create" style="flex:0 0 auto">
+          <label>Статус</label>
+          <div style="display:flex;align-items:center;gap:8px;height:36px">
+            <span class="badge b-req" style="font-size:12px;padding:4px 10px">Заявка</span>
+            <span style="font-size:11px;color:var(--text-muted)">присваивается автоматически</span>
+          </div>
+        </div>
+        <!-- edit mode: статус редактируемый -->
+        <div class="form-group" id="wi-status-edit" style="flex:0 0 auto;display:none">
+          <label>Статус</label>
+          <select class="form-control" id="wi-status-select">
+            <option value="req">Заявка</option>
+            <option value="pre">Pre-production</option>
+            <option value="prod">Production</option>
+            <option value="post">Post-production</option>
+            <option value="done">Готово</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1">
+          <label>Тип</label>
+          <select class="form-control">
+            <option value="">— выберите тип —</option>
+            <option>Эфирный ролик</option>
+            <option>Интервью</option>
+            <option>Backstage съёмка</option>
+            <option>Рекламная вставка</option>
+            <option>Анонс</option>
+            <option>Монтаж</option>
+            <option>Документалка</option>
+            <option>Мероприятие</option>
+            <option>Подкаст</option>
+            <option>Другое</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Клиент</label>
+          <select class="form-control">
+            <option selected>Сбербанк</option>
+            <option>Газпром</option>
+            <option>МТС</option>
+            <option>ВТБ</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Описание задачи</label>
+          <textarea class="form-control" placeholder="Кратко опишите суть работы, особенности съёмки, формат…"></textarea>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Дата</label>
+          <input type="date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Время <span class="opt">(опц.)</span></label>
+          <input type="time" class="form-control">
+        </div>
+      </div>
+
+      <div class="form-row single">
+        <div class="form-group">
+          <label>Локация</label>
+          <select class="form-control">
+            <option value="">— выберите локацию —</option>
+            <option>Студия А</option>
+            <option>Студия Б</option>
+            <option>Павильон 2</option>
+            <option>Знаменка, крыша</option>
+            <option>Знаменка, зал</option>
+            <option>Чёрная, крыша</option>
+            <option>Купол</option>
+            <option>Офис клиента</option>
+            <option>Выезд</option>
+            <option>Другое</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-section-label">Продюсеры</div>
+      <div class="prod-row">
+        <div class="prod-card">
+          <span class="prod-role">Исполнительный</span>
+          <select>
+            <option value="">— не назначен —</option>
+            <option>А. Соколова</option>
+            <option>П. Гусева</option>
+            <option>А. Иванов</option>
+            <option>К. Морозов</option>
+          </select>
+        </div>
+        <div class="prod-card">
+          <span class="prod-role">Линейный</span>
+          <select>
+            <option value="">— не назначен —</option>
+            <option>А. Соколова</option>
+            <option>П. Гусева</option>
+            <option>А. Иванов</option>
+            <option>К. Морозов</option>
+          </select>
+        </div>
+        <div class="prod-card">
+          <span class="prod-role">Аккаунт</span>
+          <select>
+            <option value="">— не назначен —</option>
+            <option>А. Соколова</option>
+            <option>П. Гусева</option>
+            <option>А. Иванов</option>
+            <option>К. Морозов</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="mbtn mbtn-ghost" onclick="closeModalWI()">Отмена</button>
+      <button class="mbtn mbtn-primary" id="wi-modal-submit">Создать WI</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Модал: Подключить отдел ─────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-dept">
+  <div class="modal modal-sm">
+    <div class="modal-head">
+      <div>
+        <h2>Подключить отдел</h2>
+        <div class="sub" id="modal-dept-wi-name">T1 · Открывающий ролик</div>
+      </div>
+      <button class="modal-close" onclick="closeModalDept()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group" style="margin-bottom:16px">
+        <label>Отдел</label>
+        <div class="dept-chips">
+          <div class="dept-chip-opt selected" onclick="toggleDeptChip(this)">
+            <span class="di di-tv">ТВ</span><span>ТВ — Съёмки</span>
+          </div>
+          <div class="dept-chip-opt" onclick="toggleDeptChip(this)">
+            <span class="di di-mo">МШ</span><span>Моушн</span>
+          </div>
+          <div class="dept-chip-opt" onclick="toggleDeptChip(this)">
+            <span class="di di-pp">ПП</span><span>Постпродакшн</span>
+          </div>
+          <div class="dept-chip-opt" onclick="toggleDeptChip(this)">
+            <span class="di di-ds">ДЗ</span><span>Дизайн</span>
+          </div>
+          <div class="dept-chip-opt" onclick="toggleDeptChip(this)">
+            <span class="di di-sn">СД</span><span>Саунд-дизайн</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-foot">
+      <button class="mbtn mbtn-ghost" onclick="closeModalDept()">Отмена</button>
+      <button class="mbtn mbtn-primary">Подключить</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

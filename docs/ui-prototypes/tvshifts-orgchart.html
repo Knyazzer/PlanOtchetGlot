@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Shifts — Структура компании</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0D0D0D;
+    --surface-1: #161616;
+    --surface-2: #1E1E1E;
+    --surface-3: #262626;
+    --border: rgba(255,255,255,0.07);
+    --text-1: #FFFFFF;
+    --text-2: #A0A0A0;
+    --text-3: #555555;
+    --text-muted: #555555;
+    --accent-s: #FF6B35;
+    --accent-e: #E8194B;
+    --success: #29BF12;
+    --danger: #E8194B;
+    --font: 'Urbanist', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-1);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Top bar ── */
+  .topbar {
+    height: 56px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .topbar-title { font-size: 15px; font-weight: 700; color: var(--text-1); }
+  .tabs { display: flex; gap: 4px; margin-left: 24px; }
+  .tab {
+    font-size: 13px; font-weight: 500; padding: 6px 16px; border-radius: 8px;
+    border: 1px solid transparent; background: none; color: var(--text-3);
+    cursor: pointer; font-family: var(--font); transition: all .12s;
+  }
+  .tab.active {
+    border-color: rgba(255,107,53,0.25); background: rgba(255,107,53,0.1);
+    color: var(--accent-s); font-weight: 600;
+  }
+  .spacer { flex: 1; }
+  .zoom-bar { display: flex; align-items: center; gap: 6px; }
+  .zbtn {
+    font-size: 13px; padding: 4px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: none;
+    color: var(--text-3); cursor: pointer; font-family: var(--font);
+  }
+  .zbtn:hover { border-color: rgba(255,255,255,0.15); color: var(--text-2); }
+  .zlabel { font-size: 12px; color: var(--text-muted); min-width: 40px; text-align: center; }
+
+  /* ── Canvas ── */
+  .canvas {
+    flex: 1; overflow: hidden; position: relative;
+    cursor: grab; user-select: none;
+  }
+  .canvas.dragging { cursor: grabbing; }
+
+  /* Dot-pattern — fills canvas, position/size updated via JS on pan/zoom */
+  .dot-layer {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+  }
+
+  .world {
+    position: absolute; transform-origin: 0 0;
+    padding: 60px 80px 120px;
+    display: flex; flex-direction: row; gap: 48px; align-items: flex-start;
+  }
+
+  /* ── Department tree ── */
+  .dept-tree {
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+  }
+
+  /* Department header card — sized to content */
+  .dept-card {
+    border-radius: 14px;
+    padding: 14px 20px 12px;
+    position: relative;
+    display: inline-flex; flex-direction: column;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    min-width: 190px;
+    z-index: 2;
+    overflow: visible;
+    /* Inner highlight + glass overlay */
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -1px 0 rgba(0,0,0,0.2),
+      0 8px 24px rgba(0,0,0,0.35);
+  }
+  /* Noise/gradient overlay for depth */
+  .dept-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.12) 100%);
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  .dept-card:hover {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.22),
+      inset 0 -1px 0 rgba(0,0,0,0.2),
+      0 14px 36px rgba(0,0,0,0.45);
+  }
+  .dept-name {
+    font-size: 15px; font-weight: 800; color: #fff;
+    letter-spacing: 0.1px; margin-bottom: 6px;
+    white-space: nowrap;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .dept-director {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .dept-director-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.8px;
+    text-transform: uppercase; color: rgba(255,255,255,0.5);
+  }
+  .dept-director-name {
+    font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.9);
+    white-space: nowrap;
+  }
+  .dept-director-empty {
+    font-size: 11px; color: rgba(255,255,255,0.35); font-style: italic;
+  }
+  .dept-actions {
+    position: absolute; top: 8px; right: 8px;
+    display: flex; gap: 4px; opacity: 0; transition: opacity .15s;
+  }
+  .dept-card:hover .dept-actions { opacity: 1; }
+  .action-btn {
+    width: 22px; height: 22px; border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3);
+    color: rgba(255,255,255,0.7); font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font);
+  }
+  .action-btn:hover { background: rgba(0,0,0,0.5); color: #fff; }
+
+  /* SVG tree lines container */
+  .tree-svg {
+    display: block; overflow: visible; flex-shrink: 0;
+  }
+
+  /* Divisions row */
+  .divisions-row {
+    display: flex; gap: 16px; align-items: flex-start;
+    justify-content: center;
+  }
+
+  /* Division card */
+  .div-card {
+    background: var(--surface-1);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    width: 210px;
+    overflow: visible;
+    flex-shrink: 0;
+    transition: border-color .15s, box-shadow .15s;
+    position: relative; z-index: 2;
+  }
+  /* Re-clip the card content but not the cutout dots */
+  .div-head, .div-members {
+    overflow: hidden;
+  }
+  .div-head:first-child {
+    border-radius: 12px 12px 0 0;
+  }
+  .div-card:hover { border-color: rgba(255,255,255,0.14); }
+  .div-head {
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+  }
+  .div-name {
+    font-size: 13px; font-weight: 700; color: var(--text-1);
+    margin-bottom: 5px; padding-right: 40px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .div-chief {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .div-chief-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.6px;
+    text-transform: uppercase; color: var(--text-muted);
+  }
+  .div-chief-name {
+    font-size: 11px; font-weight: 600; color: var(--accent-s);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .div-chief-empty {
+    font-size: 11px; color: var(--text-muted); font-style: italic;
+  }
+  .div-actions {
+    position: absolute; top: 8px; right: 8px;
+    display: flex; gap: 3px; opacity: 0; transition: opacity .15s;
+  }
+  .div-head:hover .div-actions { opacity: 1; }
+  .div-action-btn {
+    width: 20px; height: 20px; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-3); font-size: 10px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font);
+  }
+  .div-action-btn:hover { color: var(--text-1); border-color: rgba(255,255,255,0.15); }
+
+  /* Members */
+  .div-members { padding: 6px 0 4px; }
+  .member-row {
+    padding: 5px 14px;
+    display: flex; align-items: center; gap: 8px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background .1s;
+    position: relative;
+  }
+  .member-row:last-child { border-bottom: none; }
+  .member-row:hover { background: rgba(255,255,255,0.03); }
+  .member-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(255,255,255,0.15); flex-shrink: 0;
+  }
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-size: 12px; font-weight: 500; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-pos { font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-actions {
+    display: flex; gap: 3px;
+    visibility: hidden;
+    flex-shrink: 0;
+  }
+  .member-row:hover .member-actions { visibility: visible; }
+  .member-action-btn {
+    width: 18px; height: 18px; border-radius: 3px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text-muted); font-size: 9px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font);
+  }
+  .member-action-btn:hover { color: var(--text-1); }
+
+  /* Add member btn */
+  .add-member-btn {
+    width: 100%; padding: 6px 14px; background: none; border: none;
+    color: var(--text-muted); font-size: 11px; cursor: pointer;
+    font-family: var(--font); text-align: left; display: flex; align-items: center; gap: 5px;
+    transition: color .1s;
+  }
+  .add-member-btn:hover { color: var(--text-2); }
+
+  /* Dept member count */
+  .dept-count {
+    font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.45);
+    margin-top: 8px; padding-top: 7px;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    letter-spacing: 0.2px;
+  }
+
+
+  /* Inline edit input */
+  .inline-edit {
+    background: rgba(0,0,0,0.4); border: 1px solid rgba(255,107,53,0.5);
+    border-radius: 4px; color: #fff; font-family: var(--font);
+    font-size: inherit; font-weight: inherit; padding: 1px 4px;
+    outline: none; width: 100%;
+  }
+
+  /* Modal / popup */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(4px);
+  }
+  .modal {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 14px; width: 400px; max-width: 95vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  }
+  .modal-header {
+    padding: 18px 22px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title { font-size: 15px; font-weight: 700; color: var(--text-1); }
+  .modal-close {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px;
+  }
+  .modal-close:hover { color: var(--text-1); }
+  .modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 14px; }
+  .modal-footer {
+    padding: 14px 22px; border-top: 1px solid var(--border);
+    display: flex; gap: 8px; justify-content: flex-end;
+  }
+  .field-label {
+    font-size: 11px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;
+  }
+  .field-input {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-1); font-family: var(--font);
+    font-size: 13px; padding: 8px 12px; outline: none;
+  }
+  .field-input:focus { border-color: rgba(255,107,53,0.4); }
+  .field-select {
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-1); font-family: var(--font);
+    font-size: 13px; padding: 8px 12px; outline: none; cursor: pointer;
+  }
+  .btn-primary {
+    font-size: 13px; padding: 8px 20px; border-radius: 8px; border: none;
+    background: linear-gradient(135deg,#FF6B35,#E8194B);
+    color: #fff; font-family: var(--font); font-weight: 600; cursor: pointer;
+  }
+  .btn-secondary {
+    font-size: 13px; padding: 8px 16px; border-radius: 8px;
+    border: 1px solid var(--border); background: none;
+    color: var(--text-3); cursor: pointer; font-family: var(--font);
+  }
+  .btn-danger {
+    font-size: 12px; padding: 7px 14px; border-radius: 8px; border: none;
+    background: rgba(232,25,75,0.15); color: var(--danger);
+    font-family: var(--font); cursor: pointer; margin-right: auto;
+  }
+
+  /* Context menu */
+  .ctx-menu {
+    position: fixed; z-index: 200;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    min-width: 180px;
+  }
+  .ctx-item {
+    width: 100%; padding: 8px 12px; background: none; border: none;
+    color: var(--text-2); font-size: 13px; font-family: var(--font);
+    text-align: left; cursor: pointer; border-radius: 5px;
+    display: flex; align-items: center; gap: 8px;
+    transition: background .1s;
+  }
+  .ctx-item:hover { background: rgba(255,255,255,0.05); color: var(--text-1); }
+
+  /* Hint bar */
+  .hint {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 16px;
+    font-size: 11px; color: var(--text-muted);
+    display: flex; gap: 12px; pointer-events: none;
+  }
+  .hint span { display: flex; align-items: center; gap: 4px; }
+  .hint kbd {
+    background: var(--surface-3); border: 1px solid var(--border);
+    border-radius: 3px; padding: 1px 5px; font-size: 10px;
+    font-family: monospace; color: var(--text-2);
+  }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-title">Персонал</div>
+  <div class="tabs">
+    <button class="tab">Штат</button>
+    <button class="tab">Фрилансеры</button>
+    <button class="tab active">Структура</button>
+    <button class="tab">Структура (Sheets)</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="zoom-bar">
+    <button class="zbtn" onclick="zoom(0.15)">＋</button>
+    <span class="zlabel" id="zlabel">100%</span>
+    <button class="zbtn" onclick="zoom(-0.15)">－</button>
+    <button class="zbtn" onclick="resetView()">⊡</button>
+  </div>
+</div>
+
+<!-- Canvas -->
+<div class="canvas" id="canvas">
+  <div class="dot-layer" id="dot-layer"></div>
+  <div class="world" id="world"></div>
+</div>
+
+<!-- Hint -->
+<div class="hint">
+  <span>Колесо — зум</span>
+  <span>Тащи — пан</span>
+  <span><kbd>Esc</kbd> закрыть</span>
+</div>
+
+<!-- Context menu -->
+<div id="ctx-menu" class="ctx-menu" style="display:none">
+  <button class="ctx-item" onclick="openAddDept();hideCtx()">
+    <span style="font-size:15px">＋</span> Новый департамент
+  </button>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal" style="display:none" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Редактировать</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+const COLORS = [
+  '#1e40af','#065f46','#7c3aed','#9a3412',
+  '#0f766e','#be185d','#b45309','#1d4ed8',
+]
+
+let data = {
+  departments: [
+    { id: 'd1', name: 'ТВ Департамент',       color: COLORS[0], directorId: 'u2' },
+    { id: 'd2', name: 'Бренд-Медиа',           color: COLORS[1], directorId: 'u9' },
+    { id: 'd3', name: 'Спецпроекты',           color: COLORS[2], directorId: null },
+    { id: 'd4', name: 'Техника и производство', color: COLORS[3], directorId: 'u15' },
+  ],
+  divisions: [
+    { id: 'dv1', deptId: 'd1', name: 'Эфирный отдел',    headId: 'u1' },
+    { id: 'dv2', deptId: 'd1', name: 'Монтаж',            headId: 'u3' },
+    { id: 'dv3', deptId: 'd1', name: 'Продюсерский',      headId: 'u4' },
+    { id: 'dv4', deptId: 'd2', name: 'SMM',               headId: 'u8' },
+    { id: 'dv5', deptId: 'd2', name: 'Motion Design',     headId: null },
+    { id: 'dv6', deptId: 'd3', name: 'Организация',       headId: 'u12' },
+    { id: 'dv7', deptId: 'd3', name: 'Контент',           headId: null },
+    { id: 'dv8', deptId: 'd4', name: 'Видеоинженеры',     headId: 'u14' },
+    { id: 'dv9', deptId: 'd4', name: 'Техподдержка',      headId: null },
+  ],
+  users: [
+    { id: 'u1',  name: 'Гречко Олег В.',          tab: 'S001' },
+    { id: 'u2',  name: 'Халецкий Александр А.',    tab: 'S004' },
+    { id: 'u3',  name: 'Лебедев Дмитрий С.',       tab: 'S074' },
+    { id: 'u4',  name: 'Покатович Людмила С.',      tab: 'S046' },
+    { id: 'u5',  name: 'Волкова Екатерина Ю.',      tab: 'S033' },
+    { id: 'u6',  name: 'Штельмах Павел А.',         tab: 'S008' },
+    { id: 'u7',  name: 'Новикова Юлия В.',          tab: 'S009' },
+    { id: 'u8',  name: 'Ваганов Сергей А.',         tab: 'S006' },
+    { id: 'u9',  name: 'Малыгин Денис А.',          tab: 'S005' },
+    { id: 'u10', name: 'Сибгатуллина Валерия Е.',   tab: 'S007' },
+    { id: 'u11', name: 'Антонова Татьяна В.',        tab: 'S060' },
+    { id: 'u12', name: 'Нагорская Яна П.',           tab: 'S018' },
+    { id: 'u13', name: 'Бильданова Юлия А.',         tab: 'S013' },
+    { id: 'u14', name: 'Казанцев Владислав В.',      tab: 'S063' },
+    { id: 'u15', name: 'Гурцев Михаил Р.',           tab: 'S015' },
+    { id: 'u16', name: 'Илюхин Алексей С.',          tab: 'S002' },
+    { id: 'u17', name: 'Эргардт Павел А.',           tab: 'S082' },
+  ],
+  memberships: [
+    { userId: 'u1',  divId: 'dv1', position: 'Режиссёр эфира' },
+    { userId: 'u5',  divId: 'dv1', position: 'Редактор' },
+    { userId: 'u6',  divId: 'dv1', position: 'Ассистент режиссёра' },
+    { userId: 'u3',  divId: 'dv2', position: 'Руководитель монтажа' },
+    { userId: 'u16', divId: 'dv2', position: 'Монтажёр' },
+    { userId: 'u17', divId: 'dv2', position: 'Монтажёр' },
+    { userId: 'u4',  divId: 'dv3', position: 'Линейный продюсер' },
+    { userId: 'u7',  divId: 'dv3', position: 'Продюсер' },
+    { userId: 'u8',  divId: 'dv4', position: 'SMM-менеджер' },
+    { userId: 'u10', divId: 'dv4', position: 'Контент-менеджер' },
+    { userId: 'u11', divId: 'dv5', position: 'Motion-дизайнер' },
+    { userId: 'u12', divId: 'dv6', position: 'Координатор' },
+    { userId: 'u13', divId: 'dv7', position: 'Копирайтер' },
+    { userId: 'u14', divId: 'dv8', position: 'Старший видеоинженер' },
+    { userId: 'u15', divId: 'dv9', position: 'Начальник техподдержки' },
+    { userId: 'u2',  divId: 'dv1', position: 'Директор' }, // multi-role example
+  ],
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const byId = (arr, id) => arr.find(x => x.id === id)
+const userName = id => id ? (byId(data.users, id)?.name ?? '—') : null
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+const LINE_COLOR = '#2e2e2e'
+const STEM_H = 32   // px from bottom of dept card to horizontal bar
+const BRANCH_H = 24 // px from horizontal bar to top of div card
+
+function makeDivCard(dv, dept) {
+  const members = data.memberships.filter(m => m.divId === dv.id)
+  const dvCard = document.createElement('div')
+  dvCard.className = 'div-card'
+  dvCard.style.borderTopColor = dept.color
+  dvCard.style.borderTopWidth = '3px'
+
+  const dvHead = document.createElement('div')
+  dvHead.className = 'div-head'
+  dvHead.innerHTML = `
+    <div class="div-name">${dv.name}</div>
+    <div class="div-chief">
+      <span class="div-chief-label">Рук.</span>
+      ${dv.headId
+        ? `<span class="div-chief-name">${userName(dv.headId)}</span>`
+        : `<span class="div-chief-empty">не назначен</span>`}
+    </div>
+    <div class="div-actions">
+      <button class="div-action-btn" title="Редактировать отдел" onclick="openEditDiv('${dv.id}')">✎</button>
+      <button class="div-action-btn" title="Удалить отдел" onclick="deleteDiv('${dv.id}')" style="color:rgba(255,100,100,0.7)">✕</button>
+    </div>
+  `
+  dvCard.appendChild(dvHead)
+
+  const membersEl = document.createElement('div')
+  membersEl.className = 'div-members'
+  for (const m of members) {
+    const user = byId(data.users, m.userId)
+    if (!user) continue
+    const row = document.createElement('div')
+    row.className = 'member-row'
+    row.innerHTML = `
+      <div class="member-dot"></div>
+      <div class="member-info">
+        <div class="member-name">${user.name}</div>
+        <div class="member-pos">${m.position}</div>
+      </div>
+      <div class="member-actions">
+        <button class="member-action-btn" title="Изменить должность" onclick="openEditMember('${m.userId}','${dv.id}')">✎</button>
+        <button class="member-action-btn" title="Убрать из отдела" onclick="removeMember('${m.userId}','${dv.id}')" style="color:rgba(255,100,100,0.7)">✕</button>
+      </div>
+    `
+    membersEl.appendChild(row)
+  }
+
+  const addMember = document.createElement('button')
+  addMember.className = 'add-member-btn'
+  addMember.innerHTML = `<span style="font-size:14px">＋</span> Добавить сотрудника`
+  addMember.onclick = () => openAddMember(dv.id)
+  membersEl.appendChild(addMember)
+
+  dvCard.appendChild(membersEl)
+  return dvCard
+}
+
+function render() {
+  const world = document.getElementById('world')
+  world.innerHTML = ''
+
+  for (const dept of data.departments) {
+    const divs = data.divisions.filter(dv => dv.deptId === dept.id)
+    const deptDivIds = divs.map(dv => dv.id)
+    const memberCount = data.memberships.filter(m => deptDivIds.includes(m.divId)).length
+
+    // ── Tree wrapper ──────────────────────────────────────────────────────────
+    const tree = document.createElement('div')
+    tree.className = 'dept-tree'
+
+    // ── Dept card (inline / shrink to content) ────────────────────────────────
+    const dcard = document.createElement('div')
+    dcard.className = 'dept-card'
+    dcard.style.background = dept.color
+    dcard.innerHTML = `
+      <div class="dept-name">${dept.name}</div>
+      <div class="dept-director">
+        <span class="dept-director-label">Директор</span>
+        ${dept.directorId
+          ? `<span class="dept-director-name">${userName(dept.directorId)}</span>`
+          : `<span class="dept-director-empty">не назначен</span>`}
+      </div>
+      <div class="dept-count">${memberCount} чел.</div>
+      <div class="dept-actions">
+        <button class="action-btn" title="Редактировать" onclick="openEditDept('${dept.id}')">✎</button>
+        <button class="action-btn" title="Удалить" onclick="deleteDept('${dept.id}')" style="color:rgba(255,100,100,0.8)">✕</button>
+      </div>
+    `
+    tree.appendChild(dcard)
+
+    if (divs.length === 0) {
+      world.appendChild(tree)
+      continue
+    }
+
+    // ── Divisions row ─────────────────────────────────────────────────────────
+    const divsRow = document.createElement('div')
+    divsRow.className = 'divisions-row'
+
+    const divCards = divs.map(dv => makeDivCard(dv, dept))
+    divCards.forEach(c => divsRow.appendChild(c))
+
+    // Placeholder div that will receive the SVG (same height as gap)
+    const svgWrap = document.createElement('div')
+    svgWrap.style.cssText = 'width:100%;height:48px;position:relative;z-index:0;'
+
+    tree.appendChild(svgWrap)
+    tree.appendChild(divsRow)
+    world.appendChild(tree)
+
+    // ── Draw SVG after layout ─────────────────────────────────────────────────
+    requestAnimationFrame(() => {
+      const wrapRect = svgWrap.getBoundingClientRect()
+      const cardRect = dcard.getBoundingClientRect()
+      const rowRect  = divsRow.getBoundingClientRect()
+
+      const svgH = wrapRect.height
+      const svgW = wrapRect.width
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      svg.setAttribute('width', svgW)
+      svg.setAttribute('height', svgH)
+      svg.style.cssText = 'position:absolute;top:0;left:0;overflow:visible;z-index:4;'
+      svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`)
+
+      const wrapLeft = wrapRect.left
+      const R   = 10  // corner radius
+      const CR  = 4   // connector dot radius
+      const GAP = 1   // gap ring width around dot
+
+      // Root x = center of dept card relative to svgWrap
+      const rootX = cardRect.left + cardRect.width / 2 - wrapLeft
+      const barY  = svgH * 0.5
+
+      const mkPath = (d) => {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+        el.setAttribute('d', d)
+        el.setAttribute('stroke', LINE_COLOR)
+        el.setAttribute('stroke-width', '1.5')
+        el.setAttribute('fill', 'none')
+        el.setAttribute('stroke-linecap', 'round')
+        el.setAttribute('stroke-linejoin', 'round')
+        return el
+      }
+
+      // SVG dot no longer needed — connectors rendered as HTML divs via mkCutout
+      const mkDot = () => null
+
+      // Cutout + colored dot: outer ring = canvas bg (vyrез), inner = dept color
+      const mkCutout = (card, offsetX, edgeY) => {
+        const outer = CR + GAP
+        const wrap = document.createElement('div')
+        wrap.style.cssText = `
+          position:absolute;
+          ${edgeY === 'top' ? 'top' : 'bottom'}:${-outer}px;
+          left:${offsetX - outer}px;
+          width:${outer * 2}px;
+          height:${outer * 2}px;
+          border-radius:50%;
+          background:#0D0D0D;
+          z-index:10;
+          pointer-events:none;
+          display:flex;align-items:center;justify-content:center;
+        `
+        const dot = document.createElement('div')
+        dot.style.cssText = `
+          width:${CR * 2}px;
+          height:${CR * 2}px;
+          border-radius:50%;
+          background:${dept.color};
+          flex-shrink:0;
+        `
+        wrap.appendChild(dot)
+        card.appendChild(wrap)
+      }
+
+      // Branch x = center of each div card relative to svgWrap
+      const branchXs = divCards.map(card => {
+        const r = card.getBoundingClientRect()
+        return r.left + r.width / 2 - wrapLeft
+      })
+
+      // Top connector: sits on bottom edge of dept card (half inside card)
+      // Bottom connectors: sit on top edge of div cards (half inside, on the color stripe)
+      const stemTopY   = 0
+      const branchBotY = svgH
+
+      // dept card center x relative to wrapLeft, for cutout placement
+      const deptCardOffsetX = cardRect.left + cardRect.width / 2 - cardRect.left
+
+      if (branchXs.length === 1) {
+        svg.appendChild(mkPath(`M ${rootX} 0 L ${rootX} ${svgH}`))
+        mkCutout(dcard, deptCardOffsetX, 'bottom')
+        mkCutout(divCards[0], divCards[0].getBoundingClientRect().width / 2, 'top')
+      } else {
+        const leftX  = branchXs[0]
+        const rightX = branchXs[branchXs.length - 1]
+
+        svg.appendChild(mkPath(`M ${rootX} 0 L ${rootX} ${barY}`))
+        mkCutout(dcard, deptCardOffsetX, 'bottom')
+
+        svg.appendChild(mkPath(
+          `M ${leftX} ${barY + R} Q ${leftX} ${barY} ${leftX + R} ${barY} L ${rightX - R} ${barY} Q ${rightX} ${barY} ${rightX} ${barY + R}`
+        ))
+
+        divCards.forEach((card, i) => {
+          const cx = branchXs[i]
+          const startY = (i === 0 || i === divCards.length - 1) ? barY + R : barY
+          svg.appendChild(mkPath(`M ${cx} ${startY} L ${cx} ${svgH}`))
+          mkCutout(card, card.getBoundingClientRect().width / 2, 'top')
+        })
+      }
+
+      svgWrap.appendChild(svg)
+    })
+  }
+}
+
+// ── Pan & Zoom ────────────────────────────────────────────────────────────────
+
+let scale = 1, ox = 60, oy = 40
+let dragging = false, lx = 0, ly = 0
+
+function applyTransform() {
+  document.getElementById('world').style.transform = `translate(${ox}px,${oy}px) scale(${scale})`
+  document.getElementById('zlabel').textContent = Math.round(scale * 100) + '%'
+  // Dot pattern: shift background-position to follow pan, scale dot size with zoom
+  const dotSize = 24 * scale
+  const dotX = (ox % dotSize + dotSize) % dotSize
+  const dotY = (oy % dotSize + dotSize) % dotSize
+  const dl = document.getElementById('dot-layer')
+  dl.style.backgroundSize = `${dotSize}px ${dotSize}px`
+  dl.style.backgroundPosition = `${dotX}px ${dotY}px`
+}
+
+function zoom(delta) {
+  const canvas = document.getElementById('canvas')
+  const rect = canvas.getBoundingClientRect()
+  const cx = rect.width / 2, cy = rect.height / 2
+  const s1 = Math.max(0.25, Math.min(2.5, scale + delta))
+  const bx = (cx - ox) / scale, by = (cy - oy) / scale
+  scale = s1; ox = cx - bx * s1; oy = cy - by * s1
+  applyTransform()
+}
+
+function resetView() { scale = 1; ox = 60; oy = 40; applyTransform() }
+
+const canvas = document.getElementById('canvas')
+canvas.addEventListener('wheel', e => {
+  e.preventDefault()
+  const rect = canvas.getBoundingClientRect()
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top
+  const delta = e.deltaY > 0 ? -0.1 : 0.1
+  const s1 = Math.max(0.25, Math.min(2.5, scale + delta))
+  const bx = (mx - ox) / scale, by = (my - oy) / scale
+  scale = s1; ox = mx - bx * s1; oy = my - by * s1
+  applyTransform()
+}, { passive: false })
+
+canvas.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return
+  if (e.target.closest('button,.member-row')) return
+  canvas.setPointerCapture(e.pointerId)
+  dragging = true; lx = e.clientX; ly = e.clientY
+  canvas.classList.add('dragging')
+})
+canvas.addEventListener('pointermove', e => {
+  if (!dragging) return
+  ox += e.clientX - lx; oy += e.clientY - ly
+  lx = e.clientX; ly = e.clientY
+  applyTransform()
+})
+canvas.addEventListener('pointerup', () => { dragging = false; canvas.classList.remove('dragging') })
+
+// ── Modal helpers ─────────────────────────────────────────────────────────────
+
+function showModal(title, bodyHTML, footerHTML) {
+  document.getElementById('modal-title').textContent = title
+  document.getElementById('modal-body').innerHTML = bodyHTML
+  document.getElementById('modal-footer').innerHTML = footerHTML
+  document.getElementById('modal').style.display = 'flex'
+}
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal')) return
+  document.getElementById('modal').style.display = 'none'
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('modal').style.display = 'none'
+    hideCtx()
+  }
+})
+
+function userOptions(selectedId = null) {
+  return data.users.map(u =>
+    `<option value="${u.id}" ${u.id === selectedId ? 'selected' : ''}>${u.name} (${u.tab})</option>`
+  ).join('')
+}
+
+// ── Edit Dept ─────────────────────────────────────────────────────────────────
+
+function openEditDept(deptId) {
+  const dept = byId(data.departments, deptId)
+  showModal('Редактировать департамент', `
+    <div><div class="field-label">Название</div>
+    <input class="field-input" id="f-dname" value="${dept.name}"></div>
+    <div><div class="field-label">Директор</div>
+    <select class="field-select" id="f-ddir">
+      <option value="">— не назначен —</option>
+      ${userOptions(dept.directorId)}
+    </select></div>
+    <div>
+      <div class="field-label">Цвет</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${COLORS.map(c => `
+          <button onclick="selectDeptColor(this,'${c}')" data-color="${c}" style="
+            width:28px;height:28px;border-radius:6px;border:2px solid ${c === dept.color ? '#fff' : 'transparent'};
+            background:${c};cursor:pointer;transition:border-color .1s;flex-shrink:0;
+          "></button>
+        `).join('')}
+        <input type="color" id="f-dcolor-custom" value="${dept.color}"
+          oninput="selectDeptColorCustom(this.value)"
+          style="width:28px;height:28px;border-radius:6px;border:2px solid transparent;
+            padding:0;cursor:pointer;background:none;flex-shrink:0;"
+          title="Свой цвет">
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <button class="btn-secondary" style="width:100%;text-align:left;display:flex;align-items:center;gap:6px;color:var(--text-2)" onclick="document.getElementById('modal').style.display='none';openAddDiv('${deptId}')">
+        <span style="font-size:15px">＋</span> Новый отдел
+      </button>
+    </div>
+  `, `
+    <button class="btn-danger" onclick="deleteDept('${deptId}')">Удалить департамент</button>
+    <button class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Отмена</button>
+    <button class="btn-primary" onclick="saveDept('${deptId}')">Сохранить</button>
+  `)
+}
+
+function selectDeptColor(btn, color) {
+  document.querySelectorAll('[data-color]').forEach(b => b.style.borderColor = 'transparent')
+  btn.style.borderColor = '#fff'
+  document.getElementById('f-dcolor-custom').value = color
+}
+
+function selectDeptColorCustom(color) {
+  document.querySelectorAll('[data-color]').forEach(b => b.style.borderColor = 'transparent')
+}
+
+function saveDept(deptId) {
+  const dept = byId(data.departments, deptId)
+  dept.name = document.getElementById('f-dname').value.trim() || dept.name
+  dept.directorId = document.getElementById('f-ddir').value || null
+  dept.color = document.getElementById('f-dcolor-custom').value
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+function deleteDept(deptId) {
+  if (!confirm('Удалить департамент? Сотрудники потеряют привязку к нему.')) return
+  data.departments = data.departments.filter(d => d.id !== deptId)
+  const dvIds = data.divisions.filter(dv => dv.deptId === deptId).map(dv => dv.id)
+  data.divisions = data.divisions.filter(dv => dv.deptId !== deptId)
+  data.memberships = data.memberships.filter(m => !dvIds.includes(m.divId))
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+function openAddDept() {
+  const defaultColor = COLORS[data.departments.length % COLORS.length]
+  showModal('Новый департамент', `
+    <div><div class="field-label">Название</div>
+    <input class="field-input" id="f-dname" placeholder="Например: HR департамент"></div>
+    <div><div class="field-label">Директор</div>
+    <select class="field-select" id="f-ddir">
+      <option value="">— не назначен —</option>
+      ${userOptions()}
+    </select></div>
+    <div>
+      <div class="field-label">Цвет</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${COLORS.map((c, i) => `
+          <button onclick="selectDeptColor(this,'${c}')" data-color="${c}" style="
+            width:28px;height:28px;border-radius:6px;border:2px solid ${c === defaultColor ? '#fff' : 'transparent'};
+            background:${c};cursor:pointer;flex-shrink:0;
+          "></button>
+        `).join('')}
+        <input type="color" id="f-dcolor-custom" value="${defaultColor}"
+          oninput="selectDeptColorCustom(this.value)"
+          style="width:28px;height:28px;border-radius:6px;border:2px solid transparent;
+            padding:0;cursor:pointer;background:none;flex-shrink:0;"
+          title="Свой цвет">
+      </div>
+    </div>
+  `, `
+    <button class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Отмена</button>
+    <button class="btn-primary" onclick="addDept()">Создать</button>
+  `)
+}
+
+function addDept() {
+  const name = document.getElementById('f-dname').value.trim()
+  if (!name) return
+  const directorId = document.getElementById('f-ddir').value || null
+  const color = document.getElementById('f-dcolor-custom').value
+  data.departments.push({ id: 'd' + Date.now(), name, color, directorId })
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+// ── Edit Division ─────────────────────────────────────────────────────────────
+
+function openEditDiv(divId) {
+  const dv = byId(data.divisions, divId)
+  showModal('Редактировать отдел', `
+    <div><div class="field-label">Название</div>
+    <input class="field-input" id="f-dvname" value="${dv.name}"></div>
+    <div><div class="field-label">Руководитель</div>
+    <select class="field-select" id="f-dvhead">
+      <option value="">— не назначен —</option>
+      ${userOptions(dv.headId)}
+    </select></div>
+  `, `
+    <button class="btn-danger" onclick="deleteDiv('${divId}')">Удалить отдел</button>
+    <button class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Отмена</button>
+    <button class="btn-primary" onclick="saveDiv('${divId}')">Сохранить</button>
+  `)
+}
+
+function saveDiv(divId) {
+  const dv = byId(data.divisions, divId)
+  dv.name = document.getElementById('f-dvname').value.trim() || dv.name
+  dv.headId = document.getElementById('f-dvhead').value || null
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+function deleteDiv(divId) {
+  if (!confirm('Удалить отдел? Сотрудники потеряют привязку к нему.')) return
+  data.divisions = data.divisions.filter(dv => dv.id !== divId)
+  data.memberships = data.memberships.filter(m => m.divId !== divId)
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+function openAddDiv(deptId) {
+  showModal('Новый отдел', `
+    <div><div class="field-label">Название</div>
+    <input class="field-input" id="f-dvname" placeholder="Например: Сценарный отдел"></div>
+    <div><div class="field-label">Руководитель</div>
+    <select class="field-select" id="f-dvhead">
+      <option value="">— не назначен —</option>
+      ${userOptions()}
+    </select></div>
+  `, `
+    <button class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Отмена</button>
+    <button class="btn-primary" onclick="addDiv('${deptId}')">Создать</button>
+  `)
+}
+
+function addDiv(deptId) {
+  const name = document.getElementById('f-dvname').value.trim()
+  if (!name) return
+  const headId = document.getElementById('f-dvhead').value || null
+  data.divisions.push({ id: 'dv' + Date.now(), deptId, name, headId })
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+// ── Members ───────────────────────────────────────────────────────────────────
+
+function openAddMember(divId) {
+  const existing = data.memberships.filter(m => m.divId === divId).map(m => m.userId)
+  const available = data.users.filter(u => !existing.includes(u.id))
+  showModal('Добавить сотрудника', `
+    <div><div class="field-label">Сотрудник</div>
+    <select class="field-select" id="f-uid">
+      <option value="">— выберите —</option>
+      ${available.map(u => `<option value="${u.id}">${u.name} (${u.tab})</option>`).join('')}
+    </select></div>
+    <div><div class="field-label">Должность в отделе</div>
+    <input class="field-input" id="f-pos" placeholder="Например: Видеоинженер"></div>
+  `, `
+    <button class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Отмена</button>
+    <button class="btn-primary" onclick="addMember('${divId}')">Добавить</button>
+  `)
+}
+
+function addMember(divId) {
+  const userId = document.getElementById('f-uid').value
+  const position = document.getElementById('f-pos').value.trim()
+  if (!userId || !position) return
+  data.memberships.push({ userId, divId, position })
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+function openEditMember(userId, divId) {
+  const m = data.memberships.find(m => m.userId === userId && m.divId === divId)
+  const user = byId(data.users, userId)
+  showModal(`${user.name}`, `
+    <div><div class="field-label">Должность в отделе</div>
+    <input class="field-input" id="f-pos" value="${m.position}"></div>
+    <div><div class="field-label">Переместить в другой отдел</div>
+    <select class="field-select" id="f-newdiv">
+      <option value="">— оставить здесь —</option>
+      ${data.divisions.filter(dv => dv.id !== divId).map(dv => {
+        const dept = byId(data.departments, dv.deptId)
+        return `<option value="${dv.id}">${dept?.name} → ${dv.name}</option>`
+      }).join('')}
+    </select></div>
+  `, `
+    <button class="btn-danger" onclick="removeMember('${userId}','${divId}')">Убрать из отдела</button>
+    <button class="btn-secondary" onclick="document.getElementById('modal').style.display='none'">Отмена</button>
+    <button class="btn-primary" onclick="saveMember('${userId}','${divId}')">Сохранить</button>
+  `)
+}
+
+function saveMember(userId, divId) {
+  const m = data.memberships.find(m => m.userId === userId && m.divId === divId)
+  m.position = document.getElementById('f-pos').value.trim() || m.position
+  const newDivId = document.getElementById('f-newdiv').value
+  if (newDivId) m.divId = newDivId
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+function removeMember(userId, divId) {
+  data.memberships = data.memberships.filter(m => !(m.userId === userId && m.divId === divId))
+  document.getElementById('modal').style.display = 'none'
+  render()
+}
+
+// ── Context menu ─────────────────────────────────────────────────────────────
+
+function hideCtx() { document.getElementById('ctx-menu').style.display = 'none' }
+
+canvas.addEventListener('contextmenu', e => {
+  if (e.target.closest('button,.member-row')) return
+  e.preventDefault()
+  const menu = document.getElementById('ctx-menu')
+  menu.style.display = 'block'
+  // Keep menu inside viewport
+  const mw = 200, mh = 50
+  const x = Math.min(e.clientX, window.innerWidth - mw)
+  const y = Math.min(e.clientY, window.innerHeight - mh)
+  menu.style.left = x + 'px'
+  menu.style.top  = y + 'px'
+})
+
+document.addEventListener('click', hideCtx)
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+applyTransform()
+render()
+</script>
+</body>
+</html>

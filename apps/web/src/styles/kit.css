@@ -1,0 +1,122 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Дом-кит Nexus (Work OS): Tailwind v4 + shadcn-токены.
+   Preflight НЕ подключаем намеренно — чтобы не сбросить стили существующих
+   inline-страниц. Только theme + utilities. Токены — из Figma-макета.
+   --border НЕ переопределяем: используем существующий Nexus var(--border).
+   ───────────────────────────────────────────────────────────────────────── */
+@layer theme, base, components, utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@source '../**/*.{ts,tsx}';
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Токены из Figma-макета v2 (.figma/ux-ui prototype v2/src/styles/theme.css).
+   Сайдбар-группа едина для обеих тем — сайдбар всегда тёмный. */
+:root {
+  --background: #f4f5f7;
+  --foreground: #0d0f14;
+  --card: #ffffff;
+  --card-foreground: #0d0f14;
+  --popover: #ffffff;
+  --popover-foreground: #0d0f14;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #e8eaef;
+  --secondary-foreground: #0d0f14;
+  --muted: #eceef3;
+  --muted-foreground: #6b7080;
+  --accent: #eff0f8;
+  --accent-foreground: #0d0f14;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --input: transparent;
+  --input-background: #f0f1f5;
+  --switch-background: #c5c9d6;
+  --ring: #4f46e5;
+
+  --sidebar: #1a1b26;
+  --sidebar-foreground: #c8cadc;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(255,255,255,0.06);
+  --sidebar-accent-foreground: #e2e4f0;
+  --sidebar-border: rgba(255,255,255,0.07);
+  --sidebar-muted: #8b8fa8;
+  /* легаси-алиасы (использовались до v2) */
+  --sidebar-bg: var(--sidebar);
+  --sidebar-text: var(--sidebar-foreground);
+  --sidebar-text-active: var(--sidebar-accent-foreground);
+
+  --chart-1: #6366f1;
+  --chart-2: #22d3ee;
+  --chart-3: #f59e0b;
+  --chart-4: #10b981;
+  --chart-5: #f43f5e;
+  --radius: 0.75rem;
+}
+
+/* Тёмная тема контента (сайдбар не меняется) */
+[data-theme="dark"] {
+  --background: #0e0e12;
+  --foreground: #e2e4f0;
+  --card: #16161c;
+  --card-foreground: #e2e4f0;
+  --popover: #1e1e28;
+  --popover-foreground: #e2e4f0;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #1e1e28;
+  --secondary-foreground: #e2e4f0;
+  --muted: #1c1c24;
+  --muted-foreground: #8b8fa8;
+  --accent: #1e1e2c;
+  --accent-foreground: #e2e4f0;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --input-background: #1e1e28;
+  --switch-background: #3a3a50;
+  --ring: #6366f1;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}

@@ -1,0 +1,131 @@
+remotecfg {
+        url            = "https://fleet-management-prod-016.grafana.net"
+        id             = "cv7199373.novalocal"
+        poll_frequency = "60s"
+        attributes     = encoding.from_json(coalesce(``, `{}`))
+        basic_auth {
+                username = "1621676"
+                password = sys.env("GCLOUD_RW_API_KEY")
+        }
+}
+
+prometheus.remote_write "metrics_service" {
+        endpoint {
+                url = "https://prometheus-prod-39-prod-eu-north-0.grafana.net/api/prom/push"
+                basic_auth {
+                        username = "3167580"
+                        password = sys.env("GCLOUD_RW_API_KEY")
+                }
+        }
+}
+
+loki.write "grafana_cloud_loki" {
+        endpoint {
+                url = "https://logs-prod-025.grafana.net/loki/api/v1/push"
+                basic_auth {
+                        username = "1579465"
+                        password = sys.env("GCLOUD_RW_API_KEY")
+                }
+        }
+}
+
+prometheus.exporter.cadvisor "integrations_cadvisor" {
+    docker_only = true
+}
+
+discovery.relabel "integrations_cadvisor" {
+    targets = prometheus.exporter.cadvisor.integrations_cadvisor.targets
+    rule {
+        target_label = "job"
+        replacement  = "integrations/docker"
+    }
+    rule {
+        target_label = "instance"
+        replacement  = constants.hostname
+    }
+}
+
+prometheus.relabel "integrations_cadvisor" {
+    forward_to = [prometheus.remote_write.metrics_service.receiver]
+    rule {
+        source_labels = ["__name__"]
+        regex         = "container_cpu_usage_seconds_total|container_memory_usage_bytes|container_last_seen|machine_memory_bytes|up"
+        action        = "keep"
+    }
+    rule {
+        source_labels = ["container_label_com_docker_compose_project"]
+        regex         = "tvonly"
+        action        = "drop"
+    }
+    rule {
+        source_labels = ["name"]
+        regex         = "tvonly.*"
+        action        = "drop"
+    }
+}
+
+prometheus.scrape "integrations_cadvisor" {
+    targets    = discovery.relabel.integrations_cadvisor.output
+    forward_to = [prometheus.relabel.integrations_cadvisor.receiver]
+}
+
+discovery.docker "logs_integrations_docker" {
+    host             = "unix:///var/run/docker.sock"
+    refresh_interval = "5s"
+}
+
+discovery.relabel "logs_integrations_docker" {
+    targets = []
+    rule {
+        target_label = "job"
+        replacement  = "integrations/docker"
+    }
+    rule {
+        target_label = "instance"
+        replacement  = constants.hostname
+    }
+    rule {
+        source_labels = ["__meta_docker_container_name"]
+        regex         = "/(.*)"
+        target_label  = "container"
+    }
+    rule {
+        source_labels = ["__meta_docker_container_log_stream"]
+        target_label  = "stream"
+    }
+    rule {
+        source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+        regex         = "tvonly"
+        action        = "drop"
+    }
+}
+
+loki.source.docker "logs_integrations_docker" {
+    host             = "unix:///var/run/docker.sock"
+    targets          = discovery.docker.logs_integrations_docker.targets
+    forward_to       = [loki.write.grafana_cloud_loki.receiver]
+    relabel_rules    = discovery.relabel.logs_integrations_docker.rules
+    refresh_interval = "5s"
+}
+
+prometheus.scrape "node_exporter" {
+    targets         = [{"__address__" = "localhost:9100"}]
+    forward_to      = [prometheus.remote_write.metrics_service.receiver]
+    scrape_interval = "60s"
+    job_name        = "node-exporter"
+}
+
+prometheus.scrape "postgres_exporter" {
+    targets         = [{"__address__" = "localhost:9187"}]
+    forward_to      = [prometheus.remote_write.metrics_service.receiver]
+    scrape_interval = "60s"
+    job_name        = "postgres"
+}
+
+prometheus.scrape "api_metrics" {
+    targets         = [{"__address__" = "localhost:4000"}]
+    metrics_path    = "/metrics"
+    forward_to      = [prometheus.remote_write.metrics_service.receiver]
+    scrape_interval = "15s"
+    job_name        = "tvshifts-api"
+}

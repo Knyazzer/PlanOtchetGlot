@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; background:#0D0D0D; font-family:'Urbanist',sans-serif; color:#fff; font-size:13px; -webkit-font-smoothing:antialiased; }
+
+:root {
+  --s1:#161616; --s2:#1E1E1E; --s3:#262626;
+  --border:rgba(255,255,255,0.07); --border-s:rgba(255,255,255,0.13);
+  --muted:#A0A0A0; --ph:#555;
+  --accent-s:#FF6B35; --accent-e:#E8194B;
+  --wi:#F59E0B; --wi-bg:rgba(245,158,11,0.13); --wi-brd:rgba(245,158,11,0.30); --wi-tab:rgba(245,158,11,0.62);
+  --prod-c:#29BF12; --prod-bg:rgba(41,191,18,0.13);
+  --pre-c:#D97706;  --pre-bg:rgba(217,119,6,0.13);
+  --req-c:#6495ED;  --req-bg:rgba(100,149,237,0.13);
+  --post-c:#a78bfa; --post-bg:rgba(167,139,250,0.13);
+  --done-c:#4ade80; --done-bg:rgba(74,222,128,0.10);
+}
+
+.root { display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+.topbar { height:36px; background:var(--s1); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; flex-shrink:0; font-size:12px; color:var(--muted); gap:6px; }
+.topbar span { color:#fff; }
+
+.toolbar { height:40px; background:var(--s1); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; padding:0 20px; flex-shrink:0; }
+.view-btn { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--muted); padding:4px 10px; border-radius:6px; cursor:pointer; border:1px solid transparent; }
+.view-btn.active { background:var(--s2); color:#fff; border-color:var(--border-s); }
+.sep { width:1px; height:18px; background:var(--border-s); }
+.fchip { font-size:12px; font-weight:600; padding:3px 11px; border-radius:99px; border:1px solid var(--border-s); color:var(--muted); cursor:pointer; white-space:nowrap; }
+.fchip.on { background:var(--s2); color:#fff; border-color:rgba(255,255,255,.2); }
+.list-wrap { flex:1; overflow-x:auto; overflow-y:auto; }
+.list-wrap::-webkit-scrollbar { width:4px; height:4px; }
+.list-wrap::-webkit-scrollbar-thumb { background:var(--s3); border-radius:4px; }
+
+/* columns: icon+num | name | status | date | location | exec | line | account | budget | progress */
+.GRID {
+  display:grid;
+  grid-template-columns: 52px minmax(200px,1fr) 110px 80px 130px 155px 155px 155px 100px 90px;
+  min-width:1320px;
+}
+
+.list-header { padding:0 20px; height:30px; align-items:center; border-bottom:1px solid var(--border-s); background:var(--s1); position:sticky; top:0; z-index:10; }
+.col-h { font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ph); cursor:pointer; display:flex; align-items:center; padding-right:6px; white-space:nowrap; overflow:hidden; }
+.col-h.sort { color:var(--muted); }
+.col-h.sort::after { content:'↓'; font-size:9px; margin-left:3px; }
+
+.list-row { padding:0 20px; height:48px; align-items:center; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; }
+.list-row:hover { background:rgba(255,255,255,.025); }
+
+/* ── folder icon с номером внутри ── */
+.col-icon { display:flex; align-items:center; justify-content:center; }
+
+.wi-folder {
+  position:relative;
+  width:36px;
+  height:30px;
+  flex-shrink:0;
+}
+.wi-folder-tab {
+  position:absolute;
+  top:0; left:0;
+  width:15px; height:7px;
+  background:var(--wi-tab);
+  border-radius:3px 5px 0 0;
+}
+.wi-folder-body {
+  position:absolute;
+  bottom:0; left:0; right:0;
+  height:24px;
+  background:var(--wi-bg);
+  border:1.5px solid var(--wi-brd);
+  border-radius:0 4px 4px 4px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  /* тонкая полоска сверху — цвет WI */
+}
+.wi-folder-body::before {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0;
+  height:2.5px;
+  background:linear-gradient(90deg, var(--wi), #FCD34D);
+  border-radius:0 2px 0 0;
+}
+.wi-folder-num {
+  font-size:10px;
+  font-weight:400;
+  font-family:'JetBrains Mono', monospace;
+  color:rgba(245,158,11,0.85);
+  line-height:1;
+  position:relative; /* above ::before */
+  z-index:1;
+  margin-top:2px;
+}
+
+/* name */
+.col-name { display:flex; align-items:center; gap:10px; min-width:0; padding-right:10px; }
+.wi-info { flex:1; min-width:0; }
+.wi-title { font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wi-type  { font-size:11px; color:var(--muted); margin-top:1px; }
+
+/* status */
+.sbadge { font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+.sbadge::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; opacity:.7; flex-shrink:0; }
+.s-prod{background:var(--prod-bg);color:var(--prod-c);}
+.s-pre {background:var(--pre-bg); color:var(--pre-c);}
+.s-req {background:var(--req-bg); color:var(--req-c);}
+.s-post{background:var(--post-bg);color:var(--post-c);}
+.s-done{background:var(--done-bg);color:var(--done-c);}
+
+.col-date { font-size:12px; color:var(--muted); white-space:nowrap; padding-right:6px; }
+.col-loc  { font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px; }
+
+.person-cell { display:flex; align-items:center; gap:6px; padding-right:8px; overflow:hidden; }
+.av { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800; flex-shrink:0; }
+.person-name { font-size:12px; color:#ccc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.person-empty { font-size:12px; color:var(--ph); }
+
+.col-money { font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; color:#ccc; white-space:nowrap; }
+
+.col-prog { display:flex; align-items:center; gap:5px; }
+.rpct { font-size:12px; font-weight:800; min-width:30px; font-variant-numeric:tabular-nums; }
+
+/* group */
+.group-row { padding:18px 20px 6px; font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ph); display:flex; align-items:center; gap:10px; min-width:1320px; }
+.group-row::after { content:''; flex:1; height:1px; background:var(--border); }
+.gcnt { font-size:10px; font-weight:600; color:var(--muted); background:var(--s3); padding:1px 7px; border-radius:99px; text-transform:none; letter-spacing:0; }
+
+/* ── add-row кружки ── */
+.list-row { position:relative; }
+
+.add-trigger {
+  position:absolute; left:50%; transform:translateX(-50%);
+  width:18px; height:18px; border-radius:50%;
+  background:var(--s2); border:1.5px solid var(--border-s);
+  color:var(--muted); font-size:13px; line-height:1;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; z-index:5;
+  opacity:0; pointer-events:none;
+  transition:opacity .12s, background .12s, border-color .12s;
+}
+.add-trigger.top { top:-9px; }
+.add-trigger.bot { bottom:-9px; }
+.list-row:hover .add-trigger { opacity:1; pointer-events:auto; }
+.add-trigger:hover { background:var(--accent-s); border-color:var(--accent-s); color:#fff; }
+
+/* ── строка-редактор ── */
+.new-row {
+  min-width:1320px; padding:0 20px; height:48px;
+  display:grid;
+  grid-template-columns: 52px minmax(200px,1fr) 110px 80px 130px 155px 155px 155px 100px 90px;
+  align-items:center;
+  background:rgba(245,158,11,.04);
+  border-bottom:1px solid rgba(245,158,11,.18);
+  border-left:2px solid rgba(245,158,11,.5);
+  animation:rowIn .15s ease;
+}
+@keyframes rowIn {
+  from { opacity:0; transform:scaleY(.6); transform-origin:top; }
+  to   { opacity:1; transform:scaleY(1); }
+}
+.new-row input, .new-row select {
+  background:var(--s3); border:1px solid var(--border-s);
+  border-radius:5px; color:#fff; font:inherit; font-size:12px;
+  padding:3px 8px; outline:none; width:100%;
+}
+.new-row input:focus, .new-row select:focus { border-color:rgba(245,158,11,.6); }
+.new-row input::placeholder { color:var(--ph); }
+.new-row .nr-icon { display:flex; align-items:center; justify-content:center; }
+.nr-folder { width:36px; height:30px; position:relative; opacity:.4; }
+.nr-folder-tab { position:absolute; top:0; left:0; width:15px; height:7px; background:var(--wi-tab); border-radius:3px 5px 0 0; }
+.nr-folder-body { position:absolute; bottom:0; left:0; right:0; height:24px; background:var(--wi-bg); border:1.5px dashed var(--wi-brd); border-radius:0 4px 4px 4px; }
+.new-row .nr-save {
+  font-size:11px; font-weight:700; padding:3px 10px; border-radius:6px;
+  background:linear-gradient(135deg,var(--accent-s),var(--accent-e)); color:#fff; cursor:pointer; border:none; font-family:inherit;
+}
+.new-row .nr-cancel {
+  font-size:11px; font-weight:600; padding:3px 8px; border-radius:6px;
+  background:none; border:1px solid var(--border-s); color:var(--muted); cursor:pointer; font-family:inherit; margin-left:4px;
+}
+</style>
+</head>
+<body>
+<div class="root">
+  <div class="topbar">Проекты › <span>Все Work Items</span><span style="margin-left:auto;color:var(--ph)">9 объектов</span></div>
+
+  <div class="toolbar">
+    <div class="view-btn active">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="1" y1="3" x2="13" y2="3"/><line x1="1" y1="7" x2="13" y2="7"/><line x1="1" y1="11" x2="13" y2="11"/></svg>
+      Список
+    </div>
+    <div class="view-btn">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>
+      Карточки
+    </div>
+    <div class="sep"></div>
+    <div class="fchip on">Все</div>
+    <div class="fchip">Заявка</div>
+    <div class="fchip">Pre-prod</div>
+    <div class="fchip">Production</div>
+    <div class="fchip">Post-prod</div>
+    <div class="fchip">Готово</div>
+  </div>
+
+  <div class="list-wrap">
+    <div class="list-header GRID">
+      <div class="col-h" style="justify-content:center">#</div>
+      <div class="col-h sort">Название</div>
+      <div class="col-h">Статус</div>
+      <div class="col-h">Дата</div>
+      <div class="col-h">Локация</div>
+      <div class="col-h">Исп. продюсер</div>
+      <div class="col-h">Лин. продюсер</div>
+      <div class="col-h">Аккаунт</div>
+      <div class="col-h">Бюджет</div>
+      <div class="col-h">Готовность</div>
+    </div>
+
+    <!-- П-0142 -->
+    <div class="group-row">П-0142 · Зелёный день 2026 <span class="gcnt">4 WI</span></div>
+
+    <div class="list-row GRID">
+      <div class="add-trigger top" onclick="insertNewRow(this,'before')">+</div>
+      <div class="add-trigger bot" onclick="insertNewRow(this,'after')">+</div>
+      <div class="col-icon"><div class="wi-folder"><div class="wi-folder-tab"></div><div class="wi-folder-body"><span class="wi-folder-num">1</span></div></div></div>
+      <div class="col-name"><div class="wi-info"><div class="wi-title">Открывающий ролик</div><div class="wi-type">Эфирный ролик</div></div></div>
+      <div><span class="sbadge s-prod">Production</span></div>
+      <div class="col-date">12 мая</div>
+      <div class="col-loc">Знаменка, крыша</div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">АС</div><span class="person-name">А. Соколова</span></div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#6495ED,#a78bfa)">ПГ</div><span class="person-name">П. Гусева</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="col-money">980 000 ₽</div>
+      <div class="col-prog"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(41,191,18,.15)" stroke-width="2.5"/><circle cx="11" cy="11" r="9" fill="none" stroke="#29BF12" stroke-width="2.5" stroke-dasharray="56.5" stroke-dashoffset="15.8" stroke-linecap="round" transform="rotate(-90 11 11)"/></svg><span class="rpct" style="color:#29BF12">72%</span></div>
+    </div>
+
+    <div class="list-row GRID">
+      <div class="col-icon"><div class="wi-folder"><div class="wi-folder-tab"></div><div class="wi-folder-body"><span class="wi-folder-num">2</span></div></div></div>
+      <div class="col-name"><div class="wi-info"><div class="wi-title">Заставка</div><div class="wi-type">Анонс</div></div></div>
+      <div><span class="sbadge s-pre">Pre-prod</span></div>
+      <div class="col-date">8 мая</div>
+      <div class="col-loc">—</div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#29BF12,#6495ED)">АИ</div><span class="person-name">А. Иванов</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">АС</div><span class="person-name">А. Соколова</span></div>
+      <div class="col-money">460 000 ₽</div>
+      <div class="col-prog"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(217,119,6,.15)" stroke-width="2.5"/><circle cx="11" cy="11" r="9" fill="none" stroke="#D97706" stroke-width="2.5" stroke-dasharray="56.5" stroke-dashoffset="33.9" stroke-linecap="round" transform="rotate(-90 11 11)"/></svg><span class="rpct" style="color:#D97706">40%</span></div>
+    </div>
+
+    <div class="list-row GRID">
+      <div class="col-icon"><div class="wi-folder"><div class="wi-folder-tab"></div><div class="wi-folder-body"><span class="wi-folder-num">3</span></div></div></div>
+      <div class="col-name"><div class="wi-info"><div class="wi-title">Backstage съёмка</div><div class="wi-type">Backstage</div></div></div>
+      <div><span class="sbadge s-prod">Production</span></div>
+      <div class="col-date">12 мая</div>
+      <div class="col-loc">Выезд</div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="col-money">300 000 ₽</div>
+      <div class="col-prog"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(41,191,18,.15)" stroke-width="2.5"/><circle cx="11" cy="11" r="9" fill="none" stroke="#29BF12" stroke-width="2.5" stroke-dasharray="56.5" stroke-dashoffset="28.3" stroke-linecap="round" transform="rotate(-90 11 11)"/></svg><span class="rpct" style="color:#29BF12">50%</span></div>
+    </div>
+
+    <div class="list-row GRID">
+      <div class="col-icon"><div class="wi-folder"><div class="wi-folder-tab"></div><div class="wi-folder-body"><span class="wi-folder-num">4</span></div></div></div>
+      <div class="col-name"><div class="wi-info"><div class="wi-title">Финальный монтаж</div><div class="wi-type">Монтаж</div></div></div>
+      <div><span class="sbadge s-req">Заявка</span></div>
+      <div class="col-date">13–18 мая</div>
+      <div class="col-loc">—</div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="col-money">270 000 ₽</div>
+      <div class="col-prog"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(100,149,237,.15)" stroke-width="2.5"/></svg><span class="rpct" style="color:#6495ED">0%</span></div>
+    </div>
+
+    <!-- П-0140 -->
+    <div class="group-row">П-0140 · МТС Весна <span class="gcnt">3 WI</span></div>
+
+    <div class="list-row GRID">
+      <div class="add-trigger top" onclick="insertNewRow(this,'before')">+</div>
+      <div class="add-trigger bot" onclick="insertNewRow(this,'after')">+</div>
+      <div class="col-icon"><div class="wi-folder"><div class="wi-folder-tab"></div><div class="wi-folder-body"><span class="wi-folder-num">1</span></div></div></div>
+      <div class="col-name"><div class="wi-info"><div class="wi-title">Интервью с CEO</div><div class="wi-type">Интервью</div></div></div>
+      <div><span class="sbadge s-prod">Production</span></div>
+      <div class="col-date">15 мая</div>
+      <div class="col-loc">Студия А</div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#22d3ee,#6495ED)">КМ</div><span class="person-name">К. Морозов</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">АС</div><span class="person-name">А. Соколова</span></div>
+      <div class="col-money">340 000 ₽</div>
+      <div class="col-prog"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(41,191,18,.15)" stroke-width="2.5"/><circle cx="11" cy="11" r="9" fill="none" stroke="#29BF12" stroke-width="2.5" stroke-dasharray="56.5" stroke-dashoffset="6.8" stroke-linecap="round" transform="rotate(-90 11 11)"/></svg><span class="rpct" style="color:#29BF12">88%</span></div>
+    </div>
+
+    <div class="list-row GRID">
+      <div class="col-icon"><div class="wi-folder"><div class="wi-folder-tab"></div><div class="wi-folder-body"><span class="wi-folder-num">2</span></div></div></div>
+      <div class="col-name"><div class="wi-info"><div class="wi-title">Имиджевый ролик</div><div class="wi-type">Эфирный ролик</div></div></div>
+      <div><span class="sbadge s-post">Post-prod</span></div>
+      <div class="col-date">20 мая</div>
+      <div class="col-loc">—</div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#22d3ee,#6495ED)">КМ</div><span class="person-name">К. Морозов</span></div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#a78bfa,#6495ED)">МЖ</div><span class="person-name">М. Жилин</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="col-money">180 000 ₽</div>
+      <div class="col-prog"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(167,139,250,.15)" stroke-width="2.5"/><circle cx="11" cy="11" r="9" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-dasharray="56.5" stroke-dashoffset="47.9" stroke-linecap="round" transform="rotate(-90 11 11)"/></svg><span class="rpct" style="color:#a78bfa">15%</span></div>
+    </div>
+
+    <div class="list-row GRID">
+      <div class="col-icon"><div class="wi-folder"><div class="wi-folder-tab"></div><div class="wi-folder-body"><span class="wi-folder-num">3</span></div></div></div>
+      <div class="col-name"><div class="wi-info"><div class="wi-title">Сценарий и раскадровка</div><div class="wi-type">Документалка</div></div></div>
+      <div><span class="sbadge s-done">Готово</span></div>
+      <div class="col-date">1 мая</div>
+      <div class="col-loc">Офис</div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#22d3ee,#6495ED)">КМ</div><span class="person-name">К. Морозов</span></div>
+      <div class="person-cell"><span class="person-empty">—</span></div>
+      <div class="person-cell"><div class="av" style="background:linear-gradient(135deg,#29BF12,#22d3ee)">НВ</div><span class="person-name">Н. Васина</span></div>
+      <div class="col-money">90 000 ₽</div>
+      <div class="col-prog"><svg width="22" height="22" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="rgba(74,222,128,.15)" stroke-width="2.5"/><circle cx="11" cy="11" r="9" fill="none" stroke="#4ade80" stroke-width="2.5" stroke-dasharray="56.5" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 11 11)"/></svg><span class="rpct" style="color:#4ade80">100%</span></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// Добавляем кружки ко всем list-row которые ещё без них
+document.querySelectorAll('.list-row').forEach(row => {
+  if (!row.querySelector('.add-trigger')) {
+    const top = document.createElement('div');
+    top.className = 'add-trigger top';
+    top.textContent = '+';
+    top.onclick = () => insertNewRow(top, 'before');
+    const bot = document.createElement('div');
+    bot.className = 'add-trigger bot';
+    bot.textContent = '+';
+    bot.onclick = () => insertNewRow(bot, 'after');
+    row.prepend(top, bot);
+  }
+});
+
+function insertNewRow(trigger, position) {
+  // не вставлять если уже есть открытая строка-редактор рядом
+  const parentRow = trigger.closest('.list-row');
+  const sibling = position === 'after' ? parentRow.nextElementSibling : parentRow.previousElementSibling;
+  if (sibling && sibling.classList.contains('new-row')) return;
+
+  const row = document.createElement('div');
+  row.className = 'new-row';
+  row.innerHTML = `
+    <div class="nr-icon">
+      <div class="nr-folder"><div class="nr-folder-tab"></div><div class="nr-folder-body"></div></div>
+    </div>
+    <div style="padding-right:10px">
+      <input type="text" placeholder="Название WI" autofocus style="font-weight:600">
+    </div>
+    <div>
+      <select>
+        <option value="">Статус</option>
+        <option>Заявка</option>
+        <option>Pre-prod</option>
+        <option>Production</option>
+        <option>Post-prod</option>
+        <option>Готово</option>
+      </select>
+    </div>
+    <div><input type="text" placeholder="Дата"></div>
+    <div><input type="text" placeholder="Локация"></div>
+    <div><input type="text" placeholder="Исп. продюсер"></div>
+    <div><input type="text" placeholder="Лин. продюсер"></div>
+    <div><input type="text" placeholder="Аккаунт"></div>
+    <div><input type="text" placeholder="Бюджет, ₽"></div>
+    <div style="display:flex;align-items:center;gap:4px">
+      <button class="nr-save" onclick="saveRow(this)">✓</button>
+      <button class="nr-cancel" onclick="cancelRow(this)">✕</button>
+    </div>
+  `;
+
+  if (position === 'after') {
+    parentRow.insertAdjacentElement('afterend', row);
+  } else {
+    parentRow.insertAdjacentElement('beforebegin', row);
+  }
+
+  row.querySelector('input').focus();
+}
+
+function saveRow(btn) {
+  const row = btn.closest('.new-row');
+  const name = row.querySelector('input').value.trim();
+  if (!name) { row.querySelector('input').focus(); return; }
+  // в прототипе просто убираем редактор
+  row.remove();
+}
+
+function cancelRow(btn) {
+  btn.closest('.new-row').remove();
+}
+
+// закрыть по Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.new-row').forEach(r => r.remove());
+});
+</script>
+</body>
+</html>

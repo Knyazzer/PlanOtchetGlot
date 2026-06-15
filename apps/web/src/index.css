@@ -1,0 +1,69 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── CSS-переменные: значения палитры Figma v2 (рестайл старых страниц
+   выполнен перемапом этих переменных — сами страницы не правились).
+   Источник: kit.css / .figma/ux-ui prototype v2/src/styles/theme.css ──── */
+:root, [data-theme="dark"] {
+  --bg:        #0e0e12;
+  --surface-1: #16161c;
+  --surface-2: #1c1c24;
+  --surface-3: #1e1e28;
+  --border:    rgba(255,255,255,0.07);
+  --text-1:    #e2e4f0;
+  --text-2:    #b9bccf;
+  --text-3:    #8b8fa8;
+  --text-muted:#565a70;
+  --accent-s:  #6366f1;
+  --accent-e:  #E8194B;
+  --success:   #29BF12;
+  --danger:    #E8194B;
+  --warning:   #F59E0B;
+}
+
+[data-theme="light"] {
+  --bg:        #f4f5f7;
+  --surface-1: #ffffff;
+  --surface-2: #eceef3;
+  --surface-3: #e8eaef;
+  --border:    rgba(0,0,0,0.08);
+  --text-1:    #0d0f14;
+  --text-2:    #3d4150;
+  --text-3:    #6b7080;
+  --text-muted:#9a9eae;
+  --accent-s:  #4f46e5;
+}
+
+/* ── Базовые стили ──────────────────────────────────────────────────────── */
+html { font-size: 16px; height: 100%; }
+
+body {
+  margin: 0; padding: 0;
+  height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--text-1);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { height: 100%; display: flex; flex-direction: column; }
+
+/* ── Скроллбар ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ── Анимации ───────────────────────────────────────────────────────────── */
+@keyframes dropDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes taskGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,107,53,0); }
+  50%       { box-shadow: 0 0 0 3px rgba(255,107,53,0.38), 0 0 18px 4px rgba(255,107,53,0.18); }
+}
+
+.task-new {
+  animation: taskGlow 1.8s ease-in-out infinite;
+}

@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Shifts — Kanban</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0A0A0C;
+    --surf1:     #131318;
+    --surf2:     #1C1C24;
+    --surf3:     #242430;
+    --border:    rgba(255,255,255,0.07);
+    --text:      #FFFFFF;
+    --text2:     #8A8A9A;
+    --text3:     #464658;
+    --acc-start: #FF6B35;
+    --acc-end:   #E8194B;
+    --col-draft: #464658;
+    --col-work:  #0EA5E9;
+    --col-done:  #29BF12;
+  }
+
+  body {
+    font-family: 'Urbanist', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ─────────────────────────────────────────────── */
+  header {
+    height: 60px;
+    background: var(--surf1);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--acc-start), var(--acc-end));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.3px;
+  }
+
+  .header-sep {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+  }
+
+  .header-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text2);
+    flex: 1;
+  }
+
+  .btn-add-task {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, var(--acc-start), var(--acc-end));
+    color: #fff;
+    font-family: 'Urbanist', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.18s;
+  }
+  .btn-add-task:hover { opacity: 0.85; }
+  .btn-add-task svg { flex-shrink: 0; }
+
+  /* ── BOARD ───────────────────────────────────────────────── */
+  .board {
+    flex: 1;
+    display: flex;
+    gap: 16px;
+    padding: 24px 28px;
+    overflow-x: auto;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  /* ── COLUMN ──────────────────────────────────────────────── */
+  .column {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--surf1);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    overflow: hidden;
+  }
+
+  .column.drag-over {
+    border-color: var(--acc-start);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.18);
+  }
+
+  .col-top-bar {
+    height: 3px;
+    border-radius: 0;
+  }
+
+  .col-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 16px 10px;
+  }
+
+  .col-name {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    flex: 1;
+  }
+
+  .col-count {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: var(--surf3);
+    color: var(--text2);
+  }
+
+  .col-add-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text3);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .col-add-btn:hover { background: var(--surf3); color: var(--text); }
+
+  .col-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 0 0 6px;
+  }
+
+  .col-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 12px 14px;
+    min-height: 80px;
+  }
+
+  /* ── CARD ────────────────────────────────────────────────── */
+  .card {
+    background: var(--surf2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: grab;
+    transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+    user-select: none;
+  }
+  .card:hover {
+    border-color: rgba(255,255,255,0.13);
+    box-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    transform: translateY(-1px);
+  }
+  .card.dragging {
+    opacity: 0.4;
+    cursor: grabbing;
+    transform: scale(0.97);
+  }
+  .card.completed {
+    opacity: 0.55;
+  }
+  .card.completed .card-title {
+    text-decoration: line-through;
+    color: var(--text2);
+  }
+
+  .card-row1 {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.45;
+    flex: 1;
+  }
+
+  .card-checkbox {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1.5px solid var(--text3);
+    background: transparent;
+    flex-shrink: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.15s, background 0.15s;
+    margin-top: 1px;
+  }
+  .card-checkbox.checked {
+    background: linear-gradient(135deg, var(--acc-start), var(--acc-end));
+    border-color: transparent;
+  }
+  .card-checkbox.checked::after {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 5px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+
+  .card-row2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-tag {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+
+  .priority-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  .card-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--surf3);
+    border: 1.5px solid var(--border);
+    font-size: 9px;
+    font-weight: 800;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.3px;
+  }
+
+  /* drop placeholder */
+  .drop-placeholder {
+    border: 1.5px dashed rgba(255,107,53,0.35);
+    border-radius: 12px;
+    height: 56px;
+    background: rgba(255,107,53,0.04);
+    pointer-events: none;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surf3); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">TV Shifts</span>
+  <div class="header-sep"></div>
+  <span class="header-title">Kanban</span>
+  <button class="btn-add-task" onclick="addTask()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M6.5 1v11M1 6.5h11" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    Задача
+  </button>
+</header>
+
+<div class="board" id="board"></div>
+
+<script>
+const CARDS = [
+  { id:1, col:'backlog',    title:'Написать сценарий выпуска',       tag:'Редакция',  tagColor:'#8B5CF6', assignee:'АД', priority:'high',   done:false },
+  { id:2, col:'backlog',    title:'Подготовить графику для эфира',   tag:'Дизайн',    tagColor:'#F59E0B', assignee:'МК', priority:'medium', done:false },
+  { id:3, col:'backlog',    title:'Согласовать гостей программы',    tag:'Продюсер',  tagColor:'#0EA5E9', assignee:'ИП', priority:'low',    done:false },
+  { id:4, col:'inprogress', title:'Монтаж утреннего эфира',          tag:'Монтаж',    tagColor:'#FF6B35', assignee:'СВ', priority:'high',   done:false },
+  { id:5, col:'inprogress', title:'Запись закадрового текста',       tag:'Редакция',  tagColor:'#8B5CF6', assignee:'АД', priority:'medium', done:false },
+  { id:6, col:'inprogress', title:'Согласование эфирной сетки',      tag:'Продюсер',  tagColor:'#0EA5E9', assignee:'ИП', priority:'high',   done:false },
+  { id:7, col:'done',       title:'Утренний выпуск новостей',        tag:'Эфир',      tagColor:'#29BF12', assignee:'МК', priority:'medium', done:false },
+  { id:8, col:'done',       title:'Интервью с режиссёром',           tag:'Редакция',  tagColor:'#8B5CF6', assignee:'СВ', priority:'low',    done:false },
+];
+
+let cards = CARDS.map(c => ({...c}));
+let nextId = 9;
+
+const COLS = [
+  { id:'backlog',    label:'Бэклог',   color:'#464658' },
+  { id:'inprogress', label:'В работе', color:'#0EA5E9' },
+  { id:'done',       label:'Готово',   color:'#29BF12' },
+];
+
+const PRIORITY_COLORS = { high:'#E8194B', medium:'#F59E0B', low:'#464658' };
+
+let dragCardId   = null;
+let dragOverCol  = null;
+let placeholder  = null;
+
+// ── render ────────────────────────────────────────────────────
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  COLS.forEach(col => {
+    const colCards = cards.filter(c => c.col === col.id);
+
+    const colEl = document.createElement('div');
+    colEl.className = 'column';
+    colEl.dataset.col = col.id;
+
+    colEl.innerHTML = `
+      <div class="col-top-bar" style="background:${col.color}"></div>
+      <div class="col-header">
+        <span class="col-name" style="color:${col.color}">${col.label}</span>
+        <span class="col-count" id="count-${col.id}">${colCards.length}</span>
+        <button class="col-add-btn" title="Добавить задачу" onclick="addTaskToCol('${col.id}')">+</button>
+      </div>
+      <div class="col-divider"></div>
+      <div class="col-cards" id="cards-${col.id}"></div>
+    `;
+
+    board.appendChild(colEl);
+
+    // drag-over column highlight
+    colEl.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (dragOverCol !== col.id) {
+        clearDragOver();
+        dragOverCol = col.id;
+        colEl.classList.add('drag-over');
+        showPlaceholder(col.id);
+      }
+    });
+    colEl.addEventListener('dragleave', e => {
+      if (!colEl.contains(e.relatedTarget)) {
+        clearDragOver();
+      }
+    });
+    colEl.addEventListener('drop', e => {
+      e.preventDefault();
+      dropCard(col.id);
+    });
+
+    const cardsContainer = colEl.querySelector('.col-cards');
+    colCards.forEach(card => {
+      cardsContainer.appendChild(buildCard(card));
+    });
+  });
+}
+
+function buildCard(card) {
+  const el = document.createElement('div');
+  el.className = 'card' + (card.done ? ' completed' : '');
+  el.dataset.id = card.id;
+  el.draggable = true;
+
+  el.innerHTML = `
+    <div class="card-row1">
+      <span class="card-title">${escHtml(card.title)}</span>
+      <div class="card-checkbox${card.done ? ' checked' : ''}" data-id="${card.id}" title="Отметить выполненным"></div>
+    </div>
+    <div class="card-row2">
+      <span class="card-tag" style="background:${card.tagColor}22;color:${card.tagColor}">${escHtml(card.tag)}</span>
+      <div class="card-avatar" title="${escHtml(card.assignee)}">${escHtml(card.assignee)}</div>
+      <div class="priority-dot" style="background:${PRIORITY_COLORS[card.priority]}" title="Приоритет: ${card.priority}"></div>
+    </div>
+  `;
+
+  // checkbox click
+  el.querySelector('.card-checkbox').addEventListener('click', e => {
+    e.stopPropagation();
+    toggleDone(card.id);
+  });
+
+  // drag events
+  el.addEventListener('dragstart', e => {
+    dragCardId = card.id;
+    setTimeout(() => el.classList.add('dragging'), 0);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  el.addEventListener('dragend', () => {
+    el.classList.remove('dragging');
+    clearDragOver();
+    dragCardId = null;
+    placeholder = null;
+  });
+
+  return el;
+}
+
+// ── drag helpers ──────────────────────────────────────────────
+
+function showPlaceholder(colId) {
+  removePlaceholder();
+  placeholder = document.createElement('div');
+  placeholder.className = 'drop-placeholder';
+  const container = document.getElementById('cards-' + colId);
+  if (container) container.appendChild(placeholder);
+}
+
+function removePlaceholder() {
+  if (placeholder && placeholder.parentNode) {
+    placeholder.parentNode.removeChild(placeholder);
+  }
+  placeholder = null;
+}
+
+function clearDragOver() {
+  document.querySelectorAll('.column.drag-over').forEach(c => c.classList.remove('drag-over'));
+  dragOverCol = null;
+  removePlaceholder();
+}
+
+function dropCard(targetCol) {
+  if (dragCardId == null) return;
+  const card = cards.find(c => c.id === dragCardId);
+  if (card) card.col = targetCol;
+  clearDragOver();
+  render();
+}
+
+// ── actions ───────────────────────────────────────────────────
+
+function toggleDone(id) {
+  const card = cards.find(c => c.id === id);
+  if (card) card.done = !card.done;
+  render();
+}
+
+function addTask() {
+  addTaskToCol('backlog');
+}
+
+function addTaskToCol(colId) {
+  const title = prompt('Название задачи:');
+  if (!title || !title.trim()) return;
+  cards.push({
+    id: nextId++,
+    col: colId,
+    title: title.trim(),
+    tag: 'Задача',
+    tagColor: '#8A8A9A',
+    assignee: '—',
+    priority: 'medium',
+    done: false,
+  });
+  render();
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ── init ──────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,451 @@
+[
+ {
+  "id": "S004",
+  "name": "Халецкий Александр Александрович",
+  "divisionId": "Бренд_медиа_департамент_Администрация",
+  "divisionName": "Администрация",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "S002",
+  "name": "Илюхин Алексей Сергеевич",
+  "divisionId": "Бренд_медиа_департамент_Музыкальная_редакция",
+  "divisionName": "Музыкальная редакция",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "S030",
+  "name": "Коршунова Виолетта Владимировна",
+  "divisionId": "brand_div",
+  "divisionName": "Отдел бренд медиа",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "S017",
+  "name": "Кравченко Владимир Анатольевич",
+  "divisionId": "brand_div",
+  "divisionName": "Отдел бренд медиа",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "S079",
+  "name": "Волкова Елизавета Андреевна",
+  "divisionId": "brand_div",
+  "divisionName": "Отдел бренд медиа",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "S029",
+  "name": "Белозеров Олег Михайлович",
+  "divisionId": "brand_div",
+  "divisionName": "Отдел бренд медиа",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "S043",
+  "name": "Липилин Данил Александрович",
+  "divisionId": "brand_div",
+  "divisionName": "Отдел бренд медиа",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "S073",
+  "name": "Титаров Иван Леонидович",
+  "divisionId": "brand_div",
+  "divisionName": "Отдел бренд медиа",
+  "departmentId": "brand",
+  "departmentName": "Бренд медиа департамент"
+ },
+ {
+  "id": "S013",
+  "name": "Бильданова Юлия Александровна",
+  "divisionId": "Радио_департамент_Администрация",
+  "divisionName": "Администрация",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "S101",
+  "name": "Маркина Юлия Геннадьевна",
+  "divisionId": "radio_red",
+  "divisionName": "Радио редакция",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "S009",
+  "name": "Новикова Юлия Владимировна",
+  "divisionId": "radio_red",
+  "divisionName": "Радио редакция",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "S060",
+  "name": "Антонова Татьяна Валерьевна",
+  "divisionId": "radio_red",
+  "divisionName": "Радио редакция",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "S055",
+  "name": "Винокуров Арсений Александрович",
+  "divisionId": "radio_red",
+  "divisionName": "Радио редакция",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "S016",
+  "name": "Габидуллин Артур Рамисович",
+  "divisionId": "radio_red",
+  "divisionName": "Радио редакция",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "S092",
+  "name": "Тихонов Илья Витальевич",
+  "divisionId": "radio_red",
+  "divisionName": "Радио редакция",
+  "departmentId": "radio",
+  "departmentName": "Радио департамент"
+ },
+ {
+  "id": "S005",
+  "name": "Малыгин Денис Александрович",
+  "divisionId": "ТВ_департамент_Администрация",
+  "divisionName": "Администрация",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S011",
+  "name": "Половников Алексей Андреевич",
+  "divisionId": "tv_edit",
+  "divisionName": "Отдел видеомонтажа",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S102",
+  "name": "Дмитриев Антон Викторович",
+  "divisionId": "tv_edit",
+  "divisionName": "Отдел видеомонтажа",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S082",
+  "name": "Эргардт Павел Алексеевич",
+  "divisionId": "tv",
+  "divisionName": "ТВ отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S035",
+  "name": "Штельмах Владислав Павлович",
+  "divisionId": "tv",
+  "divisionName": "ТВ отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S052",
+  "name": "Гервальд Владислав Эдуардович",
+  "divisionId": "tv",
+  "divisionName": "ТВ отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S008",
+  "name": "Штельмах Павел Анатольевич",
+  "divisionId": "tv",
+  "divisionName": "ТВ отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S063",
+  "name": "Казанцев Владислав Вячеславович",
+  "divisionId": "tv_prod",
+  "divisionName": "Продюсерский отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S094",
+  "name": "Кудинова Софья Алексеевна",
+  "divisionId": "tv_prod",
+  "divisionName": "Продюсерский отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S093",
+  "name": "Дубоненко Елизавета Юрьевна",
+  "divisionId": "tv_prod",
+  "divisionName": "Продюсерский отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S007",
+  "name": "Сибгатуллина Валерия Евгеньевна",
+  "divisionId": "tv_prod",
+  "divisionName": "Продюсерский отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S021",
+  "name": "Муратова Элина Рамиловна",
+  "divisionId": "tv_prod",
+  "divisionName": "Продюсерский отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S050",
+  "name": "Гусев Валерий Дмитриевич",
+  "divisionId": "tv_tech",
+  "divisionName": "Технический отдел ТВ",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S080",
+  "name": "Мельчаков Владислав Леонидович",
+  "divisionId": "tv_tech",
+  "divisionName": "Технический отдел ТВ",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S015",
+  "name": "Гурцев Михаил Романович",
+  "divisionId": "tv_tech",
+  "divisionName": "Технический отдел ТВ",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S105",
+  "name": "Жилякова Дарья Дмитриевна",
+  "divisionId": "ТВ_департамент_Креативный_отде",
+  "divisionName": "Креативный отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S095",
+  "name": "Климко Сергей",
+  "divisionId": "ТВ_департамент_Креативный_отде",
+  "divisionName": "Креативный отдел",
+  "departmentId": "tv_dept",
+  "departmentName": "ТВ департамент"
+ },
+ {
+  "id": "S026",
+  "name": "Ясенков Дмитрий Анатольевич",
+  "divisionId": "Департамент_персонала_АХО",
+  "divisionName": "АХО",
+  "departmentId": "hr",
+  "departmentName": "Департамент персонала"
+ },
+ {
+  "id": "S085",
+  "name": "Булах Виталий Анатольевич",
+  "divisionId": "Департамент_персонала_АХО",
+  "divisionName": "АХО",
+  "departmentId": "hr",
+  "departmentName": "Департамент персонала"
+ },
+ {
+  "id": "S097",
+  "name": "Белоброва Юлия Сергеевна",
+  "divisionId": "hr_hr",
+  "divisionName": "Отдел персонала",
+  "departmentId": "hr",
+  "departmentName": "Департамент персонала"
+ },
+ {
+  "id": "S018",
+  "name": "Нагорская Яна Павловна",
+  "divisionId": "hr_hr",
+  "divisionName": "Отдел персонала",
+  "departmentId": "hr",
+  "departmentName": "Департамент персонала"
+ },
+ {
+  "id": "S074",
+  "name": "Лебедев Дмитрий Сергеевич",
+  "divisionId": "design_graph",
+  "divisionName": "Отдел графического дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "S076",
+  "name": "Ледовских Диана Дмитриевна",
+  "divisionId": "design_graph",
+  "divisionName": "Отдел графического дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "S042",
+  "name": "Кобелева Анна Сергеевна",
+  "divisionId": "design_graph",
+  "divisionName": "Отдел графического дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "S065",
+  "name": "Мартынова Александра Васильевна",
+  "divisionId": "design_graph",
+  "divisionName": "Отдел графического дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "S027",
+  "name": "Иванов Николай Николаевич",
+  "divisionId": "design_motion",
+  "divisionName": "Отдел моушн-дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "S083",
+  "name": "Колдина Александра Максимовна",
+  "divisionId": "design_motion",
+  "divisionName": "Отдел моушн-дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "S061",
+  "name": "Козырева Светлана Андреевна",
+  "divisionId": "design_motion",
+  "divisionName": "Отдел моушн-дизайна",
+  "departmentId": "design",
+  "departmentName": "Дизайн департамент"
+ },
+ {
+  "id": "S028",
+  "name": "Налетова Владислава Станиславовна",
+  "divisionId": "Корп_медиа_департамент_Отдел_копр_медиа",
+  "divisionName": "Отдел копр медиа",
+  "departmentId": "corp",
+  "departmentName": "Корп медиа департамент"
+ },
+ {
+  "id": "S037",
+  "name": "Перфильева Елизавета Олеговна",
+  "divisionId": "special_sp",
+  "divisionName": "Отдел спецпроектов",
+  "departmentId": "special",
+  "departmentName": "Коммерческий департамент"
+ },
+ {
+  "id": "S046",
+  "name": "Покатович Людмила Сергеевна",
+  "divisionId": "special_sp",
+  "divisionName": "Отдел спецпроектов",
+  "departmentId": "special",
+  "departmentName": "Коммерческий департамент"
+ },
+ {
+  "id": "S096",
+  "name": "Ильин Александр Александрович",
+  "divisionId": "special_sp",
+  "divisionName": "Отдел спецпроектов",
+  "departmentId": "special",
+  "departmentName": "Коммерческий департамент"
+ },
+ {
+  "id": "S010",
+  "name": "Чайков Александр Олегович",
+  "divisionId": "special_sp",
+  "divisionName": "Отдел спецпроектов",
+  "departmentId": "special",
+  "departmentName": "Коммерческий департамент"
+ },
+ {
+  "id": "S106",
+  "name": "Емельянов Олег Игоревич",
+  "divisionId": "Коммерческий_департамент_Отдел",
+  "divisionName": "Отдел маркетинга",
+  "departmentId": "special",
+  "departmentName": "Коммерческий департамент"
+ },
+ {
+  "id": "S003",
+  "name": "Комаристый Роман Фомич",
+  "divisionId": "tech_tech",
+  "divisionName": "Технический отдел",
+  "departmentId": "tech",
+  "departmentName": "Технический департамент"
+ },
+ {
+  "id": "S047",
+  "name": "Бурмистрова Татьяна Олеговна",
+  "divisionId": "fin_fin",
+  "divisionName": "Финансовый отдел",
+  "departmentId": "fin",
+  "departmentName": "Финансовый департамент"
+ },
+ {
+  "id": "S033",
+  "name": "Волкова Екатерина Юрьевна",
+  "divisionId": "fin_fin",
+  "divisionName": "Финансовый отдел",
+  "departmentId": "fin",
+  "departmentName": "Финансовый департамент"
+ },
+ {
+  "id": "S110",
+  "name": "Волкова Наталия Дмитриевна",
+  "divisionId": "Финансовый_департамент_Юридиче",
+  "divisionName": "Юридический отдел",
+  "departmentId": "fin",
+  "departmentName": "Финансовый департамент"
+ },
+ {
+  "id": "S051",
+  "name": "Максимова Никалина Никитична",
+  "divisionId": "Финансовый_департамент_Юридиче",
+  "divisionName": "Юридический отдел",
+  "departmentId": "fin",
+  "departmentName": "Финансовый департамент"
+ },
+ {
+  "id": "S001",
+  "name": "Гречко Олег Владимирович",
+  "divisionId": "Администрация_Администрация",
+  "divisionName": "Администрация",
+  "departmentId": "Администрация",
+  "departmentName": "Администрация"
+ },
+ {
+  "id": "S090",
+  "name": "Сотрудник S090 (нет в структуре)",
+  "divisionId": "tech_tech",
+  "divisionName": "Технический отдел",
+  "departmentId": "tech",
+  "departmentName": "Технический департамент",
+  "inferredFromLegacyTasks": true
+ }
+]

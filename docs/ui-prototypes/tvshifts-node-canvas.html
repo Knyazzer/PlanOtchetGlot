@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Shifts — Node Canvas</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0A0A0C;
+    --surface-1: #131318;
+    --surface-2: #1C1C24;
+    --surface-3: #242430;
+    --border: rgba(255,255,255,0.07);
+    --text-1: #FFFFFF;
+    --text-2: #8A8A9A;
+    --text-3: #464658;
+    --accent-s: #FF6B35;
+    --accent-e: #E8194B;
+    --green: #29BF12;
+    --blue: #0EA5E9;
+    --violet: #8B5CF6;
+    --gold: #F59E0B;
+    --font: 'Urbanist', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-1);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    height: 52px;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  .toolbar-logo {
+    font-size: 15px; font-weight: 800; letter-spacing: -.5px;
+    background: linear-gradient(135deg, #FF6B35, #E8194B);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-right: 8px;
+  }
+  .toolbar-sep { width: 1px; height: 24px; background: var(--border); }
+  .toolbar-label { font-size: 12px; color: var(--text-3); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
+  .toolbar-btn {
+    font-family: var(--font); font-size: 12px; font-weight: 600;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-2); border-radius: 8px; padding: 6px 14px;
+    cursor: pointer; transition: all .15s;
+  }
+  .toolbar-btn:hover { color: var(--text-1); border-color: rgba(255,255,255,.15); }
+  .toolbar-btn.primary {
+    background: linear-gradient(135deg, #FF6B35, #E8194B);
+    border-color: transparent; color: #fff;
+  }
+  .toolbar-hint {
+    margin-left: auto; font-size: 11px; color: var(--text-3);
+    display: flex; gap: 16px;
+  }
+  .toolbar-hint span { display: flex; align-items: center; gap: 5px; }
+  .hint-key {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 2px 6px; font-size: 10px;
+    font-weight: 700; color: var(--text-2);
+  }
+  .zoom-info {
+    font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums;
+    min-width: 48px; text-align: right;
+  }
+
+  /* ── Canvas ── */
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+  }
+  .canvas-wrap.grabbing { cursor: grabbing; }
+
+  .dot-bg {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(255,255,255,.06) 1px, transparent 1px);
+    background-size: 28px 28px;
+    pointer-events: none;
+  }
+
+  .world {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+  }
+
+  /* ── SVG connections ── */
+  .edges-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 8000px; height: 8000px;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  /* ── Node base ── */
+  .node {
+    position: absolute;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: box-shadow .2s, transform .2s;
+    user-select: none;
+    overflow: hidden; /* clips accent-bar corners */
+  }
+  .node:hover { transform: translateY(-3px); }
+  .node.dragging { transform: scale(1.02); z-index: 100; cursor: grabbing; }
+  .node.selected { outline: 2px solid #FF6B35; outline-offset: 3px; }
+
+  /* ── PROJECT ── gradient card */
+  .node-project {
+    width: 240px;
+    background: linear-gradient(145deg, #FF6B35, #E8194B);
+    box-shadow: 0 4px 28px rgba(232,25,75,.3);
+    padding: 18px 20px;
+    color: #fff;
+  }
+  .node-project:hover { box-shadow: 0 10px 36px rgba(232,25,75,.42); }
+
+  /* ── WORK ITEM ── surface card with accent top bar */
+  .node-wi {
+    width: 210px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 12px rgba(0,0,0,.35);
+    padding: 0; /* padding applied inside via inner div */
+  }
+  .node-wi:hover { box-shadow: 0 6px 22px rgba(0,0,0,.5); border-color: rgba(255,255,255,.14); }
+  .wi-accent-bar {
+    height: 3px;
+    background: linear-gradient(90deg, #FF6B35, #E8194B);
+    flex-shrink: 0;
+  }
+  .wi-body { padding: 14px 16px; }
+
+  /* ── DEPT ── darker surface, icon header */
+  .node-dept {
+    width: 190px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    padding: 14px 16px;
+  }
+  .node-dept:hover { box-shadow: 0 5px 18px rgba(0,0,0,.4); border-color: rgba(255,255,255,.12); }
+  .dept-icon-wrap {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; margin-bottom: 10px;
+  }
+
+  /* ── PERSON ── compact horizontal card */
+  .node-person {
+    width: 170px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 6px rgba(0,0,0,.2);
+    padding: 11px 13px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .node-person:hover { box-shadow: 0 4px 14px rgba(0,0,0,.35); border-color: rgba(255,255,255,.12); }
+  .avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .person-info { min-width: 0; }
+  .person-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .person-role { font-size: 11px; color: var(--text-2); margin-top: 1px; }
+
+  /* ── Shared node text ── */
+  .node-eyebrow {
+    font-size: 9px; font-weight: 700; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 5px;
+  }
+  .node-project .node-eyebrow { color: rgba(255,255,255,.55); }
+  .node-wi .node-eyebrow,
+  .node-dept .node-eyebrow { color: var(--text-3); }
+
+  .node-title { font-size: 14px; font-weight: 700; line-height: 1.3; margin-bottom: 3px; }
+  .node-project .node-title { font-size: 15px; color: #fff; }
+
+  .node-sub { font-size: 12px; line-height: 1.4; }
+  .node-project .node-sub { color: rgba(255,255,255,.65); }
+  .node-wi .node-sub,
+  .node-dept .node-sub { color: var(--text-2); }
+
+  .node-meta { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+  /* ── Chips ── */
+  .chip {
+    font-size: 10px; font-weight: 700; padding: 3px 9px;
+    border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;
+    white-space: nowrap;
+  }
+  .chip::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor; opacity: .75; flex-shrink: 0;
+  }
+  .chip-green  { background: rgba(41,191,18,.15);  color: #29BF12; }
+  .chip-orange { background: rgba(255,107,53,.15); color: #FF6B35; }
+  .chip-blue   { background: rgba(14,165,233,.15); color: #0EA5E9; }
+  .chip-violet { background: rgba(139,92,246,.15); color: #8B5CF6; }
+  .chip-gray   { background: rgba(255,255,255,.1);  color: var(--text-2); }
+  /* white chips for project cards */
+  .chip-white  { background: rgba(255,255,255,.2);  color: #fff; }
+
+  /* ── Minimap ── */
+  .minimap {
+    position: absolute;
+    bottom: 20px; right: 20px;
+    width: 160px; height: 100px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    z-index: 20;
+  }
+  .minimap-canvas { width: 100%; height: 100%; }
+  .minimap-label {
+    position: absolute; top: 6px; left: 8px;
+    font-size: 9px; font-weight: 700; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--text-3);
+  }
+
+  /* ── Side panel ── */
+  .side-panel {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 280px;
+    background: var(--surface-1);
+    border-left: 1px solid var(--border);
+    padding: 20px;
+    z-index: 30;
+    transform: translateX(100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    overflow-y: auto;
+  }
+  .side-panel.open { transform: translateX(0); }
+  .panel-close {
+    position: absolute; top: 14px; right: 14px;
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font);
+  }
+  .panel-close:hover { color: var(--text-1); }
+  .panel-eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+  .panel-title { font-size: 18px; font-weight: 800; margin-bottom: 12px; }
+  .panel-field { margin-bottom: 14px; }
+  .panel-field-label { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-3); margin-bottom: 5px; }
+  .panel-field-val { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+  .panel-divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+  /* ── Zoom controls ── */
+  .zoom-controls {
+    position: absolute;
+    bottom: 20px; left: 20px;
+    display: flex; flex-direction: column; gap: 4px;
+    z-index: 20;
+  }
+  .zoom-btn {
+    width: 34px; height: 34px;
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text-2);
+    font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font); transition: all .15s;
+  }
+  .zoom-btn:hover { color: var(--text-1); border-color: rgba(255,255,255,.15); }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <span class="toolbar-logo">TV Shifts</span>
+  <div class="toolbar-sep"></div>
+  <span class="toolbar-label">Node Canvas — Карта проектов</span>
+  <div class="toolbar-sep"></div>
+  <button class="toolbar-btn" onclick="resetView()">Сбросить вид</button>
+  <button class="toolbar-btn" onclick="fitAll()">По размеру</button>
+  <button class="toolbar-btn primary">+ Новый проект</button>
+  <div class="toolbar-hint">
+    <span><span class="hint-key">Scroll</span> масштаб</span>
+    <span><span class="hint-key">Drag</span> панорама</span>
+    <span><span class="hint-key">Click</span> детали</span>
+  </div>
+  <span class="zoom-info" id="zoom-info">100%</span>
+</div>
+
+<!-- Canvas -->
+<div class="canvas-wrap" id="canvas" onmousedown="onCanvasDown(event)" onmousemove="onCanvasMove(event)" onmouseup="onCanvasUp(event)" onwheel="onWheel(event)">
+  <div class="dot-bg"></div>
+  <div class="world" id="world">
+    <svg class="edges-svg" id="edges-svg"></svg>
+    <!-- Nodes injected by JS -->
+  </div>
+</div>
+
+<!-- Zoom controls -->
+<div class="zoom-controls">
+  <button class="zoom-btn" onclick="zoom(1.25)">+</button>
+  <button class="zoom-btn" onclick="zoom(0.8)">−</button>
+</div>
+
+<!-- Minimap -->
+<div class="minimap" id="minimap">
+  <canvas class="minimap-canvas" id="minimap-canvas" width="160" height="100"></canvas>
+  <span class="minimap-label">ОБЗОР</span>
+</div>
+
+<!-- Side panel -->
+<div class="side-panel" id="side-panel">
+  <button class="panel-close" onclick="closePanel()">✕</button>
+  <div id="panel-content"></div>
+</div>
+
+<script>
+// ── State ──
+let tx = 80, ty = 80, scale = 0.85;
+let isDragging = false, lastMx = 0, lastMy = 0;
+let nodeDrag = null;
+
+// ── Data ──
+const NODES = [
+  // Projects
+  {
+    id: 'p1', type: 'project',
+    x: 400, y: 80,
+    title: 'Прямой эфир — Новости 21:00',
+    sub: 'Ежедневная трансляция',
+    chips: [{ label: 'Активен', cls: 'chip-green' }, { label: '12 смен', cls: 'chip-gray' }],
+    detail: { Канал: 'Первый', Режиссёр: 'А. Иванов', Начало: '01.05.2026', 'Work Items': '4', Смены: '12', Статус: 'Активен' }
+  },
+  {
+    id: 'p2', type: 'project',
+    x: 760, y: 80,
+    title: 'Документальный «Арктика»',
+    sub: 'Экспедиция, 3 серии',
+    chips: [{ label: 'В работе', cls: 'chip-orange' }, { label: '8 смен', cls: 'chip-gray' }],
+    detail: { Канал: 'НТВ', Режиссёр: 'М. Петрова', Начало: '10.05.2026', 'Work Items': '3', Смены: '8', Статус: 'В работе' }
+  },
+
+  // Work Items
+  {
+    id: 'wi1', type: 'wi',
+    x: 200, y: 290,
+    title: 'Монтаж выпуска',
+    sub: 'Постпродакшн · 3 дня',
+    chips: [{ label: 'Активен', cls: 'chip-green' }],
+    detail: { Тип: 'Задача', Статус: 'Активен', Дедлайн: '12.05.2026', Исполнитель: 'С. Громов', Проект: 'Новости 21:00' }
+  },
+  {
+    id: 'wi2', type: 'wi',
+    x: 460, y: 290,
+    title: 'Озвучка и сведение',
+    sub: 'Звукорежиссёр · 1 день',
+    chips: [{ label: 'В очереди', cls: 'chip-blue' }],
+    detail: { Тип: 'Задача', Статус: 'В очереди', Дедлайн: '13.05.2026', Исполнитель: 'Т. Орлова', Проект: 'Новости 21:00' }
+  },
+  {
+    id: 'wi3', type: 'wi',
+    x: 680, y: 290,
+    title: 'Съёмки экспедиции',
+    sub: 'Выездная группа · 5 дней',
+    chips: [{ label: 'В работе', cls: 'chip-orange' }],
+    detail: { Тип: 'Производство', Статус: 'В работе', Дедлайн: '20.05.2026', Исполнитель: 'В. Смирнов', Проект: 'Арктика' }
+  },
+  {
+    id: 'wi4', type: 'wi',
+    x: 900, y: 290,
+    title: 'Монтаж серий',
+    sub: 'Постпродакшн · 10 дней',
+    chips: [{ label: 'Черновик', cls: 'chip-violet' }],
+    detail: { Тип: 'Задача', Статус: 'Черновик', Дедлайн: '01.06.2026', Исполнитель: 'Д. Ким', Проект: 'Арктика' }
+  },
+
+  // Departments
+  {
+    id: 'd1', type: 'dept', icon: '🎬', iconBg: 'rgba(255,107,53,.15)',
+    x: 120, y: 490,
+    title: 'Монтажный цех',
+    sub: '5 сотрудников',
+    chips: [{ label: '85% загруженность', cls: 'chip-orange' }],
+    detail: { Отдел: 'Монтаж', Сотрудников: '5', Загруженность: '85%', Директор: 'К. Лебедев', Активных: '3' }
+  },
+  {
+    id: 'd2', type: 'dept', icon: '🎙️', iconBg: 'rgba(14,165,233,.15)',
+    x: 340, y: 490,
+    title: 'Звуковой отдел',
+    sub: '3 сотрудника',
+    chips: [{ label: '60% загруженность', cls: 'chip-blue' }],
+    detail: { Отдел: 'Звук', Сотрудников: '3', Загруженность: '60%', Директор: 'Т. Орлова', Активных: '2' }
+  },
+  {
+    id: 'd3', type: 'dept', icon: '📹', iconBg: 'rgba(41,191,18,.15)',
+    x: 580, y: 490,
+    title: 'Съёмочная группа',
+    sub: '8 сотрудников',
+    chips: [{ label: '100% загруженность', cls: 'chip-green' }],
+    detail: { Отдел: 'Съёмки', Сотрудников: '8', Загруженность: '100%', Директор: 'В. Смирнов', Активных: '8' }
+  },
+  {
+    id: 'd4', type: 'dept', icon: '✂️', iconBg: 'rgba(139,92,246,.15)',
+    x: 800, y: 490,
+    title: 'Постпродакшн',
+    sub: '4 сотрудника',
+    chips: [{ label: '45% загруженность', cls: 'chip-violet' }],
+    detail: { Отдел: 'Постпродакшн', Сотрудников: '4', Загруженность: '45%', Директор: 'Д. Ким', Активных: '2' }
+  },
+
+  // People
+  {
+    id: 'u1', type: 'person', color: '#FF6B35', initials: 'СГ',
+    x: 60,  y: 680,
+    title: 'С. Громов', role: 'Монтажёр',
+    chips: [{ label: 'В смене', cls: 'chip-green' }],
+    detail: { Роль: 'Монтажёр', Отдел: 'Монтажный цех', Email: 'sg@tvshifts.ru', Смен: '8', Статус: 'Активен' }
+  },
+  {
+    id: 'u2', type: 'person', color: '#E8194B', initials: 'КЛ',
+    x: 240, y: 680,
+    title: 'К. Лебедев', role: 'Ст. монтажёр',
+    chips: [{ label: 'Выходной', cls: 'chip-gray' }],
+    detail: { Роль: 'Старший монтажёр', Отдел: 'Монтажный цех', Email: 'kl@tvshifts.ru', Смен: '12', Статус: 'Выходной' }
+  },
+  {
+    id: 'u3', type: 'person', color: '#0EA5E9', initials: 'ТО',
+    x: 330, y: 680,
+    title: 'Т. Орлова', role: 'Звукорежиссёр',
+    chips: [{ label: 'В смене', cls: 'chip-green' }],
+    detail: { Роль: 'Звукорежиссёр', Отдел: 'Звуковой отдел', Email: 'to@tvshifts.ru', Смен: '6', Статус: 'Активен' }
+  },
+  {
+    id: 'u4', type: 'person', color: '#29BF12', initials: 'ВС',
+    x: 520, y: 680,
+    title: 'В. Смирнов', role: 'Оператор',
+    chips: [{ label: 'Экспедиция', cls: 'chip-orange' }],
+    detail: { Роль: 'Оператор', Отдел: 'Съёмочная группа', Email: 'vs@tvshifts.ru', Смен: '15', Статус: 'В командировке' }
+  },
+  {
+    id: 'u5', type: 'person', color: '#8B5CF6', initials: 'ДК',
+    x: 770, y: 680,
+    title: 'Д. Ким', role: 'Монтажёр',
+    chips: [{ label: 'Свободен', cls: 'chip-violet' }],
+    detail: { Роль: 'Монтажёр', Отдел: 'Постпродакшн', Email: 'dk@tvshifts.ru', Смен: '3', Статус: 'Свободен' }
+  },
+  {
+    id: 'u6', type: 'person', color: '#F59E0B', initials: 'АИ',
+    x: 950, y: 680,
+    title: 'А. Иванов', role: 'Режиссёр',
+    chips: [{ label: 'В эфире', cls: 'chip-green' }],
+    detail: { Роль: 'Режиссёр', Отдел: 'Съёмочная группа', Email: 'ai@tvshifts.ru', Смен: '20', Статус: 'Активен' }
+  },
+];
+
+const EDGES = [
+  // Projects → WI
+  { from: 'p1', to: 'wi1', color: 'rgba(255,107,53,.5)' },
+  { from: 'p1', to: 'wi2', color: 'rgba(255,107,53,.5)' },
+  { from: 'p2', to: 'wi3', color: 'rgba(232,25,75,.5)' },
+  { from: 'p2', to: 'wi4', color: 'rgba(232,25,75,.5)' },
+  // WI → Dept
+  { from: 'wi1', to: 'd1', color: 'rgba(255,255,255,.12)' },
+  { from: 'wi2', to: 'd2', color: 'rgba(255,255,255,.12)' },
+  { from: 'wi3', to: 'd3', color: 'rgba(255,255,255,.12)' },
+  { from: 'wi4', to: 'd4', color: 'rgba(255,255,255,.12)' },
+  // Dept → People
+  { from: 'd1', to: 'u1', color: 'rgba(255,255,255,.08)' },
+  { from: 'd1', to: 'u2', color: 'rgba(255,255,255,.08)' },
+  { from: 'd2', to: 'u3', color: 'rgba(255,255,255,.08)' },
+  { from: 'd3', to: 'u4', color: 'rgba(255,255,255,.08)' },
+  { from: 'd4', to: 'u5', color: 'rgba(255,255,255,.08)' },
+  { from: 'd3', to: 'u6', color: 'rgba(255,255,255,.08)' },
+];
+
+// ── Render nodes ──
+const world = document.getElementById('world');
+
+function nodeHeight(n) {
+  if (n.type === 'person') return 58;
+  if (n.type === 'dept')   return 106;
+  if (n.type === 'wi')     return 104;
+  return 118; // project
+}
+function nodeWidth(n) {
+  if (n.type === 'person') return 170;
+  if (n.type === 'dept')   return 200;
+  if (n.type === 'wi')     return 220;
+  return 260;
+}
+function nodeCenterX(n) { return n.x + nodeWidth(n) / 2; }
+function nodeCenterY(n) { return n.y + nodeHeight(n) / 2; }
+
+function createNodeEl(n) {
+  const el = document.createElement('div');
+  el.id = 'node-' + n.id;
+  el.className = 'node';
+  el.style.left = n.x + 'px';
+  el.style.top  = n.y + 'px';
+
+  if (n.type === 'project') {
+    el.classList.add('node-project');
+    el.innerHTML = `
+      <div class="node-eyebrow">Проект</div>
+      <div class="node-title">${n.title}</div>
+      <div class="node-sub">${n.sub}</div>
+      <div class="node-meta">${n.chips.map(c => `<span class="chip ${c.cls}">${c.label}</span>`).join('')}</div>
+    `;
+  } else if (n.type === 'wi') {
+    el.classList.add('node-wi');
+    el.innerHTML = `
+      <div class="wi-accent-bar"></div>
+      <div class="wi-body">
+        <div class="node-eyebrow">Work Item</div>
+        <div class="node-title">${n.title}</div>
+        <div class="node-sub">${n.sub}</div>
+        <div class="node-meta">${n.chips.map(c => `<span class="chip ${c.cls}">${c.label}</span>`).join('')}</div>
+      </div>
+    `;
+  } else if (n.type === 'dept') {
+    el.classList.add('node-dept');
+    el.innerHTML = `
+      <div class="dept-icon-wrap" style="background:${n.iconBg}">${n.icon}</div>
+      <div class="node-eyebrow">Отдел</div>
+      <div class="node-title">${n.title}</div>
+      <div class="node-sub">${n.sub}</div>
+      <div class="node-meta">${n.chips.map(c => `<span class="chip ${c.cls}">${c.label}</span>`).join('')}</div>
+    `;
+  } else if (n.type === 'person') {
+    el.classList.add('node-person');
+    el.innerHTML = `
+      <div class="avatar" style="background:${n.color}">${n.initials}</div>
+      <div class="person-info">
+        <div class="person-name">${n.title}</div>
+        <div class="person-role">${n.role}</div>
+        <div style="margin-top:4px">${n.chips.map(c => `<span class="chip ${c.cls}" style="font-size:9px">${c.label}</span>`).join('')}</div>
+      </div>
+    `;
+  }
+
+  // Click → panel
+  el.addEventListener('click', (e) => {
+    if (didDrag) return;
+    e.stopPropagation();
+    openPanel(n);
+    document.querySelectorAll('.node').forEach(x => x.classList.remove('selected'));
+    el.classList.add('selected');
+  });
+
+  // Node drag
+  el.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    didDrag = false;
+    nodeDrag = { node: n, el, sx: e.clientX, sy: e.clientY, ox: n.x, oy: n.y };
+    el.classList.add('dragging');
+  });
+
+  world.appendChild(el);
+  return el;
+}
+
+NODES.forEach(createNodeEl);
+
+// ── Edges ──
+function getNodeById(id) { return NODES.find(n => n.id === id); }
+
+function renderEdges() {
+  const svg = document.getElementById('edges-svg');
+  svg.innerHTML = '';
+  EDGES.forEach(e => {
+    const from = getNodeById(e.from);
+    const to   = getNodeById(e.to);
+    if (!from || !to) return;
+    const x1 = nodeCenterX(from), y1 = from.y + nodeHeight(from);
+    const x2 = nodeCenterX(to),   y2 = to.y;
+    const cy1 = y1 + (y2 - y1) * 0.45;
+    const cy2 = y2 - (y2 - y1) * 0.45;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M${x1},${y1} C${x1},${cy1} ${x2},${cy2} ${x2},${y2}`);
+    path.setAttribute('stroke', e.color);
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-dasharray', e.from.startsWith('d') || e.from.startsWith('wi') ? '' : '');
+    svg.appendChild(path);
+
+    // Arrow
+    const arr = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    arr.setAttribute('cx', x2); arr.setAttribute('cy', y2);
+    arr.setAttribute('r', '3');
+    arr.setAttribute('fill', e.color);
+    svg.appendChild(arr);
+  });
+}
+renderEdges();
+
+// ── Pan & Zoom ──
+let didDrag = false;
+
+function applyTransform() {
+  document.getElementById('world').style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  document.getElementById('zoom-info').textContent = Math.round(scale * 100) + '%';
+  renderMinimap();
+}
+
+function onCanvasDown(e) {
+  if (e.button !== 0 || nodeDrag) return;
+  isDragging = true;
+  lastMx = e.clientX; lastMy = e.clientY;
+  document.getElementById('canvas').classList.add('grabbing');
+}
+
+function onCanvasMove(e) {
+  if (nodeDrag) {
+    const dx = (e.clientX - nodeDrag.sx) / scale;
+    const dy = (e.clientY - nodeDrag.sy) / scale;
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) didDrag = true;
+    nodeDrag.node.x = nodeDrag.ox + dx;
+    nodeDrag.node.y = nodeDrag.oy + dy;
+    nodeDrag.el.style.left = nodeDrag.node.x + 'px';
+    nodeDrag.el.style.top  = nodeDrag.node.y + 'px';
+    renderEdges();
+    renderMinimap();
+    return;
+  }
+  if (!isDragging) return;
+  tx += e.clientX - lastMx;
+  ty += e.clientY - lastMy;
+  lastMx = e.clientX; lastMy = e.clientY;
+  applyTransform();
+}
+
+function onCanvasUp(e) {
+  if (nodeDrag) {
+    nodeDrag.el.classList.remove('dragging');
+    nodeDrag = null;
+  }
+  isDragging = false;
+  document.getElementById('canvas').classList.remove('grabbing');
+}
+
+function onWheel(e) {
+  e.preventDefault();
+  const rect = document.getElementById('canvas').getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  const newScale = Math.min(2.5, Math.max(0.25, scale * delta));
+  tx = mx - (mx - tx) * (newScale / scale);
+  ty = my - (my - ty) * (newScale / scale);
+  scale = newScale;
+  applyTransform();
+}
+
+function zoom(factor) {
+  const canvas = document.getElementById('canvas');
+  const cx = canvas.clientWidth / 2;
+  const cy = canvas.clientHeight / 2;
+  const newScale = Math.min(2.5, Math.max(0.25, scale * factor));
+  tx = cx - (cx - tx) * (newScale / scale);
+  ty = cy - (cy - ty) * (newScale / scale);
+  scale = newScale;
+  applyTransform();
+}
+
+function resetView() {
+  tx = 80; ty = 80; scale = 0.85;
+  applyTransform();
+}
+
+function fitAll() {
+  const canvas = document.getElementById('canvas');
+  const cw = canvas.clientWidth, ch = canvas.clientHeight - 52;
+  const xs = NODES.map(n => [n.x, n.x + nodeWidth(n)]).flat();
+  const ys = NODES.map(n => [n.y, n.y + nodeHeight(n)]).flat();
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const pad = 60;
+  const sx = (cw - pad*2) / (maxX - minX);
+  const sy = (ch - pad*2) / (maxY - minY);
+  scale = Math.min(sx, sy, 1.5);
+  tx = pad - minX * scale;
+  ty = pad - minY * scale;
+  applyTransform();
+}
+
+// ── Side panel ──
+function openPanel(n) {
+  const panel = document.getElementById('side-panel');
+  const content = document.getElementById('panel-content');
+  const typeLabel = { project:'Проект', wi:'Work Item', dept:'Отдел', person:'Сотрудник' }[n.type];
+  content.innerHTML = `
+    <div class="panel-eyebrow">${typeLabel}</div>
+    <div class="panel-title">${n.title}</div>
+    <div class="panel-divider"></div>
+    ${Object.entries(n.detail).map(([k,v]) => `
+      <div class="panel-field">
+        <div class="panel-field-label">${k}</div>
+        <div class="panel-field-val">${v}</div>
+      </div>
+    `).join('')}
+    <div class="panel-divider"></div>
+    <div class="panel-field">
+      <div class="panel-field-label">Связанные узлы</div>
+      <div class="panel-field-val">${
+        EDGES.filter(e => e.from === n.id || e.to === n.id)
+          .map(e => {
+            const other = e.from === n.id ? getNodeById(e.to) : getNodeById(e.from);
+            return other ? other.title : '';
+          }).filter(Boolean).join(', ') || '—'
+      }</div>
+    </div>
+  `;
+  panel.classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('side-panel').classList.remove('open');
+  document.querySelectorAll('.node').forEach(x => x.classList.remove('selected'));
+}
+
+document.getElementById('canvas').addEventListener('click', () => {
+  if (!didDrag) closePanel();
+});
+
+// ── Minimap ──
+function renderMinimap() {
+  const canvas = document.getElementById('minimap-canvas');
+  const ctx = canvas.getContext('2d');
+  const cw = canvas.width, ch = canvas.height;
+  ctx.clearRect(0, 0, cw, ch);
+
+  const allX = NODES.map(n => n.x);
+  const allY = NODES.map(n => n.y);
+  const minX = Math.min(...allX) - 40, maxX = Math.max(...allX) + 300;
+  const minY = Math.min(...allY) - 40, maxY = Math.max(...allY) + 160;
+  const scaleX = cw / (maxX - minX);
+  const scaleY = ch / (maxY - minY);
+
+  // Edges
+  EDGES.forEach(e => {
+    const f = getNodeById(e.from), t = getNodeById(e.to);
+    if (!f || !t) return;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,.15)';
+    ctx.lineWidth = 0.5;
+    ctx.moveTo((nodeCenterX(f) - minX) * scaleX, (f.y - minY) * scaleY);
+    ctx.lineTo((nodeCenterX(t) - minX) * scaleX, (t.y - minY) * scaleY);
+    ctx.stroke();
+  });
+
+  // Nodes
+  NODES.forEach(n => {
+    const colors = { project: '#FF6B35', wi: '#1C1C24', dept: '#131318', person: '#0F0F14' };
+    ctx.fillStyle = colors[n.type] || '#333';
+    ctx.beginPath();
+    ctx.roundRect(
+      (n.x - minX) * scaleX, (n.y - minY) * scaleY,
+      nodeWidth(n) * scaleX, nodeHeight(n) * scaleY, 2
+    );
+    ctx.fill();
+  });
+
+  // Viewport rect
+  const vpCanvas = document.getElementById('canvas');
+  const vpW = vpCanvas.clientWidth, vpH = vpCanvas.clientHeight;
+  const vx = (-tx / scale - minX) * scaleX;
+  const vy = (-ty / scale - minY) * scaleY;
+  const vw = (vpW / scale) * scaleX;
+  const vh = (vpH / scale) * scaleY;
+  ctx.strokeStyle = 'rgba(255,107,53,.6)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(vx, vy, vw, vh);
+}
+
+// Init
+applyTransform();
+document.addEventListener('mouseup', onCanvasUp);
+</script>
+</body>
+</html>
