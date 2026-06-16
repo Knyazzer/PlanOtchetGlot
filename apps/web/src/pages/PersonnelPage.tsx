@@ -123,6 +123,20 @@ function Td({ children, muted }: { children: React.ReactNode; muted?: boolean })
   )
 }
 
+// Индикатор учётки: серый — доступ не выдан (нет auth_id); жёлтый — выдан, но не активирован
+// (не сменён временный пароль); зелёный — активирована (вошёл, сменил пароль).
+function AccountDot({ authId, mustChangePassword }: { authId: string | null; mustChangePassword: boolean }) {
+  const { color, label } =
+    !authId            ? { color: 'var(--text-muted)', label: 'Нет доступа — учётка не выдана' }
+    : mustChangePassword ? { color: '#eab308',           label: 'Доступ выдан, не активирована (не сменён временный пароль)' }
+    :                    { color: 'var(--success)',     label: 'Активирована (вошёл, сменил пароль)' }
+  return (
+    <span title={label} aria-label={label} style={{
+      display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: color,
+    }} />
+  )
+}
+
 // ─── Create modal ─────────────────────────────────────────────────────────────
 
 interface CreateModalProps {
@@ -673,6 +687,7 @@ function StaffTab() {
             <thead>
               <tr>
                 <Th label="#" />
+                <Th label="Учётка" />
                 <Th label="Таб. №"    sortable active={sortCol === 'tabNumber'} dir={sortDir} onClick={() => toggleSort('tabNumber')} />
                 <Th label="ФИО"       sortable active={sortCol === 'name'}  dir={sortDir} onClick={() => toggleSort('name')} />
                 <Th label="Должность" sortable active={sortCol === 'position'}  dir={sortDir} onClick={() => toggleSort('position')} />
@@ -685,7 +700,7 @@ function StaffTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={9} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <tr><td colSpan={10} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                   {data.length === 0 ? 'Сотрудников нет. Добавьте первого.' : 'Ничего не найдено'}
                 </td></tr>
               )}
@@ -700,6 +715,9 @@ function StaffTab() {
                     outline: isSelected ? '1px solid rgba(255,107,53,0.3)' : 'none',
                   }}>
                     <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 11, minWidth: 28 }}>{idx + 1}</td>
+                    <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', width: 36 }}>
+                      <AccountDot authId={p.authId} mustChangePassword={p.mustChangePassword} />
+                    </td>
                     <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                       {p.tabNumber
                         ? <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}>{p.tabNumber}</span>
@@ -916,6 +934,7 @@ function FreelancersTab() {
             <thead>
               <tr>
                 <Th label="#" />
+                <Th label="Учётка" />
                 <Th label="Таб. №"    sortable active={sortCol === 'tabNumber'} dir={sortDir} onClick={() => toggleSort('tabNumber')} />
                 <Th label="ФИО"       sortable active={sortCol === 'name'}  dir={sortDir} onClick={() => toggleSort('name')} />
                 <Th label="Должность" sortable active={sortCol === 'position'}  dir={sortDir} onClick={() => toggleSort('position')} />
@@ -925,7 +944,7 @@ function FreelancersTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                   {data.length === 0 ? 'Фрилансеров нет. Добавьте первого.' : 'Ничего не найдено'}
                 </td></tr>
               )}
@@ -942,6 +961,9 @@ function FreelancersTab() {
                     outline: isSelected ? '1px solid rgba(255,107,53,0.3)' : 'none',
                   }}>
                     <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 11, minWidth: 28 }}>{idx + 1}</td>
+                    <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', width: 36 }}>
+                      <AccountDot authId={p.authId} mustChangePassword={p.mustChangePassword} />
+                    </td>
                     <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                       {p.tabNumber
                         ? <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}>{p.tabNumber}</span>
