@@ -78,6 +78,7 @@ _(по аудиту 2026-06-11 критичных багов не найдено
 - [ ] ⚪ Итерация 4 проектов: импорт WI из реестра матриц, шаблоны проектов, уведомления о дедлайнах
 - [ ] ⚪ Смена пароля в настройках профиля (ProfilePanel внутри AppShell, по клику на ФИО) — сейчас self-service смена есть только в заглушке-кабинете (`PersonalCabinetPage`, через `supabase.auth.updateUser`); при доступе в платформу её там нет. Перенести/добавить в профиль. (Восстановление забытого пароля через почту — отдельно, см. SMTP ниже.)
 - [ ] ⚪ Клик по внешнему департаментному модулю в сайдбаре AppShell (напр. `ext.inventory`) ничего не делает — `onClick` навигирует только при `m.page`; для внешних модулей нужен SSO-переход (логика `goToInventory` сейчас только в `PersonalCabinetPage`)
+- [ ] ⚪ `public.users.id` тип dev↔prod: `PublicUser.id String @id` без `@db.Uuid` → Prisma создаёт колонку `text`, а прод (Supabase) — `uuid`. Локально ломает `deactivate`/`reactivate`/onboard для онбордённых юзеров (`text = uuid`, 42883). Локально пофикшено разовым `ALTER` (не переживёт migrate reset). Постоянно: добавить `@db.Uuid` в `PublicUser.id` + миграция (в проде no-op, но проверить `migrate deploy` на shared `public.users`). Отдельной веткой, не в PR canAccessPlatform.
 - [ ] ⚪ SMTP в Supabase (восстановление пароля) — Этап 3 интеграции
 - [ ] ⚪ Ротация секретов + миграция домена `knzteam.ru → megapolis.media` — Этап 3, по `SECRET-ROTATION.md`/`INTEGRATION.md`
 - [ ] ⚪ Переименование проекта в коде (пакеты `@nexus/*` уже ок; докер/заголовки/домены) — задача из шапки CLAUDE.md
