@@ -352,7 +352,7 @@ export function AppShell() {
           {page === 'svod'      && <SvodPage />}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
-          {page === 'settings'  && isAdmin && <SettingsPage onNavigate={p => navigateTo(p as Page)} />}
+          {page === 'settings'  && isAdmin && <SettingsPage />}
           {page === 'calendar'  && <CalendarPage />}
           {page === 'tasks'     && <TasksPage onOpenChatWith={openChatWith} />}
           {page === 'projects'  && <ProjectsPage subPage={projectsSubPage} onSubPageChange={setProjectsSubPage} />}

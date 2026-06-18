@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Building2, Calendar, Shield, Database, RefreshCw } from 'lucide-react'
+import { Calendar, Shield, Database, Plus, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCurrentUser } from '../hooks/useAuth'
 
@@ -9,19 +9,17 @@ import { useCurrentUser } from '../hooks/useAuth'
 // и «Роли и доступы» (гранты DepartmentModule, RBAC-MODEL §5.3).
 // Профиль/тема/статус/пароль — в панели профиля (клик по имени в сайдбаре).
 
-type Tab = 'structure' | 'formats' | 'roles' | 'backups' | 'sync'
+type Tab = 'formats' | 'roles' | 'backups'
 
-export function SettingsPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+export function SettingsPage() {
   const user = useCurrentUser()
   const isAdmin = !!user?.isAdmin
   const [tab, setTab] = useState<Tab>('formats')
 
   const TABS: Array<{ id: Tab; label: string; icon: React.ElementType }> = [
-    { id: 'structure', label: 'Структура',      icon: Building2 },
     { id: 'formats',   label: 'Форматы дня',    icon: Calendar  },
     { id: 'roles',     label: 'Роли и доступы', icon: Shield    },
     { id: 'backups',   label: 'Бэкапы',         icon: Database  },
-    { id: 'sync',      label: 'Синхронизация',  icon: RefreshCw },
   ]
   const visibleTabs = TABS
 
@@ -49,26 +47,12 @@ export function SettingsPage({ onNavigate }: { onNavigate?: (page: string) => vo
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
-        {tab === 'structure' && isAdmin && (
-          <Placeholder
-            title="Структура компании"
-            text="Департаменты, отделы и членство управляются на странице «Персонал» (вкладка «Структура»)."
-            action={onNavigate ? { label: 'Открыть Персонал', onClick: () => onNavigate('personnel') } : undefined}
-          />
-        )}
         {tab === 'formats' && isAdmin && <FormatsTab />}
         {tab === 'roles' && isAdmin && <RolesTab />}
         {tab === 'backups' && isAdmin && (
           <Placeholder
             title="Бэкапы"
-            text="Резервные копии PostgreSQL выполняются на VDS по расписанию (см. docs/DEPLOY-RUNBOOK.md). Управление из интерфейса — в плане."
-          />
-        )}
-        {tab === 'sync' && isAdmin && (
-          <Placeholder
-            title="Синхронизация Google Sheets"
-            text="Конфигурация листов и ручное обновление кэша — на странице «База данных»."
-            action={onNavigate ? { label: 'Открыть Базу данных', onClick: () => onNavigate('database') } : undefined}
+            text="Управление резервными копиями из интерфейса — в плане. Автоматический бэкап PostgreSQL на VDS на данный момент не настроен в репозитории (проверить host-cron на сервере)."
           />
         )}
       </div>
@@ -92,7 +76,7 @@ function Placeholder({ title, text, action }: { title: string; text: string; act
 
 // ── Форматы дня: правка → новая версия с текущего периода (Q-DAY-5) ───────────
 
-type FormatVersion = { id: string; key: string; label: string; isWork: boolean; score: number | null; effectiveFrom: string }
+type FormatVersion = { id: string; key: string; label: string; isWork: boolean; score: number | null; active: boolean; effectiveFrom: string }
 
 function FormatsTab() {
   const qc = useQueryClient()
@@ -100,43 +84,67 @@ function FormatsTab() {
     queryKey: ['day-format-versions'],
     queryFn: () => api.get('/day-entries/formats/versions').then(r => r.data),
   })
-  // актуальная версия каждого ключа (versions отсортированы по key, effectiveFrom desc)
+  // актуальная версия каждого ключа (versions отсортированы по key, effectiveFrom desc); снятые скрываем
   const current = new Map<string, FormatVersion>()
   for (const v of versions) if (!current.has(v.key)) current.set(v.key, v)
+  const rows = [...current.values()].filter(v => v.active !== false)
 
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['day-format-versions'] })
+    qc.invalidateQueries({ queryKey: ['day-formats'] })
+  }
+  const onErr = (err: unknown) => alert((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка')
+
+  // ── правка существующего формата ──
   const [editing, setEditing] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [isWork, setIsWork] = useState(true)
   const [score, setScore] = useState('')
-
   const save = useMutation({
-    mutationFn: (key: string) => api.post('/day-entries/formats', {
-      key, label: label.trim(), isWork, score: score === '' ? null : Number(score),
-    }),
-    onSuccess: () => {
-      setEditing(null)
-      qc.invalidateQueries({ queryKey: ['day-format-versions'] })
-      qc.invalidateQueries({ queryKey: ['day-formats'] })
-    },
-    onError: (err: unknown) => alert((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка'),
+    mutationFn: (key: string) => api.post('/day-entries/formats', { key, label: label.trim(), isWork, score: score === '' ? null : Number(score) }),
+    onSuccess: () => { setEditing(null); invalidate() },
+    onError: onErr,
+  })
+  const startEdit = (v: FormatVersion) => { setEditing(v.key); setLabel(v.label); setIsWork(v.isWork); setScore(v.score == null ? '' : String(v.score)) }
+
+  // ── добавление нового формата ──
+  const [adding, setAdding] = useState(false)
+  const [nKey, setNKey] = useState('')
+  const [nLabel, setNLabel] = useState('')
+  const [nWork, setNWork] = useState(true)
+  const [nScore, setNScore] = useState('')
+  const keyValid = /^[a-z_]+$/.test(nKey.trim()) && !current.has(nKey.trim())
+  const add = useMutation({
+    mutationFn: () => api.post('/day-entries/formats', { key: nKey.trim(), label: nLabel.trim(), isWork: nWork, score: nScore === '' ? null : Number(nScore) }),
+    onSuccess: () => { setAdding(false); setNKey(''); setNLabel(''); setNWork(true); setNScore(''); invalidate() },
+    onError: onErr,
   })
 
-  const startEdit = (v: FormatVersion) => {
-    setEditing(v.key)
-    setLabel(v.label)
-    setIsWork(v.isWork)
-    setScore(v.score == null ? '' : String(v.score))
+  // ── удаление формата (умное: не используется → удалить; используется → снять) ──
+  const del = useMutation({
+    mutationFn: (key: string) => api.delete(`/day-entries/formats/${key}`),
+    onSuccess: (res: { data: { retired?: boolean; usedBy?: number } }) => {
+      invalidate()
+      if (res.data?.retired) alert(`Формат снят с использования (записей с ним: ${res.data.usedBy}). История сохранена.`)
+    },
+    onError: onErr,
+  })
+  const onDelete = (v: FormatVersion) => {
+    if (window.confirm(`Удалить формат «${v.label}»?\nЕсли он уже проставлен в чьих-то днях — будет снят с использования (история сохранится).`)) del.mutate(v.key)
   }
 
   const th: React.CSSProperties = { padding: '8px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', borderBottom: '1px solid var(--border)' }
   const td: React.CSSProperties = { padding: '8px 12px', fontSize: 13, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }
   const inp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 8px', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13, outline: 'none' }
+  const btnPrimary: React.CSSProperties = { padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary, #4f46e5)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }
+  const btnGhost: React.CSSProperties = { padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }
 
   return (
-    <div style={{ maxWidth: 760 }}>
+    <div style={{ maxWidth: 820 }}>
       <h2 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>Форматы дня</h2>
       <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>
         Изменения версионируются и действуют <b>с 1-го числа текущего месяца</b>; прошлые периоды считаются по прежним весам.
+        Удаление использованного формата = снятие с использования (история цела).
       </p>
       {isLoading ? <div style={{ color: 'var(--text-muted)' }}>Загрузка…</div> : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface-2)' }}>
@@ -144,10 +152,10 @@ function FormatsTab() {
             <thead><tr>
               <th style={th}>Формат</th><th style={th}>Ключ</th><th style={th}>Рабочий</th>
               <th style={{ ...th, textAlign: 'right' }}>Балл</th>
-              <th style={th}>Действует с</th><th style={th} />
+              <th style={th}>Действует с</th><th style={{ ...th, textAlign: 'right' }} />
             </tr></thead>
             <tbody>
-              {[...current.values()].map(v => (
+              {rows.map(v => (
                 <tr key={v.key}>
                   <td style={td}>
                     {editing === v.key
@@ -169,19 +177,45 @@ function FormatsTab() {
                   <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {editing === v.key ? (
                       <>
-                        <button onClick={() => save.mutate(v.key)} disabled={save.isPending || !label.trim()} style={{ padding: '4px 12px', borderRadius: 7, border: 'none', background: 'var(--primary, #4f46e5)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer', marginRight: 6 }}>
+                        <button onClick={() => save.mutate(v.key)} disabled={save.isPending || !label.trim()} style={{ ...btnPrimary, marginRight: 6 }}>
                           {save.isPending ? '…' : 'Сохранить'}
                         </button>
-                        <button onClick={() => setEditing(null)} style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}>Отмена</button>
+                        <button onClick={() => setEditing(null)} style={btnGhost}>Отмена</button>
                       </>
                     ) : (
-                      <button onClick={() => startEdit(v)} style={{ padding: '4px 12px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}>Изменить</button>
+                      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        <button onClick={() => startEdit(v)} style={{ ...btnGhost, color: 'var(--text-2)' }}>Изменить</button>
+                        <button onClick={() => onDelete(v)} disabled={del.isPending} title="Удалить формат" style={{ padding: '5px 8px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--danger, #e8194b)', cursor: 'pointer', display: 'inline-flex' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </span>
                     )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          {/* Добавление формата */}
+          <div style={{ padding: '12px', borderTop: '1px solid var(--border)' }}>
+            {adding ? (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input value={nKey} onChange={e => setNKey(e.target.value)} placeholder="ключ (a-z_)" style={{ ...inp, width: 130, fontFamily: 'monospace' }} />
+                <input value={nLabel} onChange={e => setNLabel(e.target.value)} placeholder="Название" style={{ ...inp, width: 170 }} />
+                <label style={{ fontSize: 12, color: 'var(--text-2)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <input type="checkbox" checked={nWork} onChange={e => setNWork(e.target.checked)} /> рабочий
+                </label>
+                <input type="number" step={0.05} min={0} value={nScore} onChange={e => setNScore(e.target.value)} placeholder="балл" style={{ ...inp, width: 80, textAlign: 'right' }} />
+                <button onClick={() => add.mutate()} disabled={add.isPending || !keyValid || !nLabel.trim()} style={btnPrimary}>{add.isPending ? '…' : 'Добавить'}</button>
+                <button onClick={() => { setAdding(false); setNKey('') }} style={btnGhost}>Отмена</button>
+                {nKey.trim() && !keyValid && <span style={{ fontSize: 11, color: 'var(--danger, #e8194b)' }}>ключ: строчная латиница и «_», уникальный</span>}
+              </div>
+            ) : (
+              <button onClick={() => setAdding(true)} style={{ ...btnGhost, color: 'var(--text-2)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Plus size={14} /> Добавить формат
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
