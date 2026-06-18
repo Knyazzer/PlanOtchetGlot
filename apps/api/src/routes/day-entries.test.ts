@@ -18,6 +18,7 @@ let outsiderId: string
 let headToken: string
 let empToken: string
 let outsiderToken: string
+let adminToken: string
 
 beforeAll(async () => {
   app = Fastify()
@@ -62,13 +63,17 @@ beforeAll(async () => {
     create: { key: 'vacation', label: 'Отпуск', isWork: false, score: 0.55, effectiveFrom: new Date('2026-01-01') },
   })
 
+  const admin = await prisma.user.create({ data: { name: `${P}-admin`, authId: `${P}-admin`, isAdmin: true } })
+
   headToken = app.jwt.sign({ sub: head.authId })
   empToken = app.jwt.sign({ sub: emp.authId })
   outsiderToken = app.jwt.sign({ sub: outsider.authId })
+  adminToken = app.jwt.sign({ sub: admin.authId })
 })
 
 afterAll(async () => {
   await prisma.dayEntry.deleteMany({ where: { userId: { in: [empId, headId, outsiderId] } } })
+  await prisma.dayFormatVersion.deleteMany({ where: { key: { in: ['test_unused', 'test_used'] } } })
   await prisma.task.deleteMany({ where: { assigneeId: { in: [empId, headId] } } })
   await prisma.userDivision.deleteMany({ where: { divId } })
   await prisma.division.delete({ where: { id: divId } })
@@ -181,5 +186,67 @@ describe('GET /svod', () => {
       headers: { authorization: `Bearer ${outsiderToken}` },
     })
     expect(forbidden.statusCode).toBe(403)
+  })
+})
+
+describe('DELETE /day-entries/formats/:key — умное удаление', () => {
+  it('неиспользуемый формат удаляется полностью (admin)', async () => {
+    const created = await app.inject({
+      method: 'POST', url: '/day-entries/formats',
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { key: 'test_unused', label: 'Тест неисп', isWork: true, score: 1 },
+    })
+    expect(created.statusCode).toBe(201)
+
+    const del = await app.inject({
+      method: 'DELETE', url: '/day-entries/formats/test_unused',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(del.statusCode).toBe(200)
+    expect(del.json()).toEqual({ deleted: true, key: 'test_unused' })
+    expect(await prisma.dayFormatVersion.count({ where: { key: 'test_unused' } })).toBe(0)
+  })
+
+  it('используемый формат снимается с использования (retire), история цела', async () => {
+    const created = await app.inject({
+      method: 'POST', url: '/day-entries/formats',
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { key: 'test_used', label: 'Тест исп', isWork: true, score: 2 },
+    })
+    expect(created.statusCode).toBe(201)
+
+    // проставляем формат в день сотрудника напрямую (минуя валидацию PUT)
+    await prisma.dayEntry.create({
+      data: { userId: empId, divisionId: divId, date: new Date('2026-06-12'), dayFormat: 'test_used' },
+    })
+
+    const del = await app.inject({
+      method: 'DELETE', url: '/day-entries/formats/test_used',
+      headers: { authorization: `Bearer ${adminToken}` },
+    })
+    expect(del.statusCode).toBe(200)
+    const body = del.json()
+    expect(body.retired).toBe(true)
+    expect(body.usedBy).toBeGreaterThanOrEqual(1)
+
+    // версия осталась, но active=false
+    const versions = await prisma.dayFormatVersion.findMany({ where: { key: 'test_used' } })
+    expect(versions.length).toBeGreaterThanOrEqual(1)
+    expect(versions.every(v => v.active === false)).toBe(true)
+
+    // в выборке (GET /formats) снятого формата нет
+    const list = await app.inject({
+      method: 'GET', url: '/day-entries/formats',
+      headers: { authorization: `Bearer ${empToken}` },
+    })
+    expect(list.json().some((f: any) => f.key === 'test_used')).toBe(false)
+  })
+
+  it('не-админу удаление запрещено (403)', async () => {
+    const res = await app.inject({
+      method: 'DELETE', url: '/day-entries/formats/office',
+      headers: { authorization: `Bearer ${empToken}` },
+    })
+    expect(res.statusCode).toBe(403)
   })
 })

@@ -624,6 +624,7 @@ model DayFormatVersion {
   label         String
   isWork        Boolean  @map("is_work")
   score         Float?
+  active        Boolean  @default(true) // false = формат снят с использования с этой версии (история считается по активным версиям прошлого)
   effectiveFrom DateTime @db.Date @map("effective_from")
   createdAt     DateTime @default(now()) @map("created_at")
 

@@ -71,14 +71,14 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
   // ── GET /day-entries/formats — справочник форматов (актуальные версии на сегодня) ──
   app.get('/formats', { preHandler: authenticate }, async () => {
     const map = await dayFormatsAt(new Date())
-    return [...map.values()].map(v => ({ key: v.key, label: v.label, isWork: v.isWork, score: v.score }))
+    return [...map.values()].filter(v => v.active).map(v => ({ key: v.key, label: v.label, isWork: v.isWork, score: v.score }))
   })
 
   // ── GET /day-entries/formats/versions — вся история версий (админ-справочник) ─
   app.get('/formats/versions', { preHandler: [authenticate, requireRole('admin')] }, async () => {
     return prisma.dayFormatVersion.findMany({
       orderBy: [{ key: 'asc' }, { effectiveFrom: 'desc' }],
-      select: { id: true, key: true, label: true, isWork: true, score: true, effectiveFrom: true },
+      select: { id: true, key: true, label: true, isWork: true, score: true, active: true, effectiveFrom: true },
     })
   })
 
@@ -98,13 +98,41 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
 
     const now = new Date()
     const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    // active:true — правка/добавление возвращает формат в использование (если был снят)
     const version = await prisma.dayFormatVersion.upsert({
       where: { key_effectiveFrom: { key, effectiveFrom: periodStart } },
-      update: { label, isWork, score },
-      create: { key, label, isWork, score, effectiveFrom: periodStart },
-      select: { id: true, key: true, label: true, isWork: true, score: true, effectiveFrom: true },
+      update: { label, isWork, score, active: true },
+      create: { key, label, isWork, score, active: true, effectiveFrom: periodStart },
+      select: { id: true, key: true, label: true, isWork: true, score: true, active: true, effectiveFrom: true },
     })
     return reply.code(201).send(version)
+  })
+
+  // ── DELETE /day-entries/formats/:key — умное удаление формата ─────────────────
+  // Не используется в днях → удаляем все версии. Используется → «снимаем с
+  // использования» (версия текущего месяца active=false; прошлые записи считаются
+  // по активным версиям прошлых периодов — Q-DAY-5, история цела).
+  app.delete('/formats/:key', { preHandler: [authenticate, requireRole('admin')] }, async (req, reply) => {
+    const { key } = req.params as { key: string }
+    const used = await prisma.dayEntry.count({ where: { dayFormat: key } })
+
+    if (used === 0) {
+      const del = await prisma.dayFormatVersion.deleteMany({ where: { key } })
+      if (del.count === 0) return reply.code(404).send({ error: 'Формат не найден' })
+      return { deleted: true, key }
+    }
+
+    // используется → retire: версия текущего месяца active=false, веса берём из последней
+    const latest = (await dayFormatsAt(new Date())).get(key)
+    if (!latest) return reply.code(404).send({ error: 'Формат не найден' })
+    const now = new Date()
+    const periodStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    await prisma.dayFormatVersion.upsert({
+      where: { key_effectiveFrom: { key, effectiveFrom: periodStart } },
+      update: { active: false },
+      create: { key, label: latest.label, isWork: latest.isWork, score: latest.score, active: false, effectiveFrom: periodStart },
+    })
+    return { retired: true, key, usedBy: used }
   })
 
   // ── GET /day-entries?from&to[&userId] — свои дни; чужие — по орг-охвату ──────
@@ -135,7 +163,8 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     const { date, dayFormat, startTime, endTime, breakMin } = parsed.data
 
     const formats = await dayFormatsAt(new Date(date))
-    if (!formats.has(dayFormat)) return reply.code(400).send({ error: `Неизвестный формат дня: ${dayFormat}` })
+    const fmt = formats.get(dayFormat)
+    if (!fmt || !fmt.active) return reply.code(400).send({ error: `Неизвестный формат дня: ${dayFormat}` })
 
     const divisionId = await resolveDivisionId(user.id) // снапшот отдела на момент записи
     const entry = await prisma.dayEntry.upsert({
@@ -164,7 +193,8 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     if (days > 370) return reply.code(400).send({ error: 'Период больше 370 дней' }) // guard донора
 
     const formats = await dayFormatsAt(start)
-    if (!formats.has(dayFormat)) return reply.code(400).send({ error: `Неизвестный формат дня: ${dayFormat}` })
+    const fmt = formats.get(dayFormat)
+    if (!fmt || !fmt.active) return reply.code(400).send({ error: `Неизвестный формат дня: ${dayFormat}` })
 
     const divisionId = await resolveDivisionId(user.id)
     let applied = 0
