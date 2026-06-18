@@ -634,6 +634,34 @@ model DayFormatVersion {
   @@schema("nexus")
 }
 
+// Общие справочники (единые для всех): админ настраивает значения в разделе «Списки»,
+// сотрудники выбирают из них в формах. Набор списков фиксирован (сидируется миграцией),
+// через UI редактируются только значения (RefItem).
+model RefList {
+  id        String    @id @default(uuid())
+  key       String    @unique
+  label     String
+  sortOrder Int       @default(0) @map("sort_order")
+  items     RefItem[]
+
+  @@map("ref_lists")
+  @@schema("nexus")
+}
+
+model RefItem {
+  id        String   @id @default(uuid())
+  listId    String   @map("list_id")
+  list      RefList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  value     String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([listId, value])
+  @@index([listId])
+  @@map("ref_items")
+  @@schema("nexus")
+}
+
 // ── Личные доски (кастомизация только личная — Q-TASK-1a) ─────────────────────
 
 model BoardColumn {

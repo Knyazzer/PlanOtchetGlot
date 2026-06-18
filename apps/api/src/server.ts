@@ -26,6 +26,7 @@ import { boardRoutes } from './routes/board'
 import { analyticsRoutes } from './routes/analytics'
 import { accessRoutes } from './routes/access'
 import { notificationsRoutes } from './routes/notifications'
+import { refsRoutes } from './routes/refs'
 
 const app = Fastify({ logger: true })
 
@@ -91,6 +92,7 @@ async function main() {
   await app.register(analyticsRoutes,       { prefix: '/analytics' })
   await app.register(accessRoutes,          { prefix: '/access' })
   await app.register(notificationsRoutes,   { prefix: '/notifications' })
+  await app.register(refsRoutes,            { prefix: '/refs' })
 
   const port = Number(process.env.PORT ?? 4000)
   await app.listen({ port, host: '0.0.0.0' })
