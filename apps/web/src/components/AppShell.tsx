@@ -6,7 +6,7 @@ import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { formatName } from '../lib/utils'
 import { openInventoryWithSession } from '../lib/sso'
-import { DatabasePage }  from '../pages/DatabasePage'
+import { ListsPage }     from '../pages/ListsPage'
 import { PersonnelPage } from '../pages/PersonnelPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { HomePage }      from '../pages/HomePage'
@@ -16,7 +16,7 @@ import { ProjectsPage }  from '../pages/ProjectsPage'
 import type { ProjectsSubPage } from '../pages/ProjectsPage'
 import { SvodPage }      from '../pages/SvodPage'
 import { AnalyticsPage } from '../pages/AnalyticsPage'
-import { SettingsPage, FormatsTab, RolesTab, BackupsInfo } from '../pages/SettingsPage'
+import { SettingsPage, RolesTab, BackupsInfo } from '../pages/SettingsPage'
 import { TeamPage }      from '../pages/TeamPage'
 import { NotificationsPanel } from './NotificationsPanel'
 import { useNotificationsBadge } from '../hooks/useNotificationsBadge'
@@ -28,11 +28,11 @@ import { NexusIcon } from './NexusIcon'
 import {
   Home, Calendar, ClipboardList, BarChart3, PieChart, FolderKanban,
   Users, UsersRound, Database, LogOut, MessageSquare, Bell, MoreHorizontal, Settings as SettingsIcon,
-  User, Shield, Archive,
+  User, Shield, Archive, List,
   type LucideIcon,
 } from 'lucide-react'
 
-type AdminPage = 'personnel' | 'database' | 'set-formats' | 'set-roles' | 'set-backups'
+type AdminPage = 'personnel' | 'lists' | 'set-roles' | 'set-backups'
 type UserPage  = 'home' | 'dashboard' | 'calendar' | 'tasks' | 'projects' | 'svod' | 'analytics' | 'team' | 'settings'
 type Page = AdminPage | UserPage
 
@@ -50,9 +50,9 @@ interface NavItem {
 }
 
 const ADMIN_NAV: NavItem[] = [
-  { id: 'personnel', label: 'Персонал',    icon: Users,        adminOnly: true },
-  { id: 'database',  label: 'База данных', icon: Database,     adminOnly: true },
-  { id: 'settings',  label: 'Настройки',  icon: SettingsIcon, adminOnly: true },
+  { id: 'personnel', label: 'Персонал',  icon: Users,        adminOnly: true },
+  { id: 'lists',     label: 'Списки',    icon: List,         adminOnly: true },
+  { id: 'settings',  label: 'Настройки', icon: SettingsIcon, adminOnly: true },
 ]
 
 const USER_NAV: NavItem[] = [
@@ -91,9 +91,9 @@ export function AppShell() {
   const isAdmin = !!user?.isAdmin
   const isSystem = !!user?.isSystemAccount  // мастер-аккаунт: только админка, без рабочего пространства
 
-  const SYSTEM_PAGES: Page[] = ['personnel', 'database', 'set-formats', 'set-roles', 'set-backups']
+  const SYSTEM_PAGES: Page[] = ['personnel', 'lists', 'set-roles', 'set-backups']
   const defaultPage: Page = isSystem ? 'personnel' : 'home'
-  const ADMIN_PAGES: Page[] = ['personnel', 'database']
+  const ADMIN_PAGES: Page[] = ['personnel', 'lists']
   const stored = localStorage.getItem('nexus:page') as Page | null
   const initialPage: Page = isSystem
     ? (stored && SYSTEM_PAGES.includes(stored) ? stored : 'personnel')
@@ -104,10 +104,9 @@ export function AppShell() {
   const adminNav: NavItem[] = isSystem
     ? [
         { id: 'personnel',   label: 'Персонал',       icon: Users,    adminOnly: true },
-        { id: 'database',    label: 'База данных',    icon: Database,  adminOnly: true },
-        { id: 'set-formats', label: 'Форматы дня',    icon: Calendar,  adminOnly: true },
-        { id: 'set-roles',   label: 'Роли и доступы', icon: Shield,    adminOnly: true },
-        { id: 'set-backups', label: 'Бэкапы',         icon: Archive,   adminOnly: true },
+        { id: 'lists',       label: 'Списки',         icon: List,     adminOnly: true },
+        { id: 'set-roles',   label: 'Роли и доступы', icon: Shield,   adminOnly: true },
+        { id: 'set-backups', label: 'Бэкапы',         icon: Archive,  adminOnly: true },
       ]
     : ADMIN_NAV
 
@@ -368,14 +367,13 @@ export function AppShell() {
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
           {page === 'settings'  && isAdmin && <SettingsPage />}
-          {page === 'set-formats' && isAdmin && <div style={{ padding: '24px 28px' }}><FormatsTab /></div>}
           {page === 'set-roles'   && isAdmin && <div style={{ padding: '24px 28px' }}><RolesTab /></div>}
           {page === 'set-backups' && isAdmin && <div style={{ padding: '24px 28px' }}><BackupsInfo /></div>}
           {page === 'calendar'  && <CalendarPage />}
           {page === 'tasks'     && <TasksPage onOpenChatWith={openChatWith} />}
           {page === 'projects'  && <ProjectsPage subPage={projectsSubPage} onSubPageChange={setProjectsSubPage} />}
           {page === 'personnel' && (isAdmin || user?.access?.modules?.some(m => m.key === 'hr.orgstructure')) && <PersonnelPage />}
-          {page === 'database'  && isAdmin && <DatabasePage />}
+          {page === 'lists'     && isAdmin && <ListsPage />}
         </ErrorBoundary>
       </main>
 

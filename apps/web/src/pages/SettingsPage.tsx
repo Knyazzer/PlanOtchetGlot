@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Calendar, Shield, Database, Plus, Trash2 } from 'lucide-react'
+import { Shield, Database, Plus, Trash2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCurrentUser } from '../hooks/useAuth'
 
@@ -9,15 +9,14 @@ import { useCurrentUser } from '../hooks/useAuth'
 // и «Роли и доступы» (гранты DepartmentModule, RBAC-MODEL §5.3).
 // Профиль/тема/статус/пароль — в панели профиля (клик по имени в сайдбаре).
 
-type Tab = 'formats' | 'roles' | 'backups'
+type Tab = 'roles' | 'backups'
 
 export function SettingsPage() {
   const user = useCurrentUser()
   const isAdmin = !!user?.isAdmin
-  const [tab, setTab] = useState<Tab>('formats')
+  const [tab, setTab] = useState<Tab>('roles')
 
   const TABS: Array<{ id: Tab; label: string; icon: React.ElementType }> = [
-    { id: 'formats',   label: 'Форматы дня',    icon: Calendar  },
     { id: 'roles',     label: 'Роли и доступы', icon: Shield    },
     { id: 'backups',   label: 'Бэкапы',         icon: Database  },
   ]
@@ -47,7 +46,6 @@ export function SettingsPage() {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
-        {tab === 'formats' && isAdmin && <FormatsTab />}
         {tab === 'roles' && isAdmin && <RolesTab />}
         {tab === 'backups' && isAdmin && <BackupsInfo />}
       </div>
