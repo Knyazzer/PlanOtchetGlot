@@ -126,13 +126,16 @@ function Td({ children, muted }: { children: React.ReactNode; muted?: boolean })
 // Индикатор учётки: серый — доступ не выдан (нет auth_id); жёлтый — выдан, но не активирован
 // (не сменён временный пароль); зелёный — активирована (вошёл, сменил пароль).
 function AccountDot({ authId, mustChangePassword }: { authId: string | null; mustChangePassword: boolean }) {
-  const { color, label } =
-    !authId            ? { color: 'var(--text-muted)', label: 'Нет доступа — учётка не выдана' }
-    : mustChangePassword ? { color: '#eab308',           label: 'Доступ выдан, не активирована (не сменён временный пароль)' }
-    :                    { color: 'var(--success)',     label: 'Активирована (вошёл, сменил пароль)' }
+  // hollow=true → пустой кружок (только обводка); иначе залитая точка
+  const { color, label, hollow } =
+    !authId            ? { color: 'var(--text-muted)', label: 'Нет доступа — учётка не выдана', hollow: false }
+    : mustChangePassword ? { color: '#eab308',           label: 'Доступ выдан, не активирована (не сменён временный пароль)', hollow: true }
+    :                    { color: 'var(--success)',     label: 'Активирована (вошёл, сменил пароль)', hollow: false }
   return (
     <span title={label} aria-label={label} style={{
-      display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: color,
+      display: 'inline-block', width: 9, height: 9, borderRadius: '50%', boxSizing: 'border-box',
+      background: hollow ? 'transparent' : color,
+      border: hollow ? `2px solid ${color}` : undefined,
     }} />
   )
 }
