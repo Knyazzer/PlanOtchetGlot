@@ -49,14 +49,18 @@ export function SettingsPage() {
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
         {tab === 'formats' && isAdmin && <FormatsTab />}
         {tab === 'roles' && isAdmin && <RolesTab />}
-        {tab === 'backups' && isAdmin && (
-          <Placeholder
-            title="Бэкапы"
-            text="Управление резервными копиями из интерфейса — в плане. Автоматический бэкап PostgreSQL на VDS на данный момент не настроен в репозитории (проверить host-cron на сервере)."
-          />
-        )}
+        {tab === 'backups' && isAdmin && <BackupsInfo />}
       </div>
     </div>
+  )
+}
+
+export function BackupsInfo() {
+  return (
+    <Placeholder
+      title="Бэкапы"
+      text="Управление резервными копиями из интерфейса — в плане. Автоматический бэкап PostgreSQL на VDS на данный момент не настроен в репозитории (проверить host-cron на сервере)."
+    />
   )
 }
 
@@ -78,7 +82,7 @@ function Placeholder({ title, text, action }: { title: string; text: string; act
 
 type FormatVersion = { id: string; key: string; label: string; isWork: boolean; score: number | null; active: boolean; effectiveFrom: string }
 
-function FormatsTab() {
+export function FormatsTab() {
   const qc = useQueryClient()
   const { data: versions = [], isLoading } = useQuery<FormatVersion[]>({
     queryKey: ['day-format-versions'],
@@ -227,7 +231,7 @@ function FormatsTab() {
 type RegistryModule = { key: string; name: string; group: string; readonly: boolean }
 type DeptGrants = { id: string; name: string; employeeCount: number; grants: Array<{ moduleKey: string; editLevel: string }> }
 
-function RolesTab() {
+export function RolesTab() {
   const qc = useQueryClient()
   const { data: registry = [] } = useQuery<RegistryModule[]>({
     queryKey: ['access-registry'],

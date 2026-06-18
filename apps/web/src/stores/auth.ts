@@ -24,6 +24,7 @@ export interface AuthUser {
   email: string | null
   name: string
   isAdmin: boolean
+  isSystemAccount: boolean
   canAccessInventory: boolean
   canAccessPlatform: boolean
   mustChangePassword?: boolean

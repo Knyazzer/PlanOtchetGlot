@@ -16,7 +16,7 @@ import { ProjectsPage }  from '../pages/ProjectsPage'
 import type { ProjectsSubPage } from '../pages/ProjectsPage'
 import { SvodPage }      from '../pages/SvodPage'
 import { AnalyticsPage } from '../pages/AnalyticsPage'
-import { SettingsPage }  from '../pages/SettingsPage'
+import { SettingsPage, FormatsTab, RolesTab, BackupsInfo } from '../pages/SettingsPage'
 import { TeamPage }      from '../pages/TeamPage'
 import { NotificationsPanel } from './NotificationsPanel'
 import { useNotificationsBadge } from '../hooks/useNotificationsBadge'
@@ -28,11 +28,11 @@ import { NexusIcon } from './NexusIcon'
 import {
   Home, Calendar, ClipboardList, BarChart3, PieChart, FolderKanban,
   Users, UsersRound, Database, LogOut, MessageSquare, Bell, MoreHorizontal, Settings as SettingsIcon,
-  User,
+  User, Shield, Archive,
   type LucideIcon,
 } from 'lucide-react'
 
-type AdminPage = 'personnel' | 'database'
+type AdminPage = 'personnel' | 'database' | 'set-formats' | 'set-roles' | 'set-backups'
 type UserPage  = 'home' | 'dashboard' | 'calendar' | 'tasks' | 'projects' | 'svod' | 'analytics' | 'team' | 'settings'
 type Page = AdminPage | UserPage
 
@@ -89,12 +89,27 @@ export function AppShell() {
   const qc      = useQueryClient()
 
   const isAdmin = !!user?.isAdmin
+  const isSystem = !!user?.isSystemAccount  // мастер-аккаунт: только админка, без рабочего пространства
 
-  const defaultPage: Page = 'home'
+  const SYSTEM_PAGES: Page[] = ['personnel', 'database', 'set-formats', 'set-roles', 'set-backups']
+  const defaultPage: Page = isSystem ? 'personnel' : 'home'
   const ADMIN_PAGES: Page[] = ['personnel', 'database']
   const stored = localStorage.getItem('nexus:page') as Page | null
-  const initialPage: Page = stored && (!ADMIN_PAGES.includes(stored) || isAdmin) ? stored : defaultPage
+  const initialPage: Page = isSystem
+    ? (stored && SYSTEM_PAGES.includes(stored) ? stored : 'personnel')
+    : (stored && (!ADMIN_PAGES.includes(stored) || isAdmin) ? stored : defaultPage)
   const [page, setPage] = useState<Page>(initialPage)
+
+  // Системному аккаунту: вместо «Настроек» — её разделы прямо в Администрировании.
+  const adminNav: NavItem[] = isSystem
+    ? [
+        { id: 'personnel',   label: 'Персонал',       icon: Users,    adminOnly: true },
+        { id: 'database',    label: 'База данных',    icon: Database,  adminOnly: true },
+        { id: 'set-formats', label: 'Форматы дня',    icon: Calendar,  adminOnly: true },
+        { id: 'set-roles',   label: 'Роли и доступы', icon: Shield,    adminOnly: true },
+        { id: 'set-backups', label: 'Бэкапы',         icon: Archive,   adminOnly: true },
+      ]
+    : ADMIN_NAV
 
   function navigateTo(p: Page) {
     setPage(p)
@@ -209,12 +224,12 @@ export function AppShell() {
         {/* Nav */}
         <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto', overflowX: 'hidden' }}>
           {/* User section divider for admins */}
-          {isAdmin && !collapsed && (
+          {isAdmin && !isSystem && !collapsed && (
             <div style={{ fontSize: 9, fontWeight: 700, color: SB.muted, letterSpacing: '0.8px', textTransform: 'uppercase', padding: '4px 12px 6px' }}>
               Рабочее пространство
             </div>
           )}
-          {USER_NAV.map(item => (
+          {!isSystem && USER_NAV.map(item => (
             <div key={item.id}>
               <NavBtn item={item} active={page === item.id} collapsed={collapsed} onClick={() => navigateTo(item.id)} badge={item.id === 'tasks' ? unseenTasks : 0} />
               {item.id === 'projects' && page === 'projects' && !collapsed && (
@@ -279,7 +294,7 @@ export function AppShell() {
                 </div>
               )}
               {isAdmin && collapsed && <div style={{ margin: '8px 0', borderTop: `1px solid ${SB.border}` }} />}
-              {ADMIN_NAV.map(item => <NavBtn key={item.id} item={item} active={page === item.id} collapsed={collapsed} onClick={() => navigateTo(item.id)} />)}
+              {adminNav.map(item => <NavBtn key={item.id} item={item} active={page === item.id} collapsed={collapsed} onClick={() => navigateTo(item.id)} />)}
             </>
           )}
         </nav>
@@ -346,13 +361,16 @@ export function AppShell() {
       <main style={{ flex: 1, overflow: 'auto', background: 'var(--bg)', minWidth: 0, paddingBottom: isMobile ? 56 : 0 }}>
         {/* key={page} → при переходе на другую страницу boundary сбрасывается.
             pageLabel из nav → в сообщении видно, какая страница упала (диагностика прода). */}
-        <ErrorBoundary key={page} pageLabel={[...USER_NAV, ...ADMIN_NAV].find(n => n.id === page)?.label ?? page}>
+        <ErrorBoundary key={page} pageLabel={[...USER_NAV, ...adminNav].find(n => n.id === page)?.label ?? page}>
           {page === 'home'      && <HomePage />}
           {page === 'dashboard' && <DashboardPage />}
           {page === 'svod'      && <SvodPage />}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
           {page === 'settings'  && isAdmin && <SettingsPage />}
+          {page === 'set-formats' && isAdmin && <div style={{ padding: '24px 28px' }}><FormatsTab /></div>}
+          {page === 'set-roles'   && isAdmin && <div style={{ padding: '24px 28px' }}><RolesTab /></div>}
+          {page === 'set-backups' && isAdmin && <div style={{ padding: '24px 28px' }}><BackupsInfo /></div>}
           {page === 'calendar'  && <CalendarPage />}
           {page === 'tasks'     && <TasksPage onOpenChatWith={openChatWith} />}
           {page === 'projects'  && <ProjectsPage subPage={projectsSubPage} onSubPageChange={setProjectsSubPage} />}
