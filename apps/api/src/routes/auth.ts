@@ -54,7 +54,7 @@ export async function authRoutes(app: FastifyInstance) {
       where: { id },
       select: {
         id: true, email: true, name: true, isAdmin: true, isActive: true,
-        canAccessInventory: true, mustChangePassword: true, theme: true, status: true, tabNumber: true,
+        canAccessInventory: true, canAccessPlatform: true, mustChangePassword: true, theme: true, status: true, tabNumber: true,
         divMemberships: {
           select: {
             position: true,

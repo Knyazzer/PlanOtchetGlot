@@ -52,3 +52,21 @@ export async function redirectWithSession(redirect: string): Promise<boolean> {
   window.location.href = `${redirect}#${params.toString()}`
   return true
 }
+
+const INVENTORY_URL = import.meta.env.VITE_INVENTORY_URL ?? ''
+
+/**
+ * Открывает Инвентаризацию в новой вкладке, передав текущую Supabase-сессию
+ * через URL-хеш (#access_token=…&refresh_token=…). false, если нет URL или сессии.
+ */
+export async function openInventoryWithSession(): Promise<boolean> {
+  if (!INVENTORY_URL) return false
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return false
+  const params = new URLSearchParams({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token ?? '',
+  })
+  window.open(`${INVENTORY_URL}/#${params.toString()}`, '_blank', 'noopener,noreferrer')
+  return true
+}

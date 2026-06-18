@@ -5,12 +5,11 @@ import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { useMutation } from '@tanstack/react-query'
 import { formatName } from '../lib/utils'
+import { openInventoryWithSession } from '../lib/sso'
 
 interface Props {
   user: AuthUser
 }
-
-const INVENTORY_URL = import.meta.env.VITE_INVENTORY_URL ?? ''
 
 export function PersonalCabinetPage({ user }: Props) {
   const setUser = useAuthStore((s) => s.setUser)
@@ -45,14 +44,7 @@ export function PersonalCabinetPage({ user }: Props) {
   }
 
   function goToInventory() {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return
-      const params = new URLSearchParams({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token ?? '',
-      })
-      window.open(`${INVENTORY_URL}/#${params.toString()}`, '_blank', 'noopener,noreferrer')
-    })
+    openInventoryWithSession()
   }
 
   return (

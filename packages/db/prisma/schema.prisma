@@ -29,6 +29,7 @@ model User {
   name               String
   authId             String?  @unique @map("auth_id")          // = Supabase auth.uid = public.users.id
   canAccessInventory Boolean  @default(false) @map("can_access_inventory")
+  canAccessPlatform  Boolean  @default(false) @map("can_access_platform")
   mustChangePassword Boolean  @default(false) @map("must_change_password") // форс-смена пароля при первом входе
   tempPassword       String?  @map("temp_password")                        // временный пароль (виден админу, чистится после смены)
   isAdmin            Boolean  @default(false)

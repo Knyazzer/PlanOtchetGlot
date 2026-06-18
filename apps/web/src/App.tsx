@@ -122,11 +122,11 @@ function AppContent() {
     )
   }
 
-  // Visibility gate ВОССТАНОВЛЕН (прод): пока прод-БД не мигрирована под rebuild-v4,
-  // не-админы видят только минимальный кабинет (должность + переход в Инвентаризацию),
-  // чтобы не упираться в краши страниц, ожидающих новую схему/данные.
-  // Полная механика — только админам. TODO: снять гейт после миграции БД.
-  if (!user.isAdmin) return <PersonalCabinetPage user={user} />
+  // Visibility gate (прод): не-админ без бета-доступа видит минимальный кабинет.
+  // canAccessPlatform — точечный rollout-флаг (выдаётся в Персонале), пускает внутрь AppShell.
+  // TODO: при открытии платформы для всех убрать `&& !user.canAccessPlatform`
+  //       и дропнуть колонку can_access_platform отдельной миграцией.
+  if (!user.isAdmin && !user.canAccessPlatform) return <PersonalCabinetPage user={user} />
   return <AppShell />
 }
 

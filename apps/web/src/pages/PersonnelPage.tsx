@@ -17,6 +17,7 @@ interface PersonUser {
   userType:  string
   role:      string
   isAdmin:   boolean
+  canAccessPlatform: boolean
   isActive:  boolean
   authId:    string | null
   tempPassword: string | null
@@ -119,6 +120,20 @@ function Td({ children, muted }: { children: React.ReactNode; muted?: boolean })
       padding: '8px 14px', borderBottom: '1px solid var(--border)',
       fontSize: 13, color: muted ? 'var(--text-muted)' : 'var(--text-2)', whiteSpace: 'nowrap',
     }}>{children}</td>
+  )
+}
+
+// Индикатор учётки: серый — доступ не выдан (нет auth_id); жёлтый — выдан, но не активирован
+// (не сменён временный пароль); зелёный — активирована (вошёл, сменил пароль).
+function AccountDot({ authId, mustChangePassword }: { authId: string | null; mustChangePassword: boolean }) {
+  const { color, label } =
+    !authId            ? { color: 'var(--text-muted)', label: 'Нет доступа — учётка не выдана' }
+    : mustChangePassword ? { color: '#eab308',           label: 'Доступ выдан, не активирована (не сменён временный пароль)' }
+    :                    { color: 'var(--success)',     label: 'Активирована (вошёл, сменил пароль)' }
+  return (
+    <span title={label} aria-label={label} style={{
+      display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: color,
+    }} />
   )
 }
 
@@ -273,6 +288,17 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
   const [isWorking, setIsWorking] = useState(person.isActive)  // занятость: активен/уволен
   const [saved,         setSaved]         = useState(false)
   const [tempPw,        setTempPw]        = useState<string | null>(null)
+  const [platformAccess, setPlatformAccess] = useState(person.canAccessPlatform)
+  useEffect(() => { setPlatformAccess(person.canAccessPlatform) }, [person.canAccessPlatform])
+
+  const togglePlatform = useMutation({
+    mutationFn: (value: boolean) => api.patch(`/users/${person.id}`, { canAccessPlatform: value }),
+    onSuccess: () => qc.invalidateQueries({ queryKey, refetchType: 'all' }),
+    onError: (err: any) => {
+      setPlatformAccess(person.canAccessPlatform)  // откат оптимистичного переключения
+      alert(err?.response?.data?.error ?? 'Не удалось изменить доступ в платформу')
+    },
+  })
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -462,6 +488,31 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
               </div>
             )}
           </div>
+
+          {/* Доступ в платформу (бета): пускает не-админа внутрь AppShell вместо заглушки-кабинета */}
+          {person.authId && !isAdminUser && (
+            <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Доступ в платформу (бета)</span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Пускает внутрь Nexus вместо кабинета</span>
+              </div>
+              <button
+                onClick={() => { const next = !platformAccess; setPlatformAccess(next); togglePlatform.mutate(next) }}
+                disabled={togglePlatform.isPending}
+                style={{
+                  width: 42, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+                  background: platformAccess ? 'var(--success)' : 'rgba(255,255,255,0.1)',
+                  position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: platformAccess ? 21 : 3,
+                  width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s',
+                }} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -636,6 +687,7 @@ function StaffTab() {
             <thead>
               <tr>
                 <Th label="#" />
+                <Th label="Учётка" />
                 <Th label="Таб. №"    sortable active={sortCol === 'tabNumber'} dir={sortDir} onClick={() => toggleSort('tabNumber')} />
                 <Th label="ФИО"       sortable active={sortCol === 'name'}  dir={sortDir} onClick={() => toggleSort('name')} />
                 <Th label="Должность" sortable active={sortCol === 'position'}  dir={sortDir} onClick={() => toggleSort('position')} />
@@ -648,7 +700,7 @@ function StaffTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={9} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <tr><td colSpan={10} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                   {data.length === 0 ? 'Сотрудников нет. Добавьте первого.' : 'Ничего не найдено'}
                 </td></tr>
               )}
@@ -663,6 +715,9 @@ function StaffTab() {
                     outline: isSelected ? '1px solid rgba(255,107,53,0.3)' : 'none',
                   }}>
                     <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 11, minWidth: 28 }}>{idx + 1}</td>
+                    <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', width: 36 }}>
+                      <AccountDot authId={p.authId} mustChangePassword={p.mustChangePassword} />
+                    </td>
                     <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                       {p.tabNumber
                         ? <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}>{p.tabNumber}</span>
@@ -879,6 +934,7 @@ function FreelancersTab() {
             <thead>
               <tr>
                 <Th label="#" />
+                <Th label="Учётка" />
                 <Th label="Таб. №"    sortable active={sortCol === 'tabNumber'} dir={sortDir} onClick={() => toggleSort('tabNumber')} />
                 <Th label="ФИО"       sortable active={sortCol === 'name'}  dir={sortDir} onClick={() => toggleSort('name')} />
                 <Th label="Должность" sortable active={sortCol === 'position'}  dir={sortDir} onClick={() => toggleSort('position')} />
@@ -888,7 +944,7 @@ function FreelancersTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                   {data.length === 0 ? 'Фрилансеров нет. Добавьте первого.' : 'Ничего не найдено'}
                 </td></tr>
               )}
@@ -905,6 +961,9 @@ function FreelancersTab() {
                     outline: isSelected ? '1px solid rgba(255,107,53,0.3)' : 'none',
                   }}>
                     <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 11, minWidth: 28 }}>{idx + 1}</td>
+                    <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', width: 36 }}>
+                      <AccountDot authId={p.authId} mustChangePassword={p.mustChangePassword} />
+                    </td>
                     <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                       {p.tabNumber
                         ? <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}>{p.tabNumber}</span>

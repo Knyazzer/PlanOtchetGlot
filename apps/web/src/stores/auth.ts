@@ -25,6 +25,7 @@ export interface AuthUser {
   name: string
   isAdmin: boolean
   canAccessInventory: boolean
+  canAccessPlatform: boolean
   mustChangePassword?: boolean
   isActive: boolean
   theme: 'dark' | 'light'

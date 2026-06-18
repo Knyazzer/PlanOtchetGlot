@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { formatName } from '../lib/utils'
+import { openInventoryWithSession } from '../lib/sso'
 import { DatabasePage }  from '../pages/DatabasePage'
 import { PersonnelPage } from '../pages/PersonnelPage'
 import { DashboardPage } from '../pages/DashboardPage'
@@ -243,12 +244,16 @@ export function AppShell() {
                     {extraModules.filter(m => m.group === group).map(m => (
                       <button
                         key={m.key}
-                        onClick={() => { if (m.page) navigateTo(m.page as Page) }}
+                        onClick={() => {
+                          if (m.page) navigateTo(m.page as Page)
+                          else if (m.key === 'ext.inventory') openInventoryWithSession()
+                        }}
                         title={m.mode === 'view' ? `${m.name} — только просмотр` : m.name}
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                           padding: '7px 12px', borderRadius: 8, border: 'none',
-                          background: 'transparent', cursor: m.page ? 'pointer' : 'default',
+                          background: 'transparent',
+                          cursor: (m.page || m.key === 'ext.inventory') ? 'pointer' : 'default',
                           color: SB.text, fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
                         }}
                       >
