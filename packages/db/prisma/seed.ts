@@ -9,11 +9,13 @@ const prisma = new PrismaClient()
 async function main() {
   console.log('Seeding database...')
 
-  // Placeholder users for local dev — auth is handled by Supabase
+  // Placeholder users for local dev — auth is handled by Supabase.
+  // admin@nexus.local — системный аккаунт (как nexus-admin в проде): только админка,
+  // без рабочего пространства (isSystemAccount → AppShell.isSystem, свой набор вкладок).
   await prisma.user.upsert({
     where: { email: 'admin@nexus.local' },
-    update: { isAdmin: true },
-    create: { email: 'admin@nexus.local', name: 'Администратор', isAdmin: true },
+    update: { isAdmin: true, isSystemAccount: true },
+    create: { email: 'admin@nexus.local', name: 'Администратор', isAdmin: true, isSystemAccount: true },
   })
 
   await prisma.user.upsert({

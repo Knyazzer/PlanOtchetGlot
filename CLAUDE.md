@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🔄 ТЕКУЩЕЕ СОСТОЯНИЕ
 
-**Ветки:** `master` (прод; push в master = автодеплой через CD), `rebuild-v4` (бывш. `design`; дом-кит + перенос ПланОтчета: схема ядра, день/свод, RBAC-охват, гейт снят).
+**Ветки:** разработка в `knyazzer` / `daewoo-matiz` → мердж в `dev` → PR в `master` (аппрув только Влада; push в master = автодеплой через CD). Полная стратегия и история squash-чистки — [docs/BRANCHING.md](docs/BRANCHING.md).
 
 **Что реализовано:**
 - Auth: **Supabase Auth** (self-hosted) — вход через `signInWithPassword` на фронте; `dev-login` для локалки; онбординг с временными паролями + форс-смена; SSO-портал для inventory; жизненный цикл (увольнение = бан + архив)

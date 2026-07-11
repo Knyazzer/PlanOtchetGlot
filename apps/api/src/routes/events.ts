@@ -145,7 +145,7 @@ export async function eventsRoutes(app: FastifyInstance) {
 
     const ev = await prisma.event.findUnique({
       where: { id },
-      select: { authorId: true, date: true, startTime: true, endTime: true },
+      select: { authorId: true, date: true, startTime: true, endTime: true, title: true, description: true },
     })
     if (!ev) return reply.code(404).send({ error: 'Not found' })
     if (ev.authorId !== user.id) return reply.code(403).send({ error: 'Forbidden' })
@@ -190,6 +190,41 @@ export async function eventsRoutes(app: FastifyInstance) {
       where: { calendarEventId: id },
       data: taskPatch,
     })
+
+    // Синк задач-спутников при изменении состава участников:
+    // добавленному участнику создать задачу, у удалённого — убрать (updateMany выше
+    // правит только время/название существующих, но не сам набор задач).
+    if (participantIds !== undefined) {
+      const desired = new Set([ev.authorId, ...participantIds.filter(uid => uid !== ev.authorId)])
+      const existingTasks = await prisma.task.findMany({
+        where: { calendarEventId: id },
+        select: { id: true, assigneeId: true },
+      })
+      const existingAssignees = new Set(existingTasks.map(t => t.assigneeId))
+      const toDelete = existingTasks.filter(t => !desired.has(t.assigneeId)).map(t => t.id)
+      const toCreate = [...desired].filter(uid => !existingAssignees.has(uid))
+      if (toDelete.length) await prisma.task.deleteMany({ where: { id: { in: toDelete } } })
+      if (toCreate.length) {
+        const title = body.data.title ?? ev.title
+        const description = body.data.description ?? ev.description ?? undefined
+        await Promise.all(toCreate.map(assigneeId =>
+          prisma.task.create({
+            data: {
+              id: randomUUID(),
+              title,
+              description,
+              assignedById: ev.authorId,
+              assigneeId,
+              startDate: newStart,
+              deadline: newDate,
+              calendarEventId: id,
+              calendarEventEnd: newEnd,
+              seenAt: assigneeId === ev.authorId ? new Date() : null,
+            },
+          })
+        ))
+      }
+    }
 
     return updated
   })

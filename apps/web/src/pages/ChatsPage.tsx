@@ -138,8 +138,10 @@ let _wsListeners = new Set<(e: object) => void>()
 let _wsDead = false
 
 function getWS() {
-  const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000') as string
-  const WS_BASE = BASE.replace(/^http/, 'ws') + '/chats/ws'
+  // Dev: WS на своём origin через Vite-прокси (/api → API, ws:true). Прод: как раньше.
+  const WS_BASE = import.meta.env.DEV
+    ? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/chats/ws`
+    : ((import.meta.env.VITE_API_URL ?? 'http://localhost:4000') as string).replace(/^http/, 'ws') + '/chats/ws'
 
   if (_wsInstance && (_wsInstance.readyState === WebSocket.OPEN || _wsInstance.readyState === WebSocket.CONNECTING)) {
     return

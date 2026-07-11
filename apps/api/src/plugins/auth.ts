@@ -72,8 +72,10 @@ export function requireRole(...roles: string[]) {
     const ok = await loadUser(request, reply)
     if (!ok || reply.sent) return
     const user = request.user as { isAdmin?: boolean; roles?: string[] }
-    if (roles.includes('admin') && !user.isAdmin) {
-      reply.code(403).send({ error: 'Forbidden' })
-    }
+    // admin проходит всё; иначе — только если реальные роли пользователя пересекаются с требуемыми.
+    // Non-admin роли (producer/freelancer) ещё не реализованы → fail-closed: не-админ не пройдёт
+    // молча (прежнее поведение пропускало любого при requireRole('producer')).
+    const passes = user.isAdmin === true || roles.some(r => (user.roles ?? []).includes(r))
+    if (!passes) reply.code(403).send({ error: 'Forbidden' })
   }
 }

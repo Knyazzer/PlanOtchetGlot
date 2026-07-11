@@ -39,3 +39,6 @@ docs/DEPLOY-RUNBOOK.md
 
 # Дизайн-ассеты Figma
 .figma/
+
+# Индексатор graphify (локальный вывод, перегенерируемый)
+graphify-out/

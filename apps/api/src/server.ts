@@ -55,9 +55,12 @@ async function main() {
         'http://localhost:5173',
         'http://localhost:4173',
       ]
+      // dev: любой localhost-порт (Vite дрейфует 5173→5174→… при занятом порте)
+      const isDevLocalhost = process.env.NODE_ENV !== 'production'
+        && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
       // allow any LAN origin on port 5173 or 4173
       const isLAN = /^http:\/\/192\.168\.\d+\.\d+:(5173|4173)$/.test(origin)
-      cb(null, allowed.includes(origin) || isLAN)
+      cb(null, allowed.includes(origin) || isDevLocalhost || isLAN)
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -67,6 +70,10 @@ async function main() {
   await app.register(cookie)
   await app.register(websocket)
 
+  // Fail-fast: в проде JWT_SECRET обязателен (иначе токены подписываются dev-заглушкой).
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET обязателен в production (общий с Supabase)')
+  }
   await app.register(jwt, {
     secret: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',
     cookie: { cookieName: 'access_token', signed: false },

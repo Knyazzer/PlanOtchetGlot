@@ -1,8 +1,11 @@
 import axios from 'axios'
 import { supabase } from './supabase'
 
-const baseURL = import.meta.env.VITE_API_URL
-  ?? `http://${window.location.hostname}:4000`
+// Dev: относительный /api → Vite-прокси на свободный порт API (см. scripts/dev.mjs +
+// vite.config proxy). Браузер на своём origin → без CORS. Прод: как раньше (VITE_API_URL).
+const baseURL = import.meta.env.DEV
+  ? '/api'
+  : (import.meta.env.VITE_API_URL ?? `http://${window.location.hostname}:4000`)
 
 export const api = axios.create({
   baseURL,

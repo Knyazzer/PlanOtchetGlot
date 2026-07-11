@@ -398,10 +398,6 @@ export async function usersRoutes(app: FastifyInstance) {
     return { created, skipped }
   })
 
-  app.post('/bulk-register', { preHandler: requireRole('admin') }, async (request, reply) => {
-    return reply.redirect(307, '/users/bulk-import-staff')
-  })
-
   // POST /users/bulk-onboard — массовый онбординг всех с реальной корп-почтой без аккаунта.
   // Каждому создаётся auth.users (с уникальным временным паролем) + public.users + связка auth_id.
   // Возвращает список { email, name, tempPassword, status } для раздачи паролей.
