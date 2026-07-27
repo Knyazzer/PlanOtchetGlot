@@ -22,10 +22,11 @@ export const MODULE_REGISTRY: Record<string, { name: string; group: string; read
   'com.clients':           { name: 'Клиенты', group: 'Коммерция', page: 'projects' },
   'com.projects':          { name: 'Реестр проектов', group: 'Коммерция', page: 'projects' },
   'com.workitems':         { name: 'Workflow заявок', group: 'Коммерция', page: 'projects' },
-  // Технический
-  'tech.platform':         { name: 'Админка платформы', group: 'Платформа', page: 'personnel' },
-  'tech.sheets':           { name: 'Интеграции Sheets', group: 'Платформа', page: 'database' },
-  'tech.support':          { name: 'Техподдержка', group: 'Платформа' },
+  // (2026-07-11) Убраны мёртвые/дублирующие модули группы «Платформа»:
+  //   tech.sheets (Google Sheets вырезан, страницы database нет),
+  //   tech.support (нет страницы),
+  //   tech.platform (дублировал hr.orgstructure → personnel; опасные операции и так только у isAdmin).
+  //   Орфан-гранты с этими ключами в БД игнорируются (см. getUserAccess: `if (!meta) continue`).
   // Администрация
   'adm.svod-company':      { name: 'Свод · компания', group: 'Администрация', readonly: true, page: 'svod' },
   'adm.analytics-company': { name: 'Аналитика · компания', group: 'Администрация', readonly: true, page: 'analytics' },

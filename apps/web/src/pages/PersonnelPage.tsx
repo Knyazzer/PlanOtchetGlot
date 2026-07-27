@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { OrgChartTab } from '../components/OrgChart'
 import { useCurrentUser } from '../hooks/useAuth'
+import { AssignmentsEditor } from './personnel/AssignmentsEditor'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -285,9 +286,6 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
   const [email,     setEmail]     = useState(person.email ?? '')
   const [tabNumber, setTabNumber] = useState(person.tabNumber ?? '')
   const [position,  setPosition]  = useState(person.position ?? '')
-  const [department,      setDepartment]      = useState(person.department ?? '')
-  const [subDept,   setSubDept]   = useState(person.subDept ?? '')
-  const [role,      setRole]      = useState(person.role)
   const [isWorking, setIsWorking] = useState(person.isActive)  // занятость: активен/уволен
   const [saved,         setSaved]         = useState(false)
   const [tempPw,        setTempPw]        = useState<string | null>(null)
@@ -368,15 +366,13 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
       }
       return
     }
-    // Обычное сохранение полей профиля
+    // Обычное сохранение полей профиля. Для штата должность/департамент/отдел задаются
+    // каскадом назначений (PUT /users/:id/assignments), поэтому здесь их не шлём.
     patch.mutate({
       name:  name.trim()  || undefined,
       email:     email.trim()     || undefined,
       tabNumber: tabNumber.trim() || null,
-      position:  position.trim()  || null,
-      department:      person.userType === 'staff' ? (department.trim()    || null) : undefined,
-      subDept:   person.userType === 'staff' ? (subDept.trim() || null) : undefined,
-      role:      person.userType === 'staff' ? role : undefined,
+      position:  person.userType === 'staff' ? undefined : (position.trim() || null),
     })
   }
 
@@ -384,9 +380,6 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
     name  !== person.name  ||
     email     !== (person.email ?? '')     ||
     position  !== (person.position ?? '') ||
-    department      !== (person.department     ?? '') ||
-    subDept   !== (person.subDept  ?? '') ||
-    role      !== person.role ||
     isWorking !== person.isActive ||
     tabNumber.trim() !== (person.tabNumber ?? '')
   )
@@ -432,31 +425,13 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
           <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
           <input value={email} onChange={e => setEmail(e.target.value)} style={{ ...inp, marginTop: -8 }} />
 
-          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Должность</label>
-          <input value={position} onChange={e => setPosition(e.target.value)} style={{ ...inp, marginTop: -8 }} placeholder="—" />
-
-          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Роль в системе</label>
-          {isStaff ? (
-            <select value={role} onChange={e => setRole(e.target.value)} style={{ ...inp, marginTop: -8 }}>
-              <option value="user">Пользователь</option>
-            </select>
-          ) : (
-            <div style={{ ...inp, marginTop: -8, color: 'var(--text-muted)', cursor: 'default' }}>
-              Фрилансер
-            </div>
-          )}
+          {!isStaff && (<>
+            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Должность</label>
+            <input value={position} onChange={e => setPosition(e.target.value)} style={{ ...inp, marginTop: -8 }} placeholder="—" />
+          </>)}
 
           {isStaff && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: -8 }}>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>Департамент</label>
-                <input value={department} onChange={e => setDepartment(e.target.value)} style={inp} placeholder="—" />
-              </div>
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>Отдел</label>
-                <input value={subDept} onChange={e => setSubDept(e.target.value)} style={inp} placeholder="—" />
-              </div>
-            </div>
+            <AssignmentsEditor userId={person.id} invalidateKey={queryKey} />
           )}
 
           {/* Занятость (штат и фрилансеры). Выкл + «Сохранить» = уволить (бан доступа) */}

@@ -26,6 +26,7 @@ _(по аудиту 2026-06-11 критичных багов не найдено
 - [ ] 🟠 **Этап 2 интеграции (сторона inventory)**: `inventory.profiles` → VIEW над `public.users` + `inventory.user_roles` — миграция в `INTEGRATION.md` §A. Со стороны Nexus предусловия выполнены.
 - [ ] 🟠 **API увольнения Nexus↔inventory** (Этап 2 жизненного цикла): запрос «можно ли освободить сотрудника» (незданное оборудование) + ручной аппрув. Контракт — в `megapolis-platform/api/`.
 - [x] 🟠 ~~Снятие visibility gate~~ — сделано в rebuild-v4 (`ad955a4`): AppShell всем, дефолт «Главная»; блокеры закрыты: structure-гарды (`dec4ad3`), RBAC-охват scope=team через getOrgScope (`d30cffe`), polling Projects/Calendar.
+- [ ] 🟠 **Форма роли/должности в «Персонале»** (в работе, 2026-07-11) — каскад тип (сотрудник/руководитель/директор) → департамент → отдел → уточнение; пишет оргструктуру (`UserDivision`/`Division.headId`/`Department.directorId`), драйвит RBAC; совмещение (2 назначения). Дизайн: [superpowers/specs/2026-07-11-personnel-role-form-design.md](superpowers/specs/2026-07-11-personnel-role-form-design.md).
 - [ ] 🟠 **Перенос ПланОтчета** — по `docs/IMPLEMENTATION-PLAN.md` (Этап 0: схема, дом-кит, стенд донора, ETL-скелет). Ветка `design` уже содержит дом-кит (Tailwind v4 + shadcn-токены).
 
 ## 🟠 Важно — тесты (восстановление покрытия)

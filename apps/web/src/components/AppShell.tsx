@@ -6,6 +6,10 @@ import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { formatName } from '../lib/utils'
 import { openInventoryWithSession } from '../lib/sso'
+import inventoryLogo from '../assets/logos/inventory.svg'
+
+// Логотипы подключённых внешних продуктов экосистемы (канон — megapolis-platform/brand/logos, LOCKED).
+const SERVICE_LOGOS: Record<string, string> = { 'ext.inventory': inventoryLogo }
 import { ListsPage }     from '../pages/ListsPage'
 import { PersonnelPage } from '../pages/PersonnelPage'
 import { DashboardPage } from '../pages/DashboardPage'
@@ -255,14 +259,17 @@ export function AppShell() {
                     <div style={{ fontSize: 9, fontWeight: 700, color: SB.muted, letterSpacing: '0.8px', textTransform: 'uppercase', padding: '12px 12px 6px', marginTop: 4 }}>
                       {group}
                     </div>
-                    {extraModules.filter(m => m.group === group).map(m => (
+                    {extraModules.filter(m => m.group === group).map(m => {
+                      const logo = SERVICE_LOGOS[m.key]
+                      const external = m.key.startsWith('ext.')
+                      return (
                       <button
                         key={m.key}
                         onClick={() => {
                           if (m.page) navigateTo(m.page as Page)
                           else if (m.key === 'ext.inventory') openInventoryWithSession()
                         }}
-                        title={m.mode === 'view' ? `${m.name} — только просмотр` : m.name}
+                        title={m.name}
                         style={{
                           width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                           padding: '7px 12px', borderRadius: 8, border: 'none',
@@ -271,14 +278,15 @@ export function AppShell() {
                           color: SB.text, fontFamily: 'inherit', fontSize: 12, textAlign: 'left',
                         }}
                       >
+                        {logo && <img src={logo} alt="" width={18} height={18} style={{ borderRadius: 5, flexShrink: 0 }} />}
                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.name}</span>
-                        {m.mode === 'view' && (
+                        {!external && m.mode === 'view' && (
                           <span style={{ fontSize: 9, fontWeight: 700, color: SB.dim, border: `1px solid ${SB.border}`, borderRadius: 8, padding: '0 5px', flexShrink: 0 }}>
                             просмотр
                           </span>
                         )}
                       </button>
-                    ))}
+                    )})}
                   </div>
                 ))}
               </>
