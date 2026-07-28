@@ -26,7 +26,7 @@ export async function authRoutes(app: FastifyInstance) {
   // секретом JWT_SECRET — плагин authenticate резолвит юзера по authId (raw.sub),
   // что (в отличие от impersonate) не блокирует админов.
   if (process.env.NODE_ENV !== 'production') {
-    app.post('/dev-login', async (request, reply) => {
+    app.post('/dev-login', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
       const body = z.object({ email: z.string().email() }).safeParse(request.body)
       if (!body.success) return reply.code(400).send({ error: 'Invalid input' })
 
@@ -97,7 +97,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   // POST /auth/impersonate/consume — exchange impersonation JWT for a session
   // The frontend stores the returned token and sends it as Authorization: Bearer
-  app.post('/impersonate/consume', async (request, reply) => {
+  app.post('/impersonate/consume', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { token } = request.body as { token?: string }
     if (!token) return reply.code(400).send({ error: 'Token required' })
     try {

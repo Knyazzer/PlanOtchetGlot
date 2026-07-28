@@ -4,6 +4,8 @@ config({ path: resolve(__dirname, '../../../.env'), override: true })
 
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
+import rateLimit from '@fastify/rate-limit'
 import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
 import websocket from '@fastify/websocket'
@@ -59,13 +61,26 @@ async function main() {
       const isDevLocalhost = process.env.NODE_ENV !== 'production'
         && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
       // allow any LAN origin on port 5173 or 4173
-      const isLAN = /^http:\/\/192\.168\.\d+\.\d+:(5173|4173)$/.test(origin)
+      // LAN-доступ — только для локальной разработки (в проде не открываем сеть офиса)
+      const isLAN = process.env.NODE_ENV !== 'production'
+        && /^http:\/\/192\.168\.\d+\.\d+:(5173|4173)$/.test(origin)
       cb(null, allowed.includes(origin) || isDevLocalhost || isLAN)
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
+
+  // Security-заголовки. CSP выключен — API отдаёт JSON под CORS, не HTML;
+  // CORP=cross-origin, чтобы не блокировать кросс-доменные fetch фронта (dev :5173 → api :4000).
+  await app.register(helmet, {
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+
+  // Rate-limit — глобально выключен, включается точечно на чувствительных
+  // (неаутентифицированных) auth-эндпоинтах через config.rateLimit на роуте.
+  await app.register(rateLimit, { global: false })
 
   await app.register(cookie)
   await app.register(websocket)
