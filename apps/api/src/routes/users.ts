@@ -1,19 +1,10 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { randomBytes } from 'node:crypto'
 import { prisma } from '@nexus/db'
 import { authenticate, requireRole } from '../plugins/auth'
 import { hasModule } from '../services/access'
 import { getSheetConfig } from '../services/databaseService'
-
-// Временный пароль: 10 читаемых символов (без двусмысленных 0/O/o/l/1/I)
-const PW_CHARS = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-function genTempPassword(): string {
-  const b = randomBytes(10)
-  let s = ''
-  for (let i = 0; i < b.length; i++) s += PW_CHARS[b[i] % PW_CHARS.length]
-  return s
-}
+import { genTempPassword } from '../services/password'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -329,7 +320,10 @@ export async function usersRoutes(app: FastifyInstance) {
       department:          z.string().nullable().optional(),
       subDept:             z.string().nullable().optional(),
       role:                z.string().optional(),
-      isActive:            z.boolean().optional(),
+      // isActive НАМЕРЕННО не принимается: смена активности — только через
+      // POST /users/:id/deactivate|reactivate (бан/разбан в Supabase GoTrue, снятие
+      // табельного, status=archived, синк public.users). Голый PATCH обошёл бы это —
+      // пользователь остался бы с рабочей сессией/доступом в другие приложения.
       canAccessInventory:  z.boolean().optional(),
       canAccessPlatform:   z.boolean().optional(),
     })
@@ -359,7 +353,6 @@ export async function usersRoutes(app: FastifyInstance) {
           ...(d.department         !== undefined && { department:         d.department }),
           ...(d.subDept            !== undefined && { subDept:            d.subDept }),
           ...(d.role               !== undefined && { role:               d.role }),
-          ...(d.isActive           !== undefined && { isActive:           d.isActive }),
           ...(d.canAccessInventory !== undefined && { canAccessInventory: d.canAccessInventory }),
           ...(d.canAccessPlatform  !== undefined && { canAccessPlatform:  d.canAccessPlatform }),
         },

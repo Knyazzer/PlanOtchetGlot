@@ -1,18 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { randomBytes } from 'node:crypto'
 import { prisma } from '@nexus/db'
 import { authenticate, requireRole } from '../plugins/auth'
 import { getUserAccess } from '../services/access'
-
-// Временный пароль: 10 читаемых символов (без двусмысленных 0/O/o/l/1/I)
-const PW_CHARS = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-function genTempPassword(): string {
-  const b = randomBytes(10)
-  let s = ''
-  for (let i = 0; i < b.length; i++) s += PW_CHARS[b[i] % PW_CHARS.length]
-  return s
-}
+import { genTempPassword } from '../services/password'
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /auth/logout — clear any legacy cookies
