@@ -39,7 +39,7 @@ model User {
   status             String?
   userType           String   @default("staff")
   role               String   @default("user")
-  tabNumber          String?
+  tabNumber          String?  @unique
   position           String?
   department         String?
   subDept            String?
