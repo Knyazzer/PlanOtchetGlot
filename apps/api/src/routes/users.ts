@@ -100,7 +100,10 @@ export async function usersRoutes(app: FastifyInstance) {
 
     const { name, position, department, subDept } = body.data
     const tabNumber = body.data.tabNumber?.trim() || await nextTabNumber('staff')  // автоген, если не задан
-    const email = generateEmail(name)
+    // Суффикс табельного — дизамбигуация тёзок (как у фрилансеров): иначе два «Иван Иванов»
+    // дают одинаковый placeholder-email и второй тихо отваливается по unique(email).
+    const baseEmail = generateEmail(name)
+    const email     = baseEmail.replace('@nexus.local', `.${tabNumber.toLowerCase()}@nexus.local`)
 
     const existing = await prisma.user.findFirst({
       where: { OR: [{ email }, { tabNumber }] },

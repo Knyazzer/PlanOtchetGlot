@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
 import { hasModule } from '../services/access'
 import { prisma } from '@nexus/db'
 
@@ -76,6 +76,12 @@ type WIRoles = { execProducerId?: string | null; lineProducerId?: string | null;
 /** Управление проектом: admin ∨ продюсер проекта ∨ com.projects:edit. */
 async function canEditProject(u: ReqUser, producerId: string | null): Promise<boolean> {
   return u.isAdmin || producerId === u.id || hasModule(u.id, false, 'com.projects', 'edit')
+}
+/** Удаление проекта — ЕДИНАЯ точка политики (изолировано намеренно). Пока: только админ
+ *  (удаление проекта сносит каскадом все WI/треки/расходы). Когда будем детально прорабатывать
+ *  права и доступы — менять ТОЛЬКО здесь, поведение изменится во всей системе. */
+async function canDeleteProject(u: ReqUser): Promise<boolean> {
+  return u.isAdmin
 }
 /** Правка WI: admin ∨ одна из трёх ролей WI ∨ com.projects:edit ∨ prod.workitems:edit. */
 async function canEditWorkItem(u: ReqUser, wi: WIRoles): Promise<boolean> {
@@ -161,11 +167,12 @@ export async function projectsRoutes(app: FastifyInstance) {
     return prisma.project.update({ where: { id }, data: parsed.data, select: PROJECT_SELECT })
   })
 
-  // DELETE /projects/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (req, reply) => {
+  // DELETE /projects/:id — политика в canDeleteProject (единая точка изменения)
+  app.delete('/:id', { preHandler: authenticate }, async (req, reply) => {
     const { id } = req.params as { id: string }
     const project = await prisma.project.findUnique({ where: { id } })
     if (!project) return reply.code(404).send({ error: 'Проект не найден' })
+    if (!(await canDeleteProject(reqUser(req)))) return reply.code(403).send({ error: 'Недостаточно прав для удаления проекта' })
     await prisma.project.delete({ where: { id } })
     return { ok: true }
   })
