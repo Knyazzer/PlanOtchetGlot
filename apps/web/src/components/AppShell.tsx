@@ -175,11 +175,12 @@ export function AppShell() {
   const extraModules = !isAdmin
     ? (user?.access?.modules ?? []).filter((m) => !m.page || !navPageIds.has(m.page))
     : []
-  // Блоки-секции меню: доп-модули группируются по m.group (продукты — «Внешние сервисы»,
-  // отделы — «HR»/«Финансы»/…), порядок групп — по первому появлению; заголовок блока рисует
-  // кит при смене section. Блок показывается только если у пользователя есть модули этой группы.
-  const groupOrder = [...new Set(extraModules.map((m) => m.group))]
-  const sortedExtra = [...extraModules].sort((a, b) => groupOrder.indexOf(a.group) - groupOrder.indexOf(b.group))
+  // Два блока под основными вкладками (решение Влада): «Платформа» — функциональные вкладки
+  // Nexus для отделов/департаментов/людей (все НЕ-ext модули); «Внешние сервисы» — отдельные
+  // внешние продукты (ext.*: Инвентаризация, Поддержка…). Блок виден только при наличии модулей.
+  const sectionOf = (m: { key: string }) => (m.key.startsWith('ext.') ? 'Внешние сервисы' : 'Платформа')
+  const sectionOrder = ['Платформа', 'Внешние сервисы']
+  const sortedExtra = [...extraModules].sort((a, b) => sectionOrder.indexOf(sectionOf(a)) - sectionOrder.indexOf(sectionOf(b)))
 
   const navEntries: NavEntry[] = [
     // Основной блок — без секции (заголовка нет)
@@ -196,7 +197,7 @@ export function AppShell() {
       // NavEntry.icon кита — только LucideIcon (нет слота под img-логотип внешнего продукта) —
       // заглушка-иконка, продуктовый логотип временно теряется.
       icon: m.key === 'ext.inventory' ? Package : Users,
-      section: m.group,
+      section: sectionOf(m),
     })),
     // Админ-блок
     ...(isAdmin ? adminNav.map((item) => ({ key: item.id, label: item.label, icon: item.icon, section: 'Администрирование' })) : []),
