@@ -5,6 +5,31 @@ import { formatName } from '../../lib/utils'
 import { Hint } from '../../components/Hint'
 import type { ModalState, EntryModalState, ApiMember, EntryType } from './types'
 import { TYPE_COLOR, LOCATIONS, MY_EVENT_TYPES, SHARED_ENTRY_TYPES, HR_ENTRY_TYPES } from './constants'
+import { toYMD } from './utils'
+import { DatePicker } from '../../ui-kit/components/DatePicker'
+import { TimePicker } from '../../ui-kit/components/TimePicker'
+
+// Строка 'YYYY-MM-DD' → локальная Date (без сдвига таймзоны от new Date(str))
+function ymdToDate(s?: string): Date | undefined {
+  if (!s) return undefined
+  const [y, m, d] = s.split('-').map(Number)
+  return y && m && d ? new Date(y, m - 1, d) : undefined
+}
+
+// Обёртки: модалки хранят дату/время строками — китовые пикеры работают с Date/строкой.
+function DateField({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+  return (
+    <DatePicker
+      value={value ? { from: ymdToDate(value), to: undefined } : undefined}
+      onChange={(v) => onChange(v?.from ? toYMD(v.from) : '')}
+      placeholder="Выбрать дату"
+      className="w-full"
+    />
+  )
+}
+function TimeField({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+  return <TimePicker value={value} onChange={onChange} className="w-full" />
+}
 
 // ── Event modal ────────────────────────────────────────────────────────────
 export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEdit }: {
@@ -77,17 +102,17 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
 
         <div style={{ marginBottom:14 }}>
           <span style={lbl}>Дата</span>
-          <input type="date" value={modal.date} onChange={e => onChange({ date: e.target.value })} style={{ ...inp, colorScheme:'dark' }} />
+          <DateField value={modal.date} onChange={(v) => onChange({ date: v })} />
         </div>
 
         <div style={{ display:'flex', gap:10, marginBottom:14 }}>
           <div style={{ flex:1 }}>
             <span style={lbl}>Начало</span>
-            <input type="time" value={modal.start} onChange={e => onChange({ start: e.target.value })} style={{ ...inp, colorScheme:'dark' }} />
+            <TimeField value={modal.start} onChange={(v) => onChange({ start: v })} />
           </div>
           <div style={{ flex:1 }}>
             <span style={lbl}>Конец</span>
-            <input type="time" value={modal.end} onChange={e => onChange({ end: e.target.value })} style={{ ...inp, colorScheme:'dark' }} />
+            <TimeField value={modal.end} onChange={(v) => onChange({ end: v })} />
           </div>
         </div>
 
@@ -218,7 +243,7 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
 
         <div style={{ marginBottom:14 }}>
           <span style={lbl}>Дата</span>
-          <input type="date" value={modal.date} onChange={e => onChange({ date: e.target.value })} style={{ ...inp, colorScheme:'dark' }} />
+          <DateField value={modal.date} onChange={(v) => onChange({ date: v })} />
         </div>
 
         {!isHR && (
@@ -231,11 +256,11 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
               <div style={{ display:'flex', gap:10 }}>
                 <div style={{ flex:1 }}>
                   <span style={lbl}>Начало</span>
-                  <input type="time" value={modal.start} onChange={e => onChange({ start: e.target.value })} style={{ ...inp, colorScheme:'dark' }} />
+                  <TimeField value={modal.start} onChange={(v) => onChange({ start: v })} />
                 </div>
                 <div style={{ flex:1 }}>
                   <span style={lbl}>Конец</span>
-                  <input type="time" value={modal.end} onChange={e => onChange({ end: e.target.value })} style={{ ...inp, colorScheme:'dark' }} />
+                  <TimeField value={modal.end} onChange={(v) => onChange({ end: v })} />
                 </div>
               </div>
             )}
