@@ -179,7 +179,9 @@ export function AppShell() {
   // ── nav: USER_NAV/ADMIN_NAV (+ департаментные RBAC-модули, чья страница не входит в USER_NAV) ──
   // Департаментные допмодули — только для не-админов (как в прежнем AppShell): admin уже видит всё
   // через ADMIN_NAV/Настройки.
-  const navPageIds = new Set(USER_NAV.map((n) => n.id as string))
+  // 'svod' — merged-алиас: Свод слит в Аналитику (внутренняя вкладка), отдельной страницы нет;
+  // модули с page:'svod' (напр. adm.svod-company) НЕ показываем отдельной вкладкой в меню.
+  const navPageIds = new Set([...USER_NAV.map((n) => n.id as string), 'svod'])
   const extraModules = !isAdmin
     ? (user?.access?.modules ?? []).filter((m) => !m.page || !navPageIds.has(m.page))
     : []
