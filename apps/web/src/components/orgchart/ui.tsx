@@ -21,7 +21,7 @@ export function Modal({ title, onClose, children, footer }: {
 
   return (
     <div
-      style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,backdropFilter:'blur(4px)' }}
+      style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100 }}
       onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
       onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose() }}
     >

@@ -171,7 +171,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
     <div
       onMouseDown={e => { mouseDownOnBackdrop.current = e.target === e.currentTarget }}
       onMouseUp={e => { if (mouseDownOnBackdrop.current && e.target === e.currentTarget) onClose() }}
-      style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
+      style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
     >
       <div onMouseDown={e => e.stopPropagation()} style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:16, padding:'28px 28px 24px', width:'100%', maxWidth:560, maxHeight:'calc(100vh - 48px)', display:'flex', flexDirection:'column', gap:16, overflowY:'auto' }}>
 

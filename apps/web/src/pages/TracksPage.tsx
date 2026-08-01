@@ -437,7 +437,7 @@ export function TrackFormModal({
     <div
       onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
       onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
     >
       <div onMouseDown={e => e.stopPropagation()}
         style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, width: 460, maxWidth: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.5)', fontFamily: 'Inter,sans-serif' }}>
@@ -520,7 +520,7 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
     <div
       onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
       onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
     >
       <div onMouseDown={e => e.stopPropagation()}
         style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, width: 440, maxWidth: '100%', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.5)', fontFamily: 'Inter,sans-serif' }}>
