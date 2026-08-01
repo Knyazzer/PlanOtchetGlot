@@ -31,7 +31,7 @@ export function ClockDial({
   /** рабочие часы — подсвечиваются лёгкой дугой поверх трека (напр. {start:'10:00', end:'18:30'}) */
   workHours?: { start: string; end: string }
 }) {
-  const [is12, setIs12] = useState(false)
+  const [is12, setIs12] = useState(true)   // по умолчанию 12ч
   const start = parse(value?.start, 14 * 60)
   const end = parse(value?.end, 6 * 60)
   const dur = (end - start + 1440) % 1440 || 1440
@@ -158,7 +158,7 @@ export function ClockDial({
 
       {/* тумблер 12ч / 24ч */}
       <div className="mt-2 flex gap-1 rounded-[var(--radius-sm)] bg-[var(--surface-2)] p-1">
-        {([[false, '24 ч'], [true, '12 ч']] as const).map(([v, label]) => (
+        {([[true, '12 ч'], [false, '24 ч']] as const).map(([v, label]) => (
           <button
             key={label}
             type="button"
