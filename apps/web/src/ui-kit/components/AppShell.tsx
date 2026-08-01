@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { ChevronLeft, Menu } from 'lucide-react'
+import { ChevronLeft, Menu, PanelLeftClose, PanelLeft } from 'lucide-react'
 import { Icon } from './Icon'
 import { Avatar } from './Avatar'
 import { Sheet } from './Sheet'
@@ -38,6 +38,8 @@ export function AppShell({
   footerExtra,
   subtitle,
   toolbar,
+  rightPanel,
+  collapsible,
   children,
 }: {
   product: { name: string; mark?: string; markSrc?: string; company?: string }
@@ -58,14 +60,19 @@ export function AppShell({
   /** подзаголовок раздела в шапке (описание страницы: настройки/подсказки) */
   subtitle?: React.ReactNode
   toolbar?: React.ReactNode
+  /** правый слот-панель (напр. чат-сайдбар продукта) справа от контента (десктоп) */
+  rightPanel?: React.ReactNode
+  /** разрешить сворачивание левого сайдбара (кнопка-тоггл в шапке сайдбара) */
+  collapsible?: boolean
   children: React.ReactNode
 }) {
   const activeTop = nav.find((n) => n.key === active || n.children?.some((c) => c.key === active))
   const [moreOpen, setMoreOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   // список навигации (переиспользуется в десктоп-сайдбаре и мобильном «Ещё»-drawer)
-  const navList = (onPick: (k: string) => void) => (
+  const navList = (onPick: (k: string) => void, collapsed = false) => (
     <nav className="p-2">
       {nav.map((n) => {
         const on = n.key === active || n.children?.some((c) => c.key === active)
@@ -74,14 +81,15 @@ export function AppShell({
             <div className="relative">
             <button
               onClick={() => onPick(n.children?.[0]?.key ?? n.key)}
-              className={cn('relative flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-[13.5px] outline-none transition-colors', on ? 'bg-[var(--accent-soft)] text-[var(--text)]' : 'text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]')}
+              title={collapsed ? n.label : undefined}
+              className={cn('relative flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-[13.5px] outline-none transition-colors', collapsed && 'justify-center', on ? 'bg-[var(--accent-soft)] text-[var(--text)]' : 'text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]')}
             >
               {on && <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-[var(--accent)]" />}
               <Icon icon={n.icon} size="sm" className={on ? 'text-[var(--accent)]' : ''} />
-              <span className="flex-1 text-left">{n.label}</span>
-              {n.badge != null && <span className="mono rounded-full bg-[var(--surface-3)] px-1.5 text-[11px] text-[var(--muted)]">{n.badge}</span>}
+              {!collapsed && <span className="flex-1 text-left">{n.label}</span>}
+              {!collapsed && n.badge != null && <span className="mono rounded-full bg-[var(--surface-3)] px-1.5 text-[11px] text-[var(--muted)]">{n.badge}</span>}
             </button>
-            {n.action && (
+            {!collapsed && n.action && (
               <button
                 onClick={(e) => { e.stopPropagation(); n.action!.onClick() }}
                 title={n.action.title}
@@ -91,7 +99,7 @@ export function AppShell({
               </button>
             )}
             </div>
-            {on && n.children && (
+            {!collapsed && on && n.children && (
               <div className="mb-1 ml-4 mt-0.5 flex flex-col gap-0.5 border-l border-[var(--border)] pl-2">
                 {n.children.map((c) => {
                   const cOn = c.key === active
@@ -113,22 +121,25 @@ export function AppShell({
 
   const footer = (
     <div className="border-t border-[var(--border)] p-2">
-      {footerExtra && <div className="mb-1">{footerExtra}</div>}
+      {!collapsed && footerExtra && <div className="mb-1">{footerExtra}</div>}
       {onReturnToNexus && (
-        <button onClick={onReturnToNexus} className="mb-1 flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-[13px] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]">
-          <Icon icon={ChevronLeft} size="sm" /> Вернуться в Nexus
+        <button onClick={onReturnToNexus} title={collapsed ? 'Вернуться в Nexus' : undefined} className={cn('mb-1 flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-2.5 py-2 text-[13px] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]', collapsed && 'justify-center')}>
+          <Icon icon={ChevronLeft} size="sm" /> {!collapsed && 'Вернуться в Nexus'}
         </button>
       )}
       <button
         onClick={() => setProfileOpen(true)}
-        className="flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-2 py-1.5 text-left transition-colors hover:bg-[var(--surface-2)]"
+        title={collapsed ? account.name : undefined}
+        className={cn('flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-2 py-1.5 text-left transition-colors hover:bg-[var(--surface-2)]', collapsed && 'justify-center')}
         aria-label="Профиль"
       >
         <Avatar name={account.name} size="lg" />
-        <div className="min-w-0 leading-tight">
-          <div className="truncate text-[13px] font-medium text-[var(--text)]">{account.name}</div>
-          <div className="truncate text-[11px] text-[var(--muted)]">{account.role}</div>
-        </div>
+        {!collapsed && (
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[13px] font-medium text-[var(--text)]">{account.name}</div>
+            <div className="truncate text-[11px] text-[var(--muted)]">{account.role}</div>
+          </div>
+        )}
       </button>
     </div>
   )
@@ -146,9 +157,16 @@ export function AppShell({
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--bg)]">
       {/* ── Сайдбар (десктоп), всегда тёмный ── */}
-      <aside className="sidebar-dark hidden w-60 shrink-0 flex-col border-r border-[var(--border)] md:flex">
-        <div className="flex h-14 items-center border-b border-[var(--border)] px-4">{Logo}</div>
-        <div className="flex-1 overflow-y-auto">{navList(onNavigate)}</div>
+      <aside className={cn('sidebar-dark hidden shrink-0 flex-col border-r border-[var(--border)] md:flex', collapsed ? 'w-14' : 'w-60')}>
+        <div className={cn('flex h-14 items-center border-b border-[var(--border)]', collapsed ? 'justify-center px-2' : 'justify-between px-4')}>
+          {!collapsed && Logo}
+          {collapsible && (
+            <button onClick={() => setCollapsed((c) => !c)} title={collapsed ? 'Развернуть меню' : 'Свернуть меню'} className="grid h-7 w-7 shrink-0 place-items-center rounded-[var(--radius-sm)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]">
+              <Icon icon={collapsed ? PanelLeft : PanelLeftClose} size="sm" />
+            </button>
+          )}
+        </div>
+        <div className="flex-1 overflow-y-auto">{navList(onNavigate, collapsed)}</div>
         {footer}
       </aside>
 
@@ -161,7 +179,7 @@ export function AppShell({
               название активного раздела. */}
           {/* название раздела + подзаголовок (описание/подсказки страницы) слева */}
           <div className="hidden min-w-0 md:block">
-            <div className="truncate text-[14px] font-semibold text-[var(--text)]">{activeTop?.label ?? product.name}</div>
+            <div className="truncate text-[22px] font-bold leading-tight text-[var(--text)]">{activeTop?.label ?? product.name}</div>
             {subtitle && <div className="truncate text-[12px] leading-tight text-[var(--muted)]">{subtitle}</div>}
           </div>
           {toolbar && <div className="ml-auto flex items-center gap-3">{toolbar}</div>}
@@ -251,6 +269,9 @@ export function AppShell({
           extra={profileExtra}
         />
       </div>
+
+      {/* Правая слот-панель продукта (напр. чат-сайдбар) — полноэкранная колонка (десктоп) */}
+      {rightPanel && <div className="hidden shrink-0 md:block">{rightPanel}</div>}
     </div>
   )
 }
