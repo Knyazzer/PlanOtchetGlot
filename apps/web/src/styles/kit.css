@@ -123,7 +123,7 @@
    сайдбар «плывёт» относительно кита/support. Реплицируем нужный срез preflight ТОЛЬКО внутри
    тёмного сайдбара: класс `.sidebar-dark` вешают И левое меню (<aside>), И выезжающая панель
    профиля (Drawer dark) — контент-страницы под этот scope НЕ попадают, поэтому старьё цело.
-   Утилиты кита (px-*/py-*/mt-*/border-*) лежат в слое utilities и перекрывают этот сброс. */
+   Утилиты кита (px, py, mt, border-…) лежат в слое utilities и перекрывают этот сброс. */
 @layer base {
   .sidebar-dark, .sidebar-dark *, .sidebar-dark ::before, .sidebar-dark ::after {
     box-sizing: border-box;
