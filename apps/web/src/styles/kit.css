@@ -15,70 +15,48 @@
 
 /* Токены из Figma-макета v2 (.figma/ux-ui prototype v2/src/styles/theme.css).
    Сайдбар-группа едина для обеих тем — сайдбар всегда тёмный. */
-:root {
-  --background: #f4f5f7;
-  --foreground: #0d0f14;
-  --card: #ffffff;
-  --card-foreground: #0d0f14;
-  --popover: #ffffff;
-  --popover-foreground: #0d0f14;
-  --primary: #4f46e5;
-  --primary-foreground: #ffffff;
-  --secondary: #e8eaef;
-  --secondary-foreground: #0d0f14;
-  --muted: #eceef3;
-  --muted-foreground: #6b7080;
-  --accent: #eff0f8;
-  --accent-foreground: #0d0f14;
-  --destructive: #dc2626;
+/* shadcn-токены выведены из единого ui-kit (ui-kit/tokens.css) — контент-компоненты shadcn/Radix
+   наследуют кит-палитру. --muted/--accent НА БАЗЕ не переопределяем (их смысл в ките: текст-серый /
+   бренд-акцент); shadcn-фон muted/accent смаплен на поверхности в @theme ниже. Тема dark/light,
+   --radius, --accent(фиолетовый Nexus) — из tokens.css/index.css. */
+:root, [data-theme="dark"], [data-theme="light"] {
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-contrast);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted-foreground: var(--muted);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
   --destructive-foreground: #ffffff;
   --input: transparent;
-  --input-background: #f0f1f5;
-  --switch-background: #c5c9d6;
-  --ring: #4f46e5;
+  --input-background: var(--surface-2);
+  --switch-background: var(--surface-3);
+  --ring: var(--accent);
 
-  --sidebar: #1a1b26;
-  --sidebar-foreground: #c8cadc;
-  --sidebar-primary: #6366f1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(255,255,255,0.06);
-  --sidebar-accent-foreground: #e2e4f0;
-  --sidebar-border: rgba(255,255,255,0.07);
-  --sidebar-muted: #8b8fa8;
-  /* легаси-алиасы (использовались до v2) */
-  --sidebar-bg: var(--sidebar);
-  --sidebar-text: var(--sidebar-foreground);
-  --sidebar-text-active: var(--sidebar-accent-foreground);
+  /* сайдбар — тёмный канон (кит): */
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--accent-contrast);
+  --sidebar-accent: var(--surface-3);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-muted: var(--muted);
+  --sidebar-bg: var(--surface);
+  --sidebar-text: var(--text);
+  --sidebar-text-active: var(--accent);
 
-  --chart-1: #6366f1;
+  --chart-1: var(--accent);
   --chart-2: #22d3ee;
-  --chart-3: #f59e0b;
-  --chart-4: #10b981;
+  --chart-3: var(--new);
+  --chart-4: var(--closed);
   --chart-5: #f43f5e;
-  --radius: 0.75rem;
-}
-
-/* Тёмная тема контента (сайдбар не меняется) */
-[data-theme="dark"] {
-  --background: #0e0e12;
-  --foreground: #e2e4f0;
-  --card: #16161c;
-  --card-foreground: #e2e4f0;
-  --popover: #1e1e28;
-  --popover-foreground: #e2e4f0;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: #1e1e28;
-  --secondary-foreground: #e2e4f0;
-  --muted: #1c1c24;
-  --muted-foreground: #8b8fa8;
-  --accent: #1e1e2c;
-  --accent-foreground: #e2e4f0;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --input-background: #1e1e28;
-  --switch-background: #3a3a50;
-  --ring: #6366f1;
 }
 
 @theme inline {
@@ -92,9 +70,9 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
+  --color-muted: var(--surface-2);        /* shadcn «muted» — это ФОН → поверхность кита */
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
+  --color-accent: var(--surface-3);       /* shadcn «accent» — hover-ФОН → поверхность кита */
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
@@ -113,8 +91,8 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-muted: var(--sidebar-muted);
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-mono);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

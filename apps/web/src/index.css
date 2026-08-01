@@ -3,35 +3,27 @@
 /* ── CSS-переменные: значения палитры Figma v2 (рестайл старых страниц
    выполнен перемапом этих переменных — сами страницы не правились).
    Источник: kit.css / .figma/ux-ui prototype v2/src/styles/theme.css ──── */
-:root, [data-theme="dark"] {
-  --bg:        #0e0e12;
-  --surface-1: #16161c;
-  --surface-2: #1c1c24;
-  --surface-3: #1e1e28;
-  --border:    rgba(255,255,255,0.07);
-  --text-1:    #e2e4f0;
-  --text-2:    #b9bccf;
-  --text-3:    #8b8fa8;
-  --text-muted:#565a70;
-  --accent-s:  #6366f1;
-  --accent-e:  #E8194B;
-  --success:   #29BF12;
-  --danger:    #E8194B;
-  --warning:   #F59E0B;
+/* ── Токен-мост: имена токенов Nexus → значения единого ui-kit (см. ui-kit/tokens.css).
+   Тема dark/light и сами значения приходят из tokens.css кита; здесь только алиасы,
+   чтобы существующие страницы (var(--surface-2)/var(--text-1)/…) унаследовали кит-палитру
+   БЕЗ правки каждой страницы. Имена, совпадающие с китом (--bg/--border/--surface-2/-3/--danger)
+   намеренно НЕ переопределяем — их задаёт tokens.css (грузится до index.css). ── */
+:root, [data-theme="dark"], [data-theme="light"] {
+  --surface-1: var(--surface);
+  --text-1:    var(--text);
+  --text-2:    var(--muted);
+  --text-3:    var(--muted);
+  --text-muted:var(--muted);
+  --accent-s:  var(--accent);
+  --accent-e:  #E8194B;            /* конец акцент-градиента — нет эквивалента в ките */
+  --success:   var(--closed);
+  --warning:   var(--new);
 }
 
-[data-theme="light"] {
-  --bg:        #f4f5f7;
-  --surface-1: #ffffff;
-  --surface-2: #eceef3;
-  --surface-3: #e8eaef;
-  --border:    rgba(0,0,0,0.08);
-  --text-1:    #0d0f14;
-  --text-2:    #3d4150;
-  --text-3:    #6b7080;
-  --text-muted:#9a9eae;
-  --accent-s:  #4f46e5;
-}
+/* Акцент Nexus — фиолетовый тон логотипа (#3A0FA6→#4311AA), UI-читаемая яркость на тёмном.
+   --accent-soft/-line/-contrast в tokens.css пересчитываются от --accent через color-mix. */
+:root, [data-theme="dark"] { --accent: #7B61FF; --accent-contrast: #ffffff; }
+[data-theme="light"]       { --accent: #5B3FE0; --accent-contrast: #ffffff; }
 
 /* ── Базовые стили ──────────────────────────────────────────────────────── */
 html { font-size: 16px; height: 100%; }
