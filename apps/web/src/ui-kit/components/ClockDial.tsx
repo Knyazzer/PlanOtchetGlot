@@ -47,7 +47,9 @@ export function ClockDial({
     const y = (e.clientY - rect.top) * scale - C
     let a = Math.atan2(y, x) + Math.PI / 2
     if (a < 0) a += 2 * Math.PI
-    return (Math.round((a / (2 * Math.PI)) * 1440 / STEP) * STEP) % 1440
+    // +720: циферблат повёрнут на полдень-сверху (см. angle()), обратное преобразование
+    // курсор→минуты должно учитывать то же смещение, иначе ручка прыгает на 12ч (диаметрально).
+    return (Math.round((a / (2 * Math.PI)) * 1440 / STEP) * STEP + 720) % 1440
   }
   function onMove(e: PointerEvent) {
     if (!mode.current) return
