@@ -10,6 +10,7 @@ import { KanbanBoard } from './tasks/KanbanBoard'
 import { GanttChart } from './tasks/GanttChart'
 import { CalendarEventModal } from './tasks/CalendarEventModal'
 import { TaskTable } from './tasks/TaskTable'
+import { HeaderPortal } from '../components/HeaderPortal'
 
 // ── Re-exports (сохраняют прежние импорты из './TasksPage' у других файлов) ────
 export type { Task, BoardGroupBy } from './tasks/types'
@@ -102,18 +103,20 @@ export function TasksPage({ onOpenChatWith }: TasksPageProps = {}) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
-      {/* Tab bar */}
-      <div style={{ padding:'12px 24px 0', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'flex-end', gap:0, flexShrink:0 }}>
-        {(['tasks','tracks'] as const).map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            style={{ padding:'8px 18px', marginRight:4, borderRadius:'8px 8px 0 0', border:'1px solid var(--border)', borderBottom: tab === t ? '1px solid var(--bg)' : '1px solid var(--border)', background: tab === t ? 'var(--bg)' : 'none', color: tab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight: tab === t ? 700 : 500, cursor:'pointer', marginBottom: tab === t ? -1 : 0 }}
-          >
-            {t === 'tasks' ? 'Задачи' : 'Треки'}
-          </button>
-        ))}
-      </div>
+      {/* Вкладки Задачи/Треки — в китовую шапку (компактный сегмент) */}
+      <HeaderPortal>
+        <div style={{ display:'flex', alignItems:'center', gap:2, background:'var(--surface-2)', borderRadius:8, padding:3 }}>
+          {(['tasks','tracks'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{ padding:'5px 14px', borderRadius:6, border:'none', background: tab === t ? 'var(--surface)' : 'none', color: tab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight: tab === t ? 700 : 500, cursor:'pointer' }}
+            >
+              {t === 'tasks' ? 'Задачи' : 'Треки'}
+            </button>
+          ))}
+        </div>
+      </HeaderPortal>
 
       {tab === 'tracks' && <TracksPage onOpenChatWith={onOpenChatWith} />}
 
