@@ -22,6 +22,7 @@ export function CalendarPage() {
   const [view,        setView]        = useState<CalView>('week')
   const [cursor,      setCursor]      = useState(new Date())
   const [calsOpen,    setCalsOpen]    = useState(false)   // поповер списка календарей (замена левого сайдбара)
+  const [calSearch,   setCalSearch]   = useState('')      // поиск по названию календаря в поповере
   const calsDownRef = useRef(false)                       // железное правило попапов: mousedown+mouseup на оверлее
   const [visible,     setVisible]     = useState<Set<string>>(() => new Set([...MY_CATS, ...HR_CATS].map(c => c.id)))
   const [selected,    setSelected]    = useState<string | null>(null)
@@ -236,20 +237,42 @@ export function CalendarPage() {
           onMouseUp={(e) => { if (calsDownRef.current && e.target === e.currentTarget) setCalsOpen(false); calsDownRef.current = false }}
           style={{ position:'fixed', inset:0, zIndex:60 }}
         >
+          {(() => {
+            const q = calSearch.trim().toLowerCase()
+            const myF = MY_CATS.filter(c => c.label.toLowerCase().includes(q))
+            const hrF = HR_CATS.filter(c => c.label.toLowerCase().includes(q))
+            const showGlobal = !q || 'общий'.includes(q)
+            const allIds = [...MY_CATS, ...HR_CATS].map(c => c.id)
+            return (
           <div style={{ position:'absolute', top:56, right:16, width:236, maxHeight:'72vh', overflowY:'auto', background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 12px 38px -8px rgba(0,0,0,0.55)', padding:12 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
               <span style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-muted)' }}>Календари</span>
               <button onClick={() => setCalsOpen(false)} aria-label="Закрыть" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex' }}><X size={14} /></button>
             </div>
-            <SidebarSection label="МОИ КАЛЕНДАРИ" cats={MY_CATS} visible={visible} onToggle={toggleCat}
-              onAdd={() => openCreate()}>
-              {/* Общий — всегда виден, не скрывается не-админами */}
-              <GlobalCalRow isAdmin={isAdmin} onAdd={() => setEntryModal({ ...BLANK_ENTRY(), open: true, type: 'global', date: todayS })} />
-            </SidebarSection>
-            <div style={{ margin:'10px 0 4px', borderTop:'1px solid var(--border)' }} />
-            <SidebarSection label="HR СТАТУСЫ" cats={HR_CATS} visible={visible} onToggle={toggleCat}
-              onAdd={isAdmin ? () => setEntryModal({ ...BLANK_ENTRY(), open: true, type: 'hr_sick', date: todayS, isAllDay: true }) : undefined} />
+            <input value={calSearch} onChange={e => setCalSearch(e.target.value)} placeholder="Поиск календаря…"
+              style={{ width:'100%', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 9px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:12, outline:'none', boxSizing:'border-box', marginBottom:6 }} />
+            <div style={{ display:'flex', gap:12, padding:'0 2px 6px', fontSize:11 }}>
+              <button onClick={() => setVisible(new Set(allIds))} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--accent-s)', padding:0 }}>Выбрать все</button>
+              <button onClick={() => setVisible(new Set())} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0 }}>Снять все</button>
+            </div>
+            {(myF.length > 0 || (!q && showGlobal)) && (
+              <SidebarSection label="МОИ КАЛЕНДАРИ" cats={myF} visible={visible} onToggle={toggleCat}
+                onAdd={!q ? () => openCreate() : undefined}>
+                {/* Общий — всегда виден, не скрывается не-админами */}
+                {showGlobal && <GlobalCalRow isAdmin={isAdmin} onAdd={() => setEntryModal({ ...BLANK_ENTRY(), open: true, type: 'global', date: todayS })} />}
+              </SidebarSection>
+            )}
+            {hrF.length > 0 && <>
+              <div style={{ margin:'10px 0 4px', borderTop:'1px solid var(--border)' }} />
+              <SidebarSection label="HR СТАТУСЫ" cats={hrF} visible={visible} onToggle={toggleCat}
+                onAdd={!q && isAdmin ? () => setEntryModal({ ...BLANK_ENTRY(), open: true, type: 'hr_sick', date: todayS, isAllDay: true }) : undefined} />
+            </>}
+            {q && myF.length === 0 && hrF.length === 0 && !showGlobal && (
+              <div style={{ padding:'10px 4px', fontSize:12, color:'var(--text-muted)', textAlign:'center' }}>Ничего не найдено</div>
+            )}
           </div>
+            )
+          })()}
         </div>
       )}
 
