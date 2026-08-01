@@ -211,7 +211,7 @@ export function AppShell() {
   return (
     <>
       <KitAppShell
-        product={{ name: 'Nexus', markSrc: nexusLogoSrc, company: 'Мегаполис Медиа' }}
+        product={{ name: 'Нексус', markSrc: nexusLogoSrc, company: 'Мегаполис Медиа' }}
         nav={navEntries}
         active={page}
         onNavigate={handleNavigate}
