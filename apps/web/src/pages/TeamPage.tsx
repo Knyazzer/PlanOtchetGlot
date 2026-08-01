@@ -4,6 +4,7 @@ import { Search, MessageSquare, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCurrentUser } from '../hooks/useAuth'
 import { formatName } from '../lib/utils'
+import { HeaderPortal } from '../components/HeaderPortal'
 
 // Команда: mini-canvas с деревом выбранного департамента.
 // Drag/zoom, dropdown для смены департамента, поиск с подсветкой.
@@ -632,69 +633,65 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Header bar */}
-      <div style={{
-        flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 20px', borderBottom: '1px solid var(--border)',
-        background: 'var(--surface-1)',
-      }}>
-        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text-1)', flexShrink: 0 }}>Команда</h1>
+      {/* Контролы страницы — в китовую шапку (заголовок «Команда» даёт AppShell) */}
+      <HeaderPortal>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Dept selector */}
+          {myDepts.length === 1 && selectedDepts[0] && (
+            <span style={{
+              fontSize: 13, fontWeight: 700, color: selectedDepts[0].color,
+              background: selectedDepts[0].color + '22', borderRadius: 6, padding: '4px 10px',
+            }}>{selectedDepts[0].name}</span>
+          )}
 
-        {/* Dept selector */}
-        {myDepts.length === 1 && selectedDepts[0] && (
-          <span style={{
-            fontSize: 13, fontWeight: 700, color: selectedDepts[0].color,
-            background: selectedDepts[0].color + '22', borderRadius: 6, padding: '4px 10px',
-          }}>{selectedDepts[0].name}</span>
-        )}
-
-        {myDepts.length > 1 && (
-          <select value={selectedDeptId ?? 'all'} onChange={e => setSelectedDeptId(e.target.value)} style={selectStyle}>
-            <option value="all">{allLabel}</option>
-            <optgroup label="Мои">
-              {myDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </optgroup>
-            {otherDepts.length > 0 && (
-              <optgroup label="Все">
-                {otherDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          {myDepts.length > 1 && (
+            <select value={selectedDeptId ?? 'all'} onChange={e => setSelectedDeptId(e.target.value)} style={selectStyle}>
+              <option value="all">{allLabel}</option>
+              <optgroup label="Мои">
+                {myDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </optgroup>
+              {otherDepts.length > 0 && (
+                <optgroup label="Все">
+                  {otherDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </optgroup>
+              )}
+            </select>
+          )}
+
+          {/* Admin flat list (not assigned to any dept via org structure) */}
+          {isAdmin && myDepts.length === 0 && allDepts.length > 0 && (
+            <select value={selectedDeptId ?? ''} onChange={e => setSelectedDeptId(e.target.value)} style={selectStyle}>
+              {allDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          )}
+
+          {/* Search */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            background: 'var(--surface-2)', border: '1px solid var(--border)',
+            borderRadius: 8, padding: '5px 10px', minWidth: 200,
+          }}>
+            <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Поиск сотрудника…"
+              style={{ background: 'none', border: 'none', outline: 'none', flex: 1, color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13 }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
+                <X size={12} />
+              </button>
             )}
-          </select>
-        )}
-
-        {/* Admin flat list (not assigned to any dept via org structure) */}
-        {isAdmin && myDepts.length === 0 && allDepts.length > 0 && (
-          <select value={selectedDeptId ?? ''} onChange={e => setSelectedDeptId(e.target.value)} style={selectStyle}>
-            {allDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-        )}
-
-        {/* Search */}
-        <div style={{
-          marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 7,
-          background: 'var(--surface-2)', border: '1px solid var(--border)',
-          borderRadius: 8, padding: '6px 10px', minWidth: 220,
-        }}>
-          <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Поиск сотрудника…"
-            style={{ background: 'none', border: 'none', outline: 'none', flex: 1, color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13 }}
-          />
-          {search && (
-            <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
-              <X size={12} />
-            </button>
+          </div>
+          {highlightIds.size > 0 && (
+            <span style={{ fontSize: 12, color: '#F59E0B', flexShrink: 0 }}>{highlightIds.size} найд.</span>
+          )}
+          {q && highlightIds.size === 0 && (
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>Не найдено</span>
           )}
         </div>
-        {highlightIds.size > 0 && (
-          <span style={{ fontSize: 12, color: '#F59E0B', flexShrink: 0 }}>{highlightIds.size} найд.</span>
-        )}
-        {q && highlightIds.size === 0 && (
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>Не найдено</span>
-        )}
-      </div>
+      </HeaderPortal>
 
       {/* Canvas */}
       <div
