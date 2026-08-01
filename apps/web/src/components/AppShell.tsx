@@ -175,22 +175,31 @@ export function AppShell() {
   const extraModules = !isAdmin
     ? (user?.access?.modules ?? []).filter((m) => !m.page || !navPageIds.has(m.page))
     : []
+  // Блоки-секции меню: доп-модули группируются по m.group (продукты — «Внешние сервисы»,
+  // отделы — «HR»/«Финансы»/…), порядок групп — по первому появлению; заголовок блока рисует
+  // кит при смене section. Блок показывается только если у пользователя есть модули этой группы.
+  const groupOrder = [...new Set(extraModules.map((m) => m.group))]
+  const sortedExtra = [...extraModules].sort((a, b) => groupOrder.indexOf(a.group) - groupOrder.indexOf(b.group))
 
   const navEntries: NavEntry[] = [
+    // Основной блок — без секции (заголовка нет)
     ...(!isSystem ? USER_NAV.map((item) => ({
       key: item.id,
       label: item.label,
       icon: item.icon,
       badge: item.id === 'tasks' && unseenTasks > 0 ? unseenTasks : undefined,
     })) : []),
-    ...extraModules.map((m) => ({
+    // Блоки продуктов/департаментов — по группам (section = m.group)
+    ...sortedExtra.map((m) => ({
       key: m.page ?? m.key,
       label: m.name,
-      // NavEntry.icon кита — только LucideIcon (нет слота под img-логотип внешнего продукта,
-      // как раньше у ext.inventory) — заглушка-иконка, продуктовый логотип временно теряется.
+      // NavEntry.icon кита — только LucideIcon (нет слота под img-логотип внешнего продукта) —
+      // заглушка-иконка, продуктовый логотип временно теряется.
       icon: m.key === 'ext.inventory' ? Package : Users,
+      section: m.group,
     })),
-    ...(isAdmin ? adminNav.map((item) => ({ key: item.id, label: item.label, icon: item.icon })) : []),
+    // Админ-блок
+    ...(isAdmin ? adminNav.map((item) => ({ key: item.id, label: item.label, icon: item.icon, section: 'Администрирование' })) : []),
   ]
 
   function handleNavigate(key: string) {

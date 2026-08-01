@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, Fragment } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { ChevronLeft, Menu, PanelLeftClose, PanelLeft } from 'lucide-react'
 import { Icon } from './Icon'
@@ -15,6 +15,9 @@ export interface NavEntry {
   icon: LucideIcon
   badge?: number
   children?: NavChild[]
+  /** заголовок-секция ПЕРЕД этим пунктом (первый пункт новой группы — напр. «Модули», «HR»);
+   *  пусто = пункт основного блока без заголовка. Пункты одной секции идут подряд. */
+  section?: string
   /** действие-кнопка справа в пункте (напр. «+» создать) — появляется на ховере строки */
   action?: { icon: LucideIcon; onClick: () => void; title?: string }
 }
@@ -40,6 +43,7 @@ export function AppShell({
   toolbar,
   rightPanel,
   collapsible,
+  hideBottomNav,
   children,
 }: {
   product: { name: string; mark?: string; markSrc?: string; company?: string }
@@ -64,6 +68,9 @@ export function AppShell({
   rightPanel?: React.ReactNode
   /** разрешить сворачивание левого сайдбара (кнопка-тоггл в шапке сайдбара) */
   collapsible?: boolean
+  /** скрыть нижнюю навигацию (мобилка), плавно уводя её вниз — напр. когда открыт полноэкранный
+   *  чат заявки: панель не нужна, контент занимает всю высоту. */
+  hideBottomNav?: boolean
   children: React.ReactNode
 }) {
   const activeTop = nav.find((n) => n.key === active || n.children?.some((c) => c.key === active))
@@ -74,10 +81,13 @@ export function AppShell({
   // список навигации (переиспользуется в десктоп-сайдбаре и мобильном «Ещё»-drawer)
   const navList = (onPick: (k: string) => void, collapsed = false) => (
     <nav className="p-2">
-      {nav.map((n) => {
+      {nav.map((n, i) => {
         const on = n.key === active || n.children?.some((c) => c.key === active)
+        const showSection = !collapsed && !!n.section && n.section !== (i > 0 ? nav[i - 1].section : undefined)
         return (
-          <div key={n.key} className="group/nav">
+          <Fragment key={n.key}>
+            {showSection && <div className="eyebrow px-2.5 pb-1 pt-3 text-[var(--muted)]">{n.section}</div>}
+          <div className="group/nav">
             <div className="relative">
             <button
               onClick={() => onPick(n.children?.[0]?.key ?? n.key)}
@@ -114,6 +124,7 @@ export function AppShell({
               </div>
             )}
           </div>
+          </Fragment>
         )
       })}
     </nav>
@@ -187,11 +198,11 @@ export function AppShell({
 
         {/* контент (гориз. скролл страницы заблокирован — у тяжёлых компонентов свой внутренний скролл).
             Нижний отступ на мобилке — под плавающую панель навигации (её высота + safe-area). */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</main>
+        <main className={cn('flex-1 overflow-y-auto overflow-x-hidden md:pb-0', hideBottomNav ? 'pb-0' : 'pb-[calc(6.5rem+env(safe-area-inset-bottom))]')}>{children}</main>
 
         {/* нижняя навигация (мобилка): плавающая скруглённая панель поверх страницы.
             Крупные тап-таргеты (≥44px, Fitts), подписи в 2 строки, отступ от низа с учётом safe-area iOS. */}
-        <nav className="fixed inset-x-0 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[min(96%,480px)] items-stretch justify-around gap-1 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[0_12px_38px_-8px_rgba(0,0,0,0.55)] md:hidden">
+        <nav className={cn('fixed inset-x-0 bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[min(96%,480px)] items-stretch justify-around gap-1 rounded-[28px] border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[0_12px_38px_-8px_rgba(0,0,0,0.55)] transition-transform duration-300 ease-out md:hidden', hideBottomNav && 'pointer-events-none translate-y-[200%]')}>
           {primary.map((n) => {
             const on = n.key === active || n.children?.some((c) => c.key === active)
             return (
