@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
+import { X } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCurrentUser } from '../hooks/useAuth'
 import { api } from '../lib/api'
@@ -8,6 +9,7 @@ import { toYMD, getWeekStart, computeRange } from './calendar/utils'
 import { MonthView, WeekView, DayView } from './calendar/views'
 import { SidebarSection, GlobalCalRow, SidePanel } from './calendar/sidebar'
 import { EventModal, EntryModal } from './calendar/modals'
+import { HeaderPortal } from '../components/HeaderPortal'
 
 // ── Main component ─────────────────────────────────────────────────────────
 export function CalendarPage() {
@@ -19,6 +21,8 @@ export function CalendarPage() {
 
   const [view,        setView]        = useState<CalView>('week')
   const [cursor,      setCursor]      = useState(new Date())
+  const [calsOpen,    setCalsOpen]    = useState(false)   // поповер списка календарей (замена левого сайдбара)
+  const calsDownRef = useRef(false)                       // железное правило попапов: mousedown+mouseup на оверлее
   const [visible,     setVisible]     = useState<Set<string>>(() => new Set([...MY_CATS, ...HR_CATS].map(c => c.id)))
   const [selected,    setSelected]    = useState<string | null>(null)
   const [panelOpen,   setPanelOpen]   = useState(false)
@@ -192,48 +196,67 @@ export function CalendarPage() {
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
 
-      {/* Header */}
-      <div style={{ height:64, flexShrink:0, background:'var(--surface-1)', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', padding:'0 24px', gap:16, zIndex:10 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <button onClick={() => navigate(-1)} style={navBtnStyle}>‹</button>
-          <div style={{ fontSize:15, fontWeight:600, color:'var(--text-1)', minWidth:180, textAlign:'center' }}>{periodLabel}</div>
-          <button onClick={() => navigate(1)}  style={navBtnStyle}>›</button>
-        </div>
-        <button onClick={() => { setCursor(new Date(today)); closePanel() }}
-          style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--border)', background:'none', color:'var(--text-3)', fontSize:13, fontFamily:'Inter,sans-serif', cursor:'pointer' }}>
-          Сегодня
-        </button>
+      {/* Контролы Календаря — в китовую шапку (заголовок «Календарь» даёт AppShell) */}
+      <HeaderPortal>
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <button onClick={() => navigate(-1)} style={navBtnStyle}>‹</button>
+            <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', minWidth:150, textAlign:'center' }}>{periodLabel}</div>
+            <button onClick={() => navigate(1)}  style={navBtnStyle}>›</button>
+          </div>
+          <button onClick={() => { setCursor(new Date(today)); closePanel() }}
+            style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--border)', background:'none', color:'var(--text-3)', fontSize:13, fontFamily:'Inter,sans-serif', cursor:'pointer' }}>
+            Сегодня
+          </button>
 
-        <div style={{ marginLeft:'auto', display:'flex', background:'var(--surface-2)', borderRadius:10, padding:3, gap:2, border:'1px solid var(--border)' }}>
-          {(['month','week','day'] as CalView[]).map(v => (
-            <button key={v} onClick={() => { setView(v); closePanel() }} style={{
-              padding:'5px 16px', borderRadius:7, border:'none', cursor:'pointer',
-              background: view === v ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'none',
-              color: view === v ? '#fff' : 'var(--text-muted)', fontSize:13, fontWeight: view === v ? 600 : 400,
-              fontFamily:'Inter,sans-serif',
-            }}>
-              {v === 'month' ? 'Месяц' : v === 'week' ? 'Неделя' : 'День'}
-            </button>
-          ))}
+          <div style={{ display:'flex', background:'var(--surface-2)', borderRadius:10, padding:3, gap:2, border:'1px solid var(--border)' }}>
+            {(['month','week','day'] as CalView[]).map(v => (
+              <button key={v} onClick={() => { setView(v); closePanel() }} style={{
+                padding:'5px 16px', borderRadius:7, border:'none', cursor:'pointer',
+                background: view === v ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'none',
+                color: view === v ? '#fff' : 'var(--text-muted)', fontSize:13, fontWeight: view === v ? 600 : 400,
+                fontFamily:'Inter,sans-serif',
+              }}>
+                {v === 'month' ? 'Месяц' : v === 'week' ? 'Неделя' : 'День'}
+              </button>
+            ))}
+          </div>
+
+          <button onClick={() => setCalsOpen(o => !o)}
+            style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--border)', background: calsOpen ? 'var(--surface-2)' : 'none', color:'var(--text-2)', fontSize:13, fontFamily:'Inter,sans-serif', cursor:'pointer' }}>
+            Календари ▾
+          </button>
         </div>
-      </div>
+      </HeaderPortal>
+
+      {/* Поповер «Календари» — список вкл/выкл (замена левого сайдбара). Закрытие: mousedown+mouseup на оверлее + ✕. */}
+      {calsOpen && (
+        <div
+          onMouseDown={(e) => { calsDownRef.current = e.target === e.currentTarget }}
+          onMouseUp={(e) => { if (calsDownRef.current && e.target === e.currentTarget) setCalsOpen(false); calsDownRef.current = false }}
+          style={{ position:'fixed', inset:0, zIndex:60 }}
+        >
+          <div style={{ position:'absolute', top:56, right:16, width:236, maxHeight:'72vh', overflowY:'auto', background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 12px 38px -8px rgba(0,0,0,0.55)', padding:12 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+              <span style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-muted)' }}>Календари</span>
+              <button onClick={() => setCalsOpen(false)} aria-label="Закрыть" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex' }}><X size={14} /></button>
+            </div>
+            <SidebarSection label="МОИ КАЛЕНДАРИ" cats={MY_CATS} visible={visible} onToggle={toggleCat}
+              onAdd={() => openCreate()}>
+              {/* Общий — всегда виден, не скрывается не-админами */}
+              <GlobalCalRow isAdmin={isAdmin} onAdd={() => setEntryModal({ ...BLANK_ENTRY(), open: true, type: 'global', date: todayS })} />
+            </SidebarSection>
+            <div style={{ margin:'10px 0 4px', borderTop:'1px solid var(--border)' }} />
+            <SidebarSection label="HR СТАТУСЫ" cats={HR_CATS} visible={visible} onToggle={toggleCat}
+              onAdd={isAdmin ? () => setEntryModal({ ...BLANK_ENTRY(), open: true, type: 'hr_sick', date: todayS, isAllDay: true }) : undefined} />
+          </div>
+        </div>
+      )}
 
       {/* Body */}
       <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
 
-        {/* Left sidebar: category list */}
-        <div style={{ width:200, flexShrink:0, background:'var(--surface-1)', borderRight:'1px solid var(--border)', padding:'16px 12px', display:'flex', flexDirection:'column', gap:2, overflowY:'auto' }}>
-          <SidebarSection label="МОИ КАЛЕНДАРИ" cats={MY_CATS} visible={visible} onToggle={toggleCat}
-            onAdd={() => openCreate()}>
-            {/* Общий — всегда виден, не скрывается не-админами */}
-            <GlobalCalRow isAdmin={isAdmin} onAdd={() => setEntryModal({ ...BLANK_ENTRY(), open: true, type: 'global', date: todayS })} />
-          </SidebarSection>
-          <div style={{ margin:'10px 0 4px', borderTop:'1px solid var(--border)' }} />
-          <SidebarSection label="HR СТАТУСЫ" cats={HR_CATS} visible={visible} onToggle={toggleCat}
-            onAdd={isAdmin ? () => setEntryModal({ ...BLANK_ENTRY(), open: true, type: 'hr_sick', date: todayS, isAllDay: true }) : undefined} />
-        </div>
-
-        {/* Calendar area */}
+        {/* Calendar area (сайдбар категорий перенесён в поповер «Календари» в шапке) */}
         <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
           {view === 'month' && (
             <MonthView cursor={cursor} today={todayS} selected={selected}
