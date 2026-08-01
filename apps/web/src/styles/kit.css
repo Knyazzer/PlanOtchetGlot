@@ -115,3 +115,23 @@
     cursor: pointer;
   }
 }
+
+/* ── Parity с кит-плейграундом ──────────────────────────────────────────────
+   Кит спроектирован под Tailwind preflight (глобальный сброс элементов), а Nexus его
+   НАМЕРЕННО не подключает — чтобы не сбросить дефолты ~20 старых inline-страниц. Из-за этого
+   у элементов остаются браузерные margin/padding/line-height/border-style/svg-inline, и китовый
+   сайдбар «плывёт» относительно кита/support. Реплицируем нужный срез preflight ТОЛЬКО внутри
+   тёмного сайдбара: класс `.sidebar-dark` вешают И левое меню (<aside>), И выезжающая панель
+   профиля (Drawer dark) — контент-страницы под этот scope НЕ попадают, поэтому старьё цело.
+   Утилиты кита (px-*/py-*/mt-*/border-*) лежат в слое utilities и перекрывают этот сброс. */
+@layer base {
+  .sidebar-dark, .sidebar-dark *, .sidebar-dark ::before, .sidebar-dark ::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;   /* без style:solid китовые border-разделители (логотип/подвал/сабпункты) не рисуются */
+  }
+  .sidebar-dark { line-height: 1.5; }               /* как html в preflight — иначе строки меню по высоте не совпадают */
+  .sidebar-dark svg,
+  .sidebar-dark img { display: block; vertical-align: middle; }  /* иконки/лого — block, как в preflight (без inline-сдвига) */
+}
