@@ -229,6 +229,12 @@ model Task {
   actualMinutes  Int?       @map("actual_minutes")  // автокопия из plan при done
   doneAt         DateTime?  @map("done_at")
   archived       Boolean    @default(false)
+  // §9 ECOSYSTEM-AGGREGATION — аддитивные «розетки» под будущее зеркалирование внешних задач
+  // (kanban/support). Пустые сегодня (nullable), ничего не ломают; источник правды остаётся
+  // в продукте, Nexus лишь зеркалит. НЕ строим агрегацию — только закладываем поля.
+  source         String?                          // nexus|kanban|support|… (null = внутренняя Nexus)
+  externalId     String?    @map("external_id")   // id задачи в продукте-источнике
+  externalUrl    String?    @map("external_url")  // deep-link в продукт-источник
   manualOrder    Float?     @map("manual_order")    // дробный порядок на доске
   legacyId       String?    @unique @map("legacy_id")
   // — повторы: «генерация экземпляров» (В-2) — правило материализует задачу на каждый день серии —
