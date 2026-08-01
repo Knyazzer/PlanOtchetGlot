@@ -149,7 +149,7 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
               }
             </div>
             {pickerOpen && (
-              <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:300, background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:8, marginTop:4, boxShadow:'0 8px 24px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+              <div style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:8, marginTop:4, boxShadow:'0 8px 24px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
                 <div style={{ padding:'8px 10px', borderBottom:'1px solid var(--border)' }}>
                   <input autoFocus value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Поиск..." onMouseDown={e => e.stopPropagation()}
                     style={{ width:'100%', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:6, padding:'6px 8px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:12, outline:'none', boxSizing:'border-box' }} />
