@@ -44,6 +44,7 @@ export function AppShell({
   footerExtra,
   subtitle,
   toolbar,
+  headerActions,
   rightPanel,
   collapsible,
   hideBottomNav,
@@ -67,6 +68,9 @@ export function AppShell({
   /** подзаголовок раздела в шапке (описание страницы: настройки/подсказки) */
   subtitle?: React.ReactNode
   toolbar?: React.ReactNode
+  /** глобальные действия в ПРАВОМ краю шапки (всегда видимы): уведомления, быстрые кнопки.
+   *  В отличие от `toolbar` (настройки конкретной страницы) — постоянный слот продукта. */
+  headerActions?: React.ReactNode
   /** правый слот-панель (напр. чат-сайдбар продукта) справа от контента (десктоп) */
   rightPanel?: React.ReactNode
   /** разрешить сворачивание левого сайдбара (кнопка-тоггл в шапке сайдбара) */
@@ -208,7 +212,13 @@ export function AppShell({
             <div className="truncate text-[22px] font-bold leading-tight text-[var(--text)]">{activeTop?.label ?? product.name}</div>
             {subtitle && <div className="truncate text-[12px] leading-tight text-[var(--muted)]">{subtitle}</div>}
           </div>
-          {toolbar && <div className="ml-auto flex items-center gap-3">{toolbar}</div>}
+          {/* правый край шапки: настройки страницы (toolbar) + постоянные действия продукта (headerActions: уведомления и т.п.) */}
+          {(toolbar || headerActions) && (
+            <div className="ml-auto flex items-center gap-3">
+              {toolbar}
+              {headerActions}
+            </div>
+          )}
         </header>
 
         {/* контент (гориз. скролл страницы заблокирован — у тяжёлых компонентов свой внутренний скролл).

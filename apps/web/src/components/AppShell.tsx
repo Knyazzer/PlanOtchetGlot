@@ -227,7 +227,7 @@ export function AppShell() {
         onThemeChange={(t) => toggleTheme.mutate(t)}
         onLogout={() => logout.mutate()}
         profileExtra={<NexusProfileExtra />}
-        footerExtra={<NotifBellButton badge={notifBadge} onClick={() => setNotifOpen((v) => !v)} />}
+        headerActions={<NotifBellHeader badge={notifBadge} onClick={() => setNotifOpen((v) => !v)} />}
         rightPanel={
           <ChatRightPanel
             chatOpen={chatOpen}
@@ -329,24 +329,20 @@ function ChatRightPanel({ chatOpen, onToggle, chatsProps, chatKey, totalUnread }
   )
 }
 
-// ── Колокол уведомлений (footerExtra кита, над блоком аккаунта) ────────────────────────────────
-function NotifBellButton({ badge, onClick }: { badge: number; onClick: () => void }) {
+// ── Колокол уведомлений (headerActions кита — правый край шапки) ───────────────────────────────
+// Компактная иконка-кнопка с бейджем-счётчиком; открывает ту же NotificationsPanel.
+function NotifBellHeader({ badge, onClick }: { badge: number; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
       title="Уведомления"
-      className="flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-[13px] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+      aria-label="Уведомления"
+      className="relative grid h-9 w-9 place-items-center rounded-[var(--radius-sm)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
     >
-      <span className="relative flex">
-        <Bell className="h-4 w-4" />
-        {badge > 0 && (
-          <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full" style={{ background: '#E8194B' }} />
-        )}
-      </span>
-      <span className="flex-1 text-left">Уведомления</span>
+      <Bell className="h-[18px] w-[18px]" />
       {badge > 0 && (
         <span
-          className="mono rounded-full px-1.5 text-[10px] font-bold text-white"
+          className="mono absolute -right-0.5 -top-0.5 grid h-4 min-w-[16px] place-items-center rounded-full px-1 text-[10px] font-bold text-white"
           style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)' }}
         >
           {badge > 99 ? '99+' : badge}
