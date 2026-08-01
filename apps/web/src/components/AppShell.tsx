@@ -8,6 +8,7 @@ import { formatName } from '../lib/utils'
 import { openInventoryWithSession } from '../lib/sso'
 import nexusLogoSrc from '../assets/nexus.svg'
 import inventoryLogoSrc from '../assets/logos/inventory.svg'
+import { PageHeaderProvider, HeaderSlotTarget } from './HeaderPortal'
 
 // Логотипы продуктов для пунктов-сервисов (внешние/внутренние). Ключ = module.key.
 // Значок — из megapolis-platform/brand/logos (скопирован в assets/logos). Нет лого → lucide-фолбэк.
@@ -221,7 +222,7 @@ export function AppShell() {
   }
 
   return (
-    <>
+    <PageHeaderProvider>
       <KitAppShell
         product={{ name: 'Нексус', markSrc: nexusLogoSrc, company: 'Мегаполис Медиа' }}
         nav={navEntries}
@@ -232,6 +233,7 @@ export function AppShell() {
         onThemeChange={(t) => toggleTheme.mutate(t)}
         onLogout={() => logout.mutate()}
         profileExtra={<NexusProfileExtra />}
+        toolbar={<HeaderSlotTarget />}
         headerActions={<NotifBellHeader badge={notifBadge} onClick={() => setNotifOpen((v) => !v)} />}
         rightPanel={
           <ChatRightPanel
@@ -271,7 +273,7 @@ export function AppShell() {
           onOpenChats={() => setChatOpen(true)}
         />
       )}
-    </>
+    </PageHeaderProvider>
   )
 }
 
