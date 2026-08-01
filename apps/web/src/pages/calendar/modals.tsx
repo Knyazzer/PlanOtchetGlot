@@ -109,20 +109,12 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
 
   const [memberSearch, setMemberSearch] = useState('')
   const [pickerOpen,   setPickerOpen]   = useState(false)
-  const pickerRef = useRef<HTMLDivElement>(null)
   const mdRef = useRef(false)
 
   const { data: members = [] } = useQuery<ApiMember[]>({
     queryKey: ['users:members'],
     queryFn:  () => api.get('/users/members').then(r => r.data),
   })
-
-  useEffect(() => {
-    if (!pickerOpen) return
-    function h(e: MouseEvent) { if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setPickerOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [pickerOpen])
 
   const filteredMembers = members.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase()))
   const selectedNames = members.filter(m => modal.participantIds.includes(m.id)).map(m => m.name)
@@ -203,41 +195,40 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
         {/* Participant picker */}
         <div style={{ marginBottom:22 }}>
           <span style={{ ...lbl, display:'flex', alignItems:'center' }}>Участники <Hint text="Коллеги, приглашённые на встречу. Событие появится в Календаре у каждого участника." /></span>
-          <div ref={pickerRef} style={{ position:'relative' }}>
-            <div
-              onClick={() => { setMemberSearch(''); setPickerOpen(o => !o) }}
-              style={{ ...inp, cursor:'pointer', minHeight:38, display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', padding:'6px 10px' }}
-            >
-              {selectedNames.length === 0
-                ? <span style={{ color:'var(--text-muted)', fontSize:12 }}>Добавить участников...</span>
-                : selectedNames.map(n => (
-                    <span key={n} style={{ fontSize:11, padding:'2px 8px', borderRadius:12, background:'rgba(139,92,246,0.2)', color:'#8B5CF6', fontWeight:600 }}>{n}</span>
-                  ))
-              }
-            </div>
-            {pickerOpen && (
-              <div style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:8, marginTop:4, boxShadow:'0 8px 24px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
-                <div style={{ padding:'8px 10px', borderBottom:'1px solid var(--border)' }}>
-                  <input autoFocus value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Поиск..." onMouseDown={e => e.stopPropagation()}
-                    style={{ width:'100%', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:6, padding:'6px 8px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:12, outline:'none', boxSizing:'border-box' }} />
-                </div>
-                <div style={{ maxHeight:180, overflowY:'auto' }}>
-                  {filteredMembers.map(m => {
-                    const sel = modal.participantIds.includes(m.id)
-                    return (
-                      <div key={m.id} onMouseDown={e => { e.preventDefault(); toggleParticipant(m.id) }}
-                        style={{ padding:'9px 12px', fontSize:13, color:'var(--text-1)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, background: sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}
-                        onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}>
-                        <div style={{ width:14, height:14, borderRadius:3, border:`1.5px solid ${sel ? '#8B5CF6' : 'var(--text-muted)'}`, background: sel ? '#8B5CF6' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#fff', flexShrink:0 }}>{sel ? '✓' : ''}</div>
-                        {formatName(m.name)}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+          <div
+            onClick={() => { setMemberSearch(''); setPickerOpen(true) }}
+            style={{ ...inp, cursor:'pointer', minHeight:38, display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', padding:'6px 10px' }}
+          >
+            {selectedNames.length === 0
+              ? <span style={{ color:'var(--text-muted)', fontSize:12 }}>Добавить участников...</span>
+              : selectedNames.map(n => (
+                  <span key={n} style={{ fontSize:11, padding:'2px 8px', borderRadius:12, background:'rgba(139,92,246,0.2)', color:'#8B5CF6', fontWeight:600 }}>{n}</span>
+                ))
+            }
           </div>
+          {/* Мини-модал выбора участников — свой скролл, не растит и не обрезается модалкой события */}
+          <MiniPicker open={pickerOpen} onClose={() => setPickerOpen(false)}>
+            <div style={{ width:320, maxWidth:'80vw', display:'flex', flexDirection:'column' }}>
+              <input autoFocus value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Поиск сотрудника..."
+                style={{ width:'100%', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none', boxSizing:'border-box', marginBottom:8 }} />
+              <div style={{ maxHeight:'50vh', overflowY:'auto', margin:'0 -4px' }}>
+                {filteredMembers.map(m => {
+                  const sel = modal.participantIds.includes(m.id)
+                  return (
+                    <div key={m.id} onMouseDown={e => { e.preventDefault(); toggleParticipant(m.id) }}
+                      style={{ padding:'9px 12px', fontSize:13, color:'var(--text-1)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, borderRadius:8, background: sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}
+                      onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}>
+                      <div style={{ width:14, height:14, borderRadius:3, border:`1.5px solid ${sel ? '#8B5CF6' : 'var(--text-muted)'}`, background: sel ? '#8B5CF6' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#fff', flexShrink:0 }}>{sel ? '✓' : ''}</div>
+                      {formatName(m.name)}
+                    </div>
+                  )
+                })}
+                {filteredMembers.length === 0 && <div style={{ padding:'12px', fontSize:12, color:'var(--text-muted)', textAlign:'center' }}>Никого не найдено</div>}
+              </div>
+              <button type="button" onClick={() => setPickerOpen(false)} style={{ ...miniBtn(true), marginTop:10 }}>Готово</button>
+            </div>
+          </MiniPicker>
         </div>
         </div>{/* end canEdit wrapper */}
 
