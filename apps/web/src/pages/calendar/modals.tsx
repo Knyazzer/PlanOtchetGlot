@@ -7,7 +7,7 @@ import type { ModalState, EntryModalState, ApiMember, EntryType } from './types'
 import { TYPE_COLOR, LOCATIONS, MY_EVENT_TYPES, SHARED_ENTRY_TYPES, HR_ENTRY_TYPES } from './constants'
 import { toYMD } from './utils'
 import { DatePicker } from '../../ui-kit/components/DatePicker'
-import { TimePicker } from '../../ui-kit/components/TimePicker'
+import { ClockDial } from '../../ui-kit/components/ClockDial'
 
 // Строка 'YYYY-MM-DD' → локальная Date (без сдвига таймзоны от new Date(str))
 function ymdToDate(s?: string): Date | undefined {
@@ -26,9 +26,6 @@ function DateField({ value, onChange }: { value: string; onChange: (s: string) =
       className="w-full"
     />
   )
-}
-function TimeField({ value, onChange }: { value: string; onChange: (s: string) => void }) {
-  return <TimePicker value={value} onChange={onChange} className="w-full" />
 }
 
 // ── Event modal ────────────────────────────────────────────────────────────
@@ -105,14 +102,10 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
           <DateField value={modal.date} onChange={(v) => onChange({ date: v })} />
         </div>
 
-        <div style={{ display:'flex', gap:10, marginBottom:14 }}>
-          <div style={{ flex:1 }}>
-            <span style={lbl}>Начало</span>
-            <TimeField value={modal.start} onChange={(v) => onChange({ start: v })} />
-          </div>
-          <div style={{ flex:1 }}>
-            <span style={lbl}>Конец</span>
-            <TimeField value={modal.end} onChange={(v) => onChange({ end: v })} />
+        <div style={{ marginBottom:14 }}>
+          <span style={lbl}>Время</span>
+          <div style={{ display:'flex', justifyContent:'center', paddingTop:6 }}>
+            <ClockDial value={{ start: modal.start, end: modal.end }} onChange={(v) => onChange({ start: v.start, end: v.end })} />
           </div>
         </div>
 
@@ -253,15 +246,8 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
               <span style={{ fontSize:13, color:'var(--text-2)' }}>Весь день</span>
             </label>
             {!modal.isAllDay && (
-              <div style={{ display:'flex', gap:10 }}>
-                <div style={{ flex:1 }}>
-                  <span style={lbl}>Начало</span>
-                  <TimeField value={modal.start} onChange={(v) => onChange({ start: v })} />
-                </div>
-                <div style={{ flex:1 }}>
-                  <span style={lbl}>Конец</span>
-                  <TimeField value={modal.end} onChange={(v) => onChange({ end: v })} />
-                </div>
+              <div style={{ display:'flex', justifyContent:'center' }}>
+                <ClockDial value={{ start: modal.start, end: modal.end }} onChange={(v) => onChange({ start: v.start, end: v.end })} />
               </div>
             )}
           </div>

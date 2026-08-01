@@ -1,7 +1,12 @@
 {
   "source": "../../../megapolis-platform/ui-kit",
   "dest": "src/ui-kit",
-  "components": ["AppShell", "DatePicker", "TimePicker"],
+  "components": [
+    "AppShell",
+    "DatePicker",
+    "TimePicker",
+    "ClockDial"
+  ],
   "tokens": true,
   "forked": []
 }

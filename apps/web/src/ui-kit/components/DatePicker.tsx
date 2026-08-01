@@ -62,7 +62,7 @@ export function DatePicker({
         {label}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="start" sideOffset={6} collisionPadding={12} className="z-[100] max-h-[85vh] overflow-y-auto rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] p-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.6)]">
+        <Popover.Content align="start" sideOffset={6} collisionPadding={12} className="z-[1200] max-h-[85vh] overflow-y-auto rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] p-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.6)]">
           {/* переключатель Даты / Диапазон */}
           {allowRange && (
             <div className="mb-3 flex gap-1 rounded-[var(--radius-sm)] bg-[var(--surface-2)] p-1">

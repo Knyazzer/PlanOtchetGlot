@@ -125,7 +125,7 @@ export function TimePicker({
         {value || placeholder}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="start" sideOffset={6} className="z-50 w-[248px] rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] p-4 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.6)]">
+        <Popover.Content align="start" sideOffset={6} className="z-[1200] w-[248px] rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] p-4 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.6)]">
           {/* две ячейки — как дисплей, но с ручным вводом (по 2 цифры) */}
           <div className="mb-3 flex items-center justify-center gap-2">
             <input
