@@ -34,16 +34,19 @@ const miniBtn = (primary?: boolean): React.CSSProperties => ({
 
 // Мини-модал поверх модалки события: клик по фону закрывает ТОЛЬКО его — stopPropagation не даёт
 // родительской модалке-событию среагировать. Железное правило: mousedown+mouseup на фоне.
-function MiniPicker({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+function MiniPicker({ open, onClose, side = 'center', children }: { open: boolean; onClose: () => void; side?: 'left' | 'right' | 'center'; children: React.ReactNode }) {
   const down = useRef(false)
   if (!open) return null
+  // side left/right — рядом с модалкой события (шир. 420 → полуширина 210, +22 зазор), чтобы её не перекрывать.
+  const aside: React.CSSProperties = { position: 'fixed', top: '50%', transform: 'translateY(-50%)',
+    ...(side === 'right' ? { left: 'calc(50% + 232px)' } : { right: 'calc(50% + 232px)' }) }
   return (
     <div
       onMouseDown={(e) => { e.stopPropagation(); down.current = e.target === e.currentTarget }}
       onMouseUp={(e) => { e.stopPropagation(); if (down.current && e.target === e.currentTarget) onClose(); down.current = false }}
-      style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1100, ...(side === 'center' ? { display: 'flex', alignItems: 'center', justifyContent: 'center' } : {}) }}
     >
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}>
+      <div onMouseDown={(e) => e.stopPropagation()} style={{ ...(side === 'center' ? {} : aside), background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}>
         {children}
       </div>
     </div>
@@ -63,7 +66,7 @@ function DateChip({ value, onChange }: { value: string; onChange: (s: string) =>
           {value ? format(ymdToDate(value)!, 'd MMM yyyy', { locale: ru }) : 'Выбрать дату'}
         </span>
       </button>
-      <MiniPicker open={open} onClose={() => setOpen(false)}>
+      <MiniPicker open={open} onClose={() => setOpen(false)} side="left">
         <DayPicker mode="single" locale={ru} weekStartsOn={1} selected={draft} onSelect={setDraft} showOutsideDays />
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="button" onClick={() => { onChange(''); setDraft(undefined); setOpen(false) }} style={miniBtn(false)}>Сбросить</button>
@@ -85,7 +88,7 @@ function TimeChip({ start, end, onChange }: { start: string; end: string; onChan
         <Clock size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         <span style={{ flex: 1, textAlign: 'left' }}>{start} – {end}</span>
       </button>
-      <MiniPicker open={open} onClose={() => setOpen(false)}>
+      <MiniPicker open={open} onClose={() => setOpen(false)} side="right">
         <ClockDial value={draft} onChange={setDraft} workHours={{ start: '10:00', end: '18:30' }} />
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="button" onClick={() => setDraft({ start, end })} style={miniBtn(false)}>Сбросить</button>
@@ -197,7 +200,7 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
           <span style={{ ...lbl, display:'flex', alignItems:'center' }}>Участники <Hint text="Коллеги, приглашённые на встречу. Событие появится в Календаре у каждого участника." /></span>
           <div
             onClick={() => { setMemberSearch(''); setPickerOpen(true) }}
-            style={{ ...inp, cursor:'pointer', minHeight:38, display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', padding:'6px 10px' }}
+            style={{ ...inp, cursor:'pointer', minHeight:38, maxHeight:120, overflowY:'auto', display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', alignContent:'flex-start', padding:'6px 10px' }}
           >
             {selectedNames.length === 0
               ? <span style={{ color:'var(--text-muted)', fontSize:12 }}>Добавить участников...</span>
