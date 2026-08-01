@@ -23,7 +23,6 @@ import { CalendarPage }  from '../pages/CalendarPage'
 import { TasksPage }     from '../pages/TasksPage'
 import { ProjectsPage }  from '../pages/ProjectsPage'
 import type { ProjectsSubPage } from '../pages/ProjectsPage'
-import { SvodPage }      from '../pages/SvodPage'
 import { AnalyticsPage } from '../pages/AnalyticsPage'
 import { SettingsPage, RolesTab, BackupsInfo } from '../pages/SettingsPage'
 import { TeamPage }      from '../pages/TeamPage'
@@ -41,7 +40,7 @@ import {
 } from 'lucide-react'
 
 type AdminPage = 'personnel' | 'lists' | 'set-roles' | 'set-backups'
-type UserPage  = 'home' | 'dashboard' | 'calendar' | 'tasks' | 'projects' | 'svod' | 'analytics' | 'team' | 'settings'
+type UserPage  = 'home' | 'dashboard' | 'calendar' | 'tasks' | 'projects' | 'analytics' | 'team' | 'settings'
 type Page = AdminPage | UserPage
 
 interface ChatsOpenProps {
@@ -67,7 +66,6 @@ const USER_NAV: NavItem[] = [
   { id: 'dashboard', label: 'Мой кабинет',  icon: User },
   { id: 'calendar',  label: 'Календарь',    icon: Calendar },
   { id: 'tasks',     label: 'Задачи',       icon: ClipboardList },
-  { id: 'svod',      label: 'Свод',         icon: BarChart3 },
   { id: 'analytics', label: 'Аналитика',    icon: PieChart },
   { id: 'projects',  label: 'Проекты',      icon: FolderKanban },
   { id: 'team',      label: 'Команда',      icon: UsersRound },
@@ -103,7 +101,9 @@ export function AppShell() {
   const SYSTEM_PAGES: Page[] = ['personnel', 'lists', 'set-roles', 'set-backups']
   const defaultPage: Page = isSystem ? 'personnel' : 'home'
   const ADMIN_PAGES: Page[] = ['personnel', 'lists']
-  const stored = localStorage.getItem('nexus:page') as Page | null
+  const storedRaw = localStorage.getItem('nexus:page')
+  // «Свод» объединён в «Аналитику» (внутренняя вкладка) — миграция старого persist
+  const stored = (storedRaw === 'svod' ? 'analytics' : storedRaw) as Page | null
   const initialPage: Page = isSystem
     ? (stored && SYSTEM_PAGES.includes(stored) ? stored : 'personnel')
     : (stored && (!ADMIN_PAGES.includes(stored) || isAdmin) ? stored : defaultPage)
@@ -250,7 +250,6 @@ export function AppShell() {
         <ErrorBoundary key={page} pageLabel={[...USER_NAV, ...adminNav].find((n) => n.id === page)?.label ?? page}>
           {page === 'home'      && <HomePage />}
           {page === 'dashboard' && <DashboardPage />}
-          {page === 'svod'      && <SvodPage />}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
           {page === 'settings'  && isAdmin && <SettingsPage />}

@@ -4,6 +4,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { api } from '../lib/api'
 import { useCurrentUser } from '../hooks/useAuth'
 import { formatName } from '../lib/utils'
+import { SvodPage } from './SvodPage'
+import { HeaderPortal } from '../components/HeaderPortal'
 
 // Аналитика (Этап 2): KPI-ряд + вкладки Сотрудники/Эффективность/Проекты,
 // CSV-экспорт (UTF-8 BOM, разделитель «;» — формат донора, аудит §6).
@@ -75,6 +77,9 @@ export function AnalyticsPage() {
   const [tab, setTab] = useState<Tab>('employees')
   const canCompany = !!user?.isAdmin || !!user?.access?.modules.some(m => m.key === 'adm.analytics-company')
   const [scope, setScope] = useState<Scope>('team')
+  // Внутренние вкладки: Аналитика / Свод (Свод вложен как есть; позже легко вынести). Персист выбора.
+  const [subTab, setSubTab] = useState<'analytics' | 'svod'>(() => (localStorage.getItem('nexus:analytics-tab') === 'svod' ? 'svod' : 'analytics'))
+  const pickSubTab = (t: 'analytics' | 'svod') => { setSubTab(t); localStorage.setItem('nexus:analytics-tab', t) }
 
   const { data, isLoading, isError } = useQuery<AnalyticsData>({
     queryKey: ['analytics', from, to, scope],
@@ -128,10 +133,22 @@ export function AnalyticsPage() {
   const tdNum: React.CSSProperties = { ...td, fontFamily: 'monospace', textAlign: 'right' }
 
   return (
+    <>
+      {/* Переключатель Аналитика/Свод — в китовую шапку (компактный сегмент) */}
+      <HeaderPortal>
+        <div style={{ display:'flex', alignItems:'center', gap:2, background:'var(--surface-2)', borderRadius:8, padding:3 }}>
+          {(['analytics','svod'] as const).map(t => (
+            <button key={t} onClick={() => pickSubTab(t)}
+              style={{ padding:'5px 14px', borderRadius:6, border:'none', background: subTab === t ? 'var(--surface)' : 'none', color: subTab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight: subTab === t ? 700 : 500, cursor:'pointer' }}>
+              {t === 'analytics' ? 'Аналитика' : 'Свод'}
+            </button>
+          ))}
+        </div>
+      </HeaderPortal>
+      {subTab === 'svod' ? <SvodPage /> : (
     <div style={{ padding: '20px 24px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', gap: 14 }}>
-      {/* Header */}
+      {/* Header (без дубля заголовка «Аналитика» — его даёт AppShell) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text-1)' }}>Аналитика</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => setRange(monthRange(shiftMonth(from, -1)))} style={navBtn}>‹</button>
           <span style={{ minWidth: 130, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', textTransform: 'capitalize' }}>{monthTitle(from)}</span>
@@ -294,6 +311,8 @@ export function AnalyticsPage() {
         </>
       )}
     </div>
+      )}
+    </>
   )
 }
 
