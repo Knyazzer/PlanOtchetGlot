@@ -39,7 +39,8 @@ html { font-size: 16px; height: 100%; }
 body {
   margin: 0; padding: 0;
   height: 100%;
-  font-family: 'Inter', system-ui, sans-serif;
+  /* канон-шрифт экосистемы — Steppe (--font-ui из ui-kit/tokens.css); Inter — fallback */
+  font-family: var(--font-ui, 'Inter', system-ui, sans-serif);
   color: var(--text-1);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;

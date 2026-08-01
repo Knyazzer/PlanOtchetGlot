@@ -1,0 +1,257 @@
+/* ════════════════════════════════════════════════════════════════════════
+   Megapolis UI Kit — токены + стили компонентов.
+   Подключать в продукте ПОСЛЕ своих `@import 'tailwindcss'` и шрифтов:
+       @import './ui-kit/tokens.css';
+   Продукт сам подключает Tailwind v4, шрифты Steppe/Inter/JetBrains Mono
+   (см. README.md) и, если использует Calendar/DatePicker, пакет react-day-picker.
+   ════════════════════════════════════════════════════════════════════════ */
+/* базовые стили календаря — ПЕРЕД нашими правилами (ниже) */
+@import 'react-day-picker/style.css';
+
+/* ────────────────────────────────────────────────────────────────────────
+   Megapolis UI Kit — токены экосистемы Nexus (перенос из support/index.css).
+   Тёмная «аппаратная» тема по умолчанию. Акцент переключается по продукту.
+   ──────────────────────────────────────────────────────────────────────── */
+:root, [data-theme='dark'] {
+  --bg: #0a0c11;
+  --surface: #10131a;
+  --surface-2: #171c25;
+  --surface-3: #1e2432;
+  --border: #252b37;
+  --border-strong: #313a4b;
+  --text: #e8ebf1;
+  --muted: #8a93a6;
+
+  /* акцент — переопределяется по продукту (data-accent на <html>) */
+  --accent: #5b8cff;
+  --accent-contrast: #071022;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 40%, transparent);
+
+  --new: #f0a63c;
+  --progress: #43b2f2;
+  --closed: #46b884;
+  --danger: #e5484d;
+
+  --font-ui: 'Steppe', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+
+  --radius: 8px;
+  --radius-sm: 6px;
+}
+
+[data-theme='light'] {
+  --bg: #f2f4f8;
+  --surface: #ffffff;
+  --surface-2: #edf0f5;
+  --surface-3: #e5e9f0;
+  --border: #d8dde6;
+  --border-strong: #c4ccd8;
+  --text: #171a21;
+  --muted: #5f6774;
+
+  --accent: #3d6ce0;
+  --accent-contrast: #ffffff;
+
+  --new: #a86e00;
+  --progress: #0e78c2;
+  --closed: #177a52;
+  --danger: #c92a30;
+}
+
+/* акценты продуктов (data-accent на <html>) */
+[data-accent='nexus']   { --accent: #5b8cff; --accent-contrast: #071022; }
+[data-accent='support'] { --accent: #22c3d6; --accent-contrast: #04181c; }
+[data-accent='event']   { --accent: #f0a63c; --accent-contrast: #201400; }
+[data-accent='crm']     { --accent: #f4497e; --accent-contrast: #24060f; }
+
+/* ────────────────────────────────────────────────────────────────────────
+   Маппинг семантических токенов в Tailwind-тему (канон как в Nexus kit.css).
+   Даёт единообразные утилиты: bg-surface, text-muted, border-default, bg-accent…
+   Новые компоненты пишем ими, а не `bg-[var(--surface)]` — читаемо и масштабно.
+   ──────────────────────────────────────────────────────────────────────── */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-default: var(--border);
+  --color-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-new: var(--new);
+  --color-progress: var(--progress);
+  --color-closed: var(--closed);
+  --color-danger: var(--danger);
+
+  --radius-kit-sm: var(--radius-sm);
+  --radius-kit: var(--radius);
+
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-mono);
+}
+
+/* Сайдбар всегда тёмный (канон Nexus) — внутри scope токены = тёмные в любой теме */
+.sidebar-dark {
+  --bg: #0a0c11;
+  --surface: #10131a;
+  --surface-2: #171c25;
+  --surface-3: #1e2432;
+  --border: #252b37;
+  --border-strong: #313a4b;
+  --text: #e8ebf1;
+  --muted: #8a93a6;
+  /* акцент-производные тоже пиним — иначе на светлой теме активный пункт «плывёт» */
+  --accent-contrast: #071022;
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 40%, transparent);
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Базовые element-сбросы — в @layer base, иначе (незалойеренные) они перебивают
+   Tailwind-утилиты: `button { color: inherit }` побеждал бы `text-white` на кнопках
+   (primary-кнопка теряла белый текст, иконка на акценте становилась невидимой). */
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+  input, textarea, select, button { font: inherit; color: inherit; }
+}
+
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* скрыть скроллбар (колёса времени и т.п.) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Глобальный видимый фокус — в base-слое, чтобы утилиты компонентов
+   (outline-none + focus:ring/border) его корректно перекрывали. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* react-day-picker v9 — тема под наши токены (через штатные v9-переменные) */
+.rdp-root {
+  --rdp-accent-color: var(--accent);
+  --rdp-accent-background-color: color-mix(in srgb, var(--accent) 20%, transparent);
+  --rdp-day-width: 38px;
+  --rdp-day-height: 38px;
+  --rdp-day_button-width: 34px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-border-radius: 7px;
+  --rdp-today-color: var(--accent);
+  /* диапазон: середина — приглушённая полоса на тёмном, концы — акцентный круг */
+  --rdp-range_middle-background-color: color-mix(in srgb, var(--accent) 18%, transparent);
+  --rdp-range_middle-color: var(--text);
+  --rdp-range_start-background: color-mix(in srgb, var(--accent) 18%, transparent);
+  --rdp-range_end-background: color-mix(in srgb, var(--accent) 18%, transparent);
+  --rdp-range_start-date-background-color: var(--accent);
+  --rdp-range_end-date-background-color: var(--accent);
+  --rdp-selected-border: none;
+  font-size: 13px;
+}
+.rdp-day_button { color: var(--text); border: none; }
+.rdp-day_button:hover { background: var(--surface-3); }
+.rdp-chevron { fill: var(--muted); }
+.rdp-caption_label, .rdp-weekday { color: var(--muted); font-weight: 500; }
+.rdp-weekday { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.rdp-outside .rdp-day_button { color: var(--muted); opacity: 0.5; }
+
+/* выбранный день / концы диапазона — акцентный круг, читаемый текст */
+.rdp-selected .rdp-day_button,
+.rdp-range_start .rdp-day_button,
+.rdp-range_end .rdp-day_button {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 600;
+}
+/* середина диапазона — текст читаемый, без белой заливки на кнопке */
+.rdp-range_middle .rdp-day_button { background: transparent; color: var(--text); }
+.rdp-today:not(.rdp-selected) .rdp-day_button { box-shadow: inset 0 0 0 1px var(--accent-line); color: var(--accent); }
+
+@keyframes fadein { from { opacity: 0 } to { opacity: 1 } }
+@keyframes toastin { from { opacity: 0; transform: translateY(-10px) } to { opacity: 1; transform: none } }
+
+/* индикатор «печатает…»: точки пульсируют по циклу со сдвигом */
+@keyframes typing-blink { 0%, 80%, 100% { opacity: 0.25; transform: translateY(0) } 40% { opacity: 1; transform: translateY(-2px) } }
+.typing-dots > span { animation: typing-blink 1.3s infinite both; }
+.typing-dots > span:nth-child(2) { animation-delay: 0.18s; }
+.typing-dots > span:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes msgin { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+
+@keyframes drawerR { from { transform: translateX(100%) } to { transform: none } }
+@keyframes drawerL { from { transform: translateX(-100%) } to { transform: none } }
+@keyframes sheetup { from { transform: translateY(100%) } to { transform: none } }
+
+/* скелетон загрузки — бегущий блик */
+@keyframes skeleton-slide { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-slide 1.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none } }
+
+/* ── OrgChart: коннекторы дерева на CSS (классический приём) ─────────────── */
+.org-tree, .org-tree ul { display: flex; }
+.org-tree ul { padding-top: 20px; position: relative; justify-content: center; }
+.org-tree li {
+  list-style: none; position: relative; padding: 20px 10px 0;
+  display: flex; flex-direction: column; align-items: center;
+}
+.org-tree li::before, .org-tree li::after {
+  content: ''; position: absolute; top: 0; right: 50%;
+  border-top: 1.5px solid var(--border-strong); width: 50%; height: 20px;
+}
+.org-tree li::after { right: auto; left: 50%; border-left: 1.5px solid var(--border-strong); }
+.org-tree li:only-child::after, .org-tree li:only-child::before { display: none; }
+.org-tree li:only-child { padding-top: 0; }
+.org-tree li:first-child::before, .org-tree li:last-child::after { border: 0 none; }
+.org-tree li:last-child::before { border-right: 1.5px solid var(--border-strong); border-radius: 0 6px 0 0; }
+.org-tree li:first-child::after { border-radius: 6px 0 0 0; }
+.org-tree ul ul::before {
+  content: ''; position: absolute; top: 0; left: 50%;
+  border-left: 1.5px solid var(--border-strong); width: 0; height: 20px;
+}
+.org-tree > ul { padding-top: 0; }
+.org-tree > ul > li:only-child::before { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation: none !important; }
+}
+
+/* Мобилка (< lg): прячем полосы прокрутки — скролл жестами, сам бар не несёт смысла
+   и создаёт визуальный шум (гориз. столбцы таблиц, вертикаль карточек). Правило кита. */
+@media (max-width: 1023px) {
+  ::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+}
