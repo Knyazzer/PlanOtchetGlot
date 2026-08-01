@@ -6,8 +6,11 @@ import { Hint } from '../../components/Hint'
 import type { ModalState, EntryModalState, ApiMember, EntryType } from './types'
 import { TYPE_COLOR, LOCATIONS, MY_EVENT_TYPES, SHARED_ENTRY_TYPES, HR_ENTRY_TYPES } from './constants'
 import { toYMD } from './utils'
-import { DatePicker } from '../../ui-kit/components/DatePicker'
 import { ClockDial } from '../../ui-kit/components/ClockDial'
+import { DayPicker } from 'react-day-picker'
+import { ru } from 'date-fns/locale'
+import { format } from 'date-fns'
+import { CalendarDays, Clock } from 'lucide-react'
 
 // Строка 'YYYY-MM-DD' → локальная Date (без сдвига таймзоны от new Date(str))
 function ymdToDate(s?: string): Date | undefined {
@@ -16,15 +19,80 @@ function ymdToDate(s?: string): Date | undefined {
   return y && m && d ? new Date(y, m - 1, d) : undefined
 }
 
-// Обёртки: модалки хранят дату/время строками — китовые пикеры работают с Date/строкой.
-function DateField({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+const chipStyle: React.CSSProperties = {
+  width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+  background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8,
+  padding: '9px 11px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13,
+  cursor: 'pointer', outline: 'none',
+}
+const miniBtn = (primary?: boolean): React.CSSProperties => ({
+  flex: 1, borderRadius: 8, padding: '8px 0', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  border: primary ? 'none' : '1px solid var(--border)',
+  background: primary ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'none',
+  color: primary ? '#fff' : 'var(--text-2)',
+})
+
+// Мини-модал поверх модалки события: клик по фону закрывает ТОЛЬКО его — stopPropagation не даёт
+// родительской модалке-событию среагировать. Железное правило: mousedown+mouseup на фоне.
+function MiniPicker({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+  const down = useRef(false)
+  if (!open) return null
   return (
-    <DatePicker
-      value={value ? { from: ymdToDate(value), to: undefined } : undefined}
-      onChange={(v) => onChange(v?.from ? toYMD(v.from) : '')}
-      placeholder="Выбрать дату"
-      className="w-full"
-    />
+    <div
+      onMouseDown={(e) => { e.stopPropagation(); down.current = e.target === e.currentTarget }}
+      onMouseUp={(e) => { e.stopPropagation(); if (down.current && e.target === e.currentTarget) onClose(); down.current = false }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+    >
+      <div onMouseDown={(e) => e.stopPropagation()} style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Чип даты (слева): клик → мини-модал с календарём + Готово/Сбросить.
+function DateChip({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<Date | undefined>(ymdToDate(value))
+  useEffect(() => { if (open) setDraft(ymdToDate(value)) }, [open, value])
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} style={chipStyle}>
+        <CalendarDays size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+        <span style={{ flex: 1, textAlign: 'left', color: value ? 'var(--text-1)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {value ? format(ymdToDate(value)!, 'd MMM yyyy', { locale: ru }) : 'Выбрать дату'}
+        </span>
+      </button>
+      <MiniPicker open={open} onClose={() => setOpen(false)}>
+        <DayPicker mode="single" locale={ru} weekStartsOn={1} selected={draft} onSelect={setDraft} showOutsideDays />
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button type="button" onClick={() => { onChange(''); setDraft(undefined); setOpen(false) }} style={miniBtn(false)}>Сбросить</button>
+          <button type="button" onClick={() => { onChange(draft ? toYMD(draft) : ''); setOpen(false) }} style={miniBtn(true)}>Готово</button>
+        </div>
+      </MiniPicker>
+    </>
+  )
+}
+
+// Чип времени (справа): клик → мини-модал с круговым диапазоном (ClockDial) + Сохранить/Сбросить.
+function TimeChip({ start, end, onChange }: { start: string; end: string; onChange: (v: { start: string; end: string }) => void }) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState({ start, end })
+  useEffect(() => { if (open) setDraft({ start, end }) }, [open, start, end])
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} style={chipStyle}>
+        <Clock size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+        <span style={{ flex: 1, textAlign: 'left' }}>{start} – {end}</span>
+      </button>
+      <MiniPicker open={open} onClose={() => setOpen(false)}>
+        <ClockDial value={draft} onChange={setDraft} workHours={{ start: '10:00', end: '18:30' }} />
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <button type="button" onClick={() => setDraft({ start, end })} style={miniBtn(false)}>Сбросить</button>
+          <button type="button" onClick={() => { onChange(draft); setOpen(false) }} style={miniBtn(true)}>Сохранить</button>
+        </div>
+      </MiniPicker>
+    </>
   )
 }
 
@@ -97,15 +165,14 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
           <input autoFocus value={modal.title} onChange={e => onChange({ title: e.target.value })} onKeyDown={e => { if (e.key==='Enter') onSubmit() }} placeholder="Название события" style={inp} />
         </div>
 
-        <div style={{ marginBottom:14 }}>
-          <span style={lbl}>Дата</span>
-          <DateField value={modal.date} onChange={(v) => onChange({ date: v })} />
-        </div>
-
-        <div style={{ marginBottom:14 }}>
-          <span style={lbl}>Время</span>
-          <div style={{ display:'flex', justifyContent:'center', paddingTop:6 }}>
-            <ClockDial value={{ start: modal.start, end: modal.end }} onChange={(v) => onChange({ start: v.start, end: v.end })} />
+        <div style={{ display:'flex', gap:10, marginBottom:14 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            <span style={lbl}>Дата</span>
+            <DateChip value={modal.date} onChange={(v) => onChange({ date: v })} />
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <span style={lbl}>Время</span>
+            <TimeChip start={modal.start} end={modal.end} onChange={(v) => onChange({ start: v.start, end: v.end })} />
           </div>
         </div>
 
@@ -236,7 +303,7 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
 
         <div style={{ marginBottom:14 }}>
           <span style={lbl}>Дата</span>
-          <DateField value={modal.date} onChange={(v) => onChange({ date: v })} />
+          <DateChip value={modal.date} onChange={(v) => onChange({ date: v })} />
         </div>
 
         {!isHR && (
@@ -246,9 +313,7 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
               <span style={{ fontSize:13, color:'var(--text-2)' }}>Весь день</span>
             </label>
             {!modal.isAllDay && (
-              <div style={{ display:'flex', justifyContent:'center' }}>
-                <ClockDial value={{ start: modal.start, end: modal.end }} onChange={(v) => onChange({ start: v.start, end: v.end })} />
-              </div>
+              <TimeChip start={modal.start} end={modal.end} onChange={(v) => onChange({ start: v.start, end: v.end })} />
             )}
           </div>
         )}

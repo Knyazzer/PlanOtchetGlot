@@ -14,7 +14,8 @@ const parse = (v?: string, def = 0) => {
   const m = /^(\d{1,2}):(\d{1,2})$/.exec(v ?? '')
   return m ? Math.min(23, +m[1]) * 60 + Math.min(59, +m[2]) : def
 }
-const angle = (min: number) => (min / 1440) * 2 * Math.PI - Math.PI / 2
+// Полдень (12:00) сверху, полночь снизу, по часовой (смещение −720 мин = 180°) — «читается как часы».
+const angle = (min: number) => ((min - 720) / 1440) * 2 * Math.PI - Math.PI / 2
 const pt = (min: number, r: number) => [C + r * Math.cos(angle(min)), C + r * Math.sin(angle(min))]
 
 /**
@@ -24,9 +25,12 @@ const pt = (min: number, r: number) => [C + r * Math.cos(angle(min)), C + r * Ma
 export function ClockDial({
   value,
   onChange,
+  workHours,
 }: {
   value?: { start: string; end: string }
   onChange?: (v: { start: string; end: string }) => void
+  /** рабочие часы — подсвечиваются лёгкой дугой поверх трека (напр. {start:'10:00', end:'18:30'}) */
+  workHours?: { start: string; end: string }
 }) {
   const start = parse(value?.start, 14 * 60)
   const end = parse(value?.end, 6 * 60)
@@ -78,6 +82,16 @@ export function ClockDial({
     <svg ref={svgRef} viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-[300px] touch-none select-none" style={{ overflow: 'visible' }}>
       {/* трек */}
       <circle cx={C} cy={C} r={R_ARC} fill="none" strokeWidth={16} className="stroke-[var(--surface-3)]" />
+
+      {/* подсветка рабочих часов — лёгкая акцентная дуга поверх трека */}
+      {workHours && (() => {
+        const ws = parse(workHours.start, 600)
+        const we = parse(workHours.end, 1110)
+        const wdur = (we - ws + 1440) % 1440 || 1440
+        const [wsx, wsy] = pt(ws, R_ARC)
+        const [wex, wey] = pt(we, R_ARC)
+        return <path d={`M ${wsx} ${wsy} A ${R_ARC} ${R_ARC} 0 ${wdur > 720 ? 1 : 0} 1 ${wex} ${wey}`} fill="none" strokeWidth={16} strokeLinecap="round" className="stroke-[var(--accent-soft)]" />
+      })()}
 
       {/* риски + подписи часов */}
       {Array.from({ length: 24 }, (_, hLbl) => {
