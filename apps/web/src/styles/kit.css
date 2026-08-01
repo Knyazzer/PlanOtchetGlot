@@ -104,5 +104,14 @@
    Tailwind-утилиты (bg, border, px…) и inline-стили остаются поверх. Без сброса китовые
    nav-кнопки рисуются светлыми боксами с обводкой. */
 @layer base {
-  button { background: none; border: none; cursor: pointer; }
+  /* Полный сброс button как в Tailwind preflight (Nexus preflight не подключает) — иначе
+     китовые nav-кнопки «плывут» относительно кит-плейграунда: браузерные margin/line-height/
+     letter-spacing/appearance ломают точную раскладку. Утилиты/inline-стили остаются поверх. */
+  button {
+    margin: 0; padding: 0;
+    background: none; border: none;
+    font: inherit; line-height: inherit; letter-spacing: inherit; color: inherit;
+    -webkit-appearance: none; appearance: none;
+    cursor: pointer;
+  }
 }
