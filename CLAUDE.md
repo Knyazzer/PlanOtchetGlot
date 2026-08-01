@@ -123,6 +123,8 @@ pnpm test                                       # зелёные (нужна з�
 - **TanStack Query** — серверное состояние; `queryClient` создаётся в `main.tsx`
 - **Zustand** — auth store (`stores/auth.ts`), содержит `user` и `setUser`
 - **UI-кит** — Tailwind + shadcn/ui (Radix) для компонентов, **recharts** для графиков аналитики, **lucide** для иконок. Тема через `data-theme` на `<html>` (`document.documentElement`). Визуальный эталон — Figma-макеты в `.figma/` (`ux-ui prototype v1/`, `v2/`). База кита подключена на ветке `design` (`styles/kit.css`, Tailwind v4 + shadcn-токены). *(Прежнее правило «только inline styles, без UI-библиотек» отменено 2026-06-09 — признано рудиментом.)*
+- **Единый ui-kit экосистемы** (`megapolis-platform/ui-kit`, copy-in в `src/ui-kit/`, конфиг `apps/web/ui-kit.config.json`, синк `sync.mjs`/сверка `check.mjs`): **AppShell** (меню/профиль/шапка, бренд «Нексус» кириллицей, акцент #7B61FF), `DatePicker`/`TimePicker`/`ClockDial` (выбор даты/времени в календаре). Правило `.sidebar-dark`-scoped preflight в `styles/kit.css` (Nexus без глобального preflight). Идёт поэтапная адаптация — роадмап `docs/superpowers/plans/2026-08-02-calendar-and-visual-roadmap.md`.
+- **`HeaderPortal`** (`components/HeaderPortal.tsx`) — страницы телепортируют свои контролы (вкладки/поиск/фильтры) в правый слот китовой шапки AppShell (`toolbar`); заголовок раздела даёт сам AppShell. Так сделаны Команда/Задачи/Аналитика/Календарь (внутристраничные шапки убраны).
 - **Навигация** — `useState<Page>` в `AppShell.tsx`, выбранная страница сохраняется в `localStorage('nexus:page')`; React Router нет
 - **Дата-утилиты** — `date-fns`
 
@@ -273,8 +275,8 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | Dashboard | `DashboardPage.tsx` | ✅ задачи на сегодня, дедлайны (1/3/7д), события сегодня | admin (до снятия гейта) |
 | Calendar | `CalendarPage.tsx` | ✅ месяц/неделя/день, API данные, sidebar категорий | admin (до снятия гейта) |
 | Tasks | `TasksPage.tsx` | ✅ Kanban + Gantt, вкладки «Задачи» / «Треки» | admin (до снятия гейта) |
-| Svod | `SvodPage.tsx` | ✅ rebuild-v4: месячная сетка день×сотрудник, легенда, подвал; клик по ячейке → DayModal (свой день — правка) | все |
-| Analytics | `AnalyticsPage.tsx` | ✅ rebuild-v4: KPI + recharts-чарт + вкладки Сотрудники/Эффективность/Проекты + CSV (формат донора) | все (company-скоуп по модулю) |
+| Svod | `SvodPage.tsx` | ✅ rebuild-v4: месячная сетка день×сотрудник, легенда, подвал; клик по ячейке → DayModal (свой день — правка). **Больше НЕ отдельный пункт меню** — вложен внутренней вкладкой в Analytics (persist `nexus:analytics-tab`; миграция старого `page='svod'`→`analytics`) | все (вкладка в Аналитике) |
+| Analytics | `AnalyticsPage.tsx` | ✅ rebuild-v4: KPI + recharts-чарт + вкладки Сотрудники/Эффективность/Проекты + CSV; **внутренние вкладки `[Аналитика \| Свод]`** — переключатель в китовой шапке (HeaderPortal) | все (company-скоуп по модулю) |
 | Team | `TeamPage.tsx` | ✅ rebuild-v4: оргдерево департамент→отдел→сотрудники, поиск, директор/руководитель | все |
 | Settings | `SettingsPage.tsx` | ✅ rebuild-v4: 6 вкладок (скелет v2); живые — Форматы дня (версионирование Q-DAY-5), Роли и доступы (гранты модулей) | все; админ-вкладки — admin |
 | Tracks | `TracksPage.tsx` | ✅ вкладка внутри Tasks; модал формы переиспользуют Projects | admin (до снятия гейта) |
