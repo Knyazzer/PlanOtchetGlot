@@ -98,3 +98,11 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
+
+/* Nexus намеренно НЕ подключает Tailwind preflight (чтобы не сбросить старые inline-страницы),
+   поэтому button получает дефолтную браузерную рамку и фон. Сбрасываем это в @layer base —
+   Tailwind-утилиты (bg, border, px…) и inline-стили остаются поверх. Без сброса китовые
+   nav-кнопки рисуются светлыми боксами с обводкой. */
+@layer base {
+  button { background: none; border: none; cursor: pointer; }
+}

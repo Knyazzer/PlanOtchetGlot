@@ -201,7 +201,7 @@ export function AppShell() {
   return (
     <>
       <KitAppShell
-        product={{ name: 'Nexus', markSrc: nexusLogoSrc, company: 'Megapolis' }}
+        product={{ name: 'Nexus', markSrc: nexusLogoSrc, company: 'Мегаполис Медиа' }}
         nav={navEntries}
         active={page}
         onNavigate={handleNavigate}
@@ -209,7 +209,6 @@ export function AppShell() {
         theme={theme}
         onThemeChange={(t) => toggleTheme.mutate(t)}
         onLogout={() => logout.mutate()}
-        collapsible
         profileExtra={<NexusProfileExtra />}
         footerExtra={<NotifBellButton badge={notifBadge} onClick={() => setNotifOpen((v) => !v)} />}
         rightPanel={
