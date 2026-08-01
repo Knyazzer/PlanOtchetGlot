@@ -13,6 +13,9 @@ export interface NavEntry {
   key: string
   label: string
   icon: LucideIcon
+  /** лого-картинка вместо lucide-иконки (напр. значок продукта в блоке сервисов);
+   *  если задан — рисуется вместо `icon`. `icon` остаётся как фолбэк. */
+  iconSrc?: string
   badge?: number
   children?: NavChild[]
   /** заголовок-секция ПЕРЕД этим пунктом (первый пункт новой группы — напр. «Модули», «HR»);
@@ -78,6 +81,18 @@ export function AppShell({
   const [profileOpen, setProfileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
+  // Ведущий глиф пункта: лого-картинка продукта (iconSrc) либо lucide-иконка (icon).
+  const navGlyph = (n: NavEntry, size: 'sm' | 'md' | 'lg', className?: string) =>
+    n.iconSrc ? (
+      <img
+        src={n.iconSrc}
+        alt=""
+        className={cn('shrink-0 rounded-[5px] object-contain', size === 'sm' ? 'h-4 w-4' : size === 'md' ? 'h-[18px] w-[18px]' : 'h-5 w-5')}
+      />
+    ) : (
+      <Icon icon={n.icon} size={size} className={className} />
+    )
+
   // список навигации (переиспользуется в десктоп-сайдбаре и мобильном «Ещё»-drawer)
   const navList = (onPick: (k: string) => void, collapsed = false) => (
     <nav className="p-2">
@@ -95,7 +110,7 @@ export function AppShell({
               className={cn('relative flex w-full items-center gap-2.5 rounded-[var(--radius-sm)] px-2.5 py-2 text-[13.5px] outline-none transition-colors', collapsed && 'justify-center', on ? 'bg-[var(--accent-soft)] text-[var(--text)]' : 'text-[var(--muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]')}
             >
               {on && <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r bg-[var(--accent)]" />}
-              <Icon icon={n.icon} size="sm" className={on ? 'text-[var(--accent)]' : ''} />
+              {navGlyph(n, 'sm', on ? 'text-[var(--accent)]' : '')}
               {!collapsed && <span className="flex-1 text-left">{n.label}</span>}
               {!collapsed && n.badge != null && <span className="mono rounded-full bg-[var(--surface-3)] px-1.5 text-[11px] text-[var(--muted)]">{n.badge}</span>}
             </button>
@@ -207,7 +222,7 @@ export function AppShell({
             const on = n.key === active || n.children?.some((c) => c.key === active)
             return (
               <button key={n.key} onClick={() => onNavigate(n.children?.[0]?.key ?? n.key)} className={cn('flex min-h-[3.25rem] flex-1 flex-col items-center justify-center gap-1 rounded-[20px] px-1 py-1.5 outline-none transition-colors', on ? 'bg-[var(--accent-soft)] text-[var(--accent)]' : 'text-[var(--muted)]')}>
-                <Icon icon={n.icon} size="md" />
+                {navGlyph(n, 'md')}
                 <span className="line-clamp-2 max-w-full text-center text-[11px] font-medium leading-[1.15]">{n.label}</span>
               </button>
             )
@@ -247,7 +262,7 @@ export function AppShell({
                       className={cn('flex flex-col items-center gap-2 rounded-[var(--radius)] border p-3 text-center outline-none transition-colors', on ? 'border-[var(--accent-line)] bg-[var(--accent-soft)]' : 'border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--border-strong)]')}
                     >
                       <span className={cn('grid h-11 w-11 place-items-center rounded-full', on ? 'bg-[var(--accent)] text-[var(--accent-contrast)]' : 'bg-[var(--surface-3)] text-[var(--muted)]')}>
-                        <Icon icon={n.icon} size="lg" />
+                        {navGlyph(n, 'lg')}
                       </span>
                       <span className={cn('text-[12px] leading-tight', on ? 'font-medium text-[var(--accent)]' : 'text-[var(--text)]')}>{n.label}</span>
                     </button>

@@ -7,6 +7,13 @@ import { supabase } from '../lib/supabase'
 import { formatName } from '../lib/utils'
 import { openInventoryWithSession } from '../lib/sso'
 import nexusLogoSrc from '../assets/nexus.svg'
+import inventoryLogoSrc from '../assets/logos/inventory.svg'
+
+// Логотипы продуктов для пунктов-сервисов (внешние/внутренние). Ключ = module.key.
+// Значок — из megapolis-platform/brand/logos (скопирован в assets/logos). Нет лого → lucide-фолбэк.
+const SERVICE_LOGOS: Record<string, string> = {
+  'ext.inventory': inventoryLogoSrc,
+}
 import { ListsPage }     from '../pages/ListsPage'
 import { PersonnelPage } from '../pages/PersonnelPage'
 import { DashboardPage } from '../pages/DashboardPage'
@@ -194,9 +201,9 @@ export function AppShell() {
     ...sortedExtra.map((m) => ({
       key: m.page ?? m.key,
       label: m.name,
-      // NavEntry.icon кита — только LucideIcon (нет слота под img-логотип внешнего продукта) —
-      // заглушка-иконка, продуктовый логотип временно теряется.
+      // Продуктовый логотип (iconSrc, кит 1.7.0); lucide — фолбэк, если лого для ключа нет.
       icon: m.key === 'ext.inventory' ? Package : Users,
+      iconSrc: SERVICE_LOGOS[m.key],
       section: sectionOf(m),
     })),
     // Админ-блок
