@@ -127,6 +127,7 @@ pnpm test                                       # зелёные (нужна з�
 - **`HeaderPortal`** (`components/HeaderPortal.tsx`) — страницы телепортируют свои контролы (вкладки/поиск/фильтры) в правый слот китовой шапки AppShell (`toolbar`); заголовок раздела даёт сам AppShell. Так сделаны Команда/Задачи/Аналитика/Календарь (внутристраничные шапки убраны).
 - **Навигация** — `useState<Page>` в `AppShell.tsx`, выбранная страница сохраняется в `localStorage('nexus:page')`; React Router нет
 - **Дата-утилиты** — `date-fns`
+- **PWA (установленное приложение)** — справочник возможностей/механик: [docs/PWA-DESKTOP-APP.md](docs/PWA-DESKTOP-APP.md) (кастом-окно/титлбар, детект режима standalone, Web Push + Badging, камера-микрофон/WebRTC/скриншеринг, Serial/USB/HID, диплинки, офлайн-очередь, привязка к профилю Chrome ≠ Google, локальный тест). Приоритет применения — **Nexus**.
 
 ### WebSocket
 `apps/api/src/plugins/wsHub.ts` — хаб для fan-out WS-сообщений по chatId. Клиент получает ws-token (одноразовый JWT, 60s) через `GET /chats/ws-token` чтобы обойти `SameSite=lax`.
