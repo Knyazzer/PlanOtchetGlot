@@ -60,6 +60,7 @@ model User {
   eventParticipations EventParticipant[] @relation("EventParticipants")
   calEntriesCreated   CalendarEntry[] @relation("CalEntryCreator")
   calEntriesTargeted  CalendarEntry[] @relation("CalEntryTarget")
+  posts               Post[]          @relation("PostsAuthor")
   tracksLed           Track[]         @relation("TrackLeader")
   trackMemberships    TrackMember[]   @relation("TrackMembers")
   producedProjects         Project[]  @relation("ProjectProducer")
@@ -458,6 +459,22 @@ model CalendarEntry {
   @@index([date])
   @@index([type])
   @@map("calendar_entries")
+  @@schema("nexus")
+}
+
+// ── Пульс: новостная лента компании (посты; публикуют по праву adm.news, читают все) ─────────────
+model Post {
+  id        String   @id @default(uuid())
+  title     String   @default("")
+  body      String
+  pinned    Boolean  @default(false)
+  authorId  String   @map("author_id")
+  author    User     @relation("PostsAuthor", fields: [authorId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@index([pinned, createdAt])
+  @@map("posts")
   @@schema("nexus")
 }
 
