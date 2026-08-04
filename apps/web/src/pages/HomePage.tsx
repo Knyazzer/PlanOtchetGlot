@@ -1,19 +1,23 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pin, Trash2, Users, Target, Search, MessageSquare, Send } from 'lucide-react'
+import { Pin, Trash2, Users, Target, Search, MessageSquare, Send, Clock } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { formatName } from '../lib/utils'
+import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const pMin = (t?: string | null): number | null => (t && /^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null)
+const hm = (mins: number) => { const h = Math.floor(Math.abs(mins) / 60), m = Math.abs(mins) % 60; return m ? `${h}ч ${m}м` : `${h}ч` }
+const MONTHS_RU = ['январе', 'феврале', 'марте', 'апреле', 'мае', 'июне', 'июле', 'августе', 'сентябре', 'октябре', 'ноябре', 'декабре']
 
 interface Post { id: string; title: string; body: string; pinned: boolean; createdAt: string; author: { id: string; name: string } }
 interface Feed { posts: Post[]; canPost: boolean }
-interface Member { id: string; name: string }
-type Presence = 'office' | 'remote'
-const PRESENCE_LABEL: Record<Presence, string> = { office: 'Офис', remote: 'Удалёнка' }
+type PresenceState = 'working' | 'finished' | 'absent' | 'expected' | 'off'
+interface PresenceItem { userId: string; name: string; position?: string | null; department?: string | null; state: PresenceState; label: string; dayType: string | null }
+const STATE_COLOR: Record<PresenceState, string> = { working: '#46b884', finished: '#8a8f98', absent: '#f59e0b', expected: '#6b7280', off: '#5b6068' }
 
 function fmtWhen(iso: string) { return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }
-// присутствие пока превью (детерминированно из id) — заменится реальным по графику HR/статусам
-function presenceOf(id: string): Presence { let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) & 0xffff; return h % 3 === 0 ? 'remote' : 'office' }
 
 export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
   return (
@@ -23,6 +27,7 @@ export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void
           <NewsChat />
         </div>
         <div style={{ flex: '1 1 300px', minWidth: 290, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0, overflowY: 'auto' }}>
+          <MyMonthCard />
           <WhoWorks onOpenChat={onOpenChat} />
           <DeptTasks />
         </div>
@@ -88,26 +93,77 @@ function NewsChat() {
 }
 
 // ── Кто работает сегодня — поиск + фильтр присутствия + клик→детализация/написать в чат ─────────
+// ── Мой месяц: отработанные часы + баланс к норме + выходные (П4/П5) ──────────────────────────
+interface DayEntryLite { date: string; dayFormat: string; startTime: string | null; endTime: string | null; breakMin: number }
+interface FmtLite { key: string; label: string; isWork: boolean }
+function MyMonthCard() {
+  const now = new Date()
+  const y = now.getFullYear(), m = now.getMonth()
+  const last = new Date(y, m + 1, 0).getDate()
+  const from = `${y}-${pad2(m + 1)}-01`, to = `${y}-${pad2(m + 1)}-${pad2(last)}`
+  const today = `${y}-${pad2(m + 1)}-${pad2(now.getDate())}`
+
+  const { data: entries = [] } = useQuery<DayEntryLite[]>({ queryKey: ['day-entries', from, to], queryFn: () => api.get(`/day-entries?from=${from}&to=${to}`).then(r => r.data) })
+  const { data: schedule } = useMyWorkSchedule()
+  const { data: formats = [] } = useQuery<FmtLite[]>({ queryKey: ['day-formats'], queryFn: () => api.get('/day-entries/formats').then(r => r.data), staleTime: 1000 * 60 * 60 })
+
+  const byDate = new Map(entries.map(e => [e.date.slice(0, 10), e]))
+  const isWorkKey = (k?: string) => { const f = formats.find(x => x.key === k); return f ? f.isWork : false }
+  const schedNorm = schedule ? (() => { const s = pMin(schedule.workStart), e = pMin(schedule.workEnd); return s != null && e != null ? Math.max(0, e - s - schedule.breakMin) : 0 })() : 0
+  let worked = 0, norm = 0, weekends = 0
+  for (let dn = 1; dn <= last; dn++) {
+    const ds = `${y}-${pad2(m + 1)}-${pad2(dn)}`
+    const e = byDate.get(ds)
+    if (e && e.startTime && e.endTime) { const s = pMin(e.startTime), en = pMin(e.endTime); if (s != null && en != null) worked += Math.max(0, en - s - (e.breakMin || 0)) }
+    const exp = expectedForDate(ds, schedule)
+    if (ds <= today && exp && isWorkKey(exp.format)) norm += schedNorm
+    const dow = new Date(y, m, dn).getDay()
+    if (exp ? exp.format === 'dayoff' : (dow === 0 || dow === 6)) weekends++
+  }
+  const bal = worked - norm
+
+  const stat: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12 }
+  return (
+    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Clock size={15} style={{ color: 'var(--text-muted)' }} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Мои часы в {MONTHS_RU[m]}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Отработано</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{hm(worked)}</b></div>
+        <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Норма (по сегодня)</span><span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{hm(norm)}</span></div>
+        <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Баланс</span><b style={{ color: Math.abs(bal) < 1 ? '#29BF12' : bal > 0 ? '#43b2f2' : '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>{Math.abs(bal) < 1 ? 'в норме' : `${bal > 0 ? '+' : '−'}${hm(bal)}`}</b></div>
+        <div style={{ ...stat, fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}><span>Выходных в месяце</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{weekends}</span></div>
+      </div>
+    </div>
+  )
+}
+
 function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
-  const { data: members = [] } = useQuery<Member[]>({ queryKey: ['users:members'], queryFn: () => api.get('/users/members').then(r => r.data) })
+  const { data: people = [] } = useQuery<PresenceItem[]>({
+    queryKey: ['work-schedule', 'presence'],
+    queryFn: () => api.get('/work-schedule/presence').then(r => r.data),
+    refetchInterval: 60_000, refetchIntervalInBackground: false,
+  })
   const [q, setQ] = useState('')
-  const [filter, setFilter] = useState<'all' | Presence>('all')
-  const [sel, setSel] = useState<Member | null>(null)
+  const [filter, setFilter] = useState<'all' | 'working' | 'office' | 'remote'>('all')
+  const [sel, setSel] = useState<PresenceItem | null>(null)
   const down = useRef(false)
 
   const ql = q.trim().toLowerCase()
-  const list = members
+  const list = people
     .filter(m => m.name.toLowerCase().includes(ql))
-    .filter(m => filter === 'all' || presenceOf(m.id) === filter)
+    .filter(m => filter === 'all' ? true : filter === 'working' ? m.state === 'working' : m.dayType === filter)
+  const workingNow = people.filter(m => m.state === 'working').length
 
-  const chips: Array<['all' | Presence, string]> = [['all', 'Все'], ['office', 'Офис'], ['remote', 'Удалёнка']]
+  const chips: Array<[typeof filter, string]> = [['all', 'Все'], ['working', 'В работе'], ['office', 'Офис'], ['remote', 'Удалёнка']]
 
   return (
     <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <Users size={15} style={{ color: 'var(--text-muted)' }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Кто работает сегодня</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{list.length}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#46b884', fontVariantNumeric: 'tabular-nums' }} title="Сейчас в работе">{workingNow}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '5px 9px', marginBottom: 8 }}>
         <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -121,15 +177,14 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 260, overflowY: 'auto' }}>
         {list.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '6px 2px' }}>Никого не найдено</div>}
         {list.map(m => (
-          <div key={m.id} onClick={() => setSel(m)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, cursor: 'pointer' }}
+          <div key={m.userId} onClick={() => setSel(m)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, cursor: 'pointer' }}
             onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-2)'} onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'none'}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: presenceOf(m.id) === 'remote' ? '#43b2f2' : '#46b884', flexShrink: 0 }} />
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATE_COLOR[m.state], flexShrink: 0, opacity: m.state === 'working' ? 1 : 0.75 }} />
             <span style={{ fontSize: 13, color: 'var(--text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatName(m.name)}</span>
-            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{PRESENCE_LABEL[presenceOf(m.id)]}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{m.label}</span>
           </div>
         ))}
       </div>
-      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8, fontStyle: 'italic' }}>Присутствие — превью; станет по графику HR + отметкам дня.</div>
 
       {/* Детализация сотрудника — мини-поповер по центру */}
       {sel && (
@@ -141,13 +196,13 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>{formatName(sel.name)}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: presenceOf(sel.id) === 'remote' ? '#43b2f2' : '#46b884' }} />
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{PRESENCE_LABEL[presenceOf(sel.id)]} · сейчас</span>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', background: STATE_COLOR[sel.state] }} />
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sel.label} · сейчас</span>
                 </div>
               </div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 12, fontStyle: 'italic' }}>Детализация рабочего дня — по мере ввода графика/статусов.</div>
-            <button onClick={() => { onOpenChat?.(sel.id); setSel(null) }} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '9px 0', borderRadius: 10, border: 'none', background: 'var(--accent-soft, var(--surface-3))', color: 'var(--accent-s)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            {sel.position && <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12 }}>{sel.position}{sel.department ? ` · ${sel.department}` : ''}</div>}
+            <button onClick={() => { onOpenChat?.(sel.userId); setSel(null) }} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '9px 0', borderRadius: 10, border: 'none', background: 'var(--accent-soft, var(--surface-3))', color: 'var(--accent-s)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <MessageSquare size={15} /> Написать в чат
             </button>
           </div>

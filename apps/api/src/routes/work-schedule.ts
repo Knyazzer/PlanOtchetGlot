@@ -4,6 +4,10 @@ import { prisma } from '@nexus/db'
 import { authenticate } from '../plugins/auth'
 import { getOrgScope } from '../services/orgScope'
 import { hasModule } from '../services/access'
+import { dayFormatsAt } from './day-entries'
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const WD_FIELD = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 
 // График работы сотрудника (HR): недельный паттерн типов дня + часы. Прогнозная
 // конфигурация — даёт «тип дня по умолчанию» (подсказка в кабинете/сводке).
@@ -31,6 +35,51 @@ export async function workScheduleRoutes(app: FastifyInstance) {
   app.get('/me', { preHandler: authenticate }, async (req) => {
     const user = (req as any).user as { id: string }
     return prisma.workSchedule.findUnique({ where: { userId: user.id }, select: SEL })
+  })
+
+  // ── GET /work-schedule/presence — присутствие штата на сегодня (Пульс «кто работает») ──
+  // Из сегодняшнего DayEntry (факт) + графика: работает / закончил / отсутствует / по графику / выходной.
+  app.get('/presence', { preHandler: authenticate }, async () => {
+    const now = new Date()
+    const todayYMD = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`
+    const wkField = WD_FIELD[new Date(todayYMD + 'T00:00:00').getDay()]
+
+    const members = await prisma.user.findMany({
+      where: { isActive: true, isSystemAccount: false, userType: 'staff' },
+      select: { id: true, name: true, position: true, department: true },
+      orderBy: { name: 'asc' },
+    })
+    const ids = members.map(m => m.id)
+    const [entries, schedules, formats] = await Promise.all([
+      prisma.dayEntry.findMany({ where: { userId: { in: ids }, date: new Date(todayYMD) }, select: { userId: true, dayFormat: true, startTime: true, endTime: true } }),
+      prisma.workSchedule.findMany({ where: { userId: { in: ids } } }),
+      dayFormatsAt(new Date(todayYMD)),
+    ])
+    const entryBy = new Map(entries.map(e => [e.userId, e]))
+    const schedBy = new Map(schedules.map(s => [s.userId, s]))
+
+    return members.map(m => {
+      const e = entryBy.get(m.id)
+      const sched = schedBy.get(m.id) as any
+      let state: 'working' | 'finished' | 'absent' | 'expected' | 'off' = 'off'
+      let label = '—'
+      let dayType: string | null = null
+      if (e) {
+        const fmt = formats.get(e.dayFormat)
+        dayType = e.dayFormat
+        if (fmt && !fmt.isWork) { state = 'absent'; label = fmt.label }
+        else if (e.startTime && !e.endTime) { state = 'working'; label = 'В работе' }
+        else if (e.startTime && e.endTime) { state = 'finished'; label = 'Закончил день' }
+        else { state = 'expected'; label = fmt?.label ?? 'Рабочий день' }
+      } else if (sched) {
+        const key = sched[wkField] as string
+        const fmt = formats.get(key)
+        dayType = key
+        if (fmt && !fmt.isWork) { state = 'off'; label = fmt.label }
+        else { state = 'expected'; label = 'По графику' }
+      }
+      return { userId: m.id, name: m.name, position: m.position, department: m.department, state, label, dayType }
+    })
   })
 
   // ── GET /work-schedule/:userId — чужой график по орг-охвату (HR/руковод/директор/админ) ─
