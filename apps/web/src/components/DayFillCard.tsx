@@ -126,7 +126,7 @@ function DayFillForm({ date, entry, formats }: { date: string; entry: DayEntry |
 
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ minWidth: 180 }}>
-          <label style={lbl}>Статус</label>
+          <label style={lbl}>Тип дня</label>
           <select
             value={dayFormat}
             onChange={ev => { setDayFormat(ev.target.value); setDirty(true) }}
