@@ -20,11 +20,15 @@ export { CalendarEventModal } from './tasks/CalendarEventModal'
 // ── Main page ──────────────────────────────────────────────────────────────────
 interface TasksPageProps {
   onOpenChatWith?: (userId: string, task: { id: string; title: string; assigneeId: string; assignedById: string }, isSelf: boolean) => void
+  /** внешнее управление вкладкой (из контейнера «Мой кабинет»): при заданном значении
+   *  свой переключатель Задачи/Треки не рисуется — вкладками рулит кабинет. */
+  externalTab?: 'tasks' | 'tracks'
 }
 
-export function TasksPage({ onOpenChatWith }: TasksPageProps = {}) {
+export function TasksPage({ onOpenChatWith, externalTab }: TasksPageProps = {}) {
   const currentUser = useAuthStore(s => s.user)
-  const [tab,      setTab]      = useState<'tasks' | 'tracks'>('tasks')
+  const [internalTab, setTab] = useState<'tasks' | 'tracks'>('tasks')
+  const tab = externalTab ?? internalTab
   const [view,     setView]     = useState<View>('kanban')
   const [taskView, setTaskView] = useState<TaskView>('mine')
   // группировка доски персистится per-user (паттерн донора)
@@ -103,20 +107,22 @@ export function TasksPage({ onOpenChatWith }: TasksPageProps = {}) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
-      {/* Вкладки Задачи/Треки — в китовую шапку (компактный сегмент) */}
-      <HeaderPortal>
-        <div style={{ display:'flex', alignItems:'center', gap:2, background:'var(--surface-2)', borderRadius:8, padding:3 }}>
-          {(['tasks','tracks'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{ padding:'5px 14px', borderRadius:6, border:'none', background: tab === t ? 'var(--surface)' : 'none', color: tab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight: tab === t ? 700 : 500, cursor:'pointer' }}
-            >
-              {t === 'tasks' ? 'Задачи' : 'Треки'}
-            </button>
-          ))}
-        </div>
-      </HeaderPortal>
+      {/* Вкладки Задачи/Треки — в китовую шапку. Скрыты, если вкладками рулит «Мой кабинет» (externalTab). */}
+      {!externalTab && (
+        <HeaderPortal>
+          <div style={{ display:'flex', alignItems:'center', gap:2, background:'var(--surface-2)', borderRadius:8, padding:3 }}>
+            {(['tasks','tracks'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                style={{ padding:'5px 14px', borderRadius:6, border:'none', background: tab === t ? 'var(--surface)' : 'none', color: tab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight: tab === t ? 700 : 500, cursor:'pointer' }}
+              >
+                {t === 'tasks' ? 'Задачи' : 'Треки'}
+              </button>
+            ))}
+          </div>
+        </HeaderPortal>
+      )}
 
       {tab === 'tracks' && <TracksPage onOpenChatWith={onOpenChatWith} />}
 
