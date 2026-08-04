@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { TaskModal, CalendarEventModal } from './TasksPage'
 import type { Task } from './TasksPage'
 import { DayFillCard } from '../components/DayFillCard'
+import { MonthStrip } from '../components/MonthStrip'
 import { formatName } from '../lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -172,13 +173,17 @@ export function DashboardPage() {
   const qc          = useQueryClient()
   const now         = new Date()
   const todayStr    = toDay(now)
-  const dateStr     = now.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
+  const [selDate,         setSelDate]         = useState(todayStr)
   const [showCreateTask,  setShowCreateTask]  = useState(false)
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [editTask,        setEditTask]        = useState<Task | null>(null)
   const [viewEventId,     setViewEventId]     = useState<string | null>(null)
   const [dlThreshold,     setDlThreshold]     = useState<1 | 3 | 7>(7)
+
+  const isToday   = selDate === todayStr
+  const dateStr   = new Date(selDate + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const dayShort  = new Date(selDate + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 
   const { data: allTasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks', 'mine'],
@@ -186,9 +191,9 @@ export function DashboardPage() {
     staleTime: 0, refetchOnMount: 'always',
   })
 
-  const { data: todayEvents = [] } = useQuery<ApiEvent[]>({
-    queryKey: ['dashboard:events', todayStr],
-    queryFn:  () => api.get(`/events?from=${todayStr}&to=${todayStr}`).then(r => r.data),
+  const { data: dayEvents = [] } = useQuery<ApiEvent[]>({
+    queryKey: ['dashboard:events', selDate],
+    queryFn:  () => api.get(`/events?from=${selDate}&to=${selDate}`).then(r => r.data),
     staleTime: 0, refetchOnMount: 'always',
   })
 
@@ -200,10 +205,10 @@ export function DashboardPage() {
   // Only regular (non-calendar) tasks
   const regularTasks = allTasks.filter(t => !t.calendarEventId)
 
-  const todayTasks = regularTasks.filter(t => {
+  const dayTasks = regularTasks.filter(t => {
     if (t.status === 'done') return false
-    const started = toDay(t.startDate) <= todayStr
-    const notPast = !t.deadline || toDay(t.deadline) >= todayStr
+    const started = toDay(t.startDate) <= selDate
+    const notPast = !t.deadline || toDay(t.deadline) >= selDate
     return started && notPast
   })
 
@@ -215,7 +220,7 @@ export function DashboardPage() {
     })
     .sort((a, b) => a.deadline!.localeCompare(b.deadline!))
 
-  const sortedEvents = [...todayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime))
+  const sortedEvents = [...dayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
   const card: React.CSSProperties = {
     background: 'var(--surface-1)', border: '1px solid var(--border)',
@@ -238,15 +243,21 @@ export function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', height: '100%', boxSizing: 'border-box' }}>
-      <div style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-        {dateStr}{currentUser?.name ? ` · Добро пожаловать, ${formatName(currentUser.name).split(' ')[0]}` : ''}
+    <div style={{ display: 'flex', height: '100%', boxSizing: 'border-box' }}>
+    <div style={{ flex: 1, minWidth: 0, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+          {dateStr}{isToday && currentUser?.name ? ` · Добро пожаловать, ${formatName(currentUser.name).split(' ')[0]}` : ''}
+        </div>
+        {!isToday && (
+          <button onClick={() => setSelDate(todayStr)} style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-s)', background: 'rgba(255,107,53,0.12)', border: '1px solid var(--accent-s)', borderRadius: 20, padding: '3px 12px', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>← Сегодня</button>
+        )}
       </div>
 
       {/* Верхний ряд: мой статус · план дня */}
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'stretch' }}>
         <StatusCard status={currentUser?.status} />
-        <div style={{ flex: '1 1 320px', minWidth: 320, display: 'flex' }}><DayFillCard /></div>
+        <div style={{ flex: '1 1 320px', minWidth: 320, display: 'flex' }}><DayFillCard date={selDate} /></div>
       </div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -254,12 +265,12 @@ export function DashboardPage() {
         {/* ── Задачи на сегодня ── */}
         <div style={card}>
           <div style={colTitle}>
-            <span>Задачи на сегодня</span>
+            <span>Задачи на {isToday ? 'сегодня' : dayShort}</span>
             <button style={addBtn} title="Новая задача" onClick={() => setShowCreateTask(true)}>+</button>
           </div>
-          {todayTasks.length === 0
+          {dayTasks.length === 0
             ? <div style={emptyText}>Нет активных задач</div>
-            : todayTasks.map(t => {
+            : dayTasks.map(t => {
                 const isAssignee = t.assignee.id === currentUser?.id
                 return (
                   <div
@@ -321,18 +332,18 @@ export function DashboardPage() {
         {/* ── События сегодня ── */}
         <div style={card}>
           <div style={colTitle}>
-            <span>События сегодня</span>
+            <span>События {isToday ? 'сегодня' : dayShort}</span>
             <button style={addBtn} title="Новое событие" onClick={() => setShowCreateEvent(true)}>+</button>
           </div>
           {sortedEvents.length === 0
-            ? <div style={emptyText}>Нет событий на сегодня</div>
+            ? <div style={emptyText}>Нет событий на {isToday ? 'сегодня' : 'этот день'}</div>
             : sortedEvents.map(ev => {
                 const color  = TYPE_COLOR[ev.type] ?? '#8B5CF6'
                 const nowMin = now.getHours() * 60 + now.getMinutes()
                 const [sh, sm] = ev.startTime.split(':').map(Number)
                 const [eh, em] = ev.endTime.split(':').map(Number)
-                const isNow  = nowMin >= sh * 60 + sm && nowMin < eh * 60 + em
-                const isPast = nowMin >= eh * 60 + em
+                const isNow  = isToday && nowMin >= sh * 60 + sm && nowMin < eh * 60 + em
+                const isPast = isToday && nowMin >= eh * 60 + em
                 return (
                   <div
                     key={ev.id}
@@ -367,6 +378,7 @@ export function DashboardPage() {
       {/* Modals */}
       {showCreateTask && (
         <TaskModal
+          defaultStartDate={selDate}
           onClose={() => setShowCreateTask(false)}
           onDone={() => { qc.invalidateQueries({ queryKey: ['tasks'] }); setShowCreateTask(false) }}
         />
@@ -380,7 +392,7 @@ export function DashboardPage() {
       )}
       {showCreateEvent && (
         <QuickEventModal
-          date={todayStr}
+          date={selDate}
           onClose={() => setShowCreateEvent(false)}
           onCreated={() => {}}
         />
@@ -392,6 +404,8 @@ export function DashboardPage() {
           onSaved={() => { qc.invalidateQueries({ queryKey: ['dashboard:events'] }) }}
         />
       )}
+    </div>
+      <MonthStrip selected={selDate} today={todayStr} onSelect={setSelDate} />
     </div>
   )
 }

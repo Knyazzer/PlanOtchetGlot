@@ -1,0 +1,106 @@
+import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../lib/api'
+
+// Вертикальная месячная сводка справа в «Мой кабинет»: строка на день, кубик = тип дня.
+// Клик по дню делает кабинет дате-зависимым (задачи/план/события на выбранную дату,
+// в т.ч. планирование на будущее). Навигация по месяцам — независимая от выбора.
+
+type DayFormat = { key: string; label: string; isWork: boolean; score: number | null }
+type DayEntry = { id: string; date: string; dayFormat: string; startTime: string | null; endTime: string | null; breakMin: number }
+
+// Цвета типов дня (в форматах цвета нет — маппинг по ключу сида).
+const FMT_COLOR: Record<string, string> = {
+  office: '#43b2f2', remote: '#22d3ee', shift_air: '#FF6B35', shift_edit: '#f0a63c',
+  shift_prep: '#8B5CF6', trip: '#7B61FF', vacation: '#a855f7', sick: '#E8194B',
+  dayoff: '#64748b', unpaid: '#94a3b8',
+}
+const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+const pad = (n: number) => String(n).padStart(2, '0')
+
+const navBtn: React.CSSProperties = {
+  width: 26, height: 26, borderRadius: 7, border: '1px solid var(--border)',
+  background: 'var(--surface-2)', color: 'var(--text-2)', fontSize: 15, lineHeight: 1,
+  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontFamily: 'Inter,sans-serif',
+}
+
+export function MonthStrip({ selected, today, onSelect }: { selected: string; today: string; onSelect: (d: string) => void }) {
+  const [cursor, setCursor] = useState(() => { const [y, m] = selected.split('-').map(Number); return { y, m: m - 1 } })
+  // при внешней смене месяца выбранной даты (например «Сегодня») — синхронизируем окно
+  const monthKey = selected.slice(0, 7)
+  useEffect(() => { const [y, m] = selected.split('-').map(Number); setCursor({ y, m: m - 1 }) }, [monthKey])
+
+  const { y, m } = cursor
+  const lastDay = new Date(y, m + 1, 0).getDate()
+  const from = `${y}-${pad(m + 1)}-01`
+  const to = `${y}-${pad(m + 1)}-${pad(lastDay)}`
+
+  const { data: formats = [] } = useQuery<DayFormat[]>({
+    queryKey: ['day-formats'],
+    queryFn: () => api.get('/day-entries/formats').then(r => r.data),
+    staleTime: 1000 * 60 * 60,
+  })
+  const { data: entries = [] } = useQuery<DayEntry[]>({
+    queryKey: ['day-entries', from, to],
+    queryFn: () => api.get(`/day-entries?from=${from}&to=${to}`).then(r => r.data),
+  })
+  const byDate = new Map(entries.map(e => [e.date.slice(0, 10), e]))
+  const labelOf = (k: string) => formats.find(f => f.key === k)?.label ?? k
+
+  const shift = (delta: number) => setCursor(c => { const d = new Date(c.y, c.m + delta, 1); return { y: d.getFullYear(), m: d.getMonth() } })
+
+  const days = Array.from({ length: lastDay }, (_, i) => i + 1)
+
+  return (
+    <div style={{ width: 268, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--surface-1)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 16px 12px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
+        <button onClick={() => shift(-1)} style={navBtn} title="Предыдущий месяц">‹</button>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{MONTHS[m]} {y}</div>
+        <button onClick={() => shift(1)} style={navBtn} title="Следующий месяц">›</button>
+      </div>
+
+      <div style={{ overflowY: 'auto', padding: '8px 10px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {days.map(dn => {
+          const ds = `${y}-${pad(m + 1)}-${pad(dn)}`
+          const dow = new Date(y, m, dn).getDay()
+          const weekend = dow === 0 || dow === 6
+          const e = byDate.get(ds)
+          const isSel = ds === selected
+          const isToday = ds === today
+          const color = e ? (FMT_COLOR[e.dayFormat] ?? 'var(--text-muted)') : null
+          return (
+            <button
+              key={ds}
+              onClick={() => onSelect(ds)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
+                padding: '7px 10px', borderRadius: 9,
+                border: `1px solid ${isSel ? 'var(--accent-s)' : 'transparent'}`,
+                background: isSel ? 'rgba(255,107,53,0.12)' : 'none',
+                cursor: 'pointer', fontFamily: 'Inter,sans-serif',
+              }}
+            >
+              <div style={{ width: 32, flexShrink: 0, textAlign: 'center' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isSel ? 'var(--text-1)' : weekend ? 'var(--text-muted)' : 'var(--text-2)' }}>{dn}</div>
+                <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: isToday ? 'var(--accent-s)' : 'var(--text-muted)' }}>{WD[dow]}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {e ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: color!, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelOf(e.dayFormat)}</span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.5 : 0.8, fontStyle: 'italic' }}>{weekend ? 'выходной' : 'не заполнен'}</span>
+                )}
+              </div>
+              {isToday && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-s)', flexShrink: 0 }} title="Сегодня" />}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}

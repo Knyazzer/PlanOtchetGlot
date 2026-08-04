@@ -32,9 +32,7 @@ function fmtHours(mins: number): string {
 
 const NON_WORK_PERIOD_FORMATS = new Set(['vacation', 'sick', 'trip', 'unpaid'])
 
-export function DayFillCard() {
-  const date = todayStr()
-
+export function DayFillCard({ date = todayStr() }: { date?: string } = {}) {
   const { data: formats = [] } = useQuery<DayFormat[]>({
     queryKey: ['day-formats'],
     queryFn: () => api.get('/day-entries/formats').then(r => r.data),
@@ -48,10 +46,11 @@ export function DayFillCard() {
 
   if (isLoading) return null
   // key-remount: при изменении записи форма пересоздаётся со свежими значениями
-  return <DayFillForm key={entry ? `${entry.id}:${entry.updatedAt}` : 'empty'} date={date} entry={entry} formats={formats} />
+  return <DayFillForm key={entry ? `${entry.id}:${entry.updatedAt}` : `empty:${date}`} date={date} entry={entry} formats={formats} />
 }
 
 function DayFillForm({ date, entry, formats }: { date: string; entry: DayEntry | null; formats: DayFormat[] }) {
+  const isToday = date === todayStr()
   const qc = useQueryClient()
   const [dayFormat, setDayFormat] = useState(entry?.dayFormat ?? '')
   const [startTime, setStartTime] = useState(entry?.startTime ?? '')
@@ -95,7 +94,7 @@ function DayFillForm({ date, entry, formats }: { date: string; entry: DayEntry |
   const lateNow = moscowHour() >= 18
   const needFormat = !dayFormat
   const needStart = isWork && !startTime
-  const needEnd = isWork && !!startTime && !endTime && lateNow
+  const needEnd = isWork && !!startTime && !endTime && lateNow && isToday
 
   const attention: React.CSSProperties = { border: '1px solid #f59e0b', boxShadow: '0 0 0 3px rgba(245,158,11,0.15)' }
   const inp: React.CSSProperties = {
@@ -112,9 +111,9 @@ function DayFillForm({ date, entry, formats }: { date: string; entry: DayEntry |
     <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
-          Заполнить сегодня
+          {isToday ? 'Заполнить сегодня' : 'Заполнить день'}
           <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>
-            {new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {new Date(date + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
           </span>
         </div>
         {entry && !dirty && (
