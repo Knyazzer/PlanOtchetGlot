@@ -146,6 +146,30 @@ async function main() {
   }
   console.log(`Department module grants seeded: ${granted}`)
 
+  // ── Сэмпл-контент для Пульса/блоков (только если пусто — идемпотентно) ──────────────
+  if ((await prisma.post.count()) === 0) {
+    const author = await prisma.user.findFirst({ where: { email: 'staff1@nexus.local' } }) // Иван Директоров, Администрация (право adm.news)
+    if (author) {
+      await prisma.post.createMany({ data: [
+        { authorId: author.id, title: 'Добро пожаловать в Nexus', body: 'Запустили единую рабочую систему компании: задачи, календарь, отчётность и этот Пульс с новостями. Осваивайтесь!', pinned: true },
+        { authorId: author.id, title: '', body: 'В пятницу в 16:00 — общий сбор в зале «Каминка». Явка всех отделов.' },
+        { authorId: author.id, title: 'Итоги месяца', body: 'Команда отработала отлично — спасибо всем за эфиры и проекты. Подробности на сборе.' },
+      ] })
+    }
+  }
+  if ((await prisma.task.count()) === 0) {
+    const assignee = await prisma.user.findFirst({ where: { email: 'staff5@nexus.local' } }) // Сергей Операторов (ТВ)
+    const admin = await prisma.user.findFirst({ where: { email: 'admin@nexus.local' } })
+    if (assignee && admin) {
+      const soon = (days: number) => { const x = new Date(); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() + days); return x }
+      await prisma.task.createMany({ data: [
+        { title: 'Согласовать сетку эфира на неделю', assignedById: admin.id, assigneeId: assignee.id, startDate: new Date(), deadline: soon(2) },
+        { title: 'Подготовить отчёт по итогам месяца',  assignedById: admin.id, assigneeId: assignee.id, startDate: new Date(), deadline: soon(5) },
+        { title: 'Обновить корпоративный шаблон заставки', assignedById: admin.id, assigneeId: assignee.id, startDate: new Date() },
+      ] })
+    }
+  }
+
   console.log('Seed complete.')
 }
 
