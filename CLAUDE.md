@@ -218,7 +218,7 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | `/clients` | `routes/clients.ts` | клиенты: CRUD (write admin), bulk-import из КФПД col A |
 | `/projects` | `routes/projects.ts` | проекты CRUD (DELETE admin) + вложенные work-items (GET/POST) |
 | `/day-entries` | `routes/day-entries.ts` | день сотрудника: GET ?from&to[&userId — по орг-охвату], PUT upsert своего дня, POST /apply-period (≤370 дн, keepFilled), DELETE /:date, GET /formats; admin: GET /formats/versions, POST /formats (новая версия с 1-го числа месяца) |
-| `/work-schedule` | `routes/work-schedule.ts` | график работы (HR): GET /me, GET /:userId (орг-охват), PUT /:userId (admin/HR-модуль). Недельный паттерн типов дня + часы → «тип дня по умолчанию» (подсказка; НЕ факт, отчёт считает только DayEntry) |
+| `/work-schedule` | `routes/work-schedule.ts` | график работы (HR): GET /me, **GET /presence** (присутствие штата на сегодня из DayEntry+графика — Пульс «кто работает»), GET /:userId (орг-охват), PUT /:userId (admin/HR-модуль). Недельный паттерн типов дня + часы → «тип дня по умолчанию» (подсказка; НЕ факт, отчёт считает только DayEntry) |
 | `/svod` | `routes/svod.ts` | Свод: GET ?divisionId&month — сетка день×сотрудник (формат+минуты+задачи по startDate), подвал (часы/баллы/задачи); RBAC: member свой отдел, head/director/admin |
 | `/board` | `routes/board.ts` | личная доска: GET (колонки+размещения), POST/PATCH/DELETE /columns, PUT /placements (columnId null → убрать) |
 | `/notifications` | `routes/notifications.ts` | derived-агрегатор: лента TaskLog чужих действий над моими задачами (7 дн) + события сегодня/завтра; прочитанность — на клиенте |
