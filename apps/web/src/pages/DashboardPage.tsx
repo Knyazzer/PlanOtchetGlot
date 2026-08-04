@@ -6,7 +6,6 @@ import { TaskModal, CalendarEventModal } from './TasksPage'
 import type { Task } from './TasksPage'
 import { DayFillCard } from '../components/DayFillCard'
 import { formatName } from '../lib/utils'
-import { HeaderPortal } from '../components/HeaderPortal'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -239,13 +238,6 @@ export function DashboardPage() {
   }
 
   return (
-    <>
-      {/* Быстрые действия — в правый слот китовой шапки (заголовок «Мой кабинет» даёт AppShell) */}
-      <HeaderPortal>
-        <button onClick={() => setShowCreateEvent(true)} style={{ padding:'6px 13px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface-2)', color:'var(--text-2)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>+ Событие</button>
-        <button onClick={() => setShowCreateTask(true)} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#FF6B35,#E8194B)', color:'#fff', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer' }}>+ Задача</button>
-      </HeaderPortal>
-
     <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', height: '100%', boxSizing: 'border-box' }}>
       <div style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
         {dateStr}{currentUser?.name ? ` · Добро пожаловать, ${formatName(currentUser.name).split(' ')[0]}` : ''}
@@ -401,6 +393,5 @@ export function DashboardPage() {
         />
       )}
     </div>
-    </>
   )
 }
