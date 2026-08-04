@@ -27,17 +27,15 @@ async function main() {
   // Форматы дня — стартовый набор донора (10 живых; gigashift не сидируется — 0 использований, В-6).
   // score=null — формат вне баллов (выходной). Изменения форматов = новая версия с effectiveFrom.
   const DAY_FORMATS_EPOCH = new Date('2026-01-01') // действует «с начала времён» для мигрированных данных
+  // Базовый набор (6) — без «донорских» смен (эфир/монтаж/подготовка) и «без оплаты».
+  // Дополнительные типы (отгул, отпуск за свой счёт и пр.) HR добавляет через справочник форматов.
   const dayFormats: Array<{ key: string; label: string; isWork: boolean; score: number | null }> = [
     { key: 'office',     label: 'Офис',          isWork: true,  score: 0 },
     { key: 'remote',     label: 'Удалёнка',      isWork: true,  score: 0 },
-    { key: 'shift_air',  label: 'Смена (эфир)',  isWork: true,  score: 1 },
-    { key: 'shift_edit', label: 'Смена (монтаж)', isWork: true, score: 1 },
-    { key: 'shift_prep', label: 'Подготовка',    isWork: true,  score: 0.5 },
     { key: 'trip',       label: 'Командировка',  isWork: true,  score: 1.5 },
     { key: 'vacation',   label: 'Отпуск',        isWork: false, score: 0.55 },
     { key: 'sick',       label: 'Больничный',    isWork: false, score: 0.55 },
     { key: 'dayoff',     label: 'Выходной',      isWork: false, score: null },
-    { key: 'unpaid',     label: 'Без оплаты',    isWork: false, score: 0 },
   ]
   for (const f of dayFormats) {
     await prisma.dayFormatVersion.upsert({
@@ -46,7 +44,14 @@ async function main() {
       create: { ...f, effectiveFrom: DAY_FORMATS_EPOCH },
     })
   }
-  console.log(`Day formats seeded: ${dayFormats.length}`)
+  // Убрать снятые типы: удалить если не используются в днях, иначе retire (active=false, история цела)
+  const REMOVED_FORMATS = ['shift_air', 'shift_edit', 'shift_prep', 'unpaid']
+  for (const key of REMOVED_FORMATS) {
+    const used = await prisma.dayEntry.count({ where: { dayFormat: key } })
+    if (used === 0) await prisma.dayFormatVersion.deleteMany({ where: { key } })
+    else await prisma.dayFormatVersion.updateMany({ where: { key }, data: { active: false } })
+  }
+  console.log(`Day formats seeded: ${dayFormats.length} (removed: ${REMOVED_FORMATS.join(', ')})`)
 
   // ── Сэмпл оргструктуры + штата для DEV (после reset БД поднимается наполненной) ──────────────
   // Уровень выводится из структуры: director = Department.directorId, head = Division.headId, иначе member.

@@ -34,20 +34,21 @@ export function WorkScheduleEditor({ userId }: { userId: string }) {
 function Form({ userId, init, isNew, formats }: { userId: string; init: Draft; isNew: boolean; formats: DayFormat[] }) {
   const qc = useQueryClient()
   const [d, setD] = useState<Draft>(init)
-  const [dirty, setDirty] = useState(false)
-  const set = (patch: Partial<Draft>) => { setD(v => ({ ...v, ...patch })); setDirty(true) }
+  const [everSaved, setEverSaved] = useState(false)
 
   const save = useMutation({
-    mutationFn: () => api.put(`/work-schedule/${userId}`, d),
+    mutationFn: (next: Draft) => api.put(`/work-schedule/${userId}`, next),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['work-schedule'] }) // и :userId, и 'me'
-      setDirty(false)
+      setEverSaved(true)
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { error?: string } } }
       alert(e?.response?.data?.error ?? 'Не удалось сохранить график')
     },
   })
+  // автосейв: любое изменение сразу пишется (без кнопки «Сохранить»)
+  const set = (patch: Partial<Draft>) => { const next = { ...d, ...patch }; setD(next); save.mutate(next) }
 
   const sel: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 8px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 12, outline: 'none', appearance: 'none', cursor: 'pointer', width: '100%' }
   const timeInp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 8px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 12, outline: 'none', colorScheme: 'dark', width: '100%', boxSizing: 'border-box' }
@@ -57,7 +58,9 @@ function Form({ userId, init, isNew, formats }: { userId: string; init: Draft; i
     <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 600 }}>График работы</span>
-        {isNew && !dirty && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>не задан (дефолт 5/2)</span>}
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          {save.isPending ? 'сохранение…' : everSaved ? '✓ сохранено' : isNew ? 'не задан (дефолт 5/2)' : ''}
+        </span>
       </div>
 
       {/* Недельный паттерн: тип дня по дням недели */}
@@ -88,13 +91,6 @@ function Form({ userId, init, isNew, formats }: { userId: string; init: Draft; i
         </div>
       </div>
 
-      <button
-        onClick={() => save.mutate()}
-        disabled={save.isPending || !dirty}
-        style={{ alignSelf: 'flex-start', background: dirty ? 'var(--accent, #2563eb)' : 'var(--surface-3)', color: dirty ? '#fff' : 'var(--text-muted)', border: 'none', borderRadius: 7, padding: '7px 16px', fontFamily: 'Inter,sans-serif', fontSize: 12, fontWeight: 700, cursor: dirty ? 'pointer' : 'default' }}
-      >
-        {save.isPending ? 'Сохранение…' : 'Сохранить график'}
-      </button>
       <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
         Даёт сотруднику «тип дня по умолчанию» — подсказку в кабинете. Факт (что было на самом деле) сотрудник отмечает сам; отчёт считает только его.
       </div>
