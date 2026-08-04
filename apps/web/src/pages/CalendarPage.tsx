@@ -35,6 +35,7 @@ export function CalendarPage() {
   const [modal,       setModal]       = useState<ModalState>(BLANK_MODAL())
   const [entryModal,  setEntryModal]  = useState<EntryModalState>(BLANK_ENTRY())
   const [confirmClose, setConfirmClose] = useState(false)   // §6: подтверждение сброса несохранённых изменений
+  const [dragging,    setDragging]    = useState(false)      // §6: перенос силуэтом идёт — гасим карточку
   const snapshotRef = useRef('')                             // слепок карточки на момент открытия
   const modalRef = useRef(modal); modalRef.current = modal   // актуальный modal для document-листенера
 
@@ -136,6 +137,15 @@ export function CalendarPage() {
   function requestCloseCard() {
     if (modalKey(modalRef.current) !== snapshotRef.current) setConfirmClose(true)
     else { setModal(BLANK_MODAL()); setConfirmClose(false) }
+  }
+
+  // §6: перенос события целиком (день/время) — полный payload из текущего события + новые дата/время
+  function moveEvent(id: string, date: string, start: string, end: string) {
+    const ev = apiEvents.find(e => e.id === id)
+    if (!ev) return
+    if (!(ev.authorId === currentUser?.id || isAdmin)) return
+    if (ev.date.slice(0,10) === date && ev.startTime === start && ev.endTime === end) return // без изменений
+    updateEventMut.mutate({ id, type: ev.type, title: ev.title, date, startTime: start, endTime: end, location: ev.location ?? [], participantIds: ev.participants.map(p => p.userId) })
   }
 
   const createEventMut = useMutation({
@@ -327,14 +337,16 @@ export function CalendarPage() {
               eventsFor={eventsFor} allDayFor={allDayFor}
               onEventClick={openEdit}
               onDragCreate={(ymd, start, end) => openCreate(ymd, start, end)}
-              draft={draft} onDraftResize={onDraftResize} />
+              draft={draft} onDraftResize={onDraftResize}
+              onEventMove={moveEvent} onMovingChange={setDragging} />
           )}
           {view === 'day' && (
             <DayView cursor={cursor} today={todayS}
               eventsFor={eventsFor} allDayFor={allDayFor}
               onEventClick={openEdit}
               onDragCreate={(ymd, start, end) => openCreate(ymd, start, end)}
-              draft={draft} onDraftResize={onDraftResize} />
+              draft={draft} onDraftResize={onDraftResize}
+              onEventMove={moveEvent} onMovingChange={setDragging} />
           )}
         </div>
 
@@ -349,7 +361,7 @@ export function CalendarPage() {
       {/* Event modal (§6: боковая карточка) */}
       {modal.open && (
         <EventModal modal={modal} onChange={p => setModal(m => ({ ...m, ...p }))}
-          onSubmit={submitModal} onDelete={deleteModal} onClose={requestCloseCard} canEdit={modal.canEdit} />
+          onSubmit={submitModal} onDelete={deleteModal} onClose={requestCloseCard} canEdit={modal.canEdit} dimmed={dragging} />
       )}
 
       {/* §6: подтверждение сброса несохранённых изменений карточки */}

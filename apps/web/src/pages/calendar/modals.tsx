@@ -103,10 +103,11 @@ function TimeChip({ start, end, onChange, sideCard }: { start: string; end: stri
 }
 
 // ── Event modal ────────────────────────────────────────────────────────────
-export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEdit }: {
+export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEdit, dimmed }: {
   modal: ModalState
   onChange: (p: Partial<ModalState>) => void
   onSubmit: () => void; onDelete: () => void; onClose: () => void; canEdit: boolean
+  dimmed?: boolean  // §6: на время переноса силуэтом карточка гаснет
 }) {
   const isEdit = !!modal.editId
   const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none' }
@@ -144,7 +145,7 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
 
   return (
     // §6: боковая карточка без затемнения — календарь под ней виден и кликабелен (закрытие вне — на уровне CalendarPage)
-    <div data-card="1" style={{ position:'fixed', top:64, bottom:16, zIndex:900, width:380, maxWidth:'92vw', display:'flex', ...(anchorLeft != null ? { left: anchorLeft } : { right: 16 }) }}>
+    <div data-card="1" style={{ position:'fixed', top:64, bottom:16, zIndex:900, width:380, maxWidth:'92vw', display:'flex', opacity: dimmed ? 0.3 : 1, pointerEvents: dimmed ? 'none' : 'auto', transition:'opacity 0.12s ease', ...(anchorLeft != null ? { left: anchorLeft } : { right: 16 }) }}>
       <div style={{ flex:1, background:'var(--surface-2)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:22, overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.5)', fontFamily:'Inter,sans-serif' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <div style={{ fontSize:15, fontWeight:700, color:'var(--text-1)' }}>{isEdit ? (canEdit ? 'Редактировать событие' : 'Просмотр события') : 'Новое событие'}</div>

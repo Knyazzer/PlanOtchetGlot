@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import type { CalEvent } from './types'
 import { WEEKDAYS_S, WEEKDAYS_F, MONTHS_RU_GEN, LOCATIONS } from './constants'
 import { toYMD, getWeekStart, layoutEvents, timeToMin, minToTime, snapTo15 } from './utils'
@@ -68,7 +68,7 @@ export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDay
 }
 
 // ── Week view ──────────────────────────────────────────────────────────────
-export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, onDragCreate, draft, onDraftResize }: {
+export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, onDragCreate, draft, onDraftResize, onEventMove, onMovingChange }: {
   cursor: Date; today: string
   eventsFor: (ymd: string) => CalEvent[]
   allDayFor:  (ymd: string) => CalEvent[]
@@ -76,12 +76,50 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
   onDragCreate: (ymd: string, start: string, end: string) => void
   draft?: CalDraft | null
   onDraftResize?: (start: string, end: string) => void
+  onEventMove?: (id: string, date: string, start: string, end: string) => void  // §6: перенос силуэтом
+  onMovingChange?: (moving: boolean) => void                                     // §6: гасим карточку на время переноса
 }) {
   const ws = getWeekStart(cursor)
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(ws); d.setDate(ws.getDate()+i); return d })
   const bodyRef = useRef<HTMLDivElement>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [move, setMove] = useState<{ evt: CalEvent; dur: number; dayIndex: number; startMin: number; mx: number; my: number } | null>(null)
 
   useEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 6*60 - 30 }, [cursor])
+
+  // §6: перенос события целиком (клик-удержание → силуэт к курсору, подсветка целевого слота, дроп меняет день/время)
+  function bodyMinutes(clientY: number) {
+    const el = bodyRef.current
+    return el ? clientY - el.getBoundingClientRect().top + el.scrollTop : 0
+  }
+  function beginMove(evt: CalEvent, e: React.MouseEvent) {
+    if (evt.source !== 'event' || e.button !== 0) { if (e.button === 0) onEventClick(evt); return }
+    e.preventDefault(); e.stopPropagation()
+    const sx = e.clientX, sy = e.clientY
+    const dur = timeToMin(evt.end) - timeToMin(evt.start)
+    let activated = false
+    const calc = (cx: number, cy: number) => {
+      const g = gridRef.current!.getBoundingClientRect()
+      let di = Math.floor((cx - g.left) / (g.width / 7)); di = Math.max(0, Math.min(6, di))
+      let s = snapTo15(bodyMinutes(cy)); s = Math.max(0, Math.min(1440 - dur, s))
+      return { di, s }
+    }
+    function onMove(mv: MouseEvent) {
+      if (!activated && Math.abs(mv.clientX - sx) + Math.abs(mv.clientY - sy) < 5) return
+      if (!activated) { activated = true; onMovingChange?.(true) }
+      const { di, s } = calc(mv.clientX, mv.clientY)
+      setMove({ evt, dur, dayIndex: di, startMin: s, mx: mv.clientX, my: mv.clientY })
+    }
+    function onUp(mu: MouseEvent) {
+      document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp)
+      if (!activated) { onEventClick(evt); return }
+      onMovingChange?.(false)
+      const { di, s } = calc(mu.clientX, mu.clientY)
+      setMove(null)
+      onEventMove?.(evt.id, toYMD(days[di]), minToTime(s), minToTime(s + dur))
+    }
+    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp)
+  }
 
   const hasAllDay = days.some(d => allDayFor(toYMD(d)).length > 0)
 
@@ -132,7 +170,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
             </div>
           ))}
         </div>
-        <div style={{ flex:1, display:'grid', gridTemplateColumns:'repeat(7,1fr)', position:'relative', minHeight:1440 }}>
+        <div ref={gridRef} style={{ flex:1, display:'grid', gridTemplateColumns:'repeat(7,1fr)', position:'relative', minHeight:1440 }}>
           {days.map((d, i) => {
             const ymd = toYMD(d)
             const dayEvts = eventsFor(ymd)
@@ -140,12 +178,28 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
             return (
               <DayColumn key={i} ymd={ymd} isToday={ymd === today} events={dayEvts} layout={layout}
                 bodyRef={bodyRef} onEventClick={onEventClick} onDragCreate={onDragCreate}
-                draft={draft} onDraftResize={onDraftResize}
+                draft={draft} onDraftResize={onDraftResize} onEventDown={beginMove}
                 style={{ borderRight: i<6 ? '1px solid rgba(255,255,255,0.04)' : 'none' }} />
             )
           })}
+          {/* §6: подсветка целевого слота при переносе */}
+          {move && (
+            <div style={{ position:'absolute', top:move.startMin, height:Math.max(move.dur,22),
+              left:`calc(${move.dayIndex} * 100% / 7)`, width:'calc(100% / 7)', zIndex:45, pointerEvents:'none',
+              boxSizing:'border-box', borderRadius:7, border:`2px dashed ${move.evt.color}`, background:move.evt.color+'22',
+              boxShadow:`0 0 0 3px ${move.evt.color}22` }} />
+          )}
         </div>
       </div>
+      {/* §6: силуэт события у курсора */}
+      {move && (
+        <div style={{ position:'fixed', left:move.mx+14, top:move.my+14, zIndex:1500, pointerEvents:'none',
+          background:move.evt.color, color:'#fff', borderRadius:8, padding:'6px 11px', fontSize:12, fontWeight:700,
+          boxShadow:'0 10px 28px rgba(0,0,0,0.45)', maxWidth:220, fontFamily:'Inter,sans-serif' }}>
+          <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{move.evt.title || 'Событие'}</div>
+          <div style={{ fontSize:11, fontWeight:500, opacity:0.9 }}>{WEEKDAYS_S[move.dayIndex]} · {minToTime(move.startMin)}–{minToTime(move.startMin + move.dur)}</div>
+        </div>
+      )}
     </div>
   )
 }
@@ -154,7 +208,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
 // Живой черновик события (§6): обводка в сетке, двусторонне связанная с боковой карточкой.
 export type CalDraft = { date: string; start: string; end: string; editId: string | null; color: string }
 
-export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick, onDragCreate, style, wide, draft, onDraftResize }: {
+export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick, onDragCreate, style, wide, draft, onDraftResize, onEventDown }: {
   ymd: string; isToday: boolean; events: CalEvent[]
   layout: Map<string, { col: number; total: number }>
   bodyRef: React.RefObject<HTMLDivElement | null>
@@ -164,6 +218,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
   wide?: boolean  // одиночный день — колонки шире, подписи скрываем позже
   draft?: CalDraft | null                                   // §6: живой черновик (создание/правка)
   onDraftResize?: (start: string, end: string) => void      // §6: тянем края/двигаем обводку → время в карточке
+  onEventDown?: (evt: CalEvent, e: React.MouseEvent) => void // §6: клик-удержание по событию → перенос силуэтом
 }) {
   const colRef    = useRef<HTMLDivElement>(null)
   const ghostRef  = useRef<HTMLDivElement>(null)
@@ -257,7 +312,9 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
         const veryDense = total >= (wide ? 14 : 7)  // совсем узкие — только цветная полоса, текст в tooltip
         const loc = evt.location?.length ? ' · ' + evt.location.map(l => LOCATIONS.find(x => x.id === l)?.label ?? l).join(', ') : ''
         return (
-          <div key={evt.id} data-evt="1" title={`${evt.title} · ${evt.start}–${evt.end}`} onClick={() => onEventClick(evt)}
+          <div key={evt.id} data-evt="1" title={`${evt.title} · ${evt.start}–${evt.end}`}
+            onMouseDown={onEventDown ? e => onEventDown(evt, e) : undefined}
+            onClick={onEventDown ? undefined : () => onEventClick(evt)}
             style={{ position:'absolute', top:sMin, height, left, width, background:evt.color+'22', borderLeft:`3px solid ${evt.color}`, borderRadius:6, padding: veryDense ? '2px 3px' : dense ? '3px 5px' : '4px 7px', fontSize:11, fontWeight:600, color:evt.color, overflow:'hidden', cursor:'pointer', zIndex:2 }}>
             {!veryDense && (
               <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{evt.title}</div>
@@ -296,7 +353,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
 }
 
 // ── Day view ───────────────────────────────────────────────────────────────
-export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onDragCreate, draft, onDraftResize }: {
+export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onDragCreate, draft, onDraftResize, onEventMove, onMovingChange }: {
   cursor: Date; today: string
   eventsFor: (ymd: string) => CalEvent[]
   allDayFor:  (ymd: string) => CalEvent[]
@@ -304,12 +361,15 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
   onDragCreate: (ymd: string, start: string, end: string) => void
   draft?: CalDraft | null
   onDraftResize?: (start: string, end: string) => void
+  onEventMove?: (id: string, date: string, start: string, end: string) => void
+  onMovingChange?: (moving: boolean) => void
 }) {
   const ymd = toYMD(cursor); const isToday = ymd === today
   const dowIdx = (cursor.getDay() + 6) % 7
   const dayEvts = eventsFor(ymd); const allDay = allDayFor(ymd)
   const layout = layoutEvents(dayEvts)
   const bodyRef = useRef<HTMLDivElement>(null)
+  const [move, setMove] = useState<{ evt: CalEvent; dur: number; startMin: number; mx: number; my: number } | null>(null)
 
   useEffect(() => {
     if (bodyRef.current) {
@@ -317,6 +377,32 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
       bodyRef.current.scrollTop = firstEvt ? Math.max(0, timeToMin(firstEvt.start) - 60) : 6*60-30
     }
   }, [cursor])
+
+  // §6: перенос по времени в пределах дня (день фиксирован)
+  function beginMove(evt: CalEvent, e: React.MouseEvent) {
+    if (evt.source !== 'event' || e.button !== 0) { if (e.button === 0) onEventClick(evt); return }
+    e.preventDefault(); e.stopPropagation()
+    const sx = e.clientX, sy = e.clientY
+    const dur = timeToMin(evt.end) - timeToMin(evt.start)
+    let activated = false
+    const calcMin = (cy: number) => {
+      const el = bodyRef.current!; const raw = cy - el.getBoundingClientRect().top + el.scrollTop
+      return Math.max(0, Math.min(1440 - dur, snapTo15(raw)))
+    }
+    function onMove(mv: MouseEvent) {
+      if (!activated && Math.abs(mv.clientX - sx) + Math.abs(mv.clientY - sy) < 5) return
+      if (!activated) { activated = true; onMovingChange?.(true) }
+      setMove({ evt, dur, startMin: calcMin(mv.clientY), mx: mv.clientX, my: mv.clientY })
+    }
+    function onUp(mu: MouseEvent) {
+      document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp)
+      if (!activated) { onEventClick(evt); return }
+      onMovingChange?.(false)
+      const s = calcMin(mu.clientY); setMove(null)
+      onEventMove?.(evt.id, ymd, minToTime(s), minToTime(s + dur))
+    }
+    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp)
+  }
 
   return (
     <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
@@ -347,9 +433,24 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
         <div style={{ flex:1, position:'relative', minHeight:1440 }}>
           <DayColumn ymd={ymd} isToday={isToday} events={dayEvts} layout={layout} wide
             bodyRef={bodyRef} onEventClick={onEventClick} onDragCreate={onDragCreate}
-            draft={draft} onDraftResize={onDraftResize} />
+            draft={draft} onDraftResize={onDraftResize} onEventDown={beginMove} />
+          {/* §6: подсветка целевого слота */}
+          {move && (
+            <div style={{ position:'absolute', top:move.startMin, height:Math.max(move.dur,22), left:2, right:RIGHT_GUTTER+2,
+              zIndex:45, pointerEvents:'none', boxSizing:'border-box', borderRadius:7,
+              border:`2px dashed ${move.evt.color}`, background:move.evt.color+'22', boxShadow:`0 0 0 3px ${move.evt.color}22` }} />
+          )}
         </div>
       </div>
+      {/* §6: силуэт события у курсора */}
+      {move && (
+        <div style={{ position:'fixed', left:move.mx+14, top:move.my+14, zIndex:1500, pointerEvents:'none',
+          background:move.evt.color, color:'#fff', borderRadius:8, padding:'6px 11px', fontSize:12, fontWeight:700,
+          boxShadow:'0 10px 28px rgba(0,0,0,0.45)', maxWidth:220, fontFamily:'Inter,sans-serif' }}>
+          <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{move.evt.title || 'Событие'}</div>
+          <div style={{ fontSize:11, fontWeight:500, opacity:0.9 }}>{minToTime(move.startMin)}–{minToTime(move.startMin + move.dur)}</div>
+        </div>
+      )}
     </div>
   )
 }
