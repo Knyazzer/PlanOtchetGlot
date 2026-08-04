@@ -54,14 +54,15 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
   const days = Array.from({ length: lastDay }, (_, i) => i + 1)
 
   return (
-    <div style={{ width: 268, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--surface-1)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 16px 12px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
+    <div style={{ width: 300, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--surface-1)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px 12px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
         <button onClick={() => shift(-1)} style={navBtn} title="Предыдущий месяц">‹</button>
         <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{MONTHS[m]} {y}</div>
         <button onClick={() => shift(1)} style={navBtn} title="Следующий месяц">›</button>
       </div>
 
-      <div style={{ overflowY: 'auto', padding: '8px 10px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* весь месяц по вертикали — строки распределяются по высоте, без скролла */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '6px 8px', display: 'flex', flexDirection: 'column' }}>
         {days.map(dn => {
           const ds = `${y}-${pad(m + 1)}-${pad(dn)}`
           const dow = new Date(y, m, dn).getDay()
@@ -75,27 +76,23 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
               key={ds}
               onClick={() => onSelect(ds)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left',
-                padding: '7px 10px', borderRadius: 9,
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
+                flex: '1 1 0', minHeight: 22, padding: '0 10px', borderRadius: 8,
                 border: `1px solid ${isSel ? 'var(--accent-s)' : 'transparent'}`,
                 background: isSel ? 'rgba(255,107,53,0.12)' : 'none',
                 cursor: 'pointer', fontFamily: 'Inter,sans-serif',
               }}
             >
-              <div style={{ width: 32, flexShrink: 0, textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isSel ? 'var(--text-1)' : weekend ? 'var(--text-muted)' : 'var(--text-2)' }}>{dn}</div>
-                <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: isToday ? 'var(--accent-s)' : 'var(--text-muted)' }}>{WD[dow]}</div>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {e ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: 2, background: color!, flexShrink: 0 }} />
-                    <span style={{ fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelOf(e.dayFormat)}</span>
-                  </div>
-                ) : (
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.5 : 0.8, fontStyle: 'italic' }}>{weekend ? 'выходной' : 'не заполнен'}</span>
-                )}
-              </div>
+              <span style={{ width: 22, flexShrink: 0, textAlign: 'right', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isSel ? 'var(--text-1)' : weekend ? 'var(--text-muted)' : 'var(--text-2)' }}>{dn}</span>
+              <span style={{ width: 22, flexShrink: 0, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: isToday ? 'var(--accent-s)' : 'var(--text-muted)' }}>{WD[dow]}</span>
+              {e ? (
+                <>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: color!, flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelOf(e.dayFormat)}</span>
+                </>
+              ) : (
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend ? 'выходной' : 'не заполнен'}</span>
+              )}
               {isToday && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-s)', flexShrink: 0 }} title="Сегодня" />}
             </button>
           )
