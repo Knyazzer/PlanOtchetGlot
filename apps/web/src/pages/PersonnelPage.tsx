@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { OrgChartTab } from '../components/OrgChart'
+import { WorkScheduleEditor } from '../components/WorkScheduleEditor'
 import { useCurrentUser } from '../hooks/useAuth'
 import { AssignmentsEditor } from './personnel/AssignmentsEditor'
 
@@ -432,6 +433,10 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
 
           {isStaff && (
             <AssignmentsEditor userId={person.id} invalidateKey={queryKey} />
+          )}
+
+          {isStaff && !isAdminUser && (
+            <WorkScheduleEditor userId={person.id} />
           )}
 
           {/* Занятость (штат и фрилансеры). Выкл + «Сохранить» = уволить (бан доступа) */}
