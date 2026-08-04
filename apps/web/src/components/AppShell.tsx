@@ -250,7 +250,7 @@ export function AppShell() {
         {/* key={page} → при переходе на другую страницу boundary сбрасывается.
             pageLabel из nav → в сообщении видно, какая страница упала (диагностика прода). */}
         <ErrorBoundary key={page} pageLabel={[...USER_NAV, ...adminNav].find((n) => n.id === page)?.label ?? page}>
-          {page === 'home'      && <HomePage />}
+          {page === 'home'      && <HomePage onOpenChat={openDirectChat} />}
           {page === 'dashboard' && <CabinetPage onOpenChatWith={openChatWith} />}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
