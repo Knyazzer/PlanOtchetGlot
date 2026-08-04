@@ -61,7 +61,7 @@ const ADMIN_NAV: NavItem[] = [
 ]
 
 const USER_NAV: NavItem[] = [
-  { id: 'home',      label: 'Главная',      icon: Home },
+  { id: 'home',      label: 'Пульс',        icon: Home },
   { id: 'dashboard', label: 'Мой кабинет',  icon: User },
   { id: 'calendar',  label: 'Календарь',    icon: Calendar },
   { id: 'analytics', label: 'Аналитика',    icon: PieChart },
