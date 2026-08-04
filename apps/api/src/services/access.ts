@@ -31,6 +31,7 @@ export const MODULE_REGISTRY: Record<string, { name: string; group: string; read
   'adm.svod-company':      { name: 'Свод · компания', group: 'Администрация', readonly: true, page: 'svod' },
   'adm.analytics-company': { name: 'Аналитика · компания', group: 'Администрация', readonly: true, page: 'analytics' },
   'adm.calendar-global':   { name: 'Общий календарь', group: 'Администрация', page: 'calendar' },
+  'adm.news':              { name: 'Публикация в Пульс', group: 'Администрация' },
   // Внешние сервисы
   'ext.inventory':         { name: 'Инвентаризация', group: 'Внешние сервисы', readonly: true },
 }
