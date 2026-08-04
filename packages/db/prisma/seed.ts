@@ -48,6 +48,64 @@ async function main() {
   }
   console.log(`Day formats seeded: ${dayFormats.length}`)
 
+  // ── Сэмпл оргструктуры + штата для DEV (после reset БД поднимается наполненной) ──────────────
+  // Уровень выводится из структуры: director = Department.directorId, head = Division.headId, иначе member.
+  const SAMPLE: Array<{ dept: string; color: string; divisions: Array<{ name: string; staff: Array<{ name: string; position: string; director?: boolean; head?: boolean }> }> }> = [
+    { dept: 'Администрация', color: '#7B61FF', divisions: [{ name: 'Управление', staff: [
+      { name: 'Иван Директоров',    position: 'Генеральный директор', director: true, head: true },
+      { name: 'Ольга Ассистентова', position: 'Ассистент руководителя' },
+    ] }] },
+    { dept: 'Департамент персонала', color: '#0891b2', divisions: [{ name: 'Отдел кадров', staff: [
+      { name: 'Мария Кадрова',  position: 'Руководитель HR', director: true, head: true },
+      { name: 'Пётр Рекрутов',  position: 'Рекрутер' },
+    ] }] },
+    { dept: 'ТВ департамент', color: '#f0a63c', divisions: [{ name: 'Эфирная группа', staff: [
+      { name: 'Анна Эфирова',       position: 'Руководитель эфира', director: true, head: true },
+      { name: 'Сергей Операторов',  position: 'Оператор' },
+      { name: 'Дмитрий Монтажёров', position: 'Монтажёр' },
+    ] }] },
+    { dept: 'Коммерческий департамент', color: '#f4497e', divisions: [{ name: 'Продажи', staff: [
+      { name: 'Елена Продажина', position: 'Директор по продажам', director: true, head: true },
+    ] }] },
+    { dept: 'Дизайн департамент', color: '#46b884', divisions: [{ name: 'Дизайн-студия', staff: [
+      { name: 'Артём Дизайнеров', position: 'Арт-директор', director: true, head: true },
+    ] }] },
+  ]
+  let empN = 0, staffCount = 0
+  for (const d of SAMPLE) {
+    let dept = await prisma.department.findFirst({ where: { name: d.dept } })
+    if (!dept) dept = await prisma.department.create({ data: { name: d.dept, color: d.color } })
+    for (const dv of d.divisions) {
+      let div = await prisma.division.findFirst({ where: { name: dv.name, deptId: dept.id } })
+      if (!div) div = await prisma.division.create({ data: { name: dv.name, deptId: dept.id } })
+      for (const s of dv.staff) {
+        empN++
+        const email = `staff${empN}@nexus.local`
+        const u = await prisma.user.upsert({
+          where: { email },
+          update: { name: s.name, position: s.position, department: d.dept, canAccessPlatform: true, userType: 'staff' },
+          create: { email, name: s.name, position: s.position, department: d.dept, canAccessPlatform: true, userType: 'staff', tabNumber: `S${String(empN).padStart(3, '0')}` },
+        })
+        await prisma.userDivision.upsert({
+          where: { userId_divId: { userId: u.id, divId: div.id } },
+          update: { position: s.position },
+          create: { userId: u.id, divId: div.id, position: s.position },
+        })
+        if (s.head) await prisma.division.update({ where: { id: div.id }, data: { headId: u.id } })
+        if (s.director) await prisma.department.update({ where: { id: dept.id }, data: { directorId: u.id } })
+        staffCount++
+      }
+    }
+  }
+  // Тестовый пользователь — в платформу, рядовым сотрудником ТВ (для проверки не-админ поверхности)
+  const testUser = await prisma.user.findUnique({ where: { email: 'user@nexus.local' } })
+  const efirDiv = await prisma.division.findFirst({ where: { name: 'Эфирная группа' } })
+  if (testUser && efirDiv) {
+    await prisma.user.update({ where: { id: testUser.id }, data: { canAccessPlatform: true, department: 'ТВ департамент', position: 'Сотрудник', userType: 'staff' } })
+    await prisma.userDivision.upsert({ where: { userId_divId: { userId: testUser.id, divId: efirDiv.id } }, update: {}, create: { userId: testUser.id, divId: efirDiv.id, position: 'Сотрудник' } })
+  }
+  console.log(`Sample structure: ${SAMPLE.length} depts, ${staffCount} staff`)
+
   // Гранты департаментных модулей (КИТ 1, спека docs/RBAC-MODEL.md §3).
   // Матчинг по имени департамента (как у ETL); отсутствующие департаменты пропускаются.
   const MODULE_GRANTS: Array<{ dept: string; moduleKey: string; editLevel: 'member' | 'head' | 'director' }> = [
@@ -62,6 +120,7 @@ async function main() {
     { dept: 'Администрация',            moduleKey: 'adm.svod-company',      editLevel: 'member' },
     { dept: 'Администрация',            moduleKey: 'adm.analytics-company', editLevel: 'member' },
     { dept: 'Администрация',            moduleKey: 'adm.calendar-global',   editLevel: 'member' },
+    { dept: 'Администрация',            moduleKey: 'adm.news',              editLevel: 'member' },
     // производственные департаменты — шаблонные модули
     { dept: 'ТВ департамент',           moduleKey: 'prod.board',            editLevel: 'member' },
     { dept: 'ТВ департамент',           moduleKey: 'prod.workitems',        editLevel: 'member' },
