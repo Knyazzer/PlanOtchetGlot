@@ -17,10 +17,9 @@ const SERVICE_LOGOS: Record<string, string> = {
 }
 import { ListsPage }     from '../pages/ListsPage'
 import { PersonnelPage } from '../pages/PersonnelPage'
-import { DashboardPage } from '../pages/DashboardPage'
 import { HomePage }      from '../pages/HomePage'
 import { CalendarPage }  from '../pages/CalendarPage'
-import { TasksPage }     from '../pages/TasksPage'
+import { CabinetPage }   from '../pages/CabinetPage'
 import { ProjectsPage }  from '../pages/ProjectsPage'
 import type { ProjectsSubPage } from '../pages/ProjectsPage'
 import { AnalyticsPage } from '../pages/AnalyticsPage'
@@ -33,7 +32,7 @@ import { ChatsPage, disconnectWS } from '../pages/ChatsPage'
 import { ErrorBoundary } from './ErrorBoundary'
 import { AppShell as KitAppShell, type NavEntry } from '../ui-kit/components/AppShell'
 import {
-  Home, Calendar, ClipboardList, BarChart3, PieChart, FolderKanban,
+  Home, Calendar, BarChart3, PieChart, FolderKanban,
   Users, UsersRound, MessageSquare, Bell, Settings as SettingsIcon,
   User, Shield, Archive, List, Package,
   type LucideIcon,
@@ -65,7 +64,6 @@ const USER_NAV: NavItem[] = [
   { id: 'home',      label: 'Главная',      icon: Home },
   { id: 'dashboard', label: 'Мой кабинет',  icon: User },
   { id: 'calendar',  label: 'Календарь',    icon: Calendar },
-  { id: 'tasks',     label: 'Задачи',       icon: ClipboardList },
   { id: 'analytics', label: 'Аналитика',    icon: PieChart },
   { id: 'projects',  label: 'Проекты',      icon: FolderKanban },
   { id: 'team',      label: 'Команда',      icon: UsersRound },
@@ -102,8 +100,8 @@ export function AppShell() {
   const defaultPage: Page = isSystem ? 'personnel' : 'home'
   const ADMIN_PAGES: Page[] = ['personnel', 'lists']
   const storedRaw = localStorage.getItem('nexus:page')
-  // «Свод» объединён в «Аналитику» (внутренняя вкладка) — миграция старого persist
-  const stored = (storedRaw === 'svod' ? 'analytics' : storedRaw) as Page | null
+  // Миграция старого persist: «Свод»→«Аналитика», «Задачи»→«Мой кабинет» (обе стали внутр. вкладками)
+  const stored = (storedRaw === 'svod' ? 'analytics' : storedRaw === 'tasks' ? 'dashboard' : storedRaw) as Page | null
   const initialPage: Page = isSystem
     ? (stored && SYSTEM_PAGES.includes(stored) ? stored : 'personnel')
     : (stored && (!ADMIN_PAGES.includes(stored) || isAdmin) ? stored : defaultPage)
@@ -120,6 +118,8 @@ export function AppShell() {
     : ADMIN_NAV
 
   function navigateTo(p: Page) {
+    // «Задачи» переехали внутрь «Мой кабинет» вкладкой — редиректим старые ссылки/уведомления
+    if (p === 'tasks') { localStorage.setItem('nexus:cabinet-tab', 'tasks'); p = 'dashboard' }
     setPage(p)
     localStorage.setItem('nexus:page', p)
   }
@@ -203,7 +203,7 @@ export function AppShell() {
       key: item.id,
       label: item.label,
       icon: item.icon,
-      badge: item.id === 'tasks' && unseenTasks > 0 ? unseenTasks : undefined,
+      badge: item.id === 'dashboard' && unseenTasks > 0 ? unseenTasks : undefined,
     })) : []),
     // Блоки продуктов/департаментов — по группам (section = m.group)
     ...sortedExtra.map((m) => ({
@@ -251,14 +251,13 @@ export function AppShell() {
             pageLabel из nav → в сообщении видно, какая страница упала (диагностика прода). */}
         <ErrorBoundary key={page} pageLabel={[...USER_NAV, ...adminNav].find((n) => n.id === page)?.label ?? page}>
           {page === 'home'      && <HomePage />}
-          {page === 'dashboard' && <DashboardPage />}
+          {page === 'dashboard' && <CabinetPage onOpenChatWith={openChatWith} />}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
           {page === 'settings'  && isAdmin && <SettingsPage />}
           {page === 'set-roles'   && isAdmin && <div style={{ padding: '24px 28px' }}><RolesTab /></div>}
           {page === 'set-backups' && isAdmin && <div style={{ padding: '24px 28px' }}><BackupsInfo /></div>}
           {page === 'calendar'  && <CalendarPage />}
-          {page === 'tasks'     && <TasksPage onOpenChatWith={openChatWith} />}
           {page === 'projects'  && <ProjectsPage subPage={projectsSubPage} onSubPageChange={setProjectsSubPage} />}
           {page === 'personnel' && (isAdmin || user?.access?.modules?.some((m) => m.key === 'hr.orgstructure')) && <PersonnelPage />}
           {page === 'lists'     && isAdmin && <ListsPage />}
