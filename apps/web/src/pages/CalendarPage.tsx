@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { X } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCurrentUser } from '../hooks/useAuth'
@@ -194,6 +194,25 @@ export function CalendarPage() {
     setVisible(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
   }
 
+  // §6: живой черновик события для сетки (двусторонне связан с боковой карточкой через modal.start/end)
+  const draft = modal.open && modal.source === 'event'
+    ? { date: modal.date, start: modal.start, end: modal.end, editId: modal.editId, color: TYPE_COLOR[modal.type] ?? '#8B5CF6' }
+    : null
+  const onDraftResize = (start: string, end: string) => setModal(m => ({ ...m, start, end }))
+
+  // §6: карточка не затемняет — закрываем её кликом в пустоте (не по карточке/событию/обводке).
+  // Мини-пикеры даты/времени/участников гасят mousedown (stopPropagation) — сюда не долетают.
+  useEffect(() => {
+    if (!modal.open) return
+    function onDocDown(e: MouseEvent) {
+      const t = e.target as HTMLElement
+      if (t.closest('[data-card]') || t.closest('[data-evt]') || t.closest('[data-draft]')) return
+      setModal(BLANK_MODAL())
+    }
+    document.addEventListener('mousedown', onDocDown)
+    return () => document.removeEventListener('mousedown', onDocDown)
+  }, [modal.open])
+
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100%', overflow:'hidden' }}>
 
@@ -290,13 +309,15 @@ export function CalendarPage() {
             <WeekView cursor={cursor} today={todayS}
               eventsFor={eventsFor} allDayFor={allDayFor}
               onEventClick={openEdit}
-              onDragCreate={(ymd, start, end) => openCreate(ymd, start, end)} />
+              onDragCreate={(ymd, start, end) => openCreate(ymd, start, end)}
+              draft={draft} onDraftResize={onDraftResize} />
           )}
           {view === 'day' && (
             <DayView cursor={cursor} today={todayS}
               eventsFor={eventsFor} allDayFor={allDayFor}
               onEventClick={openEdit}
-              onDragCreate={(ymd, start, end) => openCreate(ymd, start, end)} />
+              onDragCreate={(ymd, start, end) => openCreate(ymd, start, end)}
+              draft={draft} onDraftResize={onDraftResize} />
           )}
         </div>
 

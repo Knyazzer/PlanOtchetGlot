@@ -6,7 +6,7 @@ import { toYMD, getWeekStart, layoutEvents, timeToMin, minToTime, snapTo15 } fro
 // Раскладка параллельных (§5): события лежат равными колонками, а справа колонки
 // всегда остаётся свободный ЗАЗОР — там можно зажать-протянуть, чтобы создать
 // параллельное событие рядом с существующим.
-const RIGHT_GUTTER = 14 // px свободной правой зоны для создания параллельного
+const RIGHT_GUTTER = 20 // px свободной правой зоны для создания параллельного
 const COL_GAP = 4       // px между колонками
 
 // ── Month view ─────────────────────────────────────────────────────────────
@@ -68,12 +68,14 @@ export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDay
 }
 
 // ── Week view ──────────────────────────────────────────────────────────────
-export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, onDragCreate }: {
+export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, onDragCreate, draft, onDraftResize }: {
   cursor: Date; today: string
   eventsFor: (ymd: string) => CalEvent[]
   allDayFor:  (ymd: string) => CalEvent[]
   onEventClick: (evt: CalEvent) => void
   onDragCreate: (ymd: string, start: string, end: string) => void
+  draft?: CalDraft | null
+  onDraftResize?: (start: string, end: string) => void
 }) {
   const ws = getWeekStart(cursor)
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(ws); d.setDate(ws.getDate()+i); return d })
@@ -138,6 +140,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
             return (
               <DayColumn key={i} ymd={ymd} isToday={ymd === today} events={dayEvts} layout={layout}
                 bodyRef={bodyRef} onEventClick={onEventClick} onDragCreate={onDragCreate}
+                draft={draft} onDraftResize={onDraftResize}
                 style={{ borderRight: i<6 ? '1px solid rgba(255,255,255,0.04)' : 'none' }} />
             )
           })}
@@ -148,7 +151,10 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
 }
 
 // ── Day column ─────────────────────────────────────────────────────────────
-export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick, onDragCreate, style, wide }: {
+// Живой черновик события (§6): обводка в сетке, двусторонне связанная с боковой карточкой.
+export type CalDraft = { date: string; start: string; end: string; editId: string | null; color: string }
+
+export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick, onDragCreate, style, wide, draft, onDraftResize }: {
   ymd: string; isToday: boolean; events: CalEvent[]
   layout: Map<string, { col: number; total: number }>
   bodyRef: React.RefObject<HTMLDivElement | null>
@@ -156,6 +162,8 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
   onDragCreate: (ymd: string, start: string, end: string) => void
   style?: React.CSSProperties
   wide?: boolean  // одиночный день — колонки шире, подписи скрываем позже
+  draft?: CalDraft | null                                   // §6: живой черновик (создание/правка)
+  onDraftResize?: (start: string, end: string) => void      // §6: тянем края/двигаем обводку → время в карточке
 }) {
   const colRef    = useRef<HTMLDivElement>(null)
   const ghostRef  = useRef<HTMLDivElement>(null)
@@ -197,6 +205,34 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
     document.addEventListener('mouseup', onUp)
   }
 
+  // §6: тянем верхний/нижний край обводки-черновика → меняем start/end (обратная связь в карточку)
+  function startResize(edge: 'top' | 'bottom', e: React.MouseEvent) {
+    if (!draft || !onDraftResize) return
+    e.stopPropagation(); e.preventDefault()
+    const s0 = timeToMin(draft.start), e0 = timeToMin(draft.end)
+    function onMove(mv: MouseEvent) {
+      const cur = snapTo15(getMinutes(mv.clientY))
+      if (edge === 'top') onDraftResize!(minToTime(Math.min(cur, e0 - 15)), minToTime(e0))
+      else                onDraftResize!(minToTime(s0), minToTime(Math.max(cur, s0 + 15)))
+    }
+    function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp)
+  }
+  // §6: тянем тело обводки → двигаем событие по времени в пределах дня (длительность сохраняется)
+  function startMove(e: React.MouseEvent) {
+    if (!draft || !onDraftResize) return
+    e.stopPropagation(); e.preventDefault()
+    const s0 = timeToMin(draft.start), dur = timeToMin(draft.end) - s0
+    const offset = snapTo15(getMinutes(e.clientY)) - s0
+    function onMove(mv: MouseEvent) {
+      let ns = snapTo15(getMinutes(mv.clientY)) - offset
+      ns = Math.max(0, Math.min(1440 - dur, ns))
+      onDraftResize!(minToTime(ns), minToTime(ns + dur))
+    }
+    function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp)
+  }
+
   return (
     <div ref={colRef} onMouseDown={onMouseDown}
       style={{ position:'relative', minHeight:1440, background: isToday ? 'rgba(255,107,53,0.015)' : 'transparent', ...style }}>
@@ -208,6 +244,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
         </div>
       ))}
       {events.map(evt => {
+        if (draft?.editId === evt.id) return null  // §6: редактируемое событие показываем обводкой-черновиком
         const sMin = timeToMin(evt.start), eMin = timeToMin(evt.end)
         const { col: subCol, total } = layout.get(evt.id) ?? { col:0, total:1 }
         const frac = 1/total
@@ -230,6 +267,24 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
           </div>
         )
       })}
+      {/* §6: живой черновик — пунктир (создание) / заливка (правка), двусторонне связан с карточкой */}
+      {draft && draft.date === ymd && onDraftResize && (() => {
+        const s = timeToMin(draft.start), e = timeToMin(draft.end)
+        const isCreate = !draft.editId
+        const c = draft.color
+        return (
+          <div data-draft="1" data-evt="1" onMouseDown={startMove}
+            style={{ position:'absolute', top:s, height:Math.max(e-s,22), left:2, right:RIGHT_GUTTER+2, zIndex:40, borderRadius:7, cursor:'move',
+              background: isCreate ? c+'1f' : c+'33',
+              border: isCreate ? `2px dashed ${c}` : `2px solid ${c}`,
+              boxShadow:`0 0 0 3px ${c}22`, padding:'3px 8px', fontSize:11, fontWeight:700, color:c, overflow:'hidden' }}>
+            <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{isCreate ? 'Новое событие' : 'Редактирование'}</div>
+            <div style={{ fontSize:10, fontWeight:500, opacity:0.85 }}>{draft.start} – {draft.end}</div>
+            <div onMouseDown={ev => startResize('top', ev)}    style={{ position:'absolute', top:-5, left:0, right:0, height:11, cursor:'ns-resize' }} />
+            <div onMouseDown={ev => startResize('bottom', ev)} style={{ position:'absolute', bottom:-5, left:0, right:0, height:11, cursor:'ns-resize' }} />
+          </div>
+        )
+      })()}
       {isToday && (() => {
         const now = new Date(); const nowMin = now.getHours()*60+now.getMinutes()
         return <div style={{ position:'absolute', left:0, right:0, top:nowMin, height:2, background:'linear-gradient(90deg,#FF6B35,#E8194B)', zIndex:5, pointerEvents:'none' }}><div style={{ position:'absolute', left:-4, top:-4, width:10, height:10, borderRadius:'50%', background:'#FF6B35' }} /></div>
@@ -240,12 +295,14 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
 }
 
 // ── Day view ───────────────────────────────────────────────────────────────
-export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onDragCreate }: {
+export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onDragCreate, draft, onDraftResize }: {
   cursor: Date; today: string
   eventsFor: (ymd: string) => CalEvent[]
   allDayFor:  (ymd: string) => CalEvent[]
   onEventClick: (evt: CalEvent) => void
   onDragCreate: (ymd: string, start: string, end: string) => void
+  draft?: CalDraft | null
+  onDraftResize?: (start: string, end: string) => void
 }) {
   const ymd = toYMD(cursor); const isToday = ymd === today
   const dowIdx = (cursor.getDay() + 6) % 7
@@ -288,7 +345,8 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
         </div>
         <div style={{ flex:1, position:'relative', minHeight:1440 }}>
           <DayColumn ymd={ymd} isToday={isToday} events={dayEvts} layout={layout} wide
-            bodyRef={bodyRef} onEventClick={onEventClick} onDragCreate={onDragCreate} />
+            bodyRef={bodyRef} onEventClick={onEventClick} onDragCreate={onDragCreate}
+            draft={draft} onDraftResize={onDraftResize} />
         </div>
       </div>
     </div>

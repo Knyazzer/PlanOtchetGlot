@@ -34,19 +34,23 @@ const miniBtn = (primary?: boolean): React.CSSProperties => ({
 
 // Мини-модал поверх модалки события: клик по фону закрывает ТОЛЬКО его — stopPropagation не даёт
 // родительской модалке-событию среагировать. Железное правило: mousedown+mouseup на фоне.
-function MiniPicker({ open, onClose, side = 'center', children }: { open: boolean; onClose: () => void; side?: 'left' | 'right' | 'center'; children: React.ReactNode }) {
+function MiniPicker({ open, onClose, side = 'center', cardSide = false, children }: { open: boolean; onClose: () => void; side?: 'left' | 'right' | 'center'; cardSide?: boolean; children: React.ReactNode }) {
   const down = useRef(false)
   if (!open) return null
-  // side left/right — рядом с модалкой события (шир. 420 → полуширина 210, +22 зазор), чтобы её не перекрывать.
-  const aside: React.CSSProperties = { position: 'fixed', top: '50%', transform: 'translateY(-50%)',
-    ...(side === 'right' ? { left: 'calc(50% + 232px)' } : { right: 'calc(50% + 232px)' }) }
+  // cardSide — боковая карточка события (right:16, width 380): мини-пикер слева от неё.
+  // иначе (центрированная модалка): side left/right рядом с ней.
+  const aside: React.CSSProperties = cardSide
+    ? { position: 'fixed', right: 412, top: '50%', transform: 'translateY(-50%)' }
+    : { position: 'fixed', top: '50%', transform: 'translateY(-50%)',
+        ...(side === 'right' ? { left: 'calc(50% + 232px)' } : { right: 'calc(50% + 232px)' }) }
+  const centered = side === 'center' && !cardSide
   return (
     <div
       onMouseDown={(e) => { e.stopPropagation(); down.current = e.target === e.currentTarget }}
       onMouseUp={(e) => { e.stopPropagation(); if (down.current && e.target === e.currentTarget) onClose(); down.current = false }}
-      style={{ position: 'fixed', inset: 0, zIndex: 1100, ...(side === 'center' ? { display: 'flex', alignItems: 'center', justifyContent: 'center' } : {}) }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1100, ...(centered ? { display: 'flex', alignItems: 'center', justifyContent: 'center' } : {}) }}
     >
-      <div onMouseDown={(e) => e.stopPropagation()} style={{ ...(side === 'center' ? {} : aside), background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}>
+      <div onMouseDown={(e) => e.stopPropagation()} style={{ ...(centered ? {} : aside), background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: 14, boxShadow: '0 24px 64px rgba(0,0,0,0.55)' }}>
         {children}
       </div>
     </div>
@@ -54,7 +58,7 @@ function MiniPicker({ open, onClose, side = 'center', children }: { open: boolea
 }
 
 // Чип даты (слева): клик → мини-модал с календарём + Готово/Сбросить.
-function DateChip({ value, onChange }: { value: string; onChange: (s: string) => void }) {
+function DateChip({ value, onChange, sideCard }: { value: string; onChange: (s: string) => void; sideCard?: boolean }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<Date | undefined>(ymdToDate(value))
   useEffect(() => { if (open) setDraft(ymdToDate(value)) }, [open, value])
@@ -66,7 +70,7 @@ function DateChip({ value, onChange }: { value: string; onChange: (s: string) =>
           {value ? format(ymdToDate(value)!, 'd MMM yyyy', { locale: ru }) : 'Выбрать дату'}
         </span>
       </button>
-      <MiniPicker open={open} onClose={() => setOpen(false)} side="left">
+      <MiniPicker open={open} onClose={() => setOpen(false)} side="left" cardSide={sideCard}>
         <DayPicker mode="single" locale={ru} weekStartsOn={1} selected={draft} onSelect={setDraft} showOutsideDays />
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="button" onClick={() => { onChange(''); setDraft(undefined); setOpen(false) }} style={miniBtn(false)}>Сбросить</button>
@@ -78,7 +82,7 @@ function DateChip({ value, onChange }: { value: string; onChange: (s: string) =>
 }
 
 // Чип времени (справа): клик → мини-модал с круговым диапазоном (ClockDial) + Сохранить/Сбросить.
-function TimeChip({ start, end, onChange }: { start: string; end: string; onChange: (v: { start: string; end: string }) => void }) {
+function TimeChip({ start, end, onChange, sideCard }: { start: string; end: string; onChange: (v: { start: string; end: string }) => void; sideCard?: boolean }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState({ start, end })
   useEffect(() => { if (open) setDraft({ start, end }) }, [open, start, end])
@@ -88,7 +92,7 @@ function TimeChip({ start, end, onChange }: { start: string; end: string; onChan
         <Clock size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         <span style={{ flex: 1, textAlign: 'left' }}>{start} – {end}</span>
       </button>
-      <MiniPicker open={open} onClose={() => setOpen(false)} side="right">
+      <MiniPicker open={open} onClose={() => setOpen(false)} side="right" cardSide={sideCard}>
         <ClockDial value={draft} onChange={setDraft} workHours={{ start: '10:00', end: '18:30' }} />
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
           <button type="button" onClick={() => setDraft({ start, end })} style={miniBtn(false)}>Сбросить</button>
@@ -112,7 +116,6 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
 
   const [memberSearch, setMemberSearch] = useState('')
   const [pickerOpen,   setPickerOpen]   = useState(false)
-  const mdRef = useRef(false)
 
   const { data: members = [] } = useQuery<ApiMember[]>({
     queryKey: ['users:members'],
@@ -130,8 +133,9 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
   }
 
   return (
-    <div onMouseDown={e => { mdRef.current = e.target === e.currentTarget }} onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose() }} style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.6)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-      <div onMouseDown={e => e.stopPropagation()} style={{ background:'var(--surface-2)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, padding:24, width:420, maxWidth:'90vw', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.5)', fontFamily:'Inter,sans-serif' }}>
+    // §6: боковая карточка без затемнения — календарь под ней виден и кликабелен (закрытие вне — на уровне CalendarPage)
+    <div data-card="1" style={{ position:'fixed', top:64, right:16, bottom:16, zIndex:900, width:380, maxWidth:'92vw', display:'flex' }}>
+      <div style={{ flex:1, background:'var(--surface-2)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:22, overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.5)', fontFamily:'Inter,sans-serif' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <div style={{ fontSize:15, fontWeight:700, color:'var(--text-1)' }}>{isEdit ? (canEdit ? 'Редактировать событие' : 'Просмотр события') : 'Новое событие'}</div>
           <button onClick={onClose} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:6, width:28, height:28, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
@@ -163,11 +167,11 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
         <div style={{ display:'flex', gap:10, marginBottom:14 }}>
           <div style={{ flex:1, minWidth:0 }}>
             <span style={lbl}>Дата</span>
-            <DateChip value={modal.date} onChange={(v) => onChange({ date: v })} />
+            <DateChip value={modal.date} onChange={(v) => onChange({ date: v })} sideCard />
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <span style={lbl}>Время</span>
-            <TimeChip start={modal.start} end={modal.end} onChange={(v) => onChange({ start: v.start, end: v.end })} />
+            <TimeChip start={modal.start} end={modal.end} onChange={(v) => onChange({ start: v.start, end: v.end })} sideCard />
           </div>
         </div>
 
@@ -210,7 +214,7 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
             }
           </div>
           {/* Мини-модал выбора участников — свой скролл, не растит и не обрезается модалкой события */}
-          <MiniPicker open={pickerOpen} onClose={() => setPickerOpen(false)}>
+          <MiniPicker open={pickerOpen} onClose={() => setPickerOpen(false)} cardSide>
             <div style={{ width:320, maxWidth:'80vw', display:'flex', flexDirection:'column' }}>
               <input autoFocus value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Поиск сотрудника..."
                 style={{ width:'100%', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none', boxSizing:'border-box', marginBottom:8 }} />
