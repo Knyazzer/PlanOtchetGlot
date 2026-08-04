@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
 
 // Инлайн-карточка «Заполнить сегодня» (ядро донора: формат + время + итог).
 // Attention-подсветка незаполненного; конец дня подсвечивается после 18:00 МСК (golden 11 §1).
@@ -42,20 +43,24 @@ export function DayFillCard({ date = todayStr() }: { date?: string } = {}) {
     queryKey: ['day-entries', date],
     queryFn: () => api.get(`/day-entries?from=${date}&to=${date}`).then(r => r.data),
   })
+  const { data: schedule } = useMyWorkSchedule()
   const entry = entries?.[0] ?? null
+  const suggest = entry ? null : expectedForDate(date, schedule)  // подсказка из графика для пустого дня
 
   if (isLoading) return null
   // key-remount: при изменении записи форма пересоздаётся со свежими значениями
-  return <DayFillForm key={entry ? `${entry.id}:${entry.updatedAt}` : `empty:${date}`} date={date} entry={entry} formats={formats} />
+  return <DayFillForm key={entry ? `${entry.id}:${entry.updatedAt}` : `empty:${date}`} date={date} entry={entry} formats={formats} suggest={suggest} />
 }
 
-function DayFillForm({ date, entry, formats }: { date: string; entry: DayEntry | null; formats: DayFormat[] }) {
+function DayFillForm({ date, entry, formats, suggest }: { date: string; entry: DayEntry | null; formats: DayFormat[]; suggest: { format: string; workStart: string; workEnd: string; breakMin: number } | null }) {
   const isToday = date === todayStr()
   const qc = useQueryClient()
-  const [dayFormat, setDayFormat] = useState(entry?.dayFormat ?? '')
-  const [startTime, setStartTime] = useState(entry?.startTime ?? '')
-  const [endTime, setEndTime] = useState(entry?.endTime ?? '')
-  const [breakMin, setBreakMin] = useState(entry?.breakMin ?? 0)
+  // пустой день предзаполняем из графика (тип дня + часы); нерабочий тип (dayoff и пр.) — без времени
+  const sugWork = suggest && suggest.format !== 'dayoff'
+  const [dayFormat, setDayFormat] = useState(entry?.dayFormat ?? suggest?.format ?? '')
+  const [startTime, setStartTime] = useState(entry?.startTime ?? (sugWork ? suggest!.workStart : '') ?? '')
+  const [endTime, setEndTime] = useState(entry?.endTime ?? (sugWork ? suggest!.workEnd : '') ?? '')
+  const [breakMin, setBreakMin] = useState(entry?.breakMin ?? suggest?.breakMin ?? 0)
   const [dirty, setDirty] = useState(false)
   // период для нерабочих форматов (отпуск/командировка/больничный)
   const [periodTo, setPeriodTo] = useState('')
@@ -118,6 +123,9 @@ function DayFillForm({ date, entry, formats }: { date: string; entry: DayEntry |
         </div>
         {entry && !dirty && (
           <span style={{ fontSize: 12, color: '#29BF12', fontWeight: 600 }}>✓ Заполнено</span>
+        )}
+        {!entry && !dirty && suggest && dayFormat && (
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }} title="Подставлено из графика работы — сохраните, чтобы зафиксировать">по графику · не сохранено</span>
         )}
         {dirty && (
           <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>Не забудь сохранить</span>

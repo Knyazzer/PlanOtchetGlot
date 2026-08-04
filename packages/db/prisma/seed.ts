@@ -170,6 +170,17 @@ async function main() {
     }
   }
 
+  // ── Дефолт-графики работы (office 5/2) сэмпл-штату — кабинет показывает «тип дня по умолчанию» ──
+  const staffUsers = await prisma.user.findMany({ where: { userType: 'staff', canAccessPlatform: true }, select: { id: true } })
+  for (const u of staffUsers) {
+    await prisma.workSchedule.upsert({
+      where: { userId: u.id },
+      update: {},
+      create: { userId: u.id }, // дефолты схемы: пн–пт office, сб/вс dayoff, 10:00–18:30
+    })
+  }
+  console.log(`Work schedules seeded: ${staffUsers.length}`)
+
   console.log('Seed complete.')
 }
 

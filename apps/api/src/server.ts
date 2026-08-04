@@ -23,6 +23,7 @@ import { tracksRoutes } from './routes/tracks'
 import { clientsRoutes } from './routes/clients'
 import { projectsRoutes, workItemsRoutes } from './routes/projects'
 import { dayEntriesRoutes } from './routes/day-entries'
+import { workScheduleRoutes } from './routes/work-schedule'
 import { svodRoutes } from './routes/svod'
 import { boardRoutes } from './routes/board'
 import { analyticsRoutes } from './routes/analytics'
@@ -110,6 +111,7 @@ async function main() {
   await app.register(projectsRoutes,        { prefix: '/projects' })
   await app.register(workItemsRoutes,       { prefix: '/work-items' })
   await app.register(dayEntriesRoutes,      { prefix: '/day-entries' })
+  await app.register(workScheduleRoutes,    { prefix: '/work-schedule' })
   await app.register(svodRoutes,            { prefix: '/svod' })
   await app.register(boardRoutes,           { prefix: '/board' })
   await app.register(analyticsRoutes,       { prefix: '/analytics' })

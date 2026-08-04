@@ -69,6 +69,7 @@ model User {
   accountManagedWorkItems  WorkItem[] @relation("WorkItemAccountManager")
   expensesCreated          Expense[]  @relation("ExpenseCreator")
   dayEntries               DayEntry[]      @relation("UserDayEntries")
+  workSchedule             WorkSchedule?   @relation("UserSchedule")
   boardColumns             BoardColumn[]   @relation("UserBoardColumns")
   taskPlacements           TaskPlacement[] @relation("UserTaskPlacements")
 
@@ -636,6 +637,30 @@ model DayEntry {
   @@index([divisionId, date])
   @@index([date])
   @@map("day_entries")
+  @@schema("nexus")
+}
+
+// График работы (HR): недельный паттерн типов дня + рабочие часы. Прогнозная
+// КОНФИГУРАЦИЯ (правится, не версионируется) — даёт «тип дня по умолчанию» как
+// подсказку; факты живут в DayEntry, Свод/аналитика считают только их.
+model WorkSchedule {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  user      User     @relation("UserSchedule", fields: [userId], references: [id], onDelete: Cascade)
+  // ключ DayFormatVersion (office|remote|shift_*|...) или 'dayoff' — по дням недели
+  mon       String   @default("office")
+  tue       String   @default("office")
+  wed       String   @default("office")
+  thu       String   @default("office")
+  fri       String   @default("office")
+  sat       String   @default("dayoff")
+  sun       String   @default("dayoff")
+  workStart String   @default("10:00") @map("work_start")
+  workEnd   String   @default("18:30") @map("work_end")
+  breakMin  Int      @default(0)       @map("break_min")
+  updatedAt DateTime @updatedAt        @map("updated_at")
+
+  @@map("work_schedules")
   @@schema("nexus")
 }
 

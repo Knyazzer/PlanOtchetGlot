@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
 
 // Вертикальная месячная сводка справа в «Мой кабинет»: строка на день, кубик = тип дня.
 // Клик по дню делает кабинет дате-зависимым (задачи/план/события на выбранную дату,
@@ -46,6 +47,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
     queryKey: ['day-entries', from, to],
     queryFn: () => api.get(`/day-entries?from=${from}&to=${to}`).then(r => r.data),
   })
+  const { data: schedule } = useMyWorkSchedule()
   const byDate = new Map(entries.map(e => [e.date.slice(0, 10), e]))
   const labelOf = (k: string) => formats.find(f => f.key === k)?.label ?? k
 
@@ -90,9 +92,20 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: color!, flexShrink: 0 }} />
                   <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelOf(e.dayFormat)}</span>
                 </>
-              ) : (
-                <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend ? 'выходной' : 'не заполнен'}</span>
-              )}
+              ) : (() => {
+                // пустой день: ожидаемый тип из графика (полый кубик, бледно) либо «выходной/не заполнен»
+                const exp = expectedForDate(ds, schedule)
+                if (exp && exp.format !== 'dayoff') {
+                  const ec = FMT_COLOR[exp.format] ?? 'var(--text-muted)'
+                  return (
+                    <>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${ec}`, opacity: 0.6, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Ожидается по графику">{labelOf(exp.format)}</span>
+                    </>
+                  )
+                }
+                return <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend || exp?.format === 'dayoff' ? 'выходной' : 'не заполнен'}</span>
+              })()}
               {isToday && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-s)', flexShrink: 0 }} title="Сегодня" />}
             </button>
           )
