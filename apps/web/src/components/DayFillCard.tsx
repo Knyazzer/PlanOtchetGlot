@@ -167,9 +167,9 @@ function WorkDayCard({ date, entry, formats, schedule }: {
         </>
       )}
 
-      {/* Самостоятельный статус (§3): сотрудник сам ставит больничный/отпуск (сегодня, до начала дня) */}
-      {isToday && !started && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+      {/* Самостоятельный статус (§3): сотрудник сам ставит больничный/отпуск (сегодня) */}
+      {isToday && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Отметить отсутствие:</span>
           {(['sick', 'vacation'] as const).map(k => {
             const label = formats.find(f => f.key === k)?.label ?? k
