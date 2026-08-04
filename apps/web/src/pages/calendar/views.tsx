@@ -178,6 +178,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
   function onMouseDown(e: React.MouseEvent) {
     if ((e.target as HTMLElement).closest('[data-evt]')) return
     if (e.button !== 0) return
+    if (draft) return  // §6: карточка открыта — клик по пустоте её закрывает/сбрасывает, а не создаёт новое
     e.preventDefault()
     const startMin = snapTo15(getMinutes(e.clientY))
     dragState.current = { active: true, startMin }

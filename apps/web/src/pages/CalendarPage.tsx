@@ -11,6 +11,11 @@ import { SidebarSection, GlobalCalRow, SidePanel } from './calendar/sidebar'
 import { EventModal, EntryModal } from './calendar/modals'
 import { HeaderPortal } from '../components/HeaderPortal'
 
+// Слепок значимых полей карточки — для детекта несохранённых изменений (§6: сброс с подтверждением)
+function modalKey(m: ModalState) {
+  return JSON.stringify({ type: m.type, title: m.title, date: m.date, start: m.start, end: m.end, location: [...m.location].sort(), vyezd: m.vyezdAddress, parts: [...m.participantIds].sort() })
+}
+
 // ── Main component ─────────────────────────────────────────────────────────
 export function CalendarPage() {
   const currentUser = useCurrentUser()
@@ -29,6 +34,9 @@ export function CalendarPage() {
   const [panelOpen,   setPanelOpen]   = useState(false)
   const [modal,       setModal]       = useState<ModalState>(BLANK_MODAL())
   const [entryModal,  setEntryModal]  = useState<EntryModalState>(BLANK_ENTRY())
+  const [confirmClose, setConfirmClose] = useState(false)   // §6: подтверждение сброса несохранённых изменений
+  const snapshotRef = useRef('')                             // слепок карточки на момент открытия
+  const modalRef = useRef(modal); modalRef.current = modal   // актуальный modal для document-листенера
 
   const [from, to] = useMemo(() => computeRange(view, cursor), [view, cursor])
 
@@ -96,7 +104,8 @@ export function CalendarPage() {
   function closePanel()           { setSelected(null); setPanelOpen(false) }
 
   function openCreate(date?: string, start?: string, end?: string) {
-    setModal({ open: true, editId: null, source: 'event', type: 'meeting', date: date ?? todayS, start: start ?? '09:00', end: end ?? '10:00', title: '', location: [], vyezdAddress: '', participantIds: [], canEdit: true })
+    const next: ModalState = { open: true, editId: null, source: 'event', type: 'meeting', date: date ?? todayS, start: start ?? '09:00', end: end ?? '10:00', title: '', location: [], vyezdAddress: '', participantIds: [], canEdit: true }
+    setModal(next); snapshotRef.current = modalKey(next); setConfirmClose(false)
   }
   function openEdit(evt: CalEvent) {
     if (evt.source === 'entry') {
@@ -113,13 +122,20 @@ export function CalendarPage() {
       const canEdit = ev.authorId === currentUser?.id || isAdmin
       const locIds = (ev.location ?? []).filter(l => LOCATION_IDS.has(l))
       const address = (ev.location ?? []).find(l => !LOCATION_IDS.has(l)) ?? ''
-      setModal({
+      const next: ModalState = {
         open: true, editId: ev.id, source: 'event', type: ev.type as EventType,
         date: ev.date.slice(0,10), start: ev.startTime, end: ev.endTime, title: ev.title,
         location: locIds, vyezdAddress: address,
         participantIds: ev.participants.map(p => p.userId), canEdit,
-      })
+      }
+      setModal(next); snapshotRef.current = modalKey(next); setConfirmClose(false)
     }
+  }
+
+  // §6: закрыть карточку по запросу — без изменений сразу, с изменениями через подтверждение
+  function requestCloseCard() {
+    if (modalKey(modalRef.current) !== snapshotRef.current) setConfirmClose(true)
+    else { setModal(BLANK_MODAL()); setConfirmClose(false) }
   }
 
   const createEventMut = useMutation({
@@ -207,7 +223,8 @@ export function CalendarPage() {
     function onDocDown(e: MouseEvent) {
       const t = e.target as HTMLElement
       if (t.closest('[data-card]') || t.closest('[data-evt]') || t.closest('[data-draft]')) return
-      setModal(BLANK_MODAL())
+      if (modalKey(modalRef.current) !== snapshotRef.current) setConfirmClose(true)
+      else setModal(BLANK_MODAL())
     }
     document.addEventListener('mousedown', onDocDown)
     return () => document.removeEventListener('mousedown', onDocDown)
@@ -329,10 +346,24 @@ export function CalendarPage() {
         )}
       </div>
 
-      {/* Event modal */}
+      {/* Event modal (§6: боковая карточка) */}
       {modal.open && (
         <EventModal modal={modal} onChange={p => setModal(m => ({ ...m, ...p }))}
-          onSubmit={submitModal} onDelete={deleteModal} onClose={() => setModal(BLANK_MODAL())} canEdit={modal.canEdit} />
+          onSubmit={submitModal} onDelete={deleteModal} onClose={requestCloseCard} canEdit={modal.canEdit} />
+      )}
+
+      {/* §6: подтверждение сброса несохранённых изменений карточки */}
+      {confirmClose && (
+        <div style={{ position:'fixed', inset:0, zIndex:1200, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div data-card="1" style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:14, padding:22, width:320, maxWidth:'90vw', fontFamily:'Inter,sans-serif', boxShadow:'0 24px 64px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontSize:15, fontWeight:700, color:'var(--text-1)', marginBottom:8 }}>Сбросить изменения?</div>
+            <div style={{ fontSize:13, color:'var(--text-3)', marginBottom:18, lineHeight:1.5 }}>Изменения в событии не сохранены. Закрыть без сохранения?</div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => setConfirmClose(false)} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-2)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Продолжить правку</button>
+              <button onClick={() => { setConfirmClose(false); setModal(BLANK_MODAL()) }} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, background:'rgba(232,25,75,0.14)', border:'1px solid rgba(232,25,75,0.35)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Сбросить</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Entry modal (admin) */}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 import { formatName } from '../../lib/utils'
@@ -37,13 +37,12 @@ const miniBtn = (primary?: boolean): React.CSSProperties => ({
 function MiniPicker({ open, onClose, side = 'center', cardSide = false, children }: { open: boolean; onClose: () => void; side?: 'left' | 'right' | 'center'; cardSide?: boolean; children: React.ReactNode }) {
   const down = useRef(false)
   if (!open) return null
-  // cardSide — боковая карточка события (right:16, width 380): мини-пикер слева от неё.
-  // иначе (центрированная модалка): side left/right рядом с ней.
-  const aside: React.CSSProperties = cardSide
-    ? { position: 'fixed', right: 412, top: '50%', transform: 'translateY(-50%)' }
-    : { position: 'fixed', top: '50%', transform: 'translateY(-50%)',
-        ...(side === 'right' ? { left: 'calc(50% + 232px)' } : { right: 'calc(50% + 232px)' }) }
-  const centered = side === 'center' && !cardSide
+  // cardSide (боковая карточка события может стоять и справа, и слева от обводки) —
+  // мини-пикер центрируем: устойчиво независимо от позиции карточки.
+  // Иначе (центрированная модалка записи): side left/right рядом с ней.
+  const aside: React.CSSProperties = { position: 'fixed', top: '50%', transform: 'translateY(-50%)',
+    ...(side === 'right' ? { left: 'calc(50% + 232px)' } : { right: 'calc(50% + 232px)' }) }
+  const centered = side === 'center' || cardSide
   return (
     <div
       onMouseDown={(e) => { e.stopPropagation(); down.current = e.target === e.currentTarget }}
@@ -122,6 +121,17 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
     queryFn:  () => api.get('/users/members').then(r => r.data),
   })
 
+  // §6: якорим карточку сбоку от обводки — справа от неё; нет места справа → слева
+  // (чтобы не перекрывать редактируемый день, напр. воскресенье у правого края).
+  const [anchorLeft, setAnchorLeft] = useState<number | null>(null)
+  useLayoutEffect(() => {
+    const W = 380, GAP = 14
+    const el = document.querySelector('[data-draft]') as HTMLElement | null
+    if (!el) { setAnchorLeft(null); return }
+    const r = el.getBoundingClientRect()
+    setAnchorLeft(r.right + GAP + W <= window.innerWidth - 8 ? r.right + GAP : Math.max(8, r.left - GAP - W))
+  }, [modal.date])
+
   const filteredMembers = members.filter(m => m.name.toLowerCase().includes(memberSearch.toLowerCase()))
   const selectedNames = members.filter(m => modal.participantIds.includes(m.id)).map(m => m.name)
 
@@ -134,7 +144,7 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
 
   return (
     // §6: боковая карточка без затемнения — календарь под ней виден и кликабелен (закрытие вне — на уровне CalendarPage)
-    <div data-card="1" style={{ position:'fixed', top:64, right:16, bottom:16, zIndex:900, width:380, maxWidth:'92vw', display:'flex' }}>
+    <div data-card="1" style={{ position:'fixed', top:64, bottom:16, zIndex:900, width:380, maxWidth:'92vw', display:'flex', ...(anchorLeft != null ? { left: anchorLeft } : { right: 16 }) }}>
       <div style={{ flex:1, background:'var(--surface-2)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:16, padding:22, overflowY:'auto', boxShadow:'0 24px 64px rgba(0,0,0,0.5)', fontFamily:'Inter,sans-serif' }}>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
           <div style={{ fontSize:15, fontWeight:700, color:'var(--text-1)' }}>{isEdit ? (canEdit ? 'Редактировать событие' : 'Просмотр события') : 'Новое событие'}</div>
