@@ -218,6 +218,7 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | `/clients` | `routes/clients.ts` | клиенты: CRUD (write admin), bulk-import из КФПД col A |
 | `/projects` | `routes/projects.ts` | проекты CRUD (DELETE admin) + вложенные work-items (GET/POST) |
 | `/day-entries` | `routes/day-entries.ts` | день сотрудника: GET ?from&to[&userId — по орг-охвату], PUT upsert своего дня, POST /apply-period (≤370 дн, keepFilled), DELETE /:date, GET /formats; admin: GET /formats/versions, POST /formats (новая версия с 1-го числа месяца) |
+| `/work-schedule` | `routes/work-schedule.ts` | график работы (HR): GET /me, GET /:userId (орг-охват), PUT /:userId (admin/HR-модуль). Недельный паттерн типов дня + часы → «тип дня по умолчанию» (подсказка; НЕ факт, отчёт считает только DayEntry) |
 | `/svod` | `routes/svod.ts` | Свод: GET ?divisionId&month — сетка день×сотрудник (формат+минуты+задачи по startDate), подвал (часы/баллы/задачи); RBAC: member свой отдел, head/director/admin |
 | `/board` | `routes/board.ts` | личная доска: GET (колонки+размещения), POST/PATCH/DELETE /columns, PUT /placements (columnId null → убрать) |
 | `/notifications` | `routes/notifications.ts` | derived-агрегатор: лента TaskLog чужих действий над моими задачами (7 дн) + события сегодня/завтра; прочитанность — на клиенте |
@@ -377,7 +378,7 @@ Calendar, Kanban, Gantt — это **базовые компоненты** с к
 ## ⚠️ Важное
 
 - **ID по схемам**: `nexus.*` — `TEXT` (без `::uuid`); `public.users` / `auth.users` — `uuid` (каст `::uuid` обязателен). См. раздел «Raw SQL».
-- **Prisma models (24)** — `PublicUser` (схема public), `User`, `Department`, `Division`, `UserDivision`, `SheetConfig`, `Track`, `Stage`, `TrackMember`, `Task`, `TaskLog`, `Chat`, `ChatMember`, `Message`, `MessageReaction`, `MessageMention`, `Event`, `EventParticipant`, `CalendarEntry`, `Client`, `Project`, `WorkItem`, `WorkItemDivision`, `Expense`
+- **Prisma models** — `PublicUser` (схема public), `User`, `Department`, `Division`, `UserDivision`, `SheetConfig`, `Track`, `Stage`, `TrackMember`, `Task`, `TaskLog`, `Chat`, `ChatMember`, `Message`, `MessageReaction`, `MessageMention`, `Event`, `EventParticipant`, `CalendarEntry`, `Client`, `Project`, `WorkItem`, `WorkItemDivision`, `Expense`, `DayEntry`, `DayFormatVersion`, `WorkSchedule`, `Post`, `BoardColumn`, `TaskPlacement`, `RefList`, `RefItem`, `DepartmentModule`
 - **Мультисхема**: `public` (тонкая идентичность, пишет только Nexus) + `nexus` (всё остальное). `nexus.users.authId` = `auth.users.id` = `public.users.id`
 - **User model**: поля `name` (не `fullName`) и `department` (не `dept`) — переименованы для совместимости с `public.users`
 - **Заготовки в схеме чатов** (без эндпоинтов, осознанно): reply/forward, `scheduledAt`, реакции, упоминания, `inviteToken`, `Chat.projectId`

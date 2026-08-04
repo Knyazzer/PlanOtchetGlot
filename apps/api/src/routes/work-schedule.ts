@@ -26,7 +26,7 @@ const SEL = {
   workStart: true, workEnd: true, breakMin: true, updatedAt: true,
 } as const
 
-export function workScheduleRoutes(app: FastifyInstance) {
+export async function workScheduleRoutes(app: FastifyInstance) {
   // ── GET /work-schedule/me — свой график (null → клиент берёт дефолт 5/2) ──────
   app.get('/me', { preHandler: authenticate }, async (req) => {
     const user = (req as any).user as { id: string }
