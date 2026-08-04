@@ -116,22 +116,47 @@ function DeadlineBadge({ days }: { days: number }) {
   )
 }
 
-// ── Виджет «Мой статус» (авто-присутствие; единый статус — следующий шаг) ─────────
+// ── Виджет «Мой статус» — пресеты присутствия пишут в profile.status; «Авто» = по рабочему времени.
+//    (единый статус с dayFormat/Сводом и HR-конфигом — отдельным этапом, здесь без миграции БД) ──
+const PRESENCE = ['В работе', 'Удалёнка', 'На проекте', 'Не в сети'] as const
 function StatusCard({ status }: { status?: string | null }) {
+  const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const down = useRef(false)
+  const save = useMutation({
+    mutationFn: (val: string | null) => api.patch('/auth/me/profile', { status: val }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  })
   const now = new Date()
   const min = now.getHours() * 60 + now.getMinutes()
   const working = min >= 600 && min < 1110 // 10:00–18:30
-  const color = working ? '#46b884' : 'var(--text-muted)'
+  const current = status || (working ? 'В работе' : 'Не в рабочее время')
+  const color = status === 'Не в сети' ? 'var(--text-muted)' : (status || working) ? '#46b884' : 'var(--text-muted)'
   return (
-    <div style={{ flex:'1 1 280px', minWidth:280, background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 24px', display:'flex', flexDirection:'column' }}>
-      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:14 }}>Мой статус</div>
+    <div style={{ flex:'1 1 280px', minWidth:280, background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 24px', display:'flex', flexDirection:'column', position:'relative' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14 }}>
+        <span style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px' }}>Мой статус</span>
+        <button onClick={() => setOpen(o => !o)} style={{ background:'none', border:'none', color:'var(--accent-s)', fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif', padding:0 }}>изменить</button>
+      </div>
       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
         <span style={{ width:10, height:10, borderRadius:'50%', background:color, flexShrink:0 }} />
-        <span style={{ fontSize:18, fontWeight:700, color:'var(--text-1)' }}>{working ? 'В работе' : 'Не в рабочее время'}</span>
-        <span style={{ fontSize:11, color:'var(--text-muted)' }}>· авто</span>
+        <span style={{ fontSize:18, fontWeight:700, color:'var(--text-1)' }}>{current}</span>
+        {!status && <span style={{ fontSize:11, color:'var(--text-muted)' }}>· авто</span>}
       </div>
-      {status && <div style={{ fontSize:12, color:'var(--text-2)', marginTop:10 }}>«{status}»</div>}
-      <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:'auto', paddingTop:14, fontStyle:'italic' }}>Единый статус присутствия (сменить · «на проекте» · больничный) — следующим шагом.</div>
+      <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:'auto', paddingTop:14, fontStyle:'italic' }}>Единый статус (с «на проекте» по проекту, больничный, связь со Сводом) — отдельным этапом.</div>
+
+      {open && (
+        <>
+          <div onMouseDown={e => { down.current = e.target === e.currentTarget }} onMouseUp={e => { if (down.current && e.target === e.currentTarget) setOpen(false); down.current = false }} style={{ position:'fixed', inset:0, zIndex:40 }} />
+          <div style={{ position:'absolute', top:52, right:16, zIndex:41, minWidth:180, background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:10, boxShadow:'0 12px 32px rgba(0,0,0,0.5)', padding:6, display:'flex', flexDirection:'column', gap:2 }}>
+            {PRESENCE.map(p => (
+              <button key={p} onClick={() => { save.mutate(p); setOpen(false) }} style={{ textAlign:'left', background: status === p ? 'var(--surface-3)' : 'none', border:'none', color:'var(--text-1)', fontSize:13, fontFamily:'Inter,sans-serif', padding:'7px 10px', borderRadius:6, cursor:'pointer' }}>{p}</button>
+            ))}
+            <div style={{ borderTop:'1px solid var(--border)', margin:'4px 0' }} />
+            <button onClick={() => { save.mutate(null); setOpen(false) }} style={{ textAlign:'left', background:'none', border:'none', color:'var(--text-muted)', fontSize:13, fontFamily:'Inter,sans-serif', padding:'7px 10px', borderRadius:6, cursor:'pointer' }}>Авто (по рабочему времени)</button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
