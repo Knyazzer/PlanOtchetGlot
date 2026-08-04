@@ -117,7 +117,7 @@ function DeadlineBadge({ days }: { days: number }) {
 }
 
 // ── Виджет «Мой статус» (авто-присутствие; единый статус — следующий шаг) ─────────
-function StatusCard({ status }: { status?: string }) {
+function StatusCard({ status }: { status?: string | null }) {
   const now = new Date()
   const min = now.getHours() * 60 + now.getMinutes()
   const working = min >= 600 && min < 1110 // 10:00–18:30
