@@ -6,6 +6,7 @@ import { TaskModal, CalendarEventModal } from './TasksPage'
 import type { Task } from './TasksPage'
 import { DayFillCard } from '../components/DayFillCard'
 import { formatName } from '../lib/utils'
+import { HeaderPortal } from '../components/HeaderPortal'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -115,6 +116,26 @@ function DeadlineBadge({ days }: { days: number }) {
   )
 }
 
+// ── Виджет «Мой статус» (авто-присутствие; единый статус — следующий шаг) ─────────
+function StatusCard({ status }: { status?: string }) {
+  const now = new Date()
+  const min = now.getHours() * 60 + now.getMinutes()
+  const working = min >= 600 && min < 1110 // 10:00–18:30
+  const color = working ? '#46b884' : 'var(--text-muted)'
+  return (
+    <div style={{ flex:'1 1 280px', minWidth:280, background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:14, padding:'20px 24px', display:'flex', flexDirection:'column' }}>
+      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:14 }}>Мой статус</div>
+      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        <span style={{ width:10, height:10, borderRadius:'50%', background:color, flexShrink:0 }} />
+        <span style={{ fontSize:18, fontWeight:700, color:'var(--text-1)' }}>{working ? 'В работе' : 'Не в рабочее время'}</span>
+        <span style={{ fontSize:11, color:'var(--text-muted)' }}>· авто</span>
+      </div>
+      {status && <div style={{ fontSize:12, color:'var(--text-2)', marginTop:10 }}>«{status}»</div>}
+      <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:'auto', paddingTop:14, fontStyle:'italic' }}>Единый статус присутствия (сменить · «на проекте» · больничный) — следующим шагом.</div>
+    </div>
+  )
+}
+
 // ── Row styles ─────────────────────────────────────────────────────────────────
 const rowStyle: React.CSSProperties = {
   display:'flex', alignItems:'flex-start', gap:10, padding:'10px 0',
@@ -193,16 +214,23 @@ export function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: '40px 48px', display: 'flex', flexDirection: 'column', gap: 32, overflowY: 'auto', height: '100%', boxSizing: 'border-box' }}>
-      <div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-1)', textTransform: 'capitalize' }}>{dateStr}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-          {currentUser?.name ? `Добро пожаловать, ${formatName(currentUser.name).split(' ')[0]}` : 'Добро пожаловать'}
-        </div>
+    <>
+      {/* Быстрые действия — в правый слот китовой шапки (заголовок «Мой кабинет» даёт AppShell) */}
+      <HeaderPortal>
+        <button onClick={() => setShowCreateEvent(true)} style={{ padding:'6px 13px', borderRadius:8, border:'1px solid var(--border)', background:'var(--surface-2)', color:'var(--text-2)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer' }}>+ Событие</button>
+        <button onClick={() => setShowCreateTask(true)} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#FF6B35,#E8194B)', color:'#fff', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, cursor:'pointer' }}>+ Задача</button>
+      </HeaderPortal>
+
+    <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', height: '100%', boxSizing: 'border-box' }}>
+      <div style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+        {dateStr}{currentUser?.name ? ` · Добро пожаловать, ${formatName(currentUser.name).split(' ')[0]}` : ''}
       </div>
 
-      {/* Карточка дня — точка ввода ядра (план/отчёт) прямо с главной */}
-      <DayFillCard />
+      {/* Верхний ряд: мой статус · план дня */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'stretch' }}>
+        <StatusCard status={currentUser?.status} />
+        <div style={{ flex: '1 1 320px', minWidth: 320, display: 'flex' }}><DayFillCard /></div>
+      </div>
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
@@ -348,5 +376,6 @@ export function DashboardPage() {
         />
       )}
     </div>
+    </>
   )
 }
