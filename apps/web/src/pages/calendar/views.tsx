@@ -3,6 +3,12 @@ import type { CalEvent } from './types'
 import { WEEKDAYS_S, WEEKDAYS_F, MONTHS_RU_GEN, LOCATIONS } from './constants'
 import { toYMD, getWeekStart, layoutEvents, timeToMin, minToTime, snapTo15 } from './utils'
 
+// Раскладка параллельных (§5): события лежат равными колонками, а справа колонки
+// всегда остаётся свободный ЗАЗОР — там можно зажать-протянуть, чтобы создать
+// параллельное событие рядом с существующим.
+const RIGHT_GUTTER = 14 // px свободной правой зоны для создания параллельного
+const COL_GAP = 4       // px между колонками
+
 // ── Month view ─────────────────────────────────────────────────────────────
 export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDayClick, onEventClick }: {
   cursor: Date; today: string; selected: string | null
@@ -142,13 +148,14 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
 }
 
 // ── Day column ─────────────────────────────────────────────────────────────
-export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick, onDragCreate, style }: {
+export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick, onDragCreate, style, wide }: {
   ymd: string; isToday: boolean; events: CalEvent[]
   layout: Map<string, { col: number; total: number }>
   bodyRef: React.RefObject<HTMLDivElement | null>
   onEventClick: (evt: CalEvent) => void
   onDragCreate: (ymd: string, start: string, end: string) => void
   style?: React.CSSProperties
+  wide?: boolean  // одиночный день — колонки шире, подписи скрываем позже
 }) {
   const colRef    = useRef<HTMLDivElement>(null)
   const ghostRef  = useRef<HTMLDivElement>(null)
@@ -203,12 +210,23 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
       {events.map(evt => {
         const sMin = timeToMin(evt.start), eMin = timeToMin(evt.end)
         const { col: subCol, total } = layout.get(evt.id) ?? { col:0, total:1 }
-        const pct = 100/total
+        const frac = 1/total
+        // ширина колонки = (доступная ширина без правого зазора) / кол-во колонок − гэп
+        const left  = `calc((100% - ${RIGHT_GUTTER}px) * ${subCol * frac} + 2px)`
+        const width = `calc((100% - ${RIGHT_GUTTER}px) * ${frac} - ${COL_GAP}px)`
+        const height = Math.max(eMin - sMin, 20)
+        const dense     = total >= (wide ? 8 : 4)   // колонки узкие — убираем подпись времени
+        const veryDense = total >= (wide ? 14 : 7)  // совсем узкие — только цветная полоса, текст в tooltip
+        const loc = evt.location?.length ? ' · ' + evt.location.map(l => LOCATIONS.find(x => x.id === l)?.label ?? l).join(', ') : ''
         return (
-          <div key={evt.id} data-evt="1" onClick={() => onEventClick(evt)}
-            style={{ position:'absolute', top:sMin, height:Math.max(eMin-sMin,20), left:`calc(${subCol*pct}% + 2px)`, width:`calc(${pct}% - 4px)`, background:evt.color+'22', borderLeft:`3px solid ${evt.color}`, borderRadius:6, padding:'4px 7px', fontSize:11, fontWeight:600, color:evt.color, overflow:'hidden', cursor:'pointer', zIndex:2 }}>
-            <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{evt.title}</div>
-            <div style={{ fontSize:10, fontWeight:400, opacity:0.8 }}>{evt.start} – {evt.end}{evt.location?.length ? ' · ' + evt.location.map(l => LOCATIONS.find(x => x.id === l)?.label ?? l).join(', ') : ''}</div>
+          <div key={evt.id} data-evt="1" title={`${evt.title} · ${evt.start}–${evt.end}`} onClick={() => onEventClick(evt)}
+            style={{ position:'absolute', top:sMin, height, left, width, background:evt.color+'22', borderLeft:`3px solid ${evt.color}`, borderRadius:6, padding: veryDense ? '2px 3px' : dense ? '3px 5px' : '4px 7px', fontSize:11, fontWeight:600, color:evt.color, overflow:'hidden', cursor:'pointer', zIndex:2 }}>
+            {!veryDense && (
+              <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{evt.title}</div>
+            )}
+            {!dense && height >= 32 && (
+              <div style={{ fontSize:10, fontWeight:400, opacity:0.8, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{evt.start} – {evt.end}{loc}</div>
+            )}
           </div>
         )
       })}
@@ -269,7 +287,7 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
           ))}
         </div>
         <div style={{ flex:1, position:'relative', minHeight:1440 }}>
-          <DayColumn ymd={ymd} isToday={isToday} events={dayEvts} layout={layout}
+          <DayColumn ymd={ymd} isToday={isToday} events={dayEvts} layout={layout} wide
             bodyRef={bodyRef} onEventClick={onEventClick} onDragCreate={onDragCreate} />
         </div>
       </div>
