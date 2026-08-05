@@ -93,7 +93,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack?: 
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 12px 16px' }}>
           {workItems.length === 0 && (
-            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+            <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
               Нет work items. Нажмите «+ Добавить».
             </div>
           )}
@@ -195,7 +195,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
           background: `${WI_STATUS_COLOR[wi.status]}18`,
           borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', letterSpacing: '0.5px',
         }}>{WI_STATUS_LABEL[wi.status]}</span>
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text-1)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {wi.title}
         </span>
         {wi.date && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{wi.date}</span>}
@@ -206,7 +206,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
         )}
         <button
           onClick={e => { e.stopPropagation(); if (confirm(`Удалить «${wi.title}»?`)) deleteWI.mutate() }}
-          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, padding: 2, flexShrink: 0 }}
+          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, padding: 2, flexShrink: 0 }}
         >✕</button>
       </div>
 

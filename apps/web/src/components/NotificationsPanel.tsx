@@ -77,12 +77,12 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
               border: '1px solid var(--border)', background: 'var(--surface-2)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
             }}>
               <MessageSquare size={15} style={{ color: '#0EA5E9', flexShrink: 0 }} />
-              <span style={{ flex: 1, fontSize: 13, color: 'var(--text-1)' }}>Непрочитанные сообщения</span>
+              <span style={{ flex: 1, fontSize: 14, color: 'var(--text-1)' }}>Непрочитанные сообщения</span>
               <span style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 10, padding: '1px 7px' }}>{unreadChats}</span>
             </button>
           )}
 
-          {isLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 20 }}>Загрузка…</div>}
+          {isLoading && <div style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: 20 }}>Загрузка…</div>}
 
           {groups.map(g => {
             const Icon = g.icon
@@ -118,7 +118,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
           })}
 
           {!isLoading && unreadChats === 0 && groups.every(g => g.items.length === 0) && (
-            <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: 30 }}>Тишина — уведомлений нет</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: 30 }}>Тишина — уведомлений нет</div>
           )}
         </div>
       </div>

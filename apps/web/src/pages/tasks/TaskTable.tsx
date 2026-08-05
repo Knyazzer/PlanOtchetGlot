@@ -43,7 +43,7 @@ export function TaskTable({ tasks, onEdit }: { tasks: Task[]; onEdit: (t: Task) 
       {label}{sortKey === k ? (sortDir === 1 ? ' ↑' : ' ↓') : ''}
     </th>
   )
-  const td: React.CSSProperties = { padding: '8px 12px', fontSize: 13, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }
+  const td: React.CSSProperties = { padding: '8px 12px', fontSize: 14, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }
 
   return (
     <div style={{ flex: 1, overflow: 'auto', margin: '16px 28px 24px', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface-2)' }}>

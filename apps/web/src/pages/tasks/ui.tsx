@@ -65,7 +65,7 @@ export function DatePicker({ value, onChange, min }: { value: string; onChange: 
           display:'flex', alignItems:'center', gap:8,
           background:'var(--surface-2)', border:`1px solid ${open ? 'rgba(255,107,53,.5)' : 'var(--border)'}`,
           borderRadius:8, padding:'8px 10px', cursor:'pointer',
-          transition:'border-color .15s', userSelect:'none', fontSize:13,
+          transition:'border-color .15s', userSelect:'none', fontSize:14,
           color: displayVal ? 'var(--text-1)' : 'var(--text-muted)',
         }}
       >
@@ -89,9 +89,9 @@ export function DatePicker({ value, onChange, min }: { value: string; onChange: 
         }}>
           {/* header */}
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-            <button onMouseDown={e => { e.preventDefault(); nav(-1) }} style={{ width:26, height:26, borderRadius:6, background:'var(--surface-2)', border:'1px solid var(--border)', color:'var(--text-2)', cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>
-            <span style={{ fontSize:13, fontWeight:700, color:'var(--text-1)' }}>{MONTHS_RU[month]} {year}</span>
-            <button onMouseDown={e => { e.preventDefault(); nav(1) }} style={{ width:26, height:26, borderRadius:6, background:'var(--surface-2)', border:'1px solid var(--border)', color:'var(--text-2)', cursor:'pointer', fontSize:13, display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>
+            <button onMouseDown={e => { e.preventDefault(); nav(-1) }} style={{ width:26, height:26, borderRadius:6, background:'var(--surface-2)', border:'1px solid var(--border)', color:'var(--text-2)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>‹</button>
+            <span style={{ fontSize:14, fontWeight:700, color:'var(--text-1)' }}>{MONTHS_RU[month]} {year}</span>
+            <button onMouseDown={e => { e.preventDefault(); nav(1) }} style={{ width:26, height:26, borderRadius:6, background:'var(--surface-2)', border:'1px solid var(--border)', color:'var(--text-2)', cursor:'pointer', fontSize:14, display:'flex', alignItems:'center', justifyContent:'center' }}>›</button>
           </div>
 
           {/* grid */}
@@ -113,7 +113,7 @@ export function DatePicker({ value, onChange, min }: { value: string; onChange: 
                   style={{
                     width:34, height:34, borderRadius:8,
                     display:'flex', alignItems:'center', justifyContent:'center',
-                    fontSize:13, cursor: isDisabled ? 'default' : 'pointer',
+                    fontSize:14, cursor: isDisabled ? 'default' : 'pointer',
                     fontWeight: isToday || isSel ? 700 : 400,
                     color: isDisabled ? 'var(--text-muted)' : isSel ? '#fff' : isToday ? 'var(--text-1)' : 'var(--text-2)',
                     background: isSel ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent',
@@ -141,7 +141,7 @@ export function SegmentedControl<T extends string>({ value, options, onChange }:
           padding:'5px 14px', borderRadius:6, border:'none', cursor:'pointer',
           background: value === v ? 'var(--surface-1)' : 'none',
           color: value === v ? 'var(--text-1)' : 'var(--text-muted)',
-          fontFamily:'Inter,sans-serif', fontSize:13, fontWeight: value === v ? 600 : 400,
+          fontFamily:'Inter,sans-serif', fontSize:14, fontWeight: value === v ? 600 : 400,
           boxShadow: value === v ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
         }}>
           {label}
@@ -159,7 +159,7 @@ export function Toast({ message, onDone }: { message: string; onDone: () => void
   }, [onDone])
   return (
     <div style={{ position:'fixed', bottom:28, left:'50%', transform:'translateX(-50%)', zIndex:9999, pointerEvents:'none' }}>
-      <div style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 18px', fontSize:13, color:'var(--text-1)', boxShadow:'0 4px 20px rgba(0,0,0,0.4)', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:8 }}>
+      <div style={{ background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 18px', fontSize:14, color:'var(--text-1)', boxShadow:'0 4px 20px rgba(0,0,0,0.4)', whiteSpace:'nowrap', display:'flex', alignItems:'center', gap:8 }}>
         <span style={{ color:'#F59E0B', fontSize:16, lineHeight:1 }}>⚠</span>
         {message}
       </div>

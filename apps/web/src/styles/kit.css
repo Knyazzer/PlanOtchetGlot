@@ -13,6 +13,27 @@
 @source '../**/*.{ts,tsx}';
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* ── Типографика: единая шкала (rem), канон dense-enterprise (IBM Carbon-like).
+   Тело 14, caption/label 12 (пол читаемости), заголовки 24/20/18/16.
+   Инлайновые px постепенно переводим на эти токены — меняется в одном месте. */
+:root {
+  --fs-caption: 0.75rem;    /* 12px — мета, подписи, бейджи (нижний порог) */
+  --fs-body-sm: 0.8125rem;  /* 13px — плотный вторичный текст */
+  --fs-body:    0.875rem;   /* 14px — основной текст */
+  --fs-h4:      1rem;       /* 16px — заголовок карточки/аккцентный */
+  --fs-h3:      1.125rem;   /* 18px — подраздел */
+  --fs-h2:      1.25rem;    /* 20px — раздел */
+  --fs-h1:      1.5rem;     /* 24px — заголовок страницы */
+  --lh-body: 1.5;
+  --lh-heading: 1.25;
+}
+
+/* Мобильные: поля ввода ≥16px — иначе iOS Safari зумит страницу при фокусе.
+   !important нужен, чтобы перекрыть инлайновые fontSize у инпутов. */
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px !important; }
+}
+
 /* Токены из Figma-макета v2 (.figma/ux-ui prototype v2/src/styles/theme.css).
    Сайдбар-группа едина для обеих тем — сайдбар всегда тёмный. */
 /* shadcn-токены выведены из единого ui-kit (ui-kit/tokens.css) — контент-компоненты shadcn/Radix

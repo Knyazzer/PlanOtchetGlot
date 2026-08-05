@@ -36,7 +36,7 @@ export function DivCard({
         onMouseEnter={() => setHeadHover(true)}
         onMouseLeave={() => setHeadHover(false)}
       >
-        <div style={{ fontSize:13,fontWeight:700,color:'var(--text-1)',marginBottom:5,paddingRight:48,whiteSpace:'nowrap' }}>
+        <div style={{ fontSize:14,fontWeight:700,color:'var(--text-1)',marginBottom:5,paddingRight:48,whiteSpace:'nowrap' }}>
           {div.name}
         </div>
         {div.head ? (
@@ -341,7 +341,7 @@ export function CtxMenu({ x, y, onCreateDept, onClose }: { x: number; y: number;
     }}>
       <button
         onClick={() => { onCreateDept(); onClose() }}
-        style={{ width:'100%',padding:'8px 12px',background:'none',border:'none',color:'var(--text-2)',fontSize:13,fontFamily:'Inter,sans-serif',textAlign:'left',cursor:'pointer',borderRadius:5,display:'flex',alignItems:'center',gap:8 }}
+        style={{ width:'100%',padding:'8px 12px',background:'none',border:'none',color:'var(--text-2)',fontSize:14,fontFamily:'Inter,sans-serif',textAlign:'left',cursor:'pointer',borderRadius:5,display:'flex',alignItems:'center',gap:8 }}
         onMouseEnter={e => (e.currentTarget.style.background='rgba(255,255,255,0.05)')}
         onMouseLeave={e => (e.currentTarget.style.background='none')}
       >

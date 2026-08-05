@@ -252,7 +252,7 @@ export function CalendarPage() {
             <button onClick={() => navigate(1)}  style={navBtnStyle}>›</button>
           </div>
           <button onClick={() => { setCursor(new Date(today)); closePanel() }}
-            style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--border)', background:'none', color:'var(--text-3)', fontSize:13, fontFamily:'Inter,sans-serif', cursor:'pointer' }}>
+            style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--border)', background:'none', color:'var(--text-3)', fontSize:14, fontFamily:'Inter,sans-serif', cursor:'pointer' }}>
             Сегодня
           </button>
 
@@ -261,7 +261,7 @@ export function CalendarPage() {
               <button key={v} onClick={() => { setView(v); closePanel() }} style={{
                 padding:'5px 16px', borderRadius:7, border:'none', cursor:'pointer',
                 background: view === v ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'none',
-                color: view === v ? '#fff' : 'var(--text-muted)', fontSize:13, fontWeight: view === v ? 600 : 400,
+                color: view === v ? '#fff' : 'var(--text-muted)', fontSize:14, fontWeight: view === v ? 600 : 400,
                 fontFamily:'Inter,sans-serif',
               }}>
                 {v === 'month' ? 'Месяц' : v === 'week' ? 'Неделя' : 'День'}
@@ -270,7 +270,7 @@ export function CalendarPage() {
           </div>
 
           <button onClick={() => setCalsOpen(o => !o)}
-            style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--border)', background: calsOpen ? 'var(--surface-2)' : 'none', color:'var(--text-2)', fontSize:13, fontFamily:'Inter,sans-serif', cursor:'pointer' }}>
+            style={{ padding:'5px 14px', borderRadius:8, border:'1px solid var(--border)', background: calsOpen ? 'var(--surface-2)' : 'none', color:'var(--text-2)', fontSize:14, fontFamily:'Inter,sans-serif', cursor:'pointer' }}>
             Календари ▾
           </button>
         </div>
@@ -369,10 +369,10 @@ export function CalendarPage() {
         <div style={{ position:'fixed', inset:0, zIndex:1200, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <div data-card="1" style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:14, padding:22, width:320, maxWidth:'90vw', fontFamily:'Inter,sans-serif', boxShadow:'0 24px 64px rgba(0,0,0,0.5)' }}>
             <div style={{ fontSize:15, fontWeight:700, color:'var(--text-1)', marginBottom:8 }}>Сбросить изменения?</div>
-            <div style={{ fontSize:13, color:'var(--text-3)', marginBottom:18, lineHeight:1.5 }}>Изменения в событии не сохранены. Закрыть без сохранения?</div>
+            <div style={{ fontSize:14, color:'var(--text-3)', marginBottom:18, lineHeight:1.5 }}>Изменения в событии не сохранены. Закрыть без сохранения?</div>
             <div style={{ display:'flex', gap:8 }}>
-              <button onClick={() => setConfirmClose(false)} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-2)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Продолжить правку</button>
-              <button onClick={() => { setConfirmClose(false); setModal(BLANK_MODAL()) }} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, background:'rgba(232,25,75,0.14)', border:'1px solid rgba(232,25,75,0.35)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Сбросить</button>
+              <button onClick={() => setConfirmClose(false)} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-2)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Продолжить правку</button>
+              <button onClick={() => { setConfirmClose(false); setModal(BLANK_MODAL()) }} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'rgba(232,25,75,0.14)', border:'1px solid rgba(232,25,75,0.35)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Сбросить</button>
             </div>
           </div>
         </div>

@@ -15,5 +15,5 @@ export const SHEETS_COLORS = ['#1e40af','#065f46','#7c3aed','#9a3412','#0f766e',
 export const inputStyle: React.CSSProperties = {
   width:'100%',background:'var(--surface-2)',border:'1px solid var(--border)',
   borderRadius:8,color:'var(--text-1)',fontFamily:'Inter,sans-serif',
-  fontSize:13,padding:'8px 12px',outline:'none',boxSizing:'border-box',
+  fontSize:14,padding:'8px 12px',outline:'none',boxSizing:'border-box',
 }

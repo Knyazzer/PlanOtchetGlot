@@ -27,7 +27,7 @@ export function SettingsPage() {
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Tabs rail */}
       <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid var(--border)', padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <h1 style={{ margin: '0 8px 14px', fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>Настройки</h1>
+        <h1 style={{ margin: '0 8px 14px', fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>Настройки</h1>
         {visibleTabs.map(t => {
           const Icon = t.icon
           return (
@@ -36,7 +36,7 @@ export function SettingsPage() {
               padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
               background: tab === t.id ? 'var(--surface-2)' : 'transparent',
               color: tab === t.id ? 'var(--text-1)' : 'var(--text-3)',
-              fontFamily: 'inherit', fontSize: 13, fontWeight: tab === t.id ? 600 : 400, textAlign: 'left',
+              fontFamily: 'inherit', fontSize: 14, fontWeight: tab === t.id ? 600 : 400, textAlign: 'left',
             }}>
               <Icon size={15} style={{ flexShrink: 0 }} />
               {t.label}
@@ -68,9 +68,9 @@ function Placeholder({ title, text, action }: { title: string; text: string; act
   return (
     <div style={{ maxWidth: 520 }}>
       <h2 style={{ margin: '0 0 10px', fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{title}</h2>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-3)', lineHeight: 1.5 }}>{text}</p>
+      <p style={{ margin: 0, fontSize: 14, color: 'var(--text-3)', lineHeight: 1.5 }}>{text}</p>
       {action && (
-        <button onClick={action.onClick} style={{ marginTop: 14, padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13, cursor: 'pointer' }}>
+        <button onClick={action.onClick} style={{ marginTop: 14, padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 14, cursor: 'pointer' }}>
           {action.label}
         </button>
       )}
@@ -138,8 +138,8 @@ export function FormatsTab() {
   }
 
   const th: React.CSSProperties = { padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', borderBottom: '1px solid var(--border)' }
-  const td: React.CSSProperties = { padding: '8px 12px', fontSize: 13, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }
-  const inp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 8px', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13, outline: 'none' }
+  const td: React.CSSProperties = { padding: '8px 12px', fontSize: 14, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }
+  const inp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 8px', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 14, outline: 'none' }
   const btnPrimary: React.CSSProperties = { padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary, #4f46e5)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }
   const btnGhost: React.CSSProperties = { padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }
 

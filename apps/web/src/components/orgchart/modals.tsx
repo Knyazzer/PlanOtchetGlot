@@ -44,10 +44,10 @@ export function OrgProfileModal({ userId, deptColor, onClose }: {
         }}>{data ? initials(data.name) : '…'}</div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>{name}</div>
-          {data?.position && <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 5 }}>{data.position}</div>}
+          {data?.position && <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 5 }}>{data.position}</div>}
         </div>
         {data?.status && (
-          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 14px', fontSize: 13, color: 'var(--text-2)', fontStyle: 'italic', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
+          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 14px', fontSize: 14, color: 'var(--text-2)', fontStyle: 'italic', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}>
             {data.status}
           </div>
         )}

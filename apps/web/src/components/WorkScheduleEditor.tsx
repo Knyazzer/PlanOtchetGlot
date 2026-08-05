@@ -57,7 +57,7 @@ function Form({ userId, init, isNew, formats }: { userId: string; init: Draft; i
   return (
     <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 600 }}>График работы</span>
+        <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 600 }}>График работы</span>
         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
           {save.isPending ? 'сохранение…' : everSaved ? '✓ сохранено' : isNew ? 'не задан (дефолт 5/2)' : ''}
         </span>

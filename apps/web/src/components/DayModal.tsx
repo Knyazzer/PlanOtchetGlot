@@ -72,7 +72,7 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
         </div>
 
         {entryLoading ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка…</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Загрузка…</div>
         ) : (
           <DayEntryBlock key={entry ? `${entry.id}:${entry.updatedAt}` : 'empty'} entry={entry} formats={formats} date={date} isOwn={isOwn} qcInvalidate={() => {
             qc.invalidateQueries({ queryKey: ['day-entries'] })
@@ -161,7 +161,7 @@ function DayEntryBlock({ entry, formats, date, isOwn, qcInvalidate }: {
 
   const inp: React.CSSProperties = {
     background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8,
-    padding: '7px 9px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+    padding: '7px 9px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   }
   const lbl: React.CSSProperties = {
     fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 5, display: 'block',
@@ -171,7 +171,7 @@ function DayEntryBlock({ entry, formats, date, isOwn, qcInvalidate }: {
     // чужой день — просмотр
     const label = entry ? (formats.find(f => f.key === entry.dayFormat)?.label ?? entry.dayFormat) : null
     return (
-      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-1)' }}>
+      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', fontSize: 14, color: 'var(--text-1)' }}>
         {entry ? (
           <>
             <b>{label}</b>

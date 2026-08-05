@@ -69,7 +69,7 @@ export function SidePanel({ ymd, eventsFor, allDayFor, onClose, onEventClick, on
 
       <div style={{ flex:1, overflowY:'auto', padding:12, display:'flex', flexDirection:'column', gap:8 }}>
         {allItems.length === 0 ? (
-          <div style={{ color:'var(--text-muted)', fontSize:13, textAlign:'center', marginTop:24, lineHeight:1.6 }}>Нет событий<br/>на этот день</div>
+          <div style={{ color:'var(--text-muted)', fontSize:14, textAlign:'center', marginTop:24, lineHeight:1.6 }}>Нет событий<br/>на этот день</div>
         ) : allItems.map(evt => (
           <div key={evt.id} onClick={() => onEventClick(evt)}
             style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:10, padding:'10px 12px', display:'flex', gap:10, alignItems:'flex-start', cursor:'pointer' }}>
@@ -85,7 +85,7 @@ export function SidePanel({ ymd, eventsFor, allDayFor, onClose, onEventClick, on
       </div>
 
       <div style={{ padding:'12px 14px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
-        <button onClick={onCreateClick} style={{ width:'100%', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+        <button onClick={onCreateClick} style={{ width:'100%', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
           + Создать событие
         </button>
       </div>

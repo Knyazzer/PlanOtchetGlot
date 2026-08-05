@@ -57,7 +57,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
             {peopleList.map((p, i) => (
               <div key={i} style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', borderRight: i % 2 === 0 ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 4 }}>{p.role}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{formatName(p.name)}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>{formatName(p.name)}</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{p.wis.length} WI</div>
               </div>
             ))}
@@ -76,7 +76,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
               <span style={{ width: 28, height: 28, borderRadius: 7, background: `${dept.color}22`, color: dept.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
                 {dept.name.slice(0, 2).toUpperCase()}
               </span>
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{dept.name}</span>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>{dept.name}</span>
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{[...dept.members].join(', ')}</span>
             </div>
           ))}
@@ -84,7 +84,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
       )}
 
       {peopleList.length === 0 && deptMap.size === 0 && (
-        <div style={{ padding: 48, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+        <div style={{ padding: 48, textAlign: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
           Добавьте роли и отделы в Work Items
         </div>
       )}

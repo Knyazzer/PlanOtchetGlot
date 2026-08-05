@@ -293,7 +293,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: active ? 'var(--accent-s)' : 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 130 }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: active ? 'var(--accent-s)' : 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 130 }}>
               {chat.isPinned && <span style={{ marginRight: 4, opacity: .5 }}>📌</span>}
               {name}
             </span>
@@ -358,7 +358,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
       {/* Колонка 2: список чатов / дерево проектов */}
       <div style={{ width: compact ? undefined : 270, flex: compact && !activeChatId ? 1 : undefined, flexShrink: 0, borderRight: compact ? 'none' : '1px solid var(--border)', display: compact && !!activeChatId ? 'none' : 'flex', flexDirection: 'column', background: 'var(--surface-1)', overflow: 'hidden' }}>
         <div style={{ padding: compact ? '8px 10px' : '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>
             {folder === 'favorites' ? 'Избранное' : folder === 'contacts' ? 'Личные сообщения' : folder === 'groups' ? 'Структура' : 'Проекты'}
           </span>
           {folder === 'contacts' && (
@@ -428,7 +428,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
       {/* Колонка 3: переписка */}
       <div style={{ flex: 1, display: compact && !activeChatId ? 'none' : 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg)' }}>
         {!activeChatId ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             Выберите чат
           </div>
         ) : (
@@ -520,7 +520,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                         borderRadius: mine
                           ? `14px 14px ${isGroupEnd ? '2px' : '14px'} 14px`
                           : `${isGroupStart ? '2px' : '14px'} 14px 14px ${isGroupEnd ? '2px' : '14px'}`,
-                        fontSize: 13, lineHeight: 1.5, wordBreak: 'break-word',
+                        fontSize: 14, lineHeight: 1.5, wordBreak: 'break-word',
                       }}>
                         {/* Карточка прикреплённой задачи */}
                         {(msg.task || msg.taskTitle) && (() => {
@@ -543,7 +543,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                                 <div style={{ fontSize: 12, fontWeight: 700, color: mine ? 'rgba(255,255,255,0.55)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                                   Задача
                                 </div>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: mine ? '#fff' : 'var(--text-1)', lineHeight: 1.3, marginBottom: 4, wordBreak: 'break-word' }}>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: mine ? '#fff' : 'var(--text-1)', lineHeight: 1.3, marginBottom: 4, wordBreak: 'break-word' }}>
                                   {isDeleted ? <span style={{ fontStyle: 'italic', opacity: 0.7 }}>Удалено</span> : title}
                                 </div>
                                 {!isDeleted && (
@@ -596,7 +596,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                   <div style={{ width: 4, flexShrink: 0, background: '#FF6B35' }} />
                   <div style={{ padding: '8px 12px', minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>Задача</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>{attachedTask.title}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>{attachedTask.title}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>◈</span>
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Не выбран</span>
@@ -617,7 +617,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                 background: 'var(--surface-2)', display: 'flex', alignItems: 'center', gap: 10,
               }}>
                 <span style={{ fontSize: 18 }}>🔒</span>
-                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>
                   Сотрудник больше не работает в компании. Переписка сохранена, отправка сообщений недоступна.
                 </span>
               </div>
@@ -633,7 +633,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                   style={{
                     flex: 1, background: 'var(--surface-2)', border: '1px solid var(--border)',
                     borderRadius: 10, padding: '10px 14px', color: 'var(--text-1)',
-                    fontFamily: 'Inter, sans-serif', fontSize: 13, outline: 'none',
+                    fontFamily: 'Inter, sans-serif', fontSize: 14, outline: 'none',
                     resize: 'none', lineHeight: 1.5, overflowY: 'hidden',
                     height: 42,
                   }}
@@ -686,7 +686,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
             },
           ].map(item => (
             <button key={item.label} onMouseDown={() => { item.action(); setCtxMenu(null) }}
-              style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
               onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-3)'}
               onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'none'}
             >{item.label}</button>
@@ -707,14 +707,14 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
         >
           {msgCtx.mine && (
             <button onMouseDown={() => { setEditingMsg(msgCtx.msg); setInput(msgCtx.msg.text); setMsgCtx(null); setTimeout(() => inputRef.current?.focus(), 50) }}
-              style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
               onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-3)'}
               onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'none'}
             >✏️ Редактировать</button>
           )}
           {msgCtx.mine && (
             <button onMouseDown={() => { if (activeChatId) deleteMutation.mutate({ chatId: activeChatId, msgId: msgCtx.msg.id }); setMsgCtx(null) }}
-              style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, color: 'var(--danger)', fontFamily: 'Inter,sans-serif', fontSize: 13, cursor: 'pointer', textAlign: 'left' }}
+              style={{ display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none', borderRadius: 6, color: 'var(--danger)', fontFamily: 'Inter,sans-serif', fontSize: 14, cursor: 'pointer', textAlign: 'left' }}
               onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-3)'}
               onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'none'}
             >🗑 Удалить</button>
@@ -745,7 +745,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                 value={newChatSearch}
                 onChange={e => setNewChatSearch(e.target.value)}
                 placeholder="Поиск коллеги..."
-                style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -765,7 +765,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                     onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}
                   >
                     <UserAvatar name={u.name} size={36} />
-                    <span style={{ fontSize: 13, color: 'var(--text-1)' }}>{formatName(u.name)}</span>
+                    <span style={{ fontSize: 14, color: 'var(--text-1)' }}>{formatName(u.name)}</span>
                   </div>
                 ))
               }

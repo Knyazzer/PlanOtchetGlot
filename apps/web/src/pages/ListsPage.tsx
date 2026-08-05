@@ -18,7 +18,7 @@ const railBtn = (active: boolean): React.CSSProperties => ({
   padding: '8px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
   background: active ? 'var(--surface-2)' : 'transparent',
   color: active ? 'var(--text-1)' : 'var(--text-3)',
-  fontFamily: 'inherit', fontSize: 13, fontWeight: active ? 600 : 400, textAlign: 'left',
+  fontFamily: 'inherit', fontSize: 14, fontWeight: active ? 600 : 400, textAlign: 'left',
 })
 
 export function ListsPage() {
@@ -32,7 +32,7 @@ export function ListsPage() {
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Tabs rail */}
       <div style={{ width: 240, flexShrink: 0, borderRight: '1px solid var(--border)', padding: '20px 12px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-        <h1 style={{ margin: '0 8px 14px', fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>Списки</h1>
+        <h1 style={{ margin: '0 8px 14px', fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>Списки</h1>
         <button onClick={() => setTab(CLIENTS)} style={railBtn(tab === CLIENTS)}><Users size={15} style={{ flexShrink: 0 }} />Клиенты</button>
         <button onClick={() => setTab(DAYFORMATS)} style={railBtn(tab === DAYFORMATS)}><Calendar size={15} style={{ flexShrink: 0 }} />Форматы дня</button>
         <div style={{ height: 1, background: 'var(--border)', margin: '8px 4px' }} />
@@ -84,19 +84,19 @@ function RefListTab({ listKey, label }: { listKey: string; label: string }) {
           value={value} onChange={e => setValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && value.trim()) add.mutate() }}
           placeholder="Новое значение"
-          style={{ flex: 1, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13, outline: 'none' }}
+          style={{ flex: 1, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 14, outline: 'none' }}
         />
-        <button onClick={() => add.mutate()} disabled={add.isPending || !value.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--primary, #4f46e5)', color: '#fff', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button onClick={() => add.mutate()} disabled={add.isPending || !value.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--primary, #4f46e5)', color: '#fff', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Plus size={15} /> Добавить
         </button>
       </div>
 
       <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface-2)' }}>
         {!list || list.items.length === 0 ? (
-          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Список пуст — добавьте значения</div>
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Список пуст — добавьте значения</div>
         ) : list.items.map(it => (
           <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-1)' }}>{it.value}</span>
+            <span style={{ fontSize: 14, color: 'var(--text-1)' }}>{it.value}</span>
             <button onClick={() => del.mutate(it.id)} disabled={del.isPending} title="Удалить" style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--danger, #e8194b)', cursor: 'pointer', display: 'inline-flex' }}>
               <Trash2 size={14} />
             </button>
@@ -138,19 +138,19 @@ function ClientsTab() {
           value={name} onChange={e => setName(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && name.trim()) add.mutate() }}
           placeholder="Название клиента"
-          style={{ flex: 1, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13, outline: 'none' }}
+          style={{ flex: 1, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 14, outline: 'none' }}
         />
-        <button onClick={() => add.mutate()} disabled={add.isPending || !name.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--primary, #4f46e5)', color: '#fff', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <button onClick={() => add.mutate()} disabled={add.isPending || !name.trim()} style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: 'var(--primary, #4f46e5)', color: '#fff', fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
           <Plus size={15} /> Добавить
         </button>
       </div>
 
       <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface-2)' }}>
         {clients.length === 0 ? (
-          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Клиентов нет</div>
+          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Клиентов нет</div>
         ) : clients.map(c => (
           <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: '1px solid var(--border)' }}>
-            <span style={{ fontSize: 13, color: 'var(--text-1)' }}>{c.name}</span>
+            <span style={{ fontSize: 14, color: 'var(--text-1)' }}>{c.name}</span>
             <button onClick={() => { if (window.confirm(`Удалить клиента «${c.name}»?`)) del.mutate(c.id) }} disabled={del.isPending} title="Удалить" style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--danger, #e8194b)', cursor: 'pointer', display: 'inline-flex' }}>
               <Trash2 size={14} />
             </button>

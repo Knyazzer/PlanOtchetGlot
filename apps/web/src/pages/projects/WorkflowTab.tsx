@@ -67,10 +67,10 @@ export function WorkflowTab() {
       {/* Table */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 0 16px' }}>
         {isLoading && (
-          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
         )}
         {!isLoading && items.length === 0 && (
-          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
             Нет work items
           </div>
         )}

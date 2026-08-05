@@ -95,7 +95,7 @@ export function LoginPage() {
                   background: '#eff6ff',
                   border: '1px solid #bfdbfe',
                   borderRadius: 8,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: '#1d4ed8',
                   cursor: loading ? 'not-allowed' : 'pointer',
@@ -114,7 +114,7 @@ export function LoginPage() {
                   background: '#f0fdf4',
                   border: '1px solid #bbf7d0',
                   borderRadius: 8,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: '#15803d',
                   cursor: loading ? 'not-allowed' : 'pointer',
@@ -202,7 +202,7 @@ export function LoginPage() {
 const labelStyle: React.CSSProperties = {
   display: 'block',
   marginBottom: 6,
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 500,
   color: '#374151',
 }

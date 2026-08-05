@@ -53,7 +53,7 @@ function QuickEventModal({ date, onClose, onCreated }: { date: string; onClose: 
     },
   })
 
-  const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none', boxSizing:'border-box' as const }
+  const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:14, outline:'none', boxSizing:'border-box' as const }
   const lbl: React.CSSProperties = { fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' as const, letterSpacing:'1px', marginBottom:6, display:'block' }
 
   return (
@@ -95,8 +95,8 @@ function QuickEventModal({ date, onClose, onCreated }: { date: string; onClose: 
         </div>
 
         <div style={{ display:'flex', gap:8 }}>
-          <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Отмена</button>
-          <button onClick={() => { if (title.trim()) createMut.mutate() }} disabled={!title.trim() || createMut.isPending} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer', opacity: title.trim() ? 1 : 0.5 }}>
+          <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Отмена</button>
+          <button onClick={() => { if (title.trim()) createMut.mutate() }} disabled={!title.trim() || createMut.isPending} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer', opacity: title.trim() ? 1 : 0.5 }}>
             {createMut.isPending ? '...' : 'Создать'}
           </button>
         </div>
@@ -197,14 +197,14 @@ export function DashboardPage() {
     borderRadius: 4, fontFamily: 'Inter,sans-serif',
   }
   const emptyText: React.CSSProperties = {
-    fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 0',
+    fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 0',
   }
 
   return (
     <div style={{ display: 'flex', height: '100%', boxSizing: 'border-box' }}>
     <div style={{ flex: 1, minWidth: 0, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+        <div style={{ fontSize: 14, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
           {dateStr}{isToday && currentUser?.name ? ` · Добро пожаловать, ${formatName(currentUser.name).split(' ')[0]}` : ''}
         </div>
         {!isToday && (
@@ -240,7 +240,7 @@ export function DashboardPage() {
                       style={{ width:18, height:18, borderRadius:5, border:'1.5px solid var(--border)', background:'none', cursor: isAssignee ? 'pointer' : 'default', flexShrink:0, marginTop:1, opacity: isAssignee ? 1 : 0.4 }}
                     />
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
                       <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4, flexWrap:'wrap' }}>
                         <span style={{ fontSize:12, padding:'1px 7px', borderRadius:20, background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', gap:3 }}>
                           <span style={{ fontSize:12 }}>◈</span> Не выбран
@@ -273,7 +273,7 @@ export function DashboardPage() {
             : deadlineTasks.map(t => (
                 <div key={t.id} style={{ ...rowStyle, alignItems:'center' }} onClick={() => setEditTask(t)}>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
+                    <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
                     <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
                       {new Date(t.deadline!).toLocaleDateString('ru-RU', { day:'numeric', month:'short' })}
                     </div>
@@ -315,7 +315,7 @@ export function DashboardPage() {
                           <span style={{ fontSize:12, fontWeight:700, padding:'1px 6px', borderRadius:20, background: color+'33', color }}>СЕЙЧАС</span>
                         )}
                       </div>
-                      <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</div>
                       {ev.location.length > 0 && (
                         <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{ev.location[0]}</div>
                       )}

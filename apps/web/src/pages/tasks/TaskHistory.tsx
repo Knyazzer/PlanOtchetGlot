@@ -32,7 +32,7 @@ export function HistoryGroupRow({ group, isFirst, isLast, hasLineAfter }: { grou
         {/* свёрнутая группа */}
         {isCollapsed && !expanded && (
           <div>
-            <div style={{ fontSize:13, color:'var(--text-1)', lineHeight:1.4 }}>
+            <div style={{ fontSize:14, color:'var(--text-1)', lineHeight:1.4 }}>
               {ACTION_LABELS[last.action]?.(last.meta ?? {}) ?? last.action}
             </div>
             <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
@@ -52,7 +52,7 @@ export function HistoryGroupRow({ group, isFirst, isLast, hasLineAfter }: { grou
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {group.entries.map((e, ei) => (
               <div key={e.id}>
-                <div style={{ fontSize:13, color:'var(--text-1)', lineHeight:1.4 }}>
+                <div style={{ fontSize:14, color:'var(--text-1)', lineHeight:1.4 }}>
                   {ACTION_LABELS[e.action]?.(e.meta ?? {}) ?? e.action}
                 </div>
                 <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
@@ -86,10 +86,10 @@ export function TaskHistory({ entries, isLoading }: { entries: TaskLogEntry[]; i
   }, [entries])
 
   if (isLoading) return (
-    <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Загрузка...</div>
+    <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Загрузка...</div>
   )
   if (entries.length === 0) return (
-    <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>История пуста</div>
+    <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>История пуста</div>
   )
   const groups = groupEntries(entries)
   return (

@@ -22,11 +22,11 @@ function ymdToDate(s?: string): Date | undefined {
 const chipStyle: React.CSSProperties = {
   width: '100%', display: 'flex', alignItems: 'center', gap: 8,
   background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8,
-  padding: '9px 11px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13,
+  padding: '9px 11px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14,
   cursor: 'pointer', outline: 'none',
 }
 const miniBtn = (primary?: boolean): React.CSSProperties => ({
-  flex: 1, borderRadius: 8, padding: '8px 0', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  flex: 1, borderRadius: 8, padding: '8px 0', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer',
   border: primary ? 'none' : '1px solid var(--border)',
   background: primary ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'none',
   color: primary ? '#fff' : 'var(--text-2)',
@@ -110,7 +110,7 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
   dimmed?: boolean  // §6: на время переноса силуэтом карточка гаснет
 }) {
   const isEdit = !!modal.editId
-  const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none' }
+  const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:14, outline:'none' }
   const lbl: React.CSSProperties = { fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'1px', marginBottom:6, display:'block' }
   const hasVyezd = modal.location.includes('vyezd')
 
@@ -228,13 +228,13 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
           <MiniPicker open={pickerOpen} onClose={() => setPickerOpen(false)} cardSide>
             <div style={{ width:320, maxWidth:'80vw', display:'flex', flexDirection:'column' }}>
               <input autoFocus value={memberSearch} onChange={e => setMemberSearch(e.target.value)} placeholder="Поиск сотрудника..."
-                style={{ width:'100%', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none', boxSizing:'border-box', marginBottom:8 }} />
+                style={{ width:'100%', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 10px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:14, outline:'none', boxSizing:'border-box', marginBottom:8 }} />
               <div style={{ maxHeight:'50vh', overflowY:'auto', margin:'0 -4px' }}>
                 {filteredMembers.map(m => {
                   const sel = modal.participantIds.includes(m.id)
                   return (
                     <div key={m.id} onMouseDown={e => { e.preventDefault(); toggleParticipant(m.id) }}
-                      style={{ padding:'9px 12px', fontSize:13, color:'var(--text-1)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, borderRadius:8, background: sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}
+                      style={{ padding:'9px 12px', fontSize:14, color:'var(--text-1)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, borderRadius:8, background: sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}
                       onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)' }}
                       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}>
                       <div style={{ width:14, height:14, borderRadius:3, border:`1.5px solid ${sel ? '#8B5CF6' : 'var(--text-muted)'}`, background: sel ? '#8B5CF6' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#fff', flexShrink:0 }}>{sel ? '✓' : ''}</div>
@@ -252,11 +252,11 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
 
         <div style={{ display:'flex', gap:8 }}>
           {isEdit && canEdit && (
-            <button onClick={onDelete} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
+            <button onClick={onDelete} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
           )}
-          <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>{canEdit ? 'Отмена' : 'Закрыть'}</button>
+          <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>{canEdit ? 'Отмена' : 'Закрыть'}</button>
           {canEdit && (
-            <button onClick={onSubmit} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+            <button onClick={onSubmit} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
               {isEdit ? 'Сохранить' : 'Создать'}
             </button>
           )}
@@ -274,7 +274,7 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
 }) {
   const isEdit = !!modal.editId
   const isHR = modal.type.startsWith('hr_')
-  const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none' }
+  const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:14, outline:'none' }
   const lbl: React.CSSProperties = { fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'1px', marginBottom:6, display:'block' }
 
   const { data: members = [] } = useQuery<ApiMember[]>({
@@ -319,7 +319,7 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
           <div style={{ marginBottom:14 }}>
             <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom:10 }}>
               <input type="checkbox" checked={modal.isAllDay} onChange={e => onChange({ isAllDay: e.target.checked })} />
-              <span style={{ fontSize:13, color:'var(--text-2)' }}>Весь день</span>
+              <span style={{ fontSize:14, color:'var(--text-2)' }}>Весь день</span>
             </label>
             {!modal.isAllDay && (
               <TimeChip start={modal.start} end={modal.end} onChange={(v) => onChange({ start: v.start, end: v.end })} />
@@ -339,10 +339,10 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
 
         <div style={{ display:'flex', gap:8, marginTop:22 }}>
           {isEdit && (
-            <button onClick={onDelete} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
+            <button onClick={onDelete} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
           )}
-          <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Отмена</button>
-          <button onClick={onSubmit} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+          <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Отмена</button>
+          <button onClick={onSubmit} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
             {isEdit ? 'Сохранить' : 'Создать'}
           </button>
         </div>

@@ -115,14 +115,14 @@ export function FinanceTab({ projectId }: { projectId: string }) {
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', flexShrink: 0, letterSpacing: '0.04em' }}>{EXPENSE_LABEL[exp.category]}</span>
                   <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exp.description || '—'}</span>
                   {exp.date && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{exp.date}</span>}
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0, fontFamily: 'monospace' }}>{fmtMoney(exp.amount)}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0, fontFamily: 'monospace' }}>{fmtMoney(exp.amount)}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
       ) : (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'var(--text-muted)' }}>
           Выберите Work Item
         </div>
       )}

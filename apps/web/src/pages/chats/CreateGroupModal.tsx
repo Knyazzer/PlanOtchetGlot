@@ -40,7 +40,7 @@ export function CreateGroupModal({
   const inputStyle: React.CSSProperties = {
     width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)',
     borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)',
-    fontFamily: 'Inter, sans-serif', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'Inter, sans-serif', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   }
 
   return (
@@ -117,7 +117,7 @@ export function CreateGroupModal({
                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = selected ? 'rgba(255,107,53,0.08)' : 'transparent' }}
                 >
                   <UserAvatar name={u.name} size={34} />
-                  <span style={{ fontSize: 13, color: 'var(--text-1)', flex: 1 }}>{formatName(u.name)}</span>
+                  <span style={{ fontSize: 14, color: 'var(--text-1)', flex: 1 }}>{formatName(u.name)}</span>
                   <div style={{
                     width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
                     border: selected ? 'none' : '2px solid var(--border)',
@@ -136,12 +136,12 @@ export function CreateGroupModal({
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0 }}>
           <button
             onMouseDown={onClose}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontFamily: 'Inter,sans-serif', fontSize: 13, cursor: 'pointer' }}
+            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontFamily: 'Inter,sans-serif', fontSize: 14, cursor: 'pointer' }}
           >Отмена</button>
           <button
             onMouseDown={() => canCreate && createMutation.mutate()}
             disabled={!canCreate || createMutation.isPending}
-            style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: canCreate ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'var(--surface-3)', color: canCreate ? '#fff' : 'var(--text-muted)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: canCreate ? 'pointer' : 'default' }}
+            style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: canCreate ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'var(--surface-3)', color: canCreate ? '#fff' : 'var(--text-muted)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: canCreate ? 'pointer' : 'default' }}
           >{createMutation.isPending ? 'Создаём...' : 'Создать'}</button>
         </div>
       </div>

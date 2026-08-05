@@ -25,7 +25,7 @@ function PasswordChange() {
   const [pw, setPw] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-1)', fontSize: 13, fontFamily: 'Inter, sans-serif', outline: 'none' }
+  const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-1)', fontSize: 14, fontFamily: 'Inter, sans-serif', outline: 'none' }
   async function submit() {
     setMsg(null)
     if (pw.length < 8) { setMsg('Минимум 8 символов'); return }
@@ -43,7 +43,7 @@ function PasswordChange() {
     return (
       <>
         <button onClick={() => { setOpen(true); setMsg(null) }}
-          style={{ textAlign: 'left', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-2)', fontSize: 13, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+          style={{ textAlign: 'left', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-2)', fontSize: 14, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
           Изменить пароль
         </button>
         {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#29BF12' : '#E8194B' }}>{msg}</div>}
@@ -57,9 +57,9 @@ function PasswordChange() {
       {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#29BF12' : '#E8194B' }}>{msg}</div>}
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={() => { setOpen(false); setPw(''); setMsg(null) }} disabled={busy}
-          style={{ flex: 1, padding: '8px 0', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-3)', fontSize: 13, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>Отмена</button>
+          style={{ flex: 1, padding: '8px 0', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-3)', fontSize: 14, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>Отмена</button>
         <button onClick={submit} disabled={busy}
-          style={{ flex: 1, padding: '8px 0', background: 'var(--accent, #2563eb)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer', opacity: busy ? 0.7 : 1 }}>{busy ? '…' : 'Сохранить'}</button>
+          style={{ flex: 1, padding: '8px 0', background: 'var(--accent, #2563eb)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer', opacity: busy ? 0.7 : 1 }}>{busy ? '…' : 'Сохранить'}</button>
       </div>
     </div>
   )
@@ -169,7 +169,7 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
                 style={{
                   flex: 1, padding: '8px 12px',
                   background: 'var(--surface-2)', border: '1px solid var(--border)',
-                  borderRadius: 8, color: 'var(--text-1)', fontSize: 13,
+                  borderRadius: 8, color: 'var(--text-1)', fontSize: 14,
                   fontFamily: 'Inter, sans-serif', outline: 'none',
                 }}
               />
@@ -178,7 +178,7 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
                 disabled={saveStatus.isPending}
                 style={{
                   padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: 'var(--accent-s)', color: '#fff', fontSize: 13, fontWeight: 600,
+                  background: 'var(--accent-s)', color: '#fff', fontSize: 14, fontWeight: 600,
                   fontFamily: 'Inter, sans-serif', opacity: saveStatus.isPending ? 0.6 : 1,
                 }}
               >
@@ -198,7 +198,7 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
                   background: 'var(--surface-2)', border: '1px solid var(--border)',
-                  borderRadius: 8, color: 'var(--text-1)', fontSize: 13,
+                  borderRadius: 8, color: 'var(--text-1)', fontSize: 14,
                   fontFamily: 'Inter, sans-serif', cursor: 'pointer', textAlign: 'left',
                 }}
               >
@@ -217,7 +217,7 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Email
             </label>
-            <div style={{ fontSize: 13, color: 'var(--text-2)', padding: '8px 0' }}>{user?.email}</div>
+            <div style={{ fontSize: 14, color: 'var(--text-2)', padding: '8px 0' }}>{user?.email}</div>
           </div>
 
           {/* Password */}

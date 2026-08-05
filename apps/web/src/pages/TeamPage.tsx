@@ -79,13 +79,13 @@ function ProfilePopup({ userId, deptColor, isSelf, onClose, onDM }: {
           }}>{data ? initials(data.name) : '…'}</div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>{name}</div>
-            {data?.position && <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 4 }}>{data.position}</div>}
+            {data?.position && <div style={{ fontSize: 14, color: 'var(--text-2)', marginTop: 4 }}>{data.position}</div>}
           </div>
         </div>
         {data?.status && (
           <div style={{
             background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10,
-            padding: '8px 12px', fontSize: 13, color: 'var(--text-2)', fontStyle: 'italic', textAlign: 'center',
+            padding: '8px 12px', fontSize: 14, color: 'var(--text-2)', fontStyle: 'italic', textAlign: 'center',
           }}>{data.status}</div>
         )}
         {!isSelf && (
@@ -95,7 +95,7 @@ function ProfilePopup({ userId, deptColor, isSelf, onClose, onDM }: {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '10px 16px', borderRadius: 10, border: 'none',
               background: 'var(--primary, #4f46e5)', color: '#fff',
-              fontFamily: 'inherit', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer',
             }}
           >
             <MessageSquare size={15} />
@@ -127,7 +127,7 @@ function CtxMenu({ x, y, isSelf, onProfile, onDM, onClose }: {
   const item: React.CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
     background: 'none', border: 'none', cursor: 'pointer',
-    color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13, width: '100%', textAlign: 'left',
+    color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 14, width: '100%', textAlign: 'left',
   }
   return (
     <div ref={ref} style={{
@@ -166,7 +166,7 @@ function DivCard({ div, dept, highlightIds, myId, cardRef, onPersonClick, onPers
     }}>
       {/* Division header */}
       <div style={{ padding: '12px 14px 10px', borderBottom: '1px solid var(--border)', borderRadius: '10px 10px 0 0', background: 'linear-gradient(180deg,rgba(255,255,255,0.03) 0%,transparent 100%)' }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', marginBottom: 5, whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 5, whiteSpace: 'nowrap' }}>
           {div.name}
         </div>
         {div.head ? (
@@ -628,7 +628,7 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
   const selectStyle: React.CSSProperties = {
     background: 'var(--surface-2)', border: '1px solid var(--border)',
     borderRadius: 8, color: 'var(--text-1)', fontFamily: 'inherit',
-    fontSize: 13, padding: '6px 10px', cursor: 'pointer', outline: 'none',
+    fontSize: 14, padding: '6px 10px', cursor: 'pointer', outline: 'none',
   }
 
   return (
@@ -639,7 +639,7 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
           {/* Dept selector */}
           {myDepts.length === 1 && selectedDepts[0] && (
             <span style={{
-              fontSize: 13, fontWeight: 700, color: selectedDepts[0].color,
+              fontSize: 14, fontWeight: 700, color: selectedDepts[0].color,
               background: selectedDepts[0].color + '22', borderRadius: 6, padding: '4px 10px',
             }}>{selectedDepts[0].name}</span>
           )}
@@ -676,7 +676,7 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Поиск сотрудника…"
-              style={{ background: 'none', border: 'none', outline: 'none', flex: 1, color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13 }}
+              style={{ background: 'none', border: 'none', outline: 'none', flex: 1, color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 14 }}
             />
             {search && (
               <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2 }}>
@@ -757,7 +757,7 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
               data-interactive
               onClick={b.action}
               style={{
-                fontSize: 13, padding: '4px 10px', borderRadius: 6,
+                fontSize: 14, padding: '4px 10px', borderRadius: 6,
                 border: '1px solid var(--border)', background: 'var(--surface-1)',
                 color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'inherit',
               }}

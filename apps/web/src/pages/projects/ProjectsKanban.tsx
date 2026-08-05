@@ -44,7 +44,7 @@ export function ProjectsKanban({ projects, isLoading, onOpen }: {
   }
 
   if (isLoading) return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
       Загрузка...
     </div>
   )
@@ -150,7 +150,7 @@ function KanbanCard({ project: p, dragging, onDragStart, onDragEnd, onOpen }: {
       {/* Title — клик открывает карточку */}
       <div
         onClick={onOpen}
-        style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3, marginBottom: 6, cursor: 'pointer' }}
+        style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3, marginBottom: 6, cursor: 'pointer' }}
       >
         {p.title}
       </div>

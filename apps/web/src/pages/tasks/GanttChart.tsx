@@ -183,7 +183,7 @@ export function GanttChart({ tasks, onUpdate, onOpenCreate, onEdit, currentUserI
                     {isDone ? '✓' : ''}
                   </div>
                   {isCalendar
-                    ? <span title="Задача из события календаря" style={{ fontSize:13, lineHeight:1, flexShrink:0 }}>📅</span>
+                    ? <span title="Задача из события календаря" style={{ fontSize:14, lineHeight:1, flexShrink:0 }}>📅</span>
                     : (isOutgoing || isIncoming) && (
                         <span
                           title={isOutgoing ? `Поставлено вами → ${task.assignee.name}` : `Поставлено вам ← ${task.assignedBy.name}`}
@@ -193,7 +193,7 @@ export function GanttChart({ tasks, onUpdate, onOpenCreate, onEdit, currentUserI
                   }
                   <div
                     onClick={() => onEdit(task)}
-                    style={{ fontSize:13, fontWeight:500, color: isDone ? 'var(--text-muted)' : 'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex:1, textDecoration: isDone ? 'line-through' : 'none', cursor:'pointer' }}
+                    style={{ fontSize:14, fontWeight:500, color: isDone ? 'var(--text-muted)' : 'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', flex:1, textDecoration: isDone ? 'line-through' : 'none', cursor:'pointer' }}
                     title="Редактировать"
                   >{task.title}</div>
                 </div>

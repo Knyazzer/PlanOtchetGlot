@@ -129,7 +129,7 @@ export function AnalyticsPage() {
     textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left',
     borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface-2)',
   }
-  const td: React.CSSProperties = { padding: '8px 12px', fontSize: 13, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }
+  const td: React.CSSProperties = { padding: '8px 12px', fontSize: 14, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }
   const tdNum: React.CSSProperties = { ...td, fontFamily: 'monospace', textAlign: 'right' }
 
   return (
@@ -139,7 +139,7 @@ export function AnalyticsPage() {
         <div style={{ display:'flex', alignItems:'center', gap:2, background:'var(--surface-2)', borderRadius:8, padding:3 }}>
           {(['analytics','svod'] as const).map(t => (
             <button key={t} onClick={() => pickSubTab(t)}
-              style={{ padding:'5px 14px', borderRadius:6, border:'none', background: subTab === t ? 'var(--surface)' : 'none', color: subTab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight: subTab === t ? 700 : 500, cursor:'pointer' }}>
+              style={{ padding:'5px 14px', borderRadius:6, border:'none', background: subTab === t ? 'var(--surface)' : 'none', color: subTab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight: subTab === t ? 700 : 500, cursor:'pointer' }}>
               {t === 'analytics' ? 'Аналитика' : 'Свод'}
             </button>
           ))}

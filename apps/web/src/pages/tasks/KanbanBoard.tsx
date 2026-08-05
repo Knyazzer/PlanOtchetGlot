@@ -52,7 +52,7 @@ function KanbanCard({ task, color, isDone, deadlineStr, dragId, onEdit, currentU
             {isOutgoing ? '↑' : '↓'}
           </span>
         )}
-        <span style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', lineHeight:1.45, textDecoration: isDone ? 'line-through' : 'none' }}>
+        <span style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', lineHeight:1.45, textDecoration: isDone ? 'line-through' : 'none' }}>
           {task.title}
         </span>
       </div>
@@ -207,12 +207,12 @@ export function KanbanBoard({ tasks, groupBy, onUpdate, onOpenCreate, onEdit, cu
                     if (e.key === 'Escape') setRenamingCol(null)
                   }}
                   onBlur={() => setRenamingCol(null)}
-                  style={{ flex:1, background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:6, padding:'3px 8px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, outline:'none' }} />
+                  style={{ flex:1, background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:6, padding:'3px 8px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, outline:'none' }} />
               ) : (
                 <span
                   onDoubleClick={() => { if (col.customId) { setRenamingCol(col.customId); setRenameValue(col.label) } }}
                   title={col.customId ? 'Двойной клик — переименовать' : undefined}
-                  style={{ fontSize:13, fontWeight:700, letterSpacing:'0.3px', color:col.color, flex:1, cursor: col.customId ? 'text' : 'default' }}>
+                  style={{ fontSize:14, fontWeight:700, letterSpacing:'0.3px', color:col.color, flex:1, cursor: col.customId ? 'text' : 'default' }}>
                   {col.label}
                 </span>
               )}
@@ -258,7 +258,7 @@ export function KanbanBoard({ tasks, groupBy, onUpdate, onOpenCreate, onEdit, cu
             onChange={e => setNewColName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && newColName.trim()) addColMutation.mutate(newColName.trim()) }}
             placeholder="+ Новая колонка (Enter)"
-            style={{ width:'100%', boxSizing:'border-box', background:'none', border:'1.5px dashed var(--border)', borderRadius:12, padding:'12px 14px', color:'var(--text-2)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none' }} />
+            style={{ width:'100%', boxSizing:'border-box', background:'none', border:'1.5px dashed var(--border)', borderRadius:12, padding:'12px 14px', color:'var(--text-2)', fontFamily:'Inter,sans-serif', fontSize:14, outline:'none' }} />
         </div>
       )}
     </div>

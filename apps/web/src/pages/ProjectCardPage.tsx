@@ -51,7 +51,7 @@ export function ProjectCardPage({ project, onBack }: { project: Project; onBack:
               <span>{project.client?.name ?? '—'}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-1)', lineHeight: 1.2 }}>
+              <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-1)', lineHeight: 1.2 }}>
                 {project.title}
               </h1>
               <select

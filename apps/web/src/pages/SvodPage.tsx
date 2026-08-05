@@ -106,12 +106,12 @@ export function SvodPage() {
     <div style={{ padding: '20px 24px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text-1)' }}>Свод · План/Отчёт</h1>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>Свод · План/Отчёт</h1>
         {showDropdown ? (
           <select
             value={effectiveDivId}
             onChange={e => setDivisionId(e.target.value)}
-            style={{ background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13 }}
+            style={{ background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14 }}
           >
             {divisions.map(d => <option key={d.id} value={d.id}>{(d as any).deptName} · {d.name}</option>)}
           </select>
@@ -175,7 +175,7 @@ export function SvodPage() {
                   {color ? (
                     <>
                       <span style={{ width: 9, height: 9, borderRadius: 3, background: color, flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 13, color: 'var(--text-1)' }}>{fmtLabel(c!.dayFormat)}</span>
+                      <span style={{ flex: 1, fontSize: 14, color: 'var(--text-1)' }}>{fmtLabel(c!.dayFormat)}</span>
                       {(c!.taskMinutes > 0 || c!.workMinutes > 0) && (
                         <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
                           {Math.round(((c!.taskMinutes || c!.workMinutes) / 6)) / 10}ч
@@ -214,7 +214,7 @@ export function SvodPage() {
             <tbody>
               {svod.rows.map(row => (
                 <tr key={row.user.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '7px 10px', fontSize: 13, color: row.user.id === user?.id ? 'var(--accent, #2563eb)' : 'var(--text-1)', fontWeight: row.user.id === user?.id ? 700 : 500, position: 'sticky', left: 0, background: 'var(--surface-2)', zIndex: 1, whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '7px 10px', fontSize: 14, color: row.user.id === user?.id ? 'var(--accent, #2563eb)' : 'var(--text-1)', fontWeight: row.user.id === user?.id ? 700 : 500, position: 'sticky', left: 0, background: 'var(--surface-2)', zIndex: 1, whiteSpace: 'nowrap' }}>
                     {formatName(row.user.name)}
                     {row.user.position && <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>{row.user.position}</div>}
                   </td>

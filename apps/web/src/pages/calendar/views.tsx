@@ -409,7 +409,7 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
       <div style={{ background:'var(--surface-1)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
         <div style={{ padding:'12px 24px', display:'flex', alignItems:'center', gap:12 }}>
           <div style={{ fontSize:22, fontWeight:700, color: isToday ? '#FF6B35' : 'var(--text-1)' }}>{cursor.getDate()} {MONTHS_RU_GEN[cursor.getMonth()]}</div>
-          <div style={{ fontSize:13, color:'var(--text-3)', fontWeight:400 }}>{WEEKDAYS_F[dowIdx]}{isToday ? ' · Сегодня' : ''}</div>
+          <div style={{ fontSize:14, color:'var(--text-3)', fontWeight:400 }}>{WEEKDAYS_F[dowIdx]}{isToday ? ' · Сегодня' : ''}</div>
         </div>
         {allDay.length > 0 && (
           <div style={{ padding:'4px 24px 8px', display:'flex', flexWrap:'wrap', gap:4 }}>

@@ -90,7 +90,7 @@ export function InfoTab({ project, onBack: _onBack }: { project: Project; onBack
                 color: WI_STATUS_COLOR[wi.status], background: `${WI_STATUS_COLOR[wi.status]}18`,
                 padding: '2px 7px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.04em',
               }}>{WI_STATUS_LABEL[wi.status]}</span>
-              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wi.title}</span>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wi.title}</span>
               {wi.date && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{wi.date}</span>}
               {wi.execProducer && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{formatName(wi.execProducer.name)}</span>}
               {wi._count.tracks > 0 && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0, background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 4 }}>{wi._count.tracks} т</span>}

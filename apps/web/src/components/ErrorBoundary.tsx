@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>
             Что-то пошло не так
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 14, color: 'var(--text-3)', lineHeight: 1.6 }}>
             Ошибка на странице <b style={{ color: 'var(--text-1)' }}>«{this.props.pageLabel}»</b>.
             Остальные разделы работают — выберите другой в меню слева.
           </div>
@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <button
             onClick={() => this.setState({ error: null })}
             style={{
-              alignSelf: 'flex-start', fontFamily: 'inherit', fontSize: 13, fontWeight: 600,
+              alignSelf: 'flex-start', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
               background: 'linear-gradient(135deg,#FF6B35,#E8194B)', border: 'none', color: '#fff',
               borderRadius: 8, padding: '9px 18px', cursor: 'pointer',
             }}

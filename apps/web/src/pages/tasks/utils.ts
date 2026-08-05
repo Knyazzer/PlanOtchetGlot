@@ -42,7 +42,7 @@ export function daysBetween(a: Date, b: Date) { return Math.round((b.getTime()-a
 
 export const inputStyle: React.CSSProperties = {
   background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:8,
-  color:'var(--text-1)', fontSize:13, padding:'8px 10px', outline:'none', width:'100%', boxSizing:'border-box',
+  color:'var(--text-1)', fontSize:14, padding:'8px 10px', outline:'none', width:'100%', boxSizing:'border-box',
 }
 
 // ── Date Picker ───────────────────────────────────────────────────────────────

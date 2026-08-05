@@ -41,7 +41,7 @@ function fmtDate(iso: string) {
 
 const inp: React.CSSProperties = {
   background: 'var(--surface-2)', border: '1px solid var(--border)',
-  borderRadius: 8, color: 'var(--text-1)', fontSize: 13, padding: '8px 12px',
+  borderRadius: 8, color: 'var(--text-1)', fontSize: 14, padding: '8px 12px',
   outline: 'none', width: '100%', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box',
 }
 
@@ -50,7 +50,7 @@ const inp: React.CSSProperties = {
 function SubTab({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button onClick={onClick} style={{
-      fontSize: 13, fontWeight: active ? 600 : 500,
+      fontSize: 14, fontWeight: active ? 600 : 500,
       padding: '6px 16px', borderRadius: 8,
       border: active ? '1px solid rgba(255,107,53,0.25)' : '1px solid transparent',
       background: active ? 'rgba(255,107,53,0.1)' : 'none',
@@ -120,7 +120,7 @@ function Td({ children, muted }: { children: React.ReactNode; muted?: boolean })
   return (
     <td style={{
       padding: '8px 14px', borderBottom: '1px solid var(--border)',
-      fontSize: 13, color: muted ? 'var(--text-muted)' : 'var(--text-2)', whiteSpace: 'nowrap',
+      fontSize: 14, color: muted ? 'var(--text-muted)' : 'var(--text-2)', whiteSpace: 'nowrap',
     }}>{children}</td>
   )
 }
@@ -248,7 +248,7 @@ function CreateModal({ type, onClose, onCreated }: CreateModalProps) {
 
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{
-            fontSize: 13, padding: '8px 18px', borderRadius: 8,
+            fontSize: 14, padding: '8px 18px', borderRadius: 8,
             border: '1px solid var(--border)', background: 'none',
             color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
           }}>Отмена</button>
@@ -256,7 +256,7 @@ function CreateModal({ type, onClose, onCreated }: CreateModalProps) {
             onClick={() => create.mutate()}
             disabled={!name.trim() || create.isPending}
             style={{
-              fontSize: 13, padding: '8px 18px', borderRadius: 8, border: 'none',
+              fontSize: 14, padding: '8px 18px', borderRadius: 8, border: 'none',
               background: name.trim() ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'rgba(255,255,255,0.07)',
               color: name.trim() ? '#fff' : 'var(--text-muted)',
               fontFamily: 'Inter, sans-serif', fontWeight: 600,
@@ -442,7 +442,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
           {/* Занятость (штат и фрилансеры). Выкл + «Сохранить» = уволить (бан доступа) */}
           <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Работает сейчас</span>
+              <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>Работает сейчас</span>
               <button
                 onClick={() => { if (!isAdminUser) setIsWorking(v => !v) }}
                 disabled={isAdminUser}
@@ -476,7 +476,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
           {person.authId && !isAdminUser && (
             <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Доступ в платформу (бета)</span>
+                <span style={{ fontSize: 14, color: 'var(--text-2)', fontWeight: 500 }}>Доступ в платформу (бета)</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Пускает внутрь Nexus вместо кабинета</span>
               </div>
               <button
@@ -505,7 +505,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
               onClick={handleSave}
               disabled={!isDirty || patch.isPending || isAdminUser}
               style={{
-                flex: 1, fontSize: 13, padding: '9px 0', borderRadius: 8, border: 'none',
+                flex: 1, fontSize: 14, padding: '9px 0', borderRadius: 8, border: 'none',
                 background: (isDirty && !isAdminUser) ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'rgba(255,255,255,0.07)',
                 color: (isDirty && !isAdminUser) ? '#fff' : 'var(--text-muted)',
                 fontFamily: 'Inter, sans-serif', fontWeight: 600,
@@ -528,7 +528,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
             <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
               <span style={{ fontSize: 12, color: 'var(--text-2)' }}>Доступ выдан. Передайте сотруднику:</span>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <code style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text-1)', userSelect: 'all' }}>{tempPw}</code>
+                <code style={{ flex: 1, fontSize: 14, fontWeight: 700, color: 'var(--text-1)', userSelect: 'all' }}>{tempPw}</code>
                 <button onClick={() => navigator.clipboard?.writeText(tempPw)} style={{
                   fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)',
                   background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
@@ -543,7 +543,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
                 <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Временный пароль (до первой смены сотрудником):</span>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <code style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text-1)', userSelect: 'all' }}>{person.tempPassword}</code>
+                    <code style={{ flex: 1, fontSize: 14, fontWeight: 700, color: 'var(--text-1)', userSelect: 'all' }}>{person.tempPassword}</code>
                     <button onClick={() => navigator.clipboard?.writeText(person.tempPassword!)} style={{
                       fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)',
                       background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
@@ -635,7 +635,7 @@ function StaffTab() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск..." style={{
             background: 'var(--surface-2)', border: '1px solid var(--border)',
-            borderRadius: 8, color: 'var(--text-1)', fontSize: 13, padding: '7px 12px',
+            borderRadius: 8, color: 'var(--text-1)', fontSize: 14, padding: '7px 12px',
             outline: 'none', width: 220, fontFamily: 'Inter, sans-serif',
           }} />
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{filtered.length} из {data.length}</span>
@@ -666,7 +666,7 @@ function StaffTab() {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 14 }}>
             <thead>
               <tr>
                 <Th label="#" />
@@ -683,7 +683,7 @@ function StaffTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={10} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <tr><td colSpan={10} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
                   {data.length === 0 ? 'Сотрудников нет. Добавьте первого.' : 'Ничего не найдено'}
                 </td></tr>
               )}
@@ -704,10 +704,10 @@ function StaffTab() {
                     <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                       {p.tabNumber
                         ? <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}>{p.tabNumber}</span>
-                        : <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>}
+                        : <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>—</span>}
                     </td>
                     <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                      <span style={{ color: 'var(--text-2)', fontSize: 13 }}>{p.name}</span>
+                      <span style={{ color: 'var(--text-2)', fontSize: 14 }}>{p.name}</span>
                       {isDupFree && <DupBadge label="фрил" title="Такое же ФИО есть среди фрилансеров" color="rgba(60,100,200,0.85)" />}
                     </td>
                     <Td muted={!p.position}>{p.position || '—'}</Td>
@@ -787,7 +787,7 @@ function BulkOnboardResult({ result, onClose }: { result: BulkResult; onClose: (
         zIndex: 61, padding: 22, display: 'flex', flexDirection: 'column', gap: 12,
       }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>Массовый онбординг</div>
-        <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+        <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
           Заведено <b style={{ color: 'var(--success)' }}>{result.onboarded}</b> из {result.total}. Ошибок: {errors.length}.
         </div>
         {ok.length > 0 && (
@@ -896,7 +896,7 @@ function FreelancersTab() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск..." style={{
             background: 'var(--surface-2)', border: '1px solid var(--border)',
-            borderRadius: 8, color: 'var(--text-1)', fontSize: 13, padding: '7px 12px',
+            borderRadius: 8, color: 'var(--text-1)', fontSize: 14, padding: '7px 12px',
             outline: 'none', width: 220, fontFamily: 'Inter, sans-serif',
           }} />
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{filtered.length} из {data.length}</span>
@@ -913,7 +913,7 @@ function FreelancersTab() {
         </div>
 
         <div style={{ flex: 1, minHeight: 0, overflow: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 14 }}>
             <thead>
               <tr>
                 <Th label="#" />
@@ -927,7 +927,7 @@ function FreelancersTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                <tr><td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
                   {data.length === 0 ? 'Фрилансеров нет. Добавьте первого.' : 'Ничего не найдено'}
                 </td></tr>
               )}
@@ -950,10 +950,10 @@ function FreelancersTab() {
                     <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                       {p.tabNumber
                         ? <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}>{p.tabNumber}</span>
-                        : <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>}
+                        : <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>—</span>}
                     </td>
                     <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                      <span style={{ color: 'var(--text-2)', fontSize: 13 }}>{p.name}</span>
+                      <span style={{ color: 'var(--text-2)', fontSize: 14 }}>{p.name}</span>
                       {isDupInFree && <DupBadge label="2×" title="Два аккаунта среди фрилансеров" color="rgba(180,90,20,0.85)" />}
                       {isDupStaff  && <DupBadge label="штат" title="Такое же ФИО есть в штатных сотрудниках" color="rgba(60,100,200,0.85)" />}
                     </td>
@@ -1019,7 +1019,7 @@ export function PersonnelPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '24px 36px 0', flexShrink: 0 }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-1)', marginBottom: 4 }}>Персонал</div>
-        <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, color: 'var(--text-3)', lineHeight: 1.6, marginBottom: 16 }}>
           {isAdmin ? 'Штат и фрилансеры. Добавляйте, редактируйте, управляйте доступом.' : 'Структура организации.'}
         </div>
         <div style={{ display: 'flex', gap: 6, borderBottom: '1px solid var(--border)', paddingBottom: 12 }}>

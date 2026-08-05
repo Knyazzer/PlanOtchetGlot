@@ -120,7 +120,7 @@ export function SheetsStructureTab() {
             {/* Dept header card */}
             <div style={{ background:col.color,borderRadius:10,padding:'14px 20px 12px',minWidth:200,position:'relative',overflow:'hidden',boxShadow:`0 4px 24px ${col.color}44` }}>
               <div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,rgba(255,255,255,0.1),transparent)',pointerEvents:'none' }} />
-              <div style={{ fontSize:13,fontWeight:800,color:'#fff',letterSpacing:'0.02em' }}>{col.name}</div>
+              <div style={{ fontSize:14,fontWeight:800,color:'#fff',letterSpacing:'0.02em' }}>{col.name}</div>
               <div style={{ fontSize:12,color:'rgba(255,255,255,0.6)',marginTop:3 }}>{col.subs.reduce((s,d)=>s+d.members.length,0)} чел.</div>
             </div>
             {/* Division cards row */}

@@ -94,7 +94,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
   const collapseBtn = (collapsed: boolean, onToggle: () => void): React.CSSProperties => ({
     width: 24, height: 24, borderRadius: 5, flexShrink: 0,
     background: 'var(--surface-3)', border: '1px solid rgba(255,255,255,0.13)',
-    color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer',
+    color: 'var(--text-muted)', fontSize: 14, cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     transition: 'all 0.12s', transform: collapsed ? 'rotate(180deg)' : 'none',
     fontFamily: 'monospace',
@@ -331,7 +331,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
         {!activeWI || !activeDivision ? (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, color: 'var(--text-muted)', textAlign: 'center', padding: 40 }}>
             <span style={{ fontSize: 36, opacity: 0.15 }}>🗂</span>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Выберите Work Item и отдел</span>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Выберите Work Item и отдел</span>
             <span style={{ fontSize: 12, maxWidth: 200, lineHeight: 1.5, color: 'var(--text-muted)', opacity: 0.7 }}>Нажмите на WI-карточку, затем на отдел чтобы увидеть детали</span>
           </div>
         ) : (
@@ -341,7 +341,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 12 }}>
                 <div style={{
                   width: 46, height: 46, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: 700, flexShrink: 0,
+                  fontSize: 14, fontWeight: 700, flexShrink: 0,
                   background: `${activeDivision.deptColor}20`, color: activeDivision.deptColor,
                 }}>{initials(activeDivision.name)}</div>
                 <div style={{ flex: 1 }}>
@@ -363,7 +363,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                       onClick={() => setDetailTab(t)}
                       style={{
                         background: 'none', border: 'none', borderBottom: `2px solid ${detailTab === t ? '#FF6B35' : 'transparent'}`,
-                        padding: '9px 14px', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: detailTab === t ? 600 : 500,
+                        padding: '9px 14px', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: detailTab === t ? 600 : 500,
                         color: detailTab === t ? '#FF6B35' : 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.12s', marginBottom: -1,
                       }}
                     >{labels[t]}</button>
@@ -380,7 +380,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
               {detailTab === 'team' && (
                 <div style={{ border: '1.5px dashed rgba(255,255,255,0.1)', borderRadius: 12, background: 'var(--surface-2)', padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <div style={{ fontSize: 32, opacity: 0.2, marginBottom: 10 }}>👥</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Команда отдела</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Команда отдела</div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 300, margin: '0 auto 12px' }}>Список штатных сотрудников и подрядчиков, подключённых к этому отделу: роли, тип занятости, количество смен, нагрузка.</div>
                   <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 12.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
                 </div>
@@ -388,7 +388,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
               {detailTab === 'scheduler' && (
                 <div style={{ border: '1.5px dashed rgba(255,255,255,0.1)', borderRadius: 12, background: 'var(--surface-2)', padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <div style={{ fontSize: 32, opacity: 0.2, marginBottom: 10 }}>📅</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Планировщик</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Планировщик</div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 280, margin: '0 auto 12px' }}>График смен и нагрузки по отделу для этого Work Item.</div>
                   <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 12.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
                 </div>
@@ -396,7 +396,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
               {detailTab === 'freelancers' && (
                 <div style={{ border: '1.5px dashed rgba(255,255,255,0.1)', borderRadius: 12, background: 'var(--surface-2)', padding: '48px 32px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <div style={{ fontSize: 32, opacity: 0.2, marginBottom: 10 }}>🎭</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Фрилансеры</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Фрилансеры</div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 280, margin: '0 auto 12px' }}>Внешние подрядчики, привлечённые для этого отдела в рамках Work Item.</div>
                   <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 12.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
                 </div>

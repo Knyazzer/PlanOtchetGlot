@@ -155,7 +155,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             {filteredMembers.map(m => (
               <div key={m.id}
                 onMouseDown={e => { e.preventDefault(); setAssigneeId(m.id); setAssigneeName(m.name); closePicker() }}
-                style={{ padding:'9px 12px', fontSize:13, color:'var(--text-1)', cursor:'pointer', background: m.id === assigneeId ? 'rgba(255,107,53,0.12)' : 'transparent' }}
+                style={{ padding:'9px 12px', fontSize:14, color:'var(--text-1)', cursor:'pointer', background: m.id === assigneeId ? 'rgba(255,107,53,0.12)' : 'transparent' }}
                 onMouseEnter={e => { if (m.id !== assigneeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.05)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = m.id === assigneeId ? 'rgba(255,107,53,0.12)' : 'transparent' }}
               >{m.name}</div>
@@ -358,7 +358,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
           <div style={{ display:'grid', gridTemplateColumns: trackId ? '1fr 1fr' : '1fr', gap:12, marginTop:4 }}>
             {trackId && trackTitle && (
               <Field label="Трек">
-                <div style={{ ...inputStyle, color:'var(--accent-s)', userSelect:'none', fontSize:13, display:'flex', alignItems:'center', gap:6 }}>
+                <div style={{ ...inputStyle, color:'var(--accent-s)', userSelect:'none', fontSize:14, display:'flex', alignItems:'center', gap:6 }}>
                   <span style={{ fontSize:12, opacity:0.7 }}>◈</span> {trackTitle}
                   {(editTask?.stage?.title ?? null) && <span style={{ fontSize:12, color:'var(--text-muted)', marginLeft:4 }}>/ {editTask!.stage!.title}</span>}
                 </div>
@@ -388,9 +388,9 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             )
           )}
           <div style={{ display:'flex', gap:10 }}>
-            <button onClick={onClose} style={{ padding:'8px 18px', borderRadius:8, border:'1px solid var(--border)', background:'none', color:'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:13, cursor:'pointer' }}>{isReadOnly ? 'Закрыть' : 'Отмена'}</button>
+            <button onClick={onClose} style={{ padding:'8px 18px', borderRadius:8, border:'1px solid var(--border)', background:'none', color:'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:14, cursor:'pointer' }}>{isReadOnly ? 'Закрыть' : 'Отмена'}</button>
             {!isReadOnly && (
-              <button onClick={submit} disabled={!title.trim() || saveMutation.isPending} style={{ padding:'8px 20px', borderRadius:8, border:'none', background: title.trim() ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'rgba(255,255,255,0.08)', color: title.trim() ? '#fff' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, cursor: title.trim() ? 'pointer' : 'default' }}>
+              <button onClick={submit} disabled={!title.trim() || saveMutation.isPending} style={{ padding:'8px 20px', borderRadius:8, border:'none', background: title.trim() ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'rgba(255,255,255,0.08)', color: title.trim() ? '#fff' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, cursor: title.trim() ? 'pointer' : 'default' }}>
                 {saveMutation.isPending ? '...' : isEdit ? 'Сохранить' : 'Создать'}
               </button>
             )}

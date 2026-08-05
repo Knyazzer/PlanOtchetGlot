@@ -81,7 +81,7 @@ const lbl: React.CSSProperties = {
 }
 const inp: React.CSSProperties = {
   background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8,
-  color: 'var(--text-1)', fontSize: 13, padding: '8px 10px', outline: 'none',
+  color: 'var(--text-1)', fontSize: 14, padding: '8px 10px', outline: 'none',
   width: '100%', boxSizing: 'border-box', fontFamily: 'Inter,sans-serif',
 }
 
@@ -279,7 +279,7 @@ function TaskCard({ t, onOpen }: { t: StageTask; onOpen?: () => void }) {
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: onOpen ? 'pointer' : 'default' }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: sc, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{TASK_STATUS_LABEL[t.status]} · {t.assignee.name}</div>
       </div>
       {t.deadline && (
@@ -346,7 +346,7 @@ function UserPicker({ selected, onChange, label, hint }: { selected: string[]; o
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {filtered.map(u => (
               <div key={u.id} onClick={() => toggle(u.id)}
-                style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: selected.includes(u.id) ? 'var(--accent-s)' : 'var(--text-2)' }}>
+                style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: selected.includes(u.id) ? 'var(--accent-s)' : 'var(--text-2)' }}>
                 <span style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${selected.includes(u.id) ? 'var(--accent-s)' : 'var(--border)'}`, background: selected.includes(u.id) ? 'rgba(255,107,53,0.2)' : 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
                   {selected.includes(u.id) ? '✓' : ''}
                 </span>
@@ -474,9 +474,9 @@ export function TrackFormModal({
           )}
         </div>
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
           <button onClick={() => isEdit ? editMut.mutate() : createMut.mutate()} disabled={!title.trim() || pending}
-            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !pending ? 1 : 0.5 }}>
+            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !pending ? 1 : 0.5 }}>
             {pending ? '...' : isEdit ? 'Сохранить' : 'Создать трек'}
           </button>
         </div>
@@ -546,9 +546,9 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
           </div>
         </div>
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
           <button onClick={() => createMut.mutate()} disabled={!title.trim() || createMut.isPending}
-            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !createMut.isPending ? 1 : 0.5 }}>
+            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !createMut.isPending ? 1 : 0.5 }}>
             {createMut.isPending ? '...' : 'Создать событие'}
           </button>
         </div>
@@ -563,7 +563,7 @@ function MetaItem({ icon, label, value, highlight }: { icon: string; label: stri
   return (
     <div>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{icon} {label}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: highlight ?? 'var(--text-1)' }}>{value}</div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: highlight ?? 'var(--text-1)' }}>{value}</div>
     </div>
   )
 }
@@ -607,7 +607,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith }: { trackId: string; on
   if (isLoading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
   if (error || !track) return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
-      <div style={{ fontSize: 13, color: 'var(--danger)' }}>Трек не найден</div>
+      <div style={{ fontSize: 14, color: 'var(--danger)' }}>Трек не найден</div>
       <button onClick={onClose} style={{ padding: '7px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>Назад</button>
     </div>
   )
@@ -623,7 +623,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith }: { trackId: string; on
               <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
             </div>
             <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>{track.title}</div>
-            {track.description && <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 5, lineHeight: 1.5 }}>{track.description}</div>}
+            {track.description && <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 5, lineHeight: 1.5 }}>{track.description}</div>}
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             <button onClick={() => setCreatingEvent(true)}
@@ -722,12 +722,12 @@ export function TracksPage({ onOpenChatWith }: { onOpenChatWith?: OpenChatFn } =
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>Треки</div>
         <button onClick={() => setCreating(true)}
-          style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
           + Новый трек
         </button>
       </div>
 
-      {isLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>}
+      {isLoading && <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>}
       {!isLoading && active.length === 0 && inactive.length === 0 && (
         <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 14 }}>Нет треков. Создайте первый.</div>
       )}

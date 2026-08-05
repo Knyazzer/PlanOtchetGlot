@@ -79,7 +79,7 @@ export function GroupInfoModal({
         </div>
 
         {isLoading || !info ? (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
         ) : (
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {/* Avatar + name */}
@@ -116,7 +116,7 @@ export function GroupInfoModal({
                         ...(editColor !== null ? { color: editColor } : {}),
                       })}
                       disabled={updateGroupMutation.isPending || (editName ?? '').trim().length === 0}
-                      style={{ padding: '6px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      style={{ padding: '6px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                     >
                       {updateGroupMutation.isPending ? 'Сохраняем...' : 'Сохранить'}
                     </button>
@@ -154,7 +154,7 @@ export function GroupInfoModal({
                   value={addSearch}
                   onChange={e => setAddSearch(e.target.value)}
                   placeholder="Поиск сотрудника..."
-                  style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 12px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
                 />
                 {addCandidates.length === 0 ? (
                   <div style={{ padding: '10px 0', fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>Нет подходящих сотрудников</div>
@@ -169,7 +169,7 @@ export function GroupInfoModal({
                         onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}
                       >
                         <UserAvatar name={u.name} size={30} />
-                        <span style={{ fontSize: 13, color: 'var(--text-1)' }}>{formatName(u.name)}</span>
+                        <span style={{ fontSize: 14, color: 'var(--text-1)' }}>{formatName(u.name)}</span>
                         <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--accent-s)', fontWeight: 600 }}>Добавить</span>
                       </div>
                     ))}
@@ -184,7 +184,7 @@ export function GroupInfoModal({
                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 20px' }}>
                   <UserAvatar name={m.name} size={36} />
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{formatName(m.name)}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{formatName(m.name)}</div>
                     {m.isGroupAdmin && (
                       <span style={{ fontSize: 12, color: '#FF6B35', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>Админ</span>
                     )}
@@ -214,7 +214,7 @@ export function GroupInfoModal({
                     }
                   }}
                   disabled={deleteGroupMutation.isPending}
-                  style={{ width: '100%', padding: '9px 0', borderRadius: 8, border: '1px solid var(--danger)', background: 'none', color: 'var(--danger)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ width: '100%', padding: '9px 0', borderRadius: 8, border: '1px solid var(--danger)', background: 'none', color: 'var(--danger)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                 >
                   {deleteGroupMutation.isPending ? 'Удаление...' : 'Удалить группу'}
                 </button>

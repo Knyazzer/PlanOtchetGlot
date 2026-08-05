@@ -31,18 +31,18 @@ export const labelStyle: React.CSSProperties = {
 export const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '8px 10px',
   background: 'var(--bg)', border: '1px solid var(--border)',
-  borderRadius: 8, color: 'var(--text-1)', fontSize: 13, fontFamily: 'Inter, sans-serif',
+  borderRadius: 8, color: 'var(--text-1)', fontSize: 14, fontFamily: 'Inter, sans-serif',
   outline: 'none',
 }
 export const cancelBtnStyle: React.CSSProperties = {
   background: 'none', border: '1px solid var(--border)', borderRadius: 8,
-  color: 'var(--text-2)', fontSize: 13, padding: '8px 18px', cursor: 'pointer',
+  color: 'var(--text-2)', fontSize: 14, padding: '8px 18px', cursor: 'pointer',
   fontFamily: 'Inter, sans-serif',
 }
 export const submitBtnStyle: React.CSSProperties = {
   background: 'linear-gradient(135deg,#FF6B35,#E8194B)',
   border: 'none', borderRadius: 8, color: '#fff',
-  fontSize: 13, fontWeight: 600, padding: '8px 20px', cursor: 'pointer',
+  fontSize: 14, fontWeight: 600, padding: '8px 20px', cursor: 'pointer',
   fontFamily: 'Inter, sans-serif',
 }
 

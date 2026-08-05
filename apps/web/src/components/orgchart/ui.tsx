@@ -64,7 +64,7 @@ export function FieldSelect({ value, onChange, children }: { value: string; onCh
 
 export function BtnPrimary({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <button onClick={onClick} style={{ fontSize:13,padding:'8px 20px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#FF6B35,#E8194B)',color:'#fff',fontFamily:'Inter,sans-serif',fontWeight:600,cursor:'pointer' }}>
+    <button onClick={onClick} style={{ fontSize:14,padding:'8px 20px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#FF6B35,#E8194B)',color:'#fff',fontFamily:'Inter,sans-serif',fontWeight:600,cursor:'pointer' }}>
       {children}
     </button>
   )
@@ -72,7 +72,7 @@ export function BtnPrimary({ children, onClick }: { children: React.ReactNode; o
 
 export function BtnSecondary({ children, onClick, style }: { children: React.ReactNode; onClick?: () => void; style?: React.CSSProperties }) {
   return (
-    <button onClick={onClick} style={{ fontSize:13,padding:'8px 16px',borderRadius:8,border:'1px solid var(--border)',background:'none',color:'var(--text-3)',cursor:'pointer',fontFamily:'Inter,sans-serif',...style }}>
+    <button onClick={onClick} style={{ fontSize:14,padding:'8px 16px',borderRadius:8,border:'1px solid var(--border)',background:'none',color:'var(--text-3)',cursor:'pointer',fontFamily:'Inter,sans-serif',...style }}>
       {children}
     </button>
   )
@@ -153,7 +153,7 @@ export function UserSelect({ users, value, onChange, placeholder = '— не н�
   const baseInput: React.CSSProperties = {
     width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)',
     borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)',
-    fontFamily: 'inherit', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit', fontSize: 14, outline: 'none', boxSizing: 'border-box',
     cursor: 'pointer',
   }
 
@@ -208,7 +208,7 @@ export function UserSelect({ users, value, onChange, placeholder = '— не н�
           <div
             onMouseDown={() => { onChange(''); setOpen(false); setSearch('') }}
             style={{
-              padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)',
+              padding: '8px 12px', fontSize: 14, color: 'var(--text-muted)',
               cursor: 'pointer', borderBottom: '1px solid var(--border)',
               fontStyle: 'italic',
             }}
@@ -218,14 +218,14 @@ export function UserSelect({ users, value, onChange, placeholder = '— не н�
             {placeholder}
           </div>
           {filtered.length === 0 && (
-            <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--text-muted)' }}>Не найдено</div>
+            <div style={{ padding: '10px 12px', fontSize: 14, color: 'var(--text-muted)' }}>Не найдено</div>
           )}
           {filtered.map(u => (
             <div
               key={u.id}
               onMouseDown={() => { onChange(u.id); setOpen(false); setSearch('') }}
               style={{
-                padding: '8px 12px', fontSize: 13, cursor: 'pointer',
+                padding: '8px 12px', fontSize: 14, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8,
                 background: u.id === value ? 'rgba(99,102,241,0.12)' : '',
                 color: u.id === value ? 'var(--accent-s)' : 'var(--text-1)',
@@ -262,7 +262,7 @@ export function ActionBtn({ children, onClick, danger }: { children: React.React
 
 export function ZBtn({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{ fontSize:13,padding:'4px 10px',borderRadius:6,border:'1px solid var(--border)',background:'none',color:'var(--text-3)',cursor:'pointer',fontFamily:'Inter,sans-serif' }}>
+    <button onClick={onClick} style={{ fontSize:14,padding:'4px 10px',borderRadius:6,border:'1px solid var(--border)',background:'none',color:'var(--text-3)',cursor:'pointer',fontFamily:'Inter,sans-serif' }}>
       {children}
     </button>
   )

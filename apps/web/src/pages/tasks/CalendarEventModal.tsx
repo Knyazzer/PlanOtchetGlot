@@ -91,7 +91,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
     if (id === 'vyezd' && location.includes('vyezd')) setVyezdAddr('')
   }
 
-  const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none', boxSizing:'border-box' }
+  const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:14, outline:'none', boxSizing:'border-box' }
   const lbl: React.CSSProperties = { fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'1px', marginBottom:6, display:'block' }
 
   return (
@@ -111,7 +111,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
         </div>
 
         {isLoading ? (
-          <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Загрузка...</div>
+          <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Загрузка...</div>
         ) : ev ? (<>
           {/* Type */}
           <div style={{ marginBottom:16 }}>
@@ -234,7 +234,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
                         const sel = participantIds.includes(m.id)
                         return (
                           <div key={m.id} onMouseDown={e => { e.preventDefault(); setParticipantIds(prev => prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id]) }}
-                            style={{ padding:'9px 12px', fontSize:13, color:'var(--text-1)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, background: sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}>
+                            style={{ padding:'9px 12px', fontSize:14, color:'var(--text-1)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, background: sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}>
                             <div style={{ width:14, height:14, borderRadius:3, border:`1.5px solid ${sel ? '#8B5CF6' : 'var(--text-muted)'}`, background: sel ? '#8B5CF6' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#fff', flexShrink:0 }}>{sel ? '✓' : ''}</div>
                             {m.name}
                           </div>
@@ -260,7 +260,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
           <div style={{ display:'flex', gap:8 }}>
             {isAuthor && (
               !confirmDel ? (
-                <button onClick={() => setConfirmDel(true)} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
+                <button onClick={() => setConfirmDel(true)} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
               ) : (
                 <div style={{ flex:1, display:'flex', gap:6 }}>
                   <button onClick={() => deleteMut.mutate()} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:700, background:'var(--danger)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Да</button>
@@ -268,19 +268,19 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
                 </div>
               )
             )}
-            <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+            <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
               {isAuthor ? 'Отмена' : 'Закрыть'}
             </button>
             {isAuthor && (
-              <button onClick={submit} disabled={updateMut.isPending} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+              <button onClick={submit} disabled={updateMut.isPending} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
                 {updateMut.isPending ? '...' : 'Сохранить'}
               </button>
             )}
           </div>
         </>) : isError ? (
-          <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Событие было удалено или недоступно</div>
+          <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Событие было удалено или недоступно</div>
         ) : (
-          <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Событие не найдено</div>
+          <div style={{ padding:'32px 0', textAlign:'center', color:'var(--text-muted)', fontSize:14 }}>Событие не найдено</div>
         )}
       </div>
     </div>

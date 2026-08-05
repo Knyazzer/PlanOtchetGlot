@@ -158,7 +158,7 @@ function WorkDayCard({ date, entry, formats, schedule }: {
               <TimeField label="Начало" value={start ?? ''} onChange={v => save.mutate({ startTime: v || null })} />
               <TimeField label="Конец" value={end ?? ''} onChange={v => save.mutate({ endTime: v || null })} />
               <BreakField value={breakMin} onChange={v => save.mutate({ breakMin: v })} />
-              <div style={{ paddingBottom: 6, fontSize: 13, color: 'var(--text-2)' }}>
+              <div style={{ paddingBottom: 6, fontSize: 14, color: 'var(--text-2)' }}>
                 Отработано: <b style={{ color: 'var(--text-1)', fontFamily: 'monospace' }}>{worked ? fmtHM(worked) : '—'}</b>
                 {normMin != null && <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>/ норма {fmtHM(normMin)}</span>}
               </div>
@@ -207,14 +207,14 @@ function BalanceBadge({ delta }: { delta: number }) {
   const over = delta > 0
   const c = over ? '#43b2f2' : '#f59e0b'
   return (
-    <span style={{ fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: c + '22', color: c }}>
+    <span style={{ fontSize: 14, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: c + '22', color: c }}>
       {over ? 'переработка +' : 'недоработка −'}{fmtHM(Math.abs(delta))}
     </span>
   )
 }
 
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6, display: 'block' }
-const inp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, outline: 'none', colorScheme: 'dark' }
+const inp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', colorScheme: 'dark' }
 
 function TimeField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   const [v, setV] = useState(value)

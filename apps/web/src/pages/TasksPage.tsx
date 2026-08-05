@@ -115,7 +115,7 @@ export function TasksPage({ onOpenChatWith, externalTab }: TasksPageProps = {}) 
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                style={{ padding:'5px 14px', borderRadius:6, border:'none', background: tab === t ? 'var(--surface)' : 'none', color: tab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight: tab === t ? 700 : 500, cursor:'pointer' }}
+                style={{ padding:'5px 14px', borderRadius:6, border:'none', background: tab === t ? 'var(--surface)' : 'none', color: tab === t ? 'var(--accent-s)' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight: tab === t ? 700 : 500, cursor:'pointer' }}
               >
                 {t === 'tasks' ? 'Задачи' : 'Треки'}
               </button>
@@ -137,7 +137,7 @@ export function TasksPage({ onOpenChatWith, externalTab }: TasksPageProps = {}) 
         )}
         {isLoading && <span style={{ fontSize:12, color:'var(--text-muted)' }}>Загрузка...</span>}
         <div style={{ flex:1 }} />
-        <button onClick={() => openCreate()} style={{ padding:'7px 16px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#FF6B35,#E8194B)', color:'#fff', fontFamily:'Inter,sans-serif', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+        <button onClick={() => openCreate()} style={{ padding:'7px 16px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#FF6B35,#E8194B)', color:'#fff', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
           <span style={{ fontSize:16, lineHeight:1 }}>+</span> Задача
         </button>
       </div>

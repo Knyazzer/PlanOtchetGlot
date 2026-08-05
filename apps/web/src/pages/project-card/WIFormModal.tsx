@@ -44,8 +44,8 @@ export function WIFormModal({ projectId, onClose }: { projectId: string; onClose
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-          <button onClick={onClose} style={{ fontSize: 13, padding: '7px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Отмена</button>
-          <button onClick={() => create.mutate()} disabled={!title.trim() || create.isPending} style={{ fontSize: 13, padding: '7px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: title.trim() && !create.isPending ? 1 : 0.5 }}>
+          <button onClick={onClose} style={{ fontSize: 14, padding: '7px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Отмена</button>
+          <button onClick={() => create.mutate()} disabled={!title.trim() || create.isPending} style={{ fontSize: 14, padding: '7px 18px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: title.trim() && !create.isPending ? 1 : 0.5 }}>
             {create.isPending ? 'Создание...' : 'Создать'}
           </button>
         </div>

@@ -16,7 +16,7 @@ export function KpiCard({ label, value, unit, color, sub }: { label: string; val
     <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 3 }}>
       <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>{label}</div>
       <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1.1, color, fontFamily: 'monospace' }}>
-        {value}{unit && <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 4 }}>{unit}</span>}
+        {value}{unit && <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 4 }}>{unit}</span>}
       </div>
       {sub && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{sub}</div>}
     </div>
@@ -70,6 +70,6 @@ export function FinSummaryRow({ label, value, color }: { label: string; value: s
 
 export function LoadingState() {
   return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
   )
 }

@@ -24,7 +24,7 @@ export function CabinetPage({ onOpenChatWith }: { onOpenChatWith: OpenChatWith }
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--surface-2)', borderRadius: 8, padding: 3 }}>
           {tabs.map(([v, label]) => (
             <button key={v} onClick={() => pick(v)}
-              style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: tab === v ? 'var(--surface)' : 'none', color: tab === v ? 'var(--accent-s)' : 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: tab === v ? 700 : 500, cursor: 'pointer' }}>
+              style={{ padding: '5px 14px', borderRadius: 6, border: 'none', background: tab === v ? 'var(--surface)' : 'none', color: tab === v ? 'var(--accent-s)' : 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: tab === v ? 700 : 500, cursor: 'pointer' }}>
               {label}
             </button>
           ))}

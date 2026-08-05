@@ -76,7 +76,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
     <div style={{ width: 300, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--surface-1)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 14px 12px', flexShrink: 0, borderBottom: '1px solid var(--border)' }}>
         <button onClick={() => shift(-1)} style={navBtn} title="Предыдущий месяц">‹</button>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{MONTHS[m]} {y}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{MONTHS[m]} {y}</div>
         <button onClick={() => shift(1)} style={navBtn} title="Следующий месяц">›</button>
       </div>
 

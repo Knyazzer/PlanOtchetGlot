@@ -175,7 +175,7 @@ export function OrgChartTab() {
             data-interactive
             onClick={migrateFromSheets}
             disabled={migrating}
-            style={{ pointerEvents:'all',padding:'10px 24px',background:'#1e40af',border:'none',borderRadius:8,color:'#fff',fontSize:13,fontFamily:'Inter,sans-serif',cursor:'pointer',display:'flex',alignItems:'center',gap:8,opacity:migrating?0.6:1 }}
+            style={{ pointerEvents:'all',padding:'10px 24px',background:'#1e40af',border:'none',borderRadius:8,color:'#fff',fontSize:14,fontFamily:'Inter,sans-serif',cursor:'pointer',display:'flex',alignItems:'center',gap:8,opacity:migrating?0.6:1 }}
           >
             {migrating ? 'Импорт...' : '↓ Импортировать структуру из Sheets'}
           </button>
