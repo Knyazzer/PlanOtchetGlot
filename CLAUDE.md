@@ -214,7 +214,7 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | `/calendar-entries` | `routes/calendar-entries.ts` | общие записи (Знаменки/HR) — чтение всем, write admin |
 | `/database` | `routes/database.ts` | Google Sheets: config, refresh/:key, preview/:key — admin |
 | `/structure` | `routes/structure.ts` | дерево департаментов/отделов (GET — всем аутентифицированным), мутации + migrate-from-sheets — admin, Zod-валидация |
-| `/tracks` | `routes/tracks.ts` | треки: CRUD, PUT members, stages CRUD, PATCH tasks/:taskId/track |
+| `/tracks` | `routes/tracks.ts` | треки: CRUD, PUT members, stages CRUD, PATCH tasks/:taskId/track. **§9 трек=чат:** POST авто-создаёт групповой чат (`Chat.trackId`, лидер=админ, участники автоподключаются), PUT members синкает состав чата; detail/список отдают `chat.id` |
 | `/clients` | `routes/clients.ts` | клиенты: CRUD (write admin), bulk-import из КФПД col A |
 | `/projects` | `routes/projects.ts` | проекты CRUD (DELETE admin) + вложенные work-items (GET/POST) |
 | `/day-entries` | `routes/day-entries.ts` | день сотрудника: GET ?from&to[&userId — по орг-охвату], PUT upsert своего дня, POST /apply-period (≤370 дн, keepFilled), DELETE /:date, GET /formats; admin: GET /formats/versions, POST /formats (новая версия с 1-го числа месяца) |
