@@ -36,7 +36,7 @@ export function FinanceTab({ projectId }: { projectId: string }) {
       {/* Left nav */}
       <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>
         <div style={{ padding: '0 14px', height: 40, display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-          <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Финансы проекта</span>
+          <span style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>Финансы проекта</span>
         </div>
 
         {/* Summary strip */}
@@ -65,7 +65,7 @@ export function FinanceTab({ projectId }: { projectId: string }) {
                 }}
               >
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-1)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wi.title}</div>
-                <div style={{ display: 'flex', gap: 8, fontSize: 11 }}>
+                <div style={{ display: 'flex', gap: 8, fontSize: 12 }}>
                   <span style={{ color: WI_STATUS_COLOR[wi.status], fontWeight: 600 }}>{WI_STATUS_LABEL[wi.status]}</span>
                   <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace' }}>{fmtMoney(wi.budget)}</span>
                 </div>
@@ -80,11 +80,11 @@ export function FinanceTab({ projectId }: { projectId: string }) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
           {/* WI header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>
-            <span style={{ width: 32, height: 32, borderRadius: 8, background: `${WI_STATUS_COLOR[activeWI.status]}20`, color: WI_STATUS_COLOR[activeWI.status], display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+            <span style={{ width: 32, height: 32, borderRadius: 8, background: `${WI_STATUS_COLOR[activeWI.status]}20`, color: WI_STATUS_COLOR[activeWI.status], display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
               {WI_STATUS_LABEL[activeWI.status].slice(0,2).toUpperCase()}
             </span>
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{activeWI.title}</h3>
-            <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: `${WI_STATUS_COLOR[activeWI.status]}18`, color: WI_STATUS_COLOR[activeWI.status] }}>
+            <span style={{ fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: `${WI_STATUS_COLOR[activeWI.status]}18`, color: WI_STATUS_COLOR[activeWI.status] }}>
               {WI_STATUS_LABEL[activeWI.status]}
             </span>
           </div>
@@ -100,7 +100,7 @@ export function FinanceTab({ projectId }: { projectId: string }) {
           {/* Expenses */}
           {wiDetail && (
             <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
                 Расходы
               </div>
               {wiDetail.expenses.length === 0 && (
@@ -112,9 +112,9 @@ export function FinanceTab({ projectId }: { projectId: string }) {
                   borderBottom: i < wiDetail.expenses.length - 1 ? '1px solid var(--border)' : 'none',
                   background: i % 2 === 1 ? 'rgba(255,255,255,0.018)' : 'transparent',
                 }}>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', flexShrink: 0, letterSpacing: '0.04em' }}>{EXPENSE_LABEL[exp.category]}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', flexShrink: 0, letterSpacing: '0.04em' }}>{EXPENSE_LABEL[exp.category]}</span>
                   <span style={{ flex: 1, fontSize: 12.5, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exp.description || '—'}</span>
-                  {exp.date && <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{exp.date}</span>}
+                  {exp.date && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{exp.date}</span>}
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0, fontFamily: 'monospace' }}>{fmtMoney(exp.amount)}</span>
                 </div>
               ))}
@@ -157,21 +157,21 @@ export function ExpensesBlock({ wiId, projectId, expenses, budget }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {bud > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: total > bud ? '#E8194B' : '#29BF12', fontWeight: 600 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: total > bud ? '#E8194B' : '#29BF12', fontWeight: 600 }}>
           <span>Итого: {fmtMoney(String(total))}</span>
           <span>Бюджет: {fmtMoney(budget)}</span>
         </div>
       )}
       {expenses.map(exp => (
         <div key={exp.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', background: 'var(--surface-3)', borderRadius: 6, fontSize: 12 }}>
-          <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: 10, textTransform: 'uppercase', fontWeight: 600 }}>{EXPENSE_LABEL[exp.category]}</span>
+          <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: 12, textTransform: 'uppercase', fontWeight: 600 }}>{EXPENSE_LABEL[exp.category]}</span>
           <span style={{ flex: 1, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{exp.description || '—'}</span>
           <span style={{ fontWeight: 700, color: 'var(--text-1)', flexShrink: 0, fontFamily: 'monospace' }}>{fmtMoney(exp.amount)}</span>
           <button onClick={() => deleteExpense.mutate(exp.id)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, padding: 2, flexShrink: 0 }}>✕</button>
         </div>
       ))}
       {!open ? (
-        <button onClick={() => setOpen(true)} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', alignSelf: 'flex-start' }}>
+        <button onClick={() => setOpen(true)} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', alignSelf: 'flex-start' }}>
           + Добавить расход
         </button>
       ) : (
@@ -214,7 +214,7 @@ function BudgetInput({ wiId, projectId, current }: { wiId: string; projectId: st
   })
 
   if (!editing) return (
-    <button onClick={() => setEditing(true)} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: current ? 'var(--text-1)' : 'var(--text-muted)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', alignSelf: 'flex-start' }}>
+    <button onClick={() => setEditing(true)} style={{ fontSize: 12, padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: current ? 'var(--text-1)' : 'var(--text-muted)', cursor: 'pointer', fontFamily: 'Inter, sans-serif', alignSelf: 'flex-start' }}>
       {current ? `Бюджет WI: ${fmtMoney(current)}` : '+ Бюджет WI'}
     </button>
   )

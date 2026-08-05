@@ -40,7 +40,7 @@ export function Modal({ title, onClose, children, footer }: {
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize:11,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:6 }}>{label}</div>
+      <div style={{ fontSize:12,fontWeight:700,color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:6 }}>{label}</div>
       {children}
     </div>
   )
@@ -183,7 +183,7 @@ export function UserSelect({ users, value, onChange, placeholder = '— не н�
             <>
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</span>
               {selected.tabNumber && (
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{selected.tabNumber}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{selected.tabNumber}</span>
               )}
               <span
                 onMouseDown={e => { e.stopPropagation(); onChange(''); setSearch('') }}
@@ -194,7 +194,7 @@ export function UserSelect({ users, value, onChange, placeholder = '— не н�
           ) : (
             <span style={{ color: 'var(--text-muted)', flex: 1 }}>{placeholder}</span>
           )}
-          <span style={{ color: 'var(--text-muted)', fontSize: 10, flexShrink: 0 }}>▾</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 12, flexShrink: 0 }}>▾</span>
         </div>
       )}
 
@@ -237,7 +237,7 @@ export function UserSelect({ users, value, onChange, placeholder = '— не н�
                 {formatName(u.name)}
               </span>
               {u.tabNumber && (
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{u.tabNumber}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{u.tabNumber}</span>
               )}
             </div>
           ))}
@@ -253,7 +253,7 @@ export function ActionBtn({ children, onClick, danger }: { children: React.React
   return (
     <button
       onClick={e => { e.stopPropagation(); onClick() }}
-      style={{ width:20,height:20,borderRadius:4,border:'1px solid var(--border)',background:'var(--surface-2)',color:danger?'rgba(255,100,100,0.8)':'var(--text-3)',fontSize:10,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Inter,sans-serif' }}
+      style={{ width:20,height:20,borderRadius:4,border:'1px solid var(--border)',background:'var(--surface-2)',color:danger?'rgba(255,100,100,0.8)':'var(--text-3)',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Inter,sans-serif' }}
     >
       {children}
     </button>

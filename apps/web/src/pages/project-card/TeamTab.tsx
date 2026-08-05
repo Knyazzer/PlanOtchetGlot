@@ -50,15 +50,15 @@ export function TeamTab({ projectId }: { projectId: string }) {
       {/* Roles */}
       {peopleList.length > 0 && (
         <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
             Ключевые роли
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
             {peopleList.map((p, i) => (
               <div key={i} style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', borderRight: i % 2 === 0 ? '1px solid var(--border)' : 'none' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 4 }}>{p.role}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', marginBottom: 4 }}>{p.role}</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{formatName(p.name)}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{p.wis.length} WI</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{p.wis.length} WI</div>
               </div>
             ))}
           </div>
@@ -68,16 +68,16 @@ export function TeamTab({ projectId }: { projectId: string }) {
       {/* Departments */}
       {deptMap.size > 0 && (
         <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
             Отделы на проекте
           </div>
           {[...deptMap.values()].map((dept, i, arr) => (
             <div key={dept.name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--border)' : 'none' }}>
-              <span style={{ width: 28, height: 28, borderRadius: 7, background: `${dept.color}22`, color: dept.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+              <span style={{ width: 28, height: 28, borderRadius: 7, background: `${dept.color}22`, color: dept.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
                 {dept.name.slice(0, 2).toUpperCase()}
               </span>
               <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{dept.name}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{[...dept.members].join(', ')}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{[...dept.members].join(', ')}</span>
             </div>
           ))}
         </div>

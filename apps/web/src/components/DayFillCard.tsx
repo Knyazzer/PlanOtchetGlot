@@ -170,7 +170,7 @@ function WorkDayCard({ date, entry, formats, schedule }: {
       {/* Самостоятельный статус (§3): сотрудник сам ставит больничный/отпуск (сегодня) */}
       {isToday && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Отметить отсутствие:</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Отметить отсутствие:</span>
           {(['sick', 'vacation'] as const).map(k => {
             const label = formats.find(f => f.key === k)?.label ?? k
             const active = isAbsentMarked && dayType === k
@@ -197,7 +197,7 @@ function Header({ date, isToday, type, typeColor }: { date: string; isToday: boo
           {new Date(date + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
         </span>
       </div>
-      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: typeColor + '22', color: typeColor }}>{type}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: typeColor + '22', color: typeColor }}>{type}</span>
     </div>
   )
 }
@@ -213,7 +213,7 @@ function BalanceBadge({ delta }: { delta: number }) {
   )
 }
 
-const lbl: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6, display: 'block' }
+const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6, display: 'block' }
 const inp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, outline: 'none', colorScheme: 'dark' }
 
 function TimeField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {

@@ -77,11 +77,11 @@ export function ProjectsKanban({ projects, isLoading, onOpen }: {
               display: 'flex', alignItems: 'center', gap: 8,
             }}>
               <span style={{
-                fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                fontSize: 12, fontWeight: 700, textTransform: 'uppercase',
                 letterSpacing: '0.06em', color: STATUS_COLOR[col.status],
               }}>{col.label}</span>
               <span style={{
-                fontSize: 10, fontWeight: 600,
+                fontSize: 12, fontWeight: 600,
                 background: `${STATUS_COLOR[col.status]}18`,
                 color: STATUS_COLOR[col.status],
                 padding: '1px 6px', borderRadius: 99,
@@ -93,7 +93,7 @@ export function ProjectsKanban({ projects, isLoading, onOpen }: {
               {colProjects.length === 0 && (
                 <div style={{
                   margin: 8, padding: '20px 0', textAlign: 'center',
-                  fontSize: 11, color: 'var(--text-muted)',
+                  fontSize: 12, color: 'var(--text-muted)',
                   border: '1px dashed var(--border)', borderRadius: 8,
                 }}>
                   Нет проектов
@@ -142,7 +142,7 @@ function KanbanCard({ project: p, dragging, onDragStart, onDragEnd, onOpen }: {
     >
       {/* Eyebrow */}
       {p.client && (
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
           {p.client.name}
         </div>
       )}
@@ -158,10 +158,10 @@ function KanbanCard({ project: p, dragging, onDragStart, onDragEnd, onOpen }: {
       {/* Meta */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         {p.producer && (
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{p.producer.name}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.producer.name}</span>
         )}
         <span style={{
-          marginLeft: 'auto', fontSize: 10, fontWeight: 600,
+          marginLeft: 'auto', fontSize: 12, fontWeight: 600,
           background: 'var(--surface-3)', color: 'var(--text-muted)',
           padding: '1px 6px', borderRadius: 4,
         }}>{p._count.workItems} WI</span>
@@ -179,7 +179,7 @@ export function StatusChip({ status, onSelect }: { status: ProjectStatus; onSele
       <span
         onClick={() => setOpen(v => !v)}
         style={{
-          fontSize: 11, fontWeight: 700, cursor: 'pointer',
+          fontSize: 12, fontWeight: 700, cursor: 'pointer',
           color: STATUS_COLOR[status], background: `${STATUS_COLOR[status]}18`,
           borderRadius: 5, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '0.5px',
         }}

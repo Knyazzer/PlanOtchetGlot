@@ -47,18 +47,18 @@ export function DivCard({
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity='0.7'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity='1'}
           >
-            <div style={{ width:26,height:26,borderRadius:'50%',background:`${dept.color}22`,border:`1.5px solid ${dept.color}66`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:dept.color,flexShrink:0 }}>
+            <div style={{ width:26,height:26,borderRadius:'50%',background:`${dept.color}22`,border:`1.5px solid ${dept.color}66`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:dept.color,flexShrink:0 }}>
               {shortName(div.head.name).trim().split(/\s+/).slice(0,2).map((w:string)=>w[0]??'').join('').toUpperCase()}
             </div>
             <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:11,fontWeight:600,color:'var(--text-2)',whiteSpace:'nowrap' }}>{shortName(div.head.name)}</div>
-              <div style={{ fontSize:9,fontWeight:600,letterSpacing:'0.3px',color:'var(--text-muted)',textTransform:'uppercase' }}>Руководитель</div>
+              <div style={{ fontSize:12,fontWeight:600,color:'var(--text-2)',whiteSpace:'nowrap' }}>{shortName(div.head.name)}</div>
+              <div style={{ fontSize:12,fontWeight:600,letterSpacing:'0.3px',color:'var(--text-muted)',textTransform:'uppercase' }}>Руководитель</div>
             </div>
           </div>
         ) : (
           <div style={{ display:'flex',alignItems:'center',gap:5,marginTop:2 }}>
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:'0.6px',textTransform:'uppercase',color:'var(--text-muted)' }}>Рук.</span>
-            <span style={{ fontSize:11,color:'var(--text-muted)',fontStyle:'italic' }}>не назначен</span>
+            <span style={{ fontSize:12,fontWeight:700,letterSpacing:'0.6px',textTransform:'uppercase',color:'var(--text-muted)' }}>Рук.</span>
+            <span style={{ fontSize:12,color:'var(--text-muted)',fontStyle:'italic' }}>не назначен</span>
           </div>
         )}
         {headHover && (
@@ -83,7 +83,7 @@ export function DivCard({
         ))}
         <button
           onClick={() => onAddMember(div.id)}
-          style={{ width:'100%',padding:'6px 14px',background:'none',border:'none',color:'var(--text-muted)',fontSize:11,cursor:'pointer',fontFamily:'Inter,sans-serif',textAlign:'left',display:'flex',alignItems:'center',gap:5,transition:'color .1s' }}
+          style={{ width:'100%',padding:'6px 14px',background:'none',border:'none',color:'var(--text-muted)',fontSize:12,cursor:'pointer',fontFamily:'Inter,sans-serif',textAlign:'left',display:'flex',alignItems:'center',gap:5,transition:'color .1s' }}
           onMouseEnter={e => (e.currentTarget.style.color='var(--text-2)')}
           onMouseLeave={e => (e.currentTarget.style.color='var(--text-muted)')}
         >
@@ -105,12 +105,12 @@ export function MemberRow({ m, deptColor, onEdit, onRemove, onProfile }: { m: Me
       onClick={onProfile}
       onContextMenu={e => e.stopPropagation()}
     >
-      <div style={{ width:24,height:24,borderRadius:'50%',background:`${deptColor}18`,border:`1.5px solid ${deptColor}44`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:deptColor,flexShrink:0 }}>
+      <div style={{ width:24,height:24,borderRadius:'50%',background:`${deptColor}18`,border:`1.5px solid ${deptColor}44`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:deptColor,flexShrink:0 }}>
         {shortName(m.user.name).trim().split(/\s+/).slice(0,2).map((w:string)=>w[0]??'').join('').toUpperCase()}
       </div>
       <div style={{ flexShrink:0 }}>
         <div style={{ fontSize:12,fontWeight:500,color:'var(--text-2)',whiteSpace:'nowrap' }}>{shortName(m.user.name)}</div>
-        {(m.position || m.user.position) && <div style={{ fontSize:10,color:'var(--text-muted)',whiteSpace:'nowrap' }}>{m.position || m.user.position}</div>}
+        {(m.position || m.user.position) && <div style={{ fontSize:12,color:'var(--text-muted)',whiteSpace:'nowrap' }}>{m.position || m.user.position}</div>}
       </div>
       <div style={{ display:'flex',gap:3,visibility:hover?'visible':'hidden',flexShrink:0,position:'absolute',right:14,top:'50%',transform:'translateY(-50%)' }} onClick={e => e.stopPropagation()}>
         <ActionBtn onClick={onEdit}>✎</ActionBtn>
@@ -271,27 +271,27 @@ export function DeptTree({
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity='0.7'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity='1'}
           >
-            <div style={{ width:26,height:26,borderRadius:'50%',background:'rgba(0,0,0,0.28)',border:'1.5px solid rgba(255,255,255,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700,color:'#fff',flexShrink:0 }}>
+            <div style={{ width:26,height:26,borderRadius:'50%',background:'rgba(0,0,0,0.28)',border:'1.5px solid rgba(255,255,255,0.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',flexShrink:0 }}>
               {shortName(dept.director.name).trim().split(/\s+/).slice(0,2).map((w:string)=>w[0]??'').join('').toUpperCase()}
             </div>
             <div style={{ minWidth:0 }}>
-              <div style={{ fontSize:11,fontWeight:700,color:'#fff',whiteSpace:'nowrap',textShadow:'0 1px 2px rgba(0,0,0,0.3)' }}>{shortName(dept.director.name)}</div>
-              <div style={{ fontSize:9,fontWeight:600,letterSpacing:'0.3px',color:'rgba(255,255,255,0.55)',textTransform:'uppercase' }}>Директор</div>
+              <div style={{ fontSize:12,fontWeight:700,color:'#fff',whiteSpace:'nowrap',textShadow:'0 1px 2px rgba(0,0,0,0.3)' }}>{shortName(dept.director.name)}</div>
+              <div style={{ fontSize:12,fontWeight:600,letterSpacing:'0.3px',color:'rgba(255,255,255,0.55)',textTransform:'uppercase' }}>Директор</div>
             </div>
           </div>
         ) : (
           <div style={{ display:'flex',alignItems:'center',gap:6,zIndex:1 }}>
-            <span style={{ fontSize:9,fontWeight:700,letterSpacing:'0.8px',textTransform:'uppercase',color:'rgba(255,255,255,0.5)' }}>Директор</span>
-            <span style={{ fontSize:11,color:'rgba(255,255,255,0.35)',fontStyle:'italic' }}>не назначен</span>
+            <span style={{ fontSize:12,fontWeight:700,letterSpacing:'0.8px',textTransform:'uppercase',color:'rgba(255,255,255,0.5)' }}>Директор</span>
+            <span style={{ fontSize:12,color:'rgba(255,255,255,0.35)',fontStyle:'italic' }}>не назначен</span>
           </div>
         )}
-        <div style={{ fontSize:10,fontWeight:600,color:'rgba(255,255,255,0.45)',marginTop:8,paddingTop:7,borderTop:'1px solid rgba(255,255,255,0.12)',letterSpacing:'0.2px',zIndex:1 }}>
+        <div style={{ fontSize:12,fontWeight:600,color:'rgba(255,255,255,0.45)',marginTop:8,paddingTop:7,borderTop:'1px solid rgba(255,255,255,0.12)',letterSpacing:'0.2px',zIndex:1 }}>
           {memberCount} чел.
         </div>
         {deptHover && (
           <div style={{ position:'absolute',top:8,right:8,display:'flex',gap:4,zIndex:11 }} onClick={e => e.stopPropagation()}>
-            <button onClick={() => onEditDept(dept)} style={{ width:22,height:22,borderRadius:5,border:'1px solid rgba(255,255,255,0.2)',background:'rgba(0,0,0,0.3)',color:'rgba(255,255,255,0.7)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Inter,sans-serif' }}>✎</button>
-            <button onClick={() => onDeleteDept(dept.id)} style={{ width:22,height:22,borderRadius:5,border:'1px solid rgba(255,255,255,0.2)',background:'rgba(0,0,0,0.3)',color:'rgba(255,100,100,0.8)',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Inter,sans-serif' }}>✕</button>
+            <button onClick={() => onEditDept(dept)} style={{ width:22,height:22,borderRadius:5,border:'1px solid rgba(255,255,255,0.2)',background:'rgba(0,0,0,0.3)',color:'rgba(255,255,255,0.7)',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Inter,sans-serif' }}>✎</button>
+            <button onClick={() => onDeleteDept(dept.id)} style={{ width:22,height:22,borderRadius:5,border:'1px solid rgba(255,255,255,0.2)',background:'rgba(0,0,0,0.3)',color:'rgba(255,100,100,0.8)',fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Inter,sans-serif' }}>✕</button>
           </div>
         )}
       </div>

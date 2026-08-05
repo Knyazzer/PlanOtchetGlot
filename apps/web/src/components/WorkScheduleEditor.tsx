@@ -52,13 +52,13 @@ function Form({ userId, init, isNew, formats }: { userId: string; init: Draft; i
 
   const sel: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 8px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 12, outline: 'none', appearance: 'none', cursor: 'pointer', width: '100%' }
   const timeInp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 8px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 12, outline: 'none', colorScheme: 'dark', width: '100%', boxSizing: 'border-box' }
-  const lbl: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }
+  const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }
 
   return (
     <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 600 }}>График работы</span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
           {save.isPending ? 'сохранение…' : everSaved ? '✓ сохранено' : isNew ? 'не задан (дефолт 5/2)' : ''}
         </span>
       </div>
@@ -91,7 +91,7 @@ function Form({ userId, init, isNew, formats }: { userId: string; init: Draft; i
         </div>
       </div>
 
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
         Даёт сотруднику «тип дня по умолчанию» — подсказку в кабинете. Факт (что было на самом деле) сотрудник отмечает сам; отчёт считает только его.
       </div>
     </div>

@@ -134,7 +134,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
         style={{ ...inputStyle, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'space-between' }}
       >
         <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{assigneeName || '—'}</span>
-        <span style={{ fontSize:10, color:'var(--text-muted)', marginLeft:6, flexShrink:0 }}>{showPicker ? '▴' : '▾'}</span>
+        <span style={{ fontSize:12, color:'var(--text-muted)', marginLeft:6, flexShrink:0 }}>{showPicker ? '▴' : '▾'}</span>
       </div>
       {showPicker && (
         <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:300, background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:8, marginTop:4, boxShadow:'0 8px 24px rgba(0,0,0,0.4)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
@@ -350,7 +350,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             </div>
           )}
           {isEdit && editTask?.repeatRule && (
-            <div style={{ fontSize:11, color:'var(--text-muted)' }}>
+            <div style={{ fontSize:12, color:'var(--text-muted)' }}>
               ↻ Серия: {editTask.repeatRule === 'daily' ? 'ежедневно' : 'по будням'} до {toDateStr(editTask.repeatUntil)}
             </div>
           )}
@@ -359,8 +359,8 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             {trackId && trackTitle && (
               <Field label="Трек">
                 <div style={{ ...inputStyle, color:'var(--accent-s)', userSelect:'none', fontSize:13, display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ fontSize:11, opacity:0.7 }}>◈</span> {trackTitle}
-                  {(editTask?.stage?.title ?? null) && <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:4 }}>/ {editTask!.stage!.title}</span>}
+                  <span style={{ fontSize:12, opacity:0.7 }}>◈</span> {trackTitle}
+                  {(editTask?.stage?.title ?? null) && <span style={{ fontSize:12, color:'var(--text-muted)', marginLeft:4 }}>/ {editTask!.stage!.title}</span>}
                 </div>
               </Field>
             )}

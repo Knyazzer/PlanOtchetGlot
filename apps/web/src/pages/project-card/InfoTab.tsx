@@ -34,7 +34,7 @@ export function InfoTab({ project, onBack: _onBack }: { project: Project; onBack
         <SidebarSection label="О проекте">
           <InfoRow label="Клиент"   value={project.client?.name ?? '—'} />
           <InfoRow label="Продюсер" value={project.producer?.name ?? '—'} />
-          <InfoRow label="ID"       value={<span style={{ fontFamily: 'monospace', fontSize: 11 }}>{project.id.slice(0, 12)}</span>} />
+          <InfoRow label="ID"       value={<span style={{ fontFamily: 'monospace', fontSize: 12 }}>{project.id.slice(0, 12)}</span>} />
           {project.kpLink && (
             <InfoRow label="КП" value={<a href={project.kpLink} target="_blank" rel="noreferrer" style={{ color: '#FF6B35', fontSize: 12 }}>Открыть ↗</a>} />
           )}
@@ -73,7 +73,7 @@ export function InfoTab({ project, onBack: _onBack }: { project: Project; onBack
 
         {/* Work items list */}
         <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
             Work Items ({workItems.length})
           </div>
           {workItems.length === 0 && (
@@ -86,14 +86,14 @@ export function InfoTab({ project, onBack: _onBack }: { project: Project; onBack
               background: i % 2 === 1 ? 'rgba(255,255,255,0.018)' : 'transparent',
             }}>
               <span style={{
-                fontSize: 10, fontWeight: 700, flexShrink: 0,
+                fontSize: 12, fontWeight: 700, flexShrink: 0,
                 color: WI_STATUS_COLOR[wi.status], background: `${WI_STATUS_COLOR[wi.status]}18`,
                 padding: '2px 7px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '0.04em',
               }}>{WI_STATUS_LABEL[wi.status]}</span>
               <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{wi.title}</span>
-              {wi.date && <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{wi.date}</span>}
-              {wi.execProducer && <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{formatName(wi.execProducer.name)}</span>}
-              {wi._count.tracks > 0 && <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0, background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 4 }}>{wi._count.tracks} т</span>}
+              {wi.date && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{wi.date}</span>}
+              {wi.execProducer && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{formatName(wi.execProducer.name)}</span>}
+              {wi._count.tracks > 0 && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0, background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 4 }}>{wi._count.tracks} т</span>}
             </div>
           ))}
         </div>

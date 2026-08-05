@@ -32,7 +32,7 @@ export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDay
     <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', background:'var(--surface-1)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
         {WEEKDAYS_S.map(d => (
-          <div key={d} style={{ padding:'10px 12px', fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.8px', textAlign:'center' }}>{d}</div>
+          <div key={d} style={{ padding:'10px 12px', fontSize:12, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.8px', textAlign:'center' }}>{d}</div>
         ))}
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', flex:1, overflowY:'auto', gridAutoRows:'minmax(90px,1fr)' }}>
@@ -54,11 +54,11 @@ export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDay
               }}>{d.getDate()}</div>
               {shown.map(evt => (
                 <div key={evt.id} onClick={e => { e.stopPropagation(); onEventClick(evt) }}
-                  style={{ padding:'1px 6px', borderRadius:3, fontSize:10, fontWeight:500, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', background:evt.color+'22', color:evt.color, borderLeft:`2px solid ${evt.color}`, cursor:'pointer' }}>
+                  style={{ padding:'1px 6px', borderRadius:3, fontSize:12, fontWeight:500, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', background:evt.color+'22', color:evt.color, borderLeft:`2px solid ${evt.color}`, cursor:'pointer' }}>
                   {evt.isAllDay ? '⬤ ' : ''}{evt.title}
                 </div>
               ))}
-              {extra > 0 && <div style={{ fontSize:10, color:'var(--text-muted)', padding:'1px 4px' }}>+{extra} ещё</div>}
+              {extra > 0 && <div style={{ fontSize:12, color:'var(--text-muted)', padding:'1px 4px' }}>+{extra} ещё</div>}
             </div>
           )
         })}
@@ -132,7 +132,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
           const isToday = toYMD(d) === today
           return (
             <div key={i} style={{ padding:'8px 8px', textAlign:'center', borderRight: i<6 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-              <div style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.8px' }}>{WEEKDAYS_S[i]}</div>
+              <div style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.8px' }}>{WEEKDAYS_S[i]}</div>
               <div style={{ fontSize:18, fontWeight:700, width:34, height:34, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'2px auto 0', background: isToday ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent', color: isToday ? '#fff' : 'var(--text-3)' }}>{d.getDate()}</div>
             </div>
           )
@@ -143,7 +143,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
       {hasAllDay && (
         <div style={{ display:'grid', gridTemplateColumns:'52px repeat(7,1fr)', borderBottom:'1px solid var(--border)', flexShrink:0, background:'var(--surface-1)' }}>
           <div style={{ borderRight:'1px solid var(--border)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <span style={{ fontSize:9, color:'var(--text-muted)', writingMode:'vertical-rl', transform:'rotate(180deg)', letterSpacing:'0.5px' }}>Весь день</span>
+            <span style={{ fontSize:12, color:'var(--text-muted)', writingMode:'vertical-rl', transform:'rotate(180deg)', letterSpacing:'0.5px' }}>Весь день</span>
           </div>
           {days.map((d,i) => {
             const entries = allDayFor(toYMD(d))
@@ -151,7 +151,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
               <div key={i} style={{ padding:'3px 4px', borderRight: i<6 ? '1px solid rgba(255,255,255,0.04)' : 'none', minHeight:24 }}>
                 {entries.map(e => (
                   <div key={e.id} onClick={() => onEventClick(e)}
-                    style={{ padding:'1px 6px', borderRadius:3, fontSize:10, fontWeight:500, marginBottom:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', background:e.color+'22', color:e.color, cursor:'pointer' }}>
+                    style={{ padding:'1px 6px', borderRadius:3, fontSize:12, fontWeight:500, marginBottom:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', background:e.color+'22', color:e.color, cursor:'pointer' }}>
                     {e.title}
                   </div>
                 ))}
@@ -165,7 +165,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
       <div ref={bodyRef} style={{ display:'flex', flex:1, overflowY:'auto', position:'relative' }}>
         <div style={{ width:52, flexShrink:0, borderRight:'1px solid var(--border)', position:'relative', minHeight:1440 }}>
           {Array.from({length:25},(_,h) => (
-            <div key={h} style={{ position:'absolute', right:8, top: h*60, fontSize:10, fontWeight:500, color:'var(--text-muted)', transform:'translateY(-50%)', whiteSpace:'nowrap', userSelect:'none' }}>
+            <div key={h} style={{ position:'absolute', right:8, top: h*60, fontSize:12, fontWeight:500, color:'var(--text-muted)', transform:'translateY(-50%)', whiteSpace:'nowrap', userSelect:'none' }}>
               {h === 0 ? '' : `${String(h).padStart(2,'0')}:00`}
             </div>
           ))}
@@ -197,7 +197,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
           background:move.evt.color, color:'#fff', borderRadius:8, padding:'6px 11px', fontSize:12, fontWeight:700,
           boxShadow:'0 10px 28px rgba(0,0,0,0.45)', maxWidth:220, fontFamily:'Inter,sans-serif' }}>
           <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{move.evt.title || 'Событие'}</div>
-          <div style={{ fontSize:11, fontWeight:500, opacity:0.9 }}>{WEEKDAYS_S[move.dayIndex]} · {minToTime(move.startMin)}–{minToTime(move.startMin + move.dur)}</div>
+          <div style={{ fontSize:12, fontWeight:500, opacity:0.9 }}>{WEEKDAYS_S[move.dayIndex]} · {minToTime(move.startMin)}–{minToTime(move.startMin + move.dur)}</div>
         </div>
       )}
     </div>
@@ -315,12 +315,12 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
           <div key={evt.id} data-evt="1" title={`${evt.title} · ${evt.start}–${evt.end}`}
             onMouseDown={onEventDown ? e => onEventDown(evt, e) : undefined}
             onClick={onEventDown ? undefined : () => onEventClick(evt)}
-            style={{ position:'absolute', top:sMin, height, left, width, background:evt.color+'22', borderLeft:`3px solid ${evt.color}`, borderRadius:6, padding: veryDense ? '2px 3px' : dense ? '3px 5px' : '4px 7px', fontSize:11, fontWeight:600, color:evt.color, overflow:'hidden', cursor:'pointer', zIndex:2 }}>
+            style={{ position:'absolute', top:sMin, height, left, width, background:evt.color+'22', borderLeft:`3px solid ${evt.color}`, borderRadius:6, padding: veryDense ? '2px 3px' : dense ? '3px 5px' : '4px 7px', fontSize:12, fontWeight:600, color:evt.color, overflow:'hidden', cursor:'pointer', zIndex:2 }}>
             {!veryDense && (
               <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{evt.title}</div>
             )}
             {!dense && height >= 32 && (
-              <div style={{ fontSize:10, fontWeight:400, opacity:0.8, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{evt.start} – {evt.end}{loc}</div>
+              <div style={{ fontSize:12, fontWeight:400, opacity:0.8, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{evt.start} – {evt.end}{loc}</div>
             )}
           </div>
         )
@@ -335,9 +335,9 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
             style={{ position:'absolute', top:s, height:Math.max(e-s,22), left:2, right:RIGHT_GUTTER+2, zIndex:40, borderRadius:7, cursor:'move',
               background: isCreate ? c+'1f' : c+'33',
               border: isCreate ? `2px dashed ${c}` : `2px solid ${c}`,
-              boxShadow:`0 0 0 3px ${c}22`, padding:'3px 8px', fontSize:11, fontWeight:700, color:c, overflow:'hidden' }}>
+              boxShadow:`0 0 0 3px ${c}22`, padding:'3px 8px', fontSize:12, fontWeight:700, color:c, overflow:'hidden' }}>
             <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{isCreate ? 'Новое событие' : 'Редактирование'}</div>
-            <div style={{ fontSize:10, fontWeight:500, opacity:0.85 }}>{draft.start} – {draft.end}</div>
+            <div style={{ fontSize:12, fontWeight:500, opacity:0.85 }}>{draft.start} – {draft.end}</div>
             <div onMouseDown={ev => startResize('top', ev)}    style={{ position:'absolute', top:-5, left:0, right:0, height:11, cursor:'ns-resize' }} />
             <div onMouseDown={ev => startResize('bottom', ev)} style={{ position:'absolute', bottom:-5, left:0, right:0, height:11, cursor:'ns-resize' }} />
           </div>
@@ -347,7 +347,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
         const now = new Date(); const nowMin = now.getHours()*60+now.getMinutes()
         return <div style={{ position:'absolute', left:0, right:0, top:nowMin, height:2, background:'linear-gradient(90deg,#FF6B35,#E8194B)', zIndex:5, pointerEvents:'none' }}><div style={{ position:'absolute', left:-4, top:-4, width:10, height:10, borderRadius:'50%', background:'#FF6B35' }} /></div>
       })()}
-      <div ref={ghostRef} style={{ position:'absolute', left:4, right:4, borderRadius:6, zIndex:50, pointerEvents:'none', background:'rgba(255,107,53,0.2)', border:'2px dashed #FF6B35', padding:'4px 8px', fontSize:11, fontWeight:600, color:'#FF6B35', display:'none' }} />
+      <div ref={ghostRef} style={{ position:'absolute', left:4, right:4, borderRadius:6, zIndex:50, pointerEvents:'none', background:'rgba(255,107,53,0.2)', border:'2px dashed #FF6B35', padding:'4px 8px', fontSize:12, fontWeight:600, color:'#FF6B35', display:'none' }} />
     </div>
   )
 }
@@ -415,7 +415,7 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
           <div style={{ padding:'4px 24px 8px', display:'flex', flexWrap:'wrap', gap:4 }}>
             {allDay.map(e => (
               <div key={e.id} onClick={() => onEventClick(e)}
-                style={{ padding:'2px 10px', borderRadius:4, fontSize:11, fontWeight:500, background:e.color+'22', color:e.color, cursor:'pointer' }}>
+                style={{ padding:'2px 10px', borderRadius:4, fontSize:12, fontWeight:500, background:e.color+'22', color:e.color, cursor:'pointer' }}>
                 {e.title}
               </div>
             ))}
@@ -425,7 +425,7 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
       <div ref={bodyRef} style={{ display:'flex', flex:1, overflowY:'auto' }}>
         <div style={{ width:52, flexShrink:0, borderRight:'1px solid var(--border)', position:'relative', minHeight:1440 }}>
           {Array.from({length:25},(_,h) => (
-            <div key={h} style={{ position:'absolute', right:8, top:h*60, fontSize:10, fontWeight:500, color:'var(--text-muted)', transform:'translateY(-50%)', userSelect:'none', whiteSpace:'nowrap' }}>
+            <div key={h} style={{ position:'absolute', right:8, top:h*60, fontSize:12, fontWeight:500, color:'var(--text-muted)', transform:'translateY(-50%)', userSelect:'none', whiteSpace:'nowrap' }}>
               {h === 0 ? '' : `${String(h).padStart(2,'0')}:00`}
             </div>
           ))}
@@ -448,7 +448,7 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
           background:move.evt.color, color:'#fff', borderRadius:8, padding:'6px 11px', fontSize:12, fontWeight:700,
           boxShadow:'0 10px 28px rgba(0,0,0,0.45)', maxWidth:220, fontFamily:'Inter,sans-serif' }}>
           <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{move.evt.title || 'Событие'}</div>
-          <div style={{ fontSize:11, fontWeight:500, opacity:0.9 }}>{minToTime(move.startMin)}–{minToTime(move.startMin + move.dur)}</div>
+          <div style={{ fontSize:12, fontWeight:500, opacity:0.9 }}>{minToTime(move.startMin)}–{minToTime(move.startMin + move.dur)}</div>
         </div>
       )}
     </div>

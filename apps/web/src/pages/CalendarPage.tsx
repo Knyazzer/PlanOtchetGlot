@@ -292,12 +292,12 @@ export function CalendarPage() {
             return (
           <div style={{ position:'absolute', top:56, right:16, width:236, maxHeight:'72vh', overflowY:'auto', background:'var(--surface-1)', border:'1px solid var(--border)', borderRadius:12, boxShadow:'0 12px 38px -8px rgba(0,0,0,0.55)', padding:12 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-              <span style={{ fontSize:11, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-muted)' }}>Календари</span>
+              <span style={{ fontSize:12, fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase', color:'var(--text-muted)' }}>Календари</span>
               <button onClick={() => setCalsOpen(false)} aria-label="Закрыть" style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', display:'flex' }}><X size={14} /></button>
             </div>
             <input value={calSearch} onChange={e => setCalSearch(e.target.value)} placeholder="Поиск календаря…"
               style={{ width:'100%', background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:8, padding:'6px 9px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:12, outline:'none', boxSizing:'border-box', marginBottom:6 }} />
-            <div style={{ display:'flex', gap:12, padding:'0 2px 6px', fontSize:11 }}>
+            <div style={{ display:'flex', gap:12, padding:'0 2px 6px', fontSize:12 }}>
               <button onClick={() => setVisible(new Set(allIds))} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--accent-s)', padding:0 }}>Выбрать все</button>
               <button onClick={() => setVisible(new Set())} style={{ background:'none', border:'none', cursor:'pointer', color:'var(--text-muted)', padding:0 }}>Снять все</button>
             </div>

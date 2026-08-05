@@ -125,7 +125,7 @@ export function AnalyticsPage() {
   ] : []
 
   const th: React.CSSProperties = {
-    padding: '8px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+    padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
     textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left',
     borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface-2)',
   }
@@ -178,9 +178,9 @@ export function AnalyticsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
             {kpiCards.map(k => (
               <div key={k.label} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{k.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{k.label}</div>
                 <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'monospace', color: 'var(--text-1)' }}>{k.value}</div>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{k.hint}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{k.hint}</div>
               </div>
             ))}
           </div>
@@ -191,8 +191,8 @@ export function AnalyticsPage() {
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)', marginBottom: 8 }}>Часы по сотрудникам (план дня vs задачи)</div>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={chartData} margin={{ left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={0} angle={-25} height={46} textAnchor="end" />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} interval={0} angle={-25} height={46} textAnchor="end" />
+                  <YAxis tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
                   <Bar dataKey="Часы" fill="#2563eb" radius={[3, 3, 0, 0]} />
                   <Bar dataKey="Часы задач" fill="#29BF12" radius={[3, 3, 0, 0]} />
@@ -229,7 +229,7 @@ export function AnalyticsPage() {
                 <tbody>
                   {data.employees.map(e => (
                     <tr key={e.userId}>
-                      <td style={td}>{formatName(e.name)}<div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{e.deptName}</div></td>
+                      <td style={td}>{formatName(e.name)}<div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{e.deptName}</div></td>
                       <td style={td}>{e.divName}</td>
                       <td style={tdNum}>{e.workDays}</td>
                       <td style={tdNum}>{e.hours}</td>
@@ -259,7 +259,7 @@ export function AnalyticsPage() {
                       <td style={tdNum}>{e.taskHours}</td>
                       <td style={{ ...td, minWidth: 160 }}>
                         {e.loadPct == null ? (
-                          <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>нет плана</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>нет плана</span>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ flex: 1, height: 6, background: 'var(--surface-3)', borderRadius: 3 }}>

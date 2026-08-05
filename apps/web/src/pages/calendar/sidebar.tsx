@@ -5,7 +5,7 @@ import { parseYMD } from './utils'
 export function CalCheckbox({ color, checked, label, onClick }: { color: string; checked: boolean; label: string; onClick: () => void }) {
   return (
     <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 6px', borderRadius:6, cursor:'pointer' }}>
-      <div style={{ width:13, height:13, borderRadius:3, flexShrink:0, border:`2px solid ${color}`, background: checked ? color : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, fontWeight:800, color:'#fff' }}>
+      <div style={{ width:13, height:13, borderRadius:3, flexShrink:0, border:`2px solid ${color}`, background: checked ? color : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff' }}>
         {checked ? '✓' : ''}
       </div>
       <div style={{ fontSize:12, fontWeight:500, color:'var(--text-2)', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{label}</div>
@@ -20,7 +20,7 @@ export function SidebarSection({ label, cats, visible, onToggle, onAdd, children
   return (
     <>
       <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 6px 2px' }}>
-        <div style={{ fontSize:9, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.8px', flex:1 }}>{label}</div>
+        <div style={{ fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.8px', flex:1 }}>{label}</div>
         {onAdd && (
           <button onClick={onAdd} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1, padding:'0 2px', borderRadius:4 }} title="Создать">+</button>
         )}
@@ -36,7 +36,7 @@ export function SidebarSection({ label, cats, visible, onToggle, onAdd, children
 export function GlobalCalRow({ isAdmin, onAdd }: { isAdmin: boolean; onAdd: () => void }) {
   return (
     <div style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 6px', borderRadius:6 }}>
-      <div style={{ width:13, height:13, borderRadius:3, flexShrink:0, background:'#0EA5E9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:8, fontWeight:800, color:'#fff' }}>✓</div>
+      <div style={{ width:13, height:13, borderRadius:3, flexShrink:0, background:'#0EA5E9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff' }}>✓</div>
       <div style={{ fontSize:12, fontWeight:500, color:'var(--text-2)', flex:1 }}>Общий</div>
       {isAdmin && (
         <button onClick={onAdd} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1, padding:'0 2px', borderRadius:4 }} title="Создать запись">+</button>
@@ -76,7 +76,7 @@ export function SidePanel({ ymd, eventsFor, allDayFor, onClose, onEventClick, on
             <div style={{ width:3, borderRadius:2, flexShrink:0, alignSelf:'stretch', minHeight:32, background:evt.color }} />
             <div style={{ flex:1, overflow:'hidden' }}>
               <div style={{ fontSize:12, fontWeight:600, color:'var(--text-1)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', marginBottom:3 }}>{evt.title}</div>
-              <div style={{ fontSize:11, color:'var(--text-3)', fontWeight:500 }}>
+              <div style={{ fontSize:12, color:'var(--text-3)', fontWeight:500 }}>
                 {evt.isAllDay ? 'Весь день' : `${evt.start} — ${evt.end}`}
               </div>
             </div>

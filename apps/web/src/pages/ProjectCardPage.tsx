@@ -45,7 +45,7 @@ export function ProjectCardPage({ project, onBack }: { project: Project; onBack:
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           {/* Left: eyebrow + title + status */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
               <span style={{ color: '#FF6B35', fontFamily: 'monospace' }}>{project.id.slice(0, 8).toUpperCase()}</span>
               <span>·</span>
               <span>{project.client?.name ?? '—'}</span>
@@ -59,7 +59,7 @@ export function ProjectCardPage({ project, onBack }: { project: Project; onBack:
                 onChange={e => updateProject.mutate({ status: e.target.value as ProjectStatus })}
                 style={{
                   appearance: 'none', border: 'none', outline: 'none', cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif', fontSize: 11.5, fontWeight: 700,
+                  fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 700,
                   color: STATUS_COLOR[project.status],
                   background: `${STATUS_COLOR[project.status]}22`,
                   padding: '3px 10px', borderRadius: 99,

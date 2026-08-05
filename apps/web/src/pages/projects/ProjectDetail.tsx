@@ -51,7 +51,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack?: 
             {project.title}
           </h2>
           {project.producer && (
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
               Продюсер: {project.producer.name}
             </div>
           )}
@@ -86,7 +86,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack?: 
           </span>
           <button onClick={() => setShowWIForm(true)} style={{
             background: 'none', border: '1px solid var(--border)', borderRadius: 6,
-            color: 'var(--text-2)', fontSize: 11, padding: '3px 9px', cursor: 'pointer',
+            color: 'var(--text-2)', fontSize: 12, padding: '3px 9px', cursor: 'pointer',
             fontFamily: 'Inter, sans-serif',
           }}>+ Добавить</button>
         </div>
@@ -190,7 +190,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
         padding: '9px 12px', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
       }}>
         <span style={{
-          fontSize: 10, fontWeight: 700, flexShrink: 0,
+          fontSize: 12, fontWeight: 700, flexShrink: 0,
           color: WI_STATUS_COLOR[wi.status],
           background: `${WI_STATUS_COLOR[wi.status]}18`,
           borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', letterSpacing: '0.5px',
@@ -198,9 +198,9 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
         <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-1)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {wi.title}
         </span>
-        {wi.date && <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{wi.date}</span>}
+        {wi.date && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{wi.date}</span>}
         {wi._count.tracks > 0 && (
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0, background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 4 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0, background: 'var(--surface-3)', padding: '1px 6px', borderRadius: 4 }}>
             {wi._count.tracks} т
           </span>
         )}
@@ -263,7 +263,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
                         setDepartments.mutate([...next])
                       }}
                       style={{
-                        fontSize: 11, padding: '3px 9px', borderRadius: 6, cursor: 'pointer',
+                        fontSize: 12, padding: '3px 9px', borderRadius: 6, cursor: 'pointer',
                         fontFamily: 'Inter, sans-serif',
                         border: `1px solid ${checked ? div.deptColor : 'var(--border)'}`,
                         background: checked ? div.deptColor + '22' : 'none',
@@ -301,7 +301,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
                           {track.title}
                         </span>
                         {prog && (
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>
                             {prog.done}/{prog.total}
                           </span>
                         )}
@@ -319,7 +319,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
             <button
               onClick={() => setCreateTrack(true)}
               style={{
-                marginTop: 8, fontSize: 11, padding: '4px 10px',
+                marginTop: 8, fontSize: 12, padding: '4px 10px',
                 borderRadius: 6, border: '1px solid var(--border)',
                 background: 'none', color: 'var(--text-2)', cursor: 'pointer',
                 fontFamily: 'Inter, sans-serif',
@@ -346,13 +346,13 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
                     padding: '5px 8px', background: 'var(--surface-2)',
                     borderRadius: 6, border: '1px solid var(--border)', fontSize: 12,
                   }}>
-                    <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: 10 }}>
+                    <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: 12 }}>
                       {EXPENSE_CATEGORY_LABEL[exp.category]}
                     </span>
                     <span style={{ flex: 1, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {exp.description || '—'}
                     </span>
-                    {exp.date && <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: 11 }}>{exp.date}</span>}
+                    {exp.date && <span style={{ color: 'var(--text-muted)', flexShrink: 0, fontSize: 12 }}>{exp.date}</span>}
                     <span style={{ fontWeight: 700, color: 'var(--text-1)', flexShrink: 0 }}>
                       {fmtMoney(exp.amount)}
                     </span>
@@ -391,7 +391,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>
         {title}
       </div>
       {children}
@@ -465,7 +465,7 @@ export function AddExpenseForm({ wiId: _wiId, onAdd, isPending }: {
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} style={{
-        marginTop: 8, fontSize: 11, padding: '4px 10px',
+        marginTop: 8, fontSize: 12, padding: '4px 10px',
         borderRadius: 6, border: '1px solid var(--border)',
         background: 'none', color: 'var(--text-2)', cursor: 'pointer',
         fontFamily: 'Inter, sans-serif',
@@ -508,7 +508,7 @@ export function AddExpenseForm({ wiId: _wiId, onAdd, isPending }: {
 export function Tag({ label, value }: { label: string; value: string }) {
   return (
     <span style={{
-      fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg)',
+      fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg)',
       border: '1px solid var(--border)', borderRadius: 5, padding: '2px 7px',
     }}>
       <span style={{ color: 'var(--text-3)', marginRight: 3 }}>{label}:</span>{value}

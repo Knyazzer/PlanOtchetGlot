@@ -35,7 +35,7 @@ export function TaskTable({ tasks, onEdit }: { tasks: Task[]; onEdit: (t: Task) 
 
   const th = (k: SortKey, label: string, right = false): React.ReactNode => (
     <th key={k} onClick={() => clickSort(k)} style={{
-      padding: '8px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+      padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
       textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: right ? 'right' : 'left',
       borderBottom: '1px solid var(--border)', cursor: 'pointer', userSelect: 'none',
       position: 'sticky', top: 0, background: 'var(--surface-2)', whiteSpace: 'nowrap',
@@ -73,13 +73,13 @@ export function TaskTable({ tasks, onEdit }: { tasks: Task[]; onEdit: (t: Task) 
                   <span style={{ textDecoration: t.status === 'done' ? 'line-through' : 'none', opacity: t.status === 'done' ? 0.65 : 1 }}>{t.title}</span>
                 </td>
                 <td style={td}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: TT_STATUS_COLOR[t.status] }}>{TT_STATUS_LABEL[t.status] ?? t.status}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: TT_STATUS_COLOR[t.status] }}>{TT_STATUS_LABEL[t.status] ?? t.status}</span>
                 </td>
                 <td style={{ ...td, color: 'var(--text-2)' }}>{t.client ?? '—'}</td>
                 <td style={{ ...td, color: 'var(--text-2)' }}>{t.project?.title ?? '—'}</td>
                 <td style={td}>
                   {tm && t.type !== 'task'
-                    ? <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: tm.color + '22', color: tm.color }}>{tm.label}</span>
+                    ? <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: tm.color + '22', color: tm.color }}>{tm.label}</span>
                     : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Задача</span>}
                 </td>
                 <td style={{ ...td, textAlign: 'right', fontFamily: 'monospace', fontSize: 12 }}>

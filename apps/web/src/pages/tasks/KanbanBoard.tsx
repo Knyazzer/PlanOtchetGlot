@@ -58,36 +58,36 @@ function KanbanCard({ task, color, isDone, deadlineStr, dragId, onEdit, currentU
       </div>
 
       {task.description && (
-        <div style={{ fontSize:11, color:'var(--text-3)', marginBottom:10, lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{task.description}</div>
+        <div style={{ fontSize:12, color:'var(--text-3)', marginBottom:10, lineHeight:1.4, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>{task.description}</div>
       )}
       <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
         {/* клиент · проект — главная мета карточки (95%/40% заполняемости донора) */}
         {(task.client || task.project) && (
-          <span style={{ fontSize:10, fontWeight:600, color:'var(--text-2)' }}>
+          <span style={{ fontSize:12, fontWeight:600, color:'var(--text-2)' }}>
             {task.client}{task.client && task.project ? ' · ' : ''}{task.project?.title ?? ''}
           </span>
         )}
         {task.type !== 'task' && taskTypeMeta(task.type) && (
-          <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20,
+          <span style={{ fontSize:12, fontWeight:600, padding:'2px 8px', borderRadius:20,
             background: taskTypeMeta(task.type)!.color + '22', color: taskTypeMeta(task.type)!.color }}>
             {taskTypeMeta(task.type)!.label}
           </span>
         )}
         {(task.actualMinutes ?? task.plannedMinutes) != null && (
-          <span style={{ fontSize:10, fontFamily:'monospace', color:'var(--text-3)', border:'1px solid var(--border)', borderRadius:20, padding:'1px 7px' }}>
+          <span style={{ fontSize:12, fontFamily:'monospace', color:'var(--text-3)', border:'1px solid var(--border)', borderRadius:20, padding:'1px 7px' }}>
             {fmtMinutes((task.actualMinutes ?? task.plannedMinutes)!)}
           </span>
         )}
         {task.recurringParentId || task.repeatRule ? (
-          <span title="Серия повторов" style={{ fontSize:10, color:'var(--text-muted)' }}>↻</span>
+          <span title="Серия повторов" style={{ fontSize:12, color:'var(--text-muted)' }}>↻</span>
         ) : null}
         {task.track && (
-          <span style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', color:'var(--accent-s)', display:'inline-flex', alignItems:'center', gap:4 }}>
-            <span style={{ fontSize:9 }}>◈</span> {task.track.title}
+          <span style={{ fontSize:12, padding:'2px 8px', borderRadius:20, background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', color:'var(--accent-s)', display:'inline-flex', alignItems:'center', gap:4 }}>
+            <span style={{ fontSize:12 }}>◈</span> {task.track.title}
           </span>
         )}
         {(isCalendar || isOutgoing || isIncoming) && (
-          <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:color+'22', color }}>
+          <span style={{ fontSize:12, fontWeight:600, padding:'2px 8px', borderRadius:20, background:color+'22', color }}>
             {(isIncoming || isCalendar) ? task.assignedBy.name : task.assignee.name}
           </span>
         )}
@@ -216,7 +216,7 @@ export function KanbanBoard({ tasks, groupBy, onUpdate, onOpenCreate, onEdit, cu
                   {col.label}
                 </span>
               )}
-              <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20, background:'var(--surface-3)', color:'var(--text-3)' }}>{colTasks.length}</span>
+              <span style={{ fontSize:12, fontWeight:700, padding:'2px 8px', borderRadius:20, background:'var(--surface-3)', color:'var(--text-3)' }}>{colTasks.length}</span>
               {col.deletable && (
                 <button onClick={() => delColMutation.mutate(col.customId!)}
                   title="Удалить колонку (задачи останутся)"

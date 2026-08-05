@@ -5,7 +5,7 @@ import { parseD, MONTHS_RU, DAYS_RU } from './utils'
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:5 }}>
-      <span style={{ fontSize:11, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px', display:'flex', alignItems:'center' }}>
+      <span style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.5px', display:'flex', alignItems:'center' }}>
         {label}
         {hint && <Hint text={hint} />}
       </span>
@@ -74,7 +74,7 @@ export function DatePicker({ value, onChange, min }: { value: string; onChange: 
         {displayVal && (
           <span
             onMouseDown={e => { e.stopPropagation(); onChange(''); }}
-            style={{ color:'var(--text-muted)', fontSize:11, padding:'2px 4px', borderRadius:4, lineHeight:1 }}
+            style={{ color:'var(--text-muted)', fontSize:12, padding:'2px 4px', borderRadius:4, lineHeight:1 }}
           >✕</span>
         )}
       </div>
@@ -97,7 +97,7 @@ export function DatePicker({ value, onChange, min }: { value: string; onChange: 
           {/* grid */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 34px)', gap:2 }}>
             {DAYS_RU.map(d => (
-              <div key={d} style={{ width:34, height:24, display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.5px' }}>{d}</div>
+              <div key={d} style={{ width:34, height:24, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.5px' }}>{d}</div>
             ))}
             {Array.from({ length: firstDow }, (_, i) => <div key={'e'+i} style={{ width:34, height:34 }} />)}
             {Array.from({ length: daysInMonth }, (_, i) => {

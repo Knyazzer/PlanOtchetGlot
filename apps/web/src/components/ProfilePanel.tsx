@@ -146,13 +146,13 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
             <div>
               <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-1)' }}>{user ? formatName(user.name) : ''}</div>
               {position && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>{position}</div>}
-              {dept     && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{dept}</div>}
+              {dept     && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{dept}</div>}
             </div>
           </div>
 
           {/* Status */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Статус
             </label>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -190,7 +190,7 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
           {/* Theme toggle */}
           {onToggleTheme && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
                 Тема
               </label>
               <button
@@ -214,7 +214,7 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
 
           {/* Email (stub) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Email
             </label>
             <div style={{ fontSize: 13, color: 'var(--text-2)', padding: '8px 0' }}>{user?.email}</div>
@@ -222,7 +222,7 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
 
           {/* Password */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Пароль
             </label>
             <PasswordChange />

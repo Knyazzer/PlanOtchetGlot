@@ -25,7 +25,7 @@ export const LOCATIONS = ['Знаменка крыша', 'Знаменка чё�
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 export const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)',
+  display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)',
   textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4, marginTop: 12,
 }
 export const inputStyle: React.CSSProperties = {
@@ -58,7 +58,7 @@ export const KANBAN_COLS: { status: ProjectStatus; label: string }[] = [
 // ── miniSelectStyle ───────────────────────────────────────────────────────────
 
 export const miniSelectStyle: React.CSSProperties = {
-  fontSize: 11, padding: '3px 6px', borderRadius: 6,
+  fontSize: 12, padding: '3px 6px', borderRadius: 6,
   border: '1px solid var(--border)', background: 'var(--bg)',
   color: 'var(--text-2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer',
 }

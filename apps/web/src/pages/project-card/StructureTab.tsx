@@ -117,8 +117,8 @@ export function StructureTab({ projectId }: { projectId: string }) {
         {/* header */}
         <div style={{ padding: wiCollapsed ? 0 : '0 12px', height: 40, display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)', flexShrink: 0, justifyContent: wiCollapsed ? 'center' : 'flex-start' }}>
           {!wiCollapsed && <>
-            <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', flex: 1 }}>Work Items</span>
-            <button onClick={() => setShowWIForm(true)} style={{ background: 'none', border: 'none', fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer', padding: '3px 8px', fontFamily: 'Inter, sans-serif', borderRadius: 5, transition: 'color 0.1s' }}>+ Добавить</button>
+            <span style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', flex: 1 }}>Work Items</span>
+            <button onClick={() => setShowWIForm(true)} style={{ background: 'none', border: 'none', fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', cursor: 'pointer', padding: '3px 8px', fontFamily: 'Inter, sans-serif', borderRadius: 5, transition: 'color 0.1s' }}>+ Добавить</button>
           </>}
           <button
             onClick={() => setWiCollapsed(c => !c)}
@@ -137,7 +137,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                 title={wi.title}
                 style={{
                   width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 9, fontWeight: 800, cursor: 'pointer', flexShrink: 0,
+                  fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0,
                   background: wi.id === activeWIId ? 'rgba(245,158,11,0.3)' : 'rgba(245,158,11,0.08)',
                   color: wi.id === activeWIId ? '#F59E0B' : 'rgba(245,158,11,0.6)',
                   border: `1px solid ${wi.id === activeWIId ? 'rgba(245,158,11,0.7)' : 'rgba(245,158,11,0.15)'}`,
@@ -180,11 +180,11 @@ export function StructureTab({ projectId }: { projectId: string }) {
                     <div style={{ height: 3, background: 'linear-gradient(90deg,#F59E0B,#FCD34D)' }} />
                     {/* head */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 10px 6px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 10, fontWeight: 400, fontFamily: 'monospace', color: 'rgba(245,158,11,0.85)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.22)', padding: '1px 5px', borderRadius: 4, flexShrink: 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 400, fontFamily: 'monospace', color: 'rgba(245,158,11,0.85)', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.22)', padding: '1px 5px', borderRadius: 4, flexShrink: 0 }}>
                         {String(idx + 1).padStart(2, '0')}
                       </span>
                       <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{wi.title}</span>
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 99, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, background: `${WI_STATUS_COLOR[wi.status]}18`, color: WI_STATUS_COLOR[wi.status] }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 7px', borderRadius: 99, flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 3, background: `${WI_STATUS_COLOR[wi.status]}18`, color: WI_STATUS_COLOR[wi.status] }}>
                         {WI_STATUS_LABEL[wi.status]}
                       </span>
                     </div>
@@ -201,7 +201,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, gap: 6 }}>
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <select value={wi.status} onChange={e => { e.stopPropagation(); updateWI.mutate({ status: e.target.value }) }} style={{ ...miniSelectStyle, fontSize: 11 }}
+                            <select value={wi.status} onChange={e => { e.stopPropagation(); updateWI.mutate({ status: e.target.value }) }} style={{ ...miniSelectStyle, fontSize: 12 }}
                               onClick={e => e.stopPropagation()}>
                               {(Object.entries(WI_STATUS_LABEL) as [WorkItemStatus, string][]).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                             </select>
@@ -227,7 +227,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
         {/* header */}
         <div style={{ padding: deptsCollapsed ? 0 : '0 12px', height: 40, display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)', flexShrink: 0, justifyContent: deptsCollapsed ? 'center' : 'flex-start' }}>
           {!deptsCollapsed && (
-            <span style={{ flex: 1, fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+            <span style={{ flex: 1, fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
               {activeWI ? `Отделы · ${workItems.findIndex(w => w.id === activeWIId) + 1 > 0 ? `T${workItems.findIndex(w => w.id === activeWIId) + 1}` : '—'}` : 'Отделы'}
             </span>
           )}
@@ -248,7 +248,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                 title={div.name}
                 style={{
                   width: 28, height: 28, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 9, fontWeight: 800, cursor: 'pointer', flexShrink: 0,
+                  fontSize: 12, fontWeight: 800, cursor: 'pointer', flexShrink: 0,
                   background: div.id === activeDivision?.id ? `${div.deptColor}40` : `${div.deptColor}18`,
                   color: div.deptColor,
                   border: `1px solid ${div.id === activeDivision?.id ? div.deptColor : `${div.deptColor}40`}`,
@@ -288,12 +288,12 @@ export function StructureTab({ projectId }: { projectId: string }) {
                   >
                     <div style={{
                       width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 9.5, fontWeight: 800, flexShrink: 0,
+                      fontSize: 12.5, fontWeight: 800, flexShrink: 0,
                       background: `${div.deptColor}20`, color: div.deptColor,
                     }}>{initials(div.name)}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{div.name}</div>
-                      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 1 }}>{div.deptName}</div>
+                      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 1 }}>{div.deptName}</div>
                     </div>
                   </div>
                 )
@@ -306,7 +306,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                   // toggle all divisions selector inline — open WI form for now
                   setShowWIForm(true)
                 }}
-                style={{ background: 'none', border: '1px dashed rgba(255,255,255,0.13)', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted)', padding: '7px 12px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.1s', width: '100%', marginTop: 2 }}
+                style={{ background: 'none', border: '1px dashed rgba(255,255,255,0.13)', borderRadius: 8, fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 600, color: 'var(--text-muted)', padding: '7px 12px', cursor: 'pointer', textAlign: 'left', transition: 'all 0.1s', width: '100%', marginTop: 2 }}
               >+ Подключить отдел</button>
             )}
           </div>
@@ -318,13 +318,13 @@ export function StructureTab({ projectId }: { projectId: string }) {
         {/* crumbs bar */}
         <div style={{ height: 40, padding: '0 20px', flexShrink: 0, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 5 }}>
           {activeWI && activeDivision ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden' }}>
               <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 160 }}>{activeWI.title}</span>
               <span style={{ opacity: 0.5 }}>›</span>
               <span style={{ color: '#FF6B35', fontWeight: 700, whiteSpace: 'nowrap' }}>{activeDivision.name}</span>
             </div>
           ) : (
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Выберите WI и отдел</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Выберите WI и отдел</span>
           )}
         </div>
 
@@ -382,7 +382,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                   <div style={{ fontSize: 32, opacity: 0.2, marginBottom: 10 }}>👥</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Команда отдела</div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 300, margin: '0 auto 12px' }}>Список штатных сотрудников и подрядчиков, подключённых к этому отделу: роли, тип занятости, количество смен, нагрузка.</div>
-                  <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 10.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
+                  <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 12.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
                 </div>
               )}
               {detailTab === 'scheduler' && (
@@ -390,7 +390,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                   <div style={{ fontSize: 32, opacity: 0.2, marginBottom: 10 }}>📅</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Планировщик</div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 280, margin: '0 auto 12px' }}>График смен и нагрузки по отделу для этого Work Item.</div>
-                  <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 10.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
+                  <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 12.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
                 </div>
               )}
               {detailTab === 'freelancers' && (
@@ -398,7 +398,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                   <div style={{ fontSize: 32, opacity: 0.2, marginBottom: 10 }}>🎭</div>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginBottom: 5 }}>Фрилансеры</div>
                   <div style={{ fontSize: 12, lineHeight: 1.55, maxWidth: 280, margin: '0 auto 12px' }}>Внешние подрядчики, привлечённые для этого отдела в рамках Work Item.</div>
-                  <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 10.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
+                  <span style={{ display: 'inline-block', padding: '3px 10px', background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 99, fontSize: 12.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>— ЗАГЛУШКА · В РАЗРАБОТКЕ —</span>
                 </div>
               )}
             </div>

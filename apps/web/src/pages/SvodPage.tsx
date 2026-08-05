@@ -97,7 +97,7 @@ export function SvodPage() {
     key ? (svod?.formats.find(f => f.key === key)?.label ?? key) : ''
 
   const th: React.CSSProperties = {
-    padding: '6px 4px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+    padding: '6px 4px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
     textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center',
     borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface-2)', zIndex: 2,
   }
@@ -131,7 +131,7 @@ export function SvodPage() {
       {svod && (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
           {svod.formats.map(f => (
-            <span key={f.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--text-2)' }}>
+            <span key={f.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-2)' }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: FORMAT_COLORS[f.key] ?? '#888' }} />
               {f.label}{typeof f.score === 'number' && f.score > 0 ? ` (${f.score})` : ''}
             </span>
@@ -177,12 +177,12 @@ export function SvodPage() {
                       <span style={{ width: 9, height: 9, borderRadius: 3, background: color, flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: 13, color: 'var(--text-1)' }}>{fmtLabel(c!.dayFormat)}</span>
                       {(c!.taskMinutes > 0 || c!.workMinutes > 0) && (
-                        <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-3)' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-3)' }}>
                           {Math.round(((c!.taskMinutes || c!.workMinutes) / 6)) / 10}ч
                         </span>
                       )}
                       {c!.taskCount > 0 && (
-                        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{c!.tasksDone}/{c!.taskCount}</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{c!.tasksDone}/{c!.taskCount}</span>
                       )}
                     </>
                   ) : (
@@ -216,7 +216,7 @@ export function SvodPage() {
                 <tr key={row.user.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '7px 10px', fontSize: 13, color: row.user.id === user?.id ? 'var(--accent, #2563eb)' : 'var(--text-1)', fontWeight: row.user.id === user?.id ? 700 : 500, position: 'sticky', left: 0, background: 'var(--surface-2)', zIndex: 1, whiteSpace: 'nowrap' }}>
                     {formatName(row.user.name)}
-                    {row.user.position && <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>{row.user.position}</div>}
+                    {row.user.position && <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>{row.user.position}</div>}
                   </td>
                   {days.map(d => {
                     const c = row.cells[d.key]
@@ -234,7 +234,7 @@ export function SvodPage() {
                         {color && (
                           <div style={{
                             borderRadius: 6, background: `${color}22`, border: `1px solid ${color}55`,
-                            fontSize: 9, fontFamily: 'monospace', color: 'var(--text-1)',
+                            fontSize: 12, fontFamily: 'monospace', color: 'var(--text-1)',
                             padding: '3px 1px', lineHeight: 1.25, minWidth: 26,
                           }}>
                             <div style={{ width: '100%', height: 3, borderRadius: 2, background: color, marginBottom: 2 }} />

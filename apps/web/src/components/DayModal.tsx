@@ -82,13 +82,13 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
 
         {isOwn && events.length > 0 && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>
               Встречи дня · {events.length}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {events.map(ev => (
                 <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-3)', flexShrink: 0 }}>{ev.startTime}–{ev.endTime}</span>
+                  <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text-3)', flexShrink: 0 }}>{ev.startTime}–{ev.endTime}</span>
                   <span style={{ flex: 1, fontSize: 12, color: 'var(--text-1)' }}>{ev.title}</span>
                 </div>
               ))}
@@ -97,7 +97,7 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
         )}
 
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>
             Задачи дня {tasks.length > 0 && `· ${tasks.length}`}
           </div>
           {tasksLoading && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Загрузка…</div>}
@@ -109,13 +109,13 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
                 <span style={{ flex: 1, fontSize: 12, color: 'var(--text-1)', textDecoration: t.status === 'done' ? 'line-through' : 'none', opacity: t.status === 'done' ? 0.65 : 1 }}>
                   {t.title}
                   {(t.client || t.project) && (
-                    <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 11 }}>
+                    <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 12 }}>
                       {t.client}{t.client && t.project ? ' · ' : ''}{t.project?.title ?? ''}
                     </span>
                   )}
                 </span>
                 {(t.actualMinutes ?? t.plannedMinutes) != null && (
-                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-3)', flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text-3)', flexShrink: 0 }}>
                     {fmtMinutes((t.actualMinutes ?? t.plannedMinutes)!)}
                   </span>
                 )}
@@ -164,7 +164,7 @@ function DayEntryBlock({ entry, formats, date, isOwn, qcInvalidate }: {
     padding: '7px 9px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, outline: 'none', boxSizing: 'border-box',
   }
   const lbl: React.CSSProperties = {
-    fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 5, display: 'block',
+    fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 5, display: 'block',
   }
 
   if (!isOwn) {

@@ -35,12 +35,12 @@ export function HistoryGroupRow({ group, isFirst, isLast, hasLineAfter }: { grou
             <div style={{ fontSize:13, color:'var(--text-1)', lineHeight:1.4 }}>
               {ACTION_LABELS[last.action]?.(last.meta ?? {}) ?? last.action}
             </div>
-            <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+            <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
               {formatName(last.user.name)} · {fmtTs(last.createdAt)}
             </div>
             <button
               onClick={() => setExpanded(true)}
-              style={{ marginTop:5, background:'none', border:'none', padding:0, cursor:'pointer', color:'var(--text-muted)', fontSize:11, fontFamily:'Inter,sans-serif' }}
+              style={{ marginTop:5, background:'none', border:'none', padding:0, cursor:'pointer', color:'var(--text-muted)', fontSize:12, fontFamily:'Inter,sans-serif' }}
             >
               Показать все {group.entries.length} изменения ›
             </button>
@@ -55,7 +55,7 @@ export function HistoryGroupRow({ group, isFirst, isLast, hasLineAfter }: { grou
                 <div style={{ fontSize:13, color:'var(--text-1)', lineHeight:1.4 }}>
                   {ACTION_LABELS[e.action]?.(e.meta ?? {}) ?? e.action}
                 </div>
-                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+                <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
                   {formatName(e.user.name)} · {fmtTs(e.createdAt)}
                 </div>
                 {ei < group.entries.length - 1 && (
@@ -66,7 +66,7 @@ export function HistoryGroupRow({ group, isFirst, isLast, hasLineAfter }: { grou
             {expanded && isCollapsed && (
               <button
                 onClick={() => setExpanded(false)}
-                style={{ background:'none', border:'none', padding:0, cursor:'pointer', color:'var(--text-muted)', fontSize:11, fontFamily:'Inter,sans-serif', textAlign:'left' }}
+                style={{ background:'none', border:'none', padding:0, cursor:'pointer', color:'var(--text-muted)', fontSize:12, fontFamily:'Inter,sans-serif', textAlign:'left' }}
               >
                 Свернуть ‹
               </button>

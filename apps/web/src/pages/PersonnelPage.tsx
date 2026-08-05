@@ -106,7 +106,7 @@ function Th({ label, sortable, active, dir, onClick }: {
   return (
     <th onClick={sortable ? onClick : undefined} style={{
       padding: '9px 14px', textAlign: 'left',
-      fontWeight: 700, fontSize: 11, color: active ? 'var(--accent-s)' : 'var(--text-muted)',
+      fontWeight: 700, fontSize: 12, color: active ? 'var(--accent-s)' : 'var(--text-muted)',
       textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
       borderBottom: '1px solid var(--border)', position: 'sticky', top: 0,
       background: 'var(--surface-2)', cursor: sortable ? 'pointer' : 'default', userSelect: 'none',
@@ -195,14 +195,14 @@ function CreateModal({ type, onClose, onCreated }: CreateModalProps) {
 
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
               ФИО *
             </label>
             <input value={name} onChange={e => setFullName(e.target.value)} placeholder="Фамилия Имя Отчество" style={inp} autoFocus />
           </div>
 
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
               Должность
             </label>
             <input value={position} onChange={e => setPosition(e.target.value)} placeholder="Например: Оператор" style={inp} />
@@ -212,13 +212,13 @@ function CreateModal({ type, onClose, onCreated }: CreateModalProps) {
             <>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
                     Департамент
                   </label>
                   <input value={department} onChange={e => setDepartment(e.target.value)} placeholder="Напр.: Производство" style={inp} />
                 </div>
                 <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
                     Отдел
                   </label>
                   <input value={subDept} onChange={e => setSubDept(e.target.value)} placeholder="Напр.: Монтаж" style={inp} />
@@ -226,7 +226,7 @@ function CreateModal({ type, onClose, onCreated }: CreateModalProps) {
               </div>
 
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
                   Табельный номер
                 </label>
                 <input value={tabNumber} onChange={e => setTabNumber(e.target.value)} placeholder="Напр.: S160" style={inp} />
@@ -234,14 +234,14 @@ function CreateModal({ type, onClose, onCreated }: CreateModalProps) {
             </>
           ) : (
             <div>
-              <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
                 Номер фрилансера
               </label>
               <input value={tabNumber} onChange={e => setTabNumber(e.target.value)} placeholder="Напр.: FL187" style={inp} />
             </div>
           )}
 
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
             Логин будет сгенерирован автоматически из ФИО. Пароль по умолчанию: <strong style={{ color: 'var(--text-2)' }}>Tvshifts2026</strong>
           </p>
         </div>
@@ -402,9 +402,9 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
               {person.name}
-              {isAdminUser && <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--accent, #2563eb)', borderRadius: 5, padding: '2px 6px' }}>АДМИН</span>}
+              {isAdminUser && <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--accent, #2563eb)', borderRadius: 5, padding: '2px 6px' }}>АДМИН</span>}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
               {isStaff ? 'Штатный сотрудник' : 'Фрилансер'} · с {fmtDate(person.createdAt)}
             </div>
           </div>
@@ -420,14 +420,14 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
             </div>
           )}
 
-          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ФИО</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ФИО</label>
           <input value={name} onChange={e => setFullName(e.target.value)} style={{ ...inp, marginTop: -8 }} />
 
-          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Email</label>
           <input value={email} onChange={e => setEmail(e.target.value)} style={{ ...inp, marginTop: -8 }} />
 
           {!isStaff && (<>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Должность</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Должность</label>
             <input value={position} onChange={e => setPosition(e.target.value)} style={{ ...inp, marginTop: -8 }} placeholder="—" />
           </>)}
 
@@ -460,11 +460,11 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
               </button>
             </div>
             {!isWorking && (
-              <span style={{ fontSize: 11, color: 'var(--danger)' }}>Выключение + «Сохранить» = уволить (доступ заблокируется во всех приложениях)</span>
+              <span style={{ fontSize: 12, color: 'var(--danger)' }}>Выключение + «Сохранить» = уволить (доступ заблокируется во всех приложениях)</span>
             )}
             {isWorking && (
               <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 6 }}>
                   Табельный номер
                 </label>
                 <input value={tabNumber} onChange={e => setTabNumber(e.target.value)} placeholder="Авто при создании" style={inp} />
@@ -477,7 +477,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
             <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 13, color: 'var(--text-2)', fontWeight: 500 }}>Доступ в платформу (бета)</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Пускает внутрь Nexus вместо кабинета</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Пускает внутрь Nexus вместо кабинета</span>
               </div>
               <button
                 onClick={() => { const next = !platformAccess; setPlatformAccess(next); togglePlatform.mutate(next) }}
@@ -530,22 +530,22 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <code style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text-1)', userSelect: 'all' }}>{tempPw}</code>
                 <button onClick={() => navigator.clipboard?.writeText(tempPw)} style={{
-                  fontSize: 11, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)',
+                  fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)',
                   background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                 }}>Копировать</button>
               </div>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Логин: {email}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Логин: {email}</span>
             </div>
           ) : person.authId ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ fontSize: 12, color: 'var(--success)', textAlign: 'center' }}>✓ Доступ в систему выдан</div>
               {person.tempPassword && (
                 <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Временный пароль (до первой смены сотрудником):</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Временный пароль (до первой смены сотрудником):</span>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <code style={{ flex: 1, fontSize: 13, fontWeight: 700, color: 'var(--text-1)', userSelect: 'all' }}>{person.tempPassword}</code>
                     <button onClick={() => navigator.clipboard?.writeText(person.tempPassword!)} style={{
-                      fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)',
+                      fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)',
                       background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
                     }}>Копир.</button>
                   </div>
@@ -639,7 +639,7 @@ function StaffTab() {
             outline: 'none', width: 220, fontFamily: 'Inter, sans-serif',
           }} />
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{filtered.length} из {data.length}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 6 }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 6 }}>
             <span style={{ color: 'var(--success)', fontWeight: 600 }}>{data.filter(p => p.isActive).length} активны</span>
             {showInactive && <><span>·</span><span style={{ color: 'var(--danger)' }}>{data.filter(p => !p.isActive).length} уволены</span></>}
           </span>
@@ -697,7 +697,7 @@ function StaffTab() {
                     cursor: 'pointer',
                     outline: isSelected ? '1px solid rgba(255,107,53,0.3)' : 'none',
                   }}>
-                    <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 11, minWidth: 28 }}>{idx + 1}</td>
+                    <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12, minWidth: 28 }}>{idx + 1}</td>
                     <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', width: 36 }}>
                       <AccountDot authId={p.authId} mustChangePassword={p.mustChangePassword} />
                     </td>
@@ -714,7 +714,7 @@ function StaffTab() {
                     <Td muted={!p.department}>{p.department || '—'}</Td>
                     <Td muted={!p.subDept}>{p.subDept || '—'}</Td>
                     <td style={{ padding: '8px 10px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 4, padding: '2px 6px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', letterSpacing: '0.3px' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, borderRadius: 4, padding: '2px 6px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)', letterSpacing: '0.3px' }}>
                         {ROLE_LABELS[p.role] ?? p.role}
                       </span>
                     </td>
@@ -834,7 +834,7 @@ function BulkOnboardResult({ result, onClose }: { result: BulkResult; onClose: (
 function DupBadge({ label, title, color }: { label: string; title: string; color: string }) {
   return (
     <span title={title} style={{
-      fontSize: 9, fontWeight: 800, letterSpacing: '0.3px', padding: '2px 5px',
+      fontSize: 12, fontWeight: 800, letterSpacing: '0.3px', padding: '2px 5px',
       borderRadius: 4, background: color, color: '#fff',
       marginLeft: 6, verticalAlign: 'middle', flexShrink: 0,
     }}>{label}</span>
@@ -943,7 +943,7 @@ function FreelancersTab() {
                     cursor: 'pointer',
                     outline: isSelected ? '1px solid rgba(255,107,53,0.3)' : 'none',
                   }}>
-                    <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 11, minWidth: 28 }}>{idx + 1}</td>
+                    <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12, minWidth: 28 }}>{idx + 1}</td>
                     <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', width: 36 }}>
                       <AccountDot authId={p.authId} mustChangePassword={p.mustChangePassword} />
                     </td>

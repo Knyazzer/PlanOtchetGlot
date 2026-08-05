@@ -54,7 +54,7 @@ function QuickEventModal({ date, onClose, onCreated }: { date: string; onClose: 
   })
 
   const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none', boxSizing:'border-box' as const }
-  const lbl: React.CSSProperties = { fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' as const, letterSpacing:'1px', marginBottom:6, display:'block' }
+  const lbl: React.CSSProperties = { fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase' as const, letterSpacing:'1px', marginBottom:6, display:'block' }
 
   return (
     <div
@@ -110,7 +110,7 @@ function DeadlineBadge({ days }: { days: number }) {
   const color = days < 0 ? '#E8194B' : days === 0 ? '#FF6B35' : days <= 2 ? '#F59E0B' : 'var(--text-muted)'
   const label = days < 0 ? `просрочено ${Math.abs(days)} д.` : days === 0 ? 'сегодня' : `${days} дн.`
   return (
-    <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:20, background: color+'22', color, whiteSpace:'nowrap' }}>
+    <span style={{ fontSize:12, fontWeight:700, padding:'2px 8px', borderRadius:20, background: color+'22', color, whiteSpace:'nowrap' }}>
       {label}
     </span>
   )
@@ -186,7 +186,7 @@ export function DashboardPage() {
     display: 'flex', flexDirection: 'column',
   }
   const colTitle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+    fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
     textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     flexShrink: 0,
@@ -242,8 +242,8 @@ export function DashboardPage() {
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
                       <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4, flexWrap:'wrap' }}>
-                        <span style={{ fontSize:10, padding:'1px 7px', borderRadius:20, background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', gap:3 }}>
-                          <span style={{ fontSize:9 }}>◈</span> Не выбран
+                        <span style={{ fontSize:12, padding:'1px 7px', borderRadius:20, background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', gap:3 }}>
+                          <span style={{ fontSize:12 }}>◈</span> Не выбран
                         </span>
                         {t.deadline && <DeadlineBadge days={daysDiff(t.deadline)} />}
                       </div>
@@ -263,7 +263,7 @@ export function DashboardPage() {
                 <button
                   key={d}
                   onClick={() => setDlThreshold(d)}
-                  style={{ padding:'2px 8px', borderRadius:20, border:`1px solid ${dlThreshold === d ? 'var(--accent-s)' : 'var(--border)'}`, background: dlThreshold === d ? 'rgba(255,107,53,0.15)' : 'none', color: dlThreshold === d ? 'var(--accent-s)' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:10, fontWeight:700, cursor:'pointer' }}
+                  style={{ padding:'2px 8px', borderRadius:20, border:`1px solid ${dlThreshold === d ? 'var(--accent-s)' : 'var(--border)'}`, background: dlThreshold === d ? 'rgba(255,107,53,0.15)' : 'none', color: dlThreshold === d ? 'var(--accent-s)' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}
                 >{d}д</button>
               ))}
             </div>
@@ -274,7 +274,7 @@ export function DashboardPage() {
                 <div key={t.id} style={{ ...rowStyle, alignItems:'center' }} onClick={() => setEditTask(t)}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+                    <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
                       {new Date(t.deadline!).toLocaleDateString('ru-RU', { day:'numeric', month:'short' })}
                     </div>
                   </div>
@@ -308,19 +308,19 @@ export function DashboardPage() {
                     <div style={{ width:3, borderRadius:4, background: color, flexShrink:0, alignSelf:'stretch', minHeight:36 }} />
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-                        <span style={{ fontSize:11, fontWeight:700, color }}>
+                        <span style={{ fontSize:12, fontWeight:700, color }}>
                           {fmtTime(ev.startTime)}–{fmtTime(ev.endTime)}
                         </span>
                         {isNow && (
-                          <span style={{ fontSize:9, fontWeight:700, padding:'1px 6px', borderRadius:20, background: color+'33', color }}>СЕЙЧАС</span>
+                          <span style={{ fontSize:12, fontWeight:700, padding:'1px 6px', borderRadius:20, background: color+'33', color }}>СЕЙЧАС</span>
                         )}
                       </div>
                       <div style={{ fontSize:13, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</div>
                       {ev.location.length > 0 && (
-                        <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{ev.location[0]}</div>
+                        <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{ev.location[0]}</div>
                       )}
                     </div>
-                    <span style={{ fontSize:10, padding:'2px 8px', borderRadius:20, background: color+'18', color, fontWeight:600, flexShrink:0, alignSelf:'flex-start', marginTop:2 }}>
+                    <span style={{ fontSize:12, padding:'2px 8px', borderRadius:20, background: color+'18', color, fontWeight:600, flexShrink:0, alignSelf:'flex-start', marginTop:2 }}>
                       {TYPE_LABEL[ev.type] ?? ev.type}
                     </span>
                   </div>

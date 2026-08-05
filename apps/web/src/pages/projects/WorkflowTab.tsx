@@ -53,12 +53,12 @@ export function WorkflowTab() {
           {(Object.entries(WI_STATUS_LABEL) as [WorkItemStatus, string][]).map(([s, l]) =>
             byStatus[s] > 0 ? (
               <span key={s} style={{
-                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 5,
+                fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 5,
                 background: `${WI_STATUS_COLOR[s]}18`, color: WI_STATUS_COLOR[s],
               }}>{l}: {byStatus[s]}</span>
             ) : null
           )}
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', padding: '2px 8px' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', padding: '2px 8px' }}>
             Всего: {total}
           </span>
         </div>
@@ -82,7 +82,7 @@ export function WorkflowTab() {
                   <th key={h} style={{
                     padding: '8px 14px', textAlign: 'left',
                     borderBottom: '1px solid var(--border)',
-                    fontWeight: 700, fontSize: 10, color: 'var(--text-muted)',
+                    fontWeight: 700, fontSize: 12, color: 'var(--text-muted)',
                     textTransform: 'uppercase', letterSpacing: '0.5px',
                     position: 'sticky', top: 0, background: 'var(--bg)',
                   }}>{h}</th>
@@ -94,7 +94,7 @@ export function WorkflowTab() {
                 <tr key={wi.id} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}>
                   <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                     <span style={{
-                      fontSize: 10, fontWeight: 700,
+                      fontSize: 12, fontWeight: 700,
                       color: WI_STATUS_COLOR[wi.status], background: `${WI_STATUS_COLOR[wi.status]}18`,
                       borderRadius: 4, padding: '1px 6px', textTransform: 'uppercase', letterSpacing: '0.4px',
                     }}>{WI_STATUS_LABEL[wi.status]}</span>
@@ -102,7 +102,7 @@ export function WorkflowTab() {
                   <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', fontWeight: 600, color: 'var(--text-1)' }}>
                     {wi.title}
                     {wi.execProducer && (
-                      <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginTop: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--text-muted)', marginTop: 1 }}>
                         {formatName(wi.execProducer.name)}
                       </div>
                     )}
@@ -110,7 +110,7 @@ export function WorkflowTab() {
                   <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', color: 'var(--text-2)', whiteSpace: 'nowrap' }}>
                     {wi.project?.title ?? '—'}
                     {wi.project?.client && (
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{wi.project.client.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{wi.project.client.name}</div>
                     )}
                   </td>
                   <td style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>

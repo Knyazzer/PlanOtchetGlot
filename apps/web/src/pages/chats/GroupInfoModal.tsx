@@ -133,13 +133,13 @@ export function GroupInfoModal({
 
             {/* Members list */}
             <div style={{ padding: '12px 20px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Участники
               </span>
               {info.myIsGroupAdmin && (
                 <button
                   onMouseDown={() => setShowAddSearch(s => !s)}
-                  style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-s)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
+                  style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-s)', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
                 >
                   {showAddSearch ? 'Свернуть' : '+ Добавить'}
                 </button>
@@ -170,7 +170,7 @@ export function GroupInfoModal({
                       >
                         <UserAvatar name={u.name} size={30} />
                         <span style={{ fontSize: 13, color: 'var(--text-1)' }}>{formatName(u.name)}</span>
-                        <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--accent-s)', fontWeight: 600 }}>Добавить</span>
+                        <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--accent-s)', fontWeight: 600 }}>Добавить</span>
                       </div>
                     ))}
                   </div>
@@ -186,7 +186,7 @@ export function GroupInfoModal({
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>{formatName(m.name)}</div>
                     {m.isGroupAdmin && (
-                      <span style={{ fontSize: 10, color: '#FF6B35', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>Админ</span>
+                      <span style={{ fontSize: 12, color: '#FF6B35', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', flexShrink: 0 }}>Админ</span>
                     )}
                   </div>
                   {/* Remove button: admin can remove non-admin members that aren't themselves */}

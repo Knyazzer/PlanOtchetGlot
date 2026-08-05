@@ -25,19 +25,19 @@ export function WIFormModal({ projectId, onClose }: { projectId: string; onClose
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Название *" style={inputStyle} autoFocus />
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5, display: 'flex', alignItems: 'center' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5, display: 'flex', alignItems: 'center' }}>
               Дата <Hint text="Дата съёмки или события. Отображается в карточке WI." />
             </div>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ ...inputStyle, colorScheme: 'dark' }} />
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5, display: 'flex', alignItems: 'center' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5, display: 'flex', alignItems: 'center' }}>
               Формат <Hint text="Производственный формат съёмки: ТВ, Радио и т.д. Влияет на фильтры по проектам." />
             </div>
             <select value={format} onChange={e => setFormat(e.target.value)} style={inputStyle}><option value="">— Формат</option>{FORMATS.map(f => <option key={f} value={f}>{f}</option>)}</select>
           </div>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5, display: 'flex', alignItems: 'center' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 5, display: 'flex', alignItems: 'center' }}>
               Локация <Hint text="Место проведения съёмки. Из предустановленного списка площадок компании." />
             </div>
             <select value={location} onChange={e => setLocation(e.target.value)} style={inputStyle}><option value="">— Локация</option>{LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}</select>

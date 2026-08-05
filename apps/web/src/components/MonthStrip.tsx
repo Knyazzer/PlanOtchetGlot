@@ -103,7 +103,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
               }}
             >
               <span style={{ width: 22, flexShrink: 0, textAlign: 'right', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isSel ? 'var(--text-1)' : weekend ? 'var(--text-muted)' : 'var(--text-2)' }}>{dn}</span>
-              <span style={{ width: 22, flexShrink: 0, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: isToday ? 'var(--accent-s)' : 'var(--text-muted)' }}>{WD[dow]}</span>
+              <span style={{ width: 22, flexShrink: 0, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: isToday ? 'var(--accent-s)' : 'var(--text-muted)' }}>{WD[dow]}</span>
               {e ? (
                 <>
                   <span style={{ width: 8, height: 8, borderRadius: 2, background: color!, flexShrink: 0 }} />
@@ -145,7 +145,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
             {Math.abs(balance) < 1 ? 'в норме' : `${balance > 0 ? '+' : '−'}${fmtHM(balance)}`}
           </b>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
           <span>Выходных в месяце</span>
           <span style={{ fontVariantNumeric: 'tabular-nums' }}>{weekendCount}</span>
         </div>

@@ -16,7 +16,7 @@ const inp: React.CSSProperties = {
   outline: 'none', width: '100%', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box',
 }
 const lbl: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase',
+  fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase',
   letterSpacing: '0.5px', display: 'block', marginBottom: 6,
 }
 const TYPES: { v: AssignType; l: string }[] = [

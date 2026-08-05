@@ -92,7 +92,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
   }
 
   const inp: React.CSSProperties = { width:'100%', background:'var(--surface-3)', border:'1px solid var(--border)', borderRadius:8, padding:'9px 11px', color:'var(--text-1)', fontFamily:'Inter,sans-serif', fontSize:13, outline:'none', boxSizing:'border-box' }
-  const lbl: React.CSSProperties = { fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'1px', marginBottom:6, display:'block' }
+  const lbl: React.CSSProperties = { fontSize:12, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'1px', marginBottom:6, display:'block' }
 
   return (
     <div
@@ -220,7 +220,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
                   style={{ ...inp, cursor:'pointer', minHeight:38, display:'flex', flexWrap:'wrap', gap:4, alignItems:'center', padding:'6px 10px' }}>
                   {selNames.length === 0
                     ? <span style={{ color:'var(--text-muted)', fontSize:12 }}>Добавить участников...</span>
-                    : selNames.map(n => <span key={n} style={{ fontSize:11, padding:'2px 8px', borderRadius:12, background:'rgba(139,92,246,0.2)', color:'#8B5CF6', fontWeight:600 }}>{n}</span>)
+                    : selNames.map(n => <span key={n} style={{ fontSize:12, padding:'2px 8px', borderRadius:12, background:'rgba(139,92,246,0.2)', color:'#8B5CF6', fontWeight:600 }}>{n}</span>)
                   }
                 </div>
                 {pickerOpen && (
@@ -235,7 +235,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
                         return (
                           <div key={m.id} onMouseDown={e => { e.preventDefault(); setParticipantIds(prev => prev.includes(m.id) ? prev.filter(x => x !== m.id) : [...prev, m.id]) }}
                             style={{ padding:'9px 12px', fontSize:13, color:'var(--text-1)', cursor:'pointer', display:'flex', alignItems:'center', gap:8, background: sel ? 'rgba(139,92,246,0.1)' : 'transparent' }}>
-                            <div style={{ width:14, height:14, borderRadius:3, border:`1.5px solid ${sel ? '#8B5CF6' : 'var(--text-muted)'}`, background: sel ? '#8B5CF6' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:9, color:'#fff', flexShrink:0 }}>{sel ? '✓' : ''}</div>
+                            <div style={{ width:14, height:14, borderRadius:3, border:`1.5px solid ${sel ? '#8B5CF6' : 'var(--text-muted)'}`, background: sel ? '#8B5CF6' : 'transparent', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#fff', flexShrink:0 }}>{sel ? '✓' : ''}</div>
                             {m.name}
                           </div>
                         )
@@ -249,7 +249,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
                 {ev.participants.length === 0
                   ? <span style={{ fontSize:12, color:'var(--text-muted)' }}>Нет участников</span>
                   : [ev.author, ...ev.participants.map(p => p.user)].map(u => (
-                      <span key={u.id} style={{ fontSize:11, padding:'3px 10px', borderRadius:12, background:'rgba(139,92,246,0.15)', color:'#8B5CF6', fontWeight:600 }}>{u.name}</span>
+                      <span key={u.id} style={{ fontSize:12, padding:'3px 10px', borderRadius:12, background:'rgba(139,92,246,0.15)', color:'#8B5CF6', fontWeight:600 }}>{u.name}</span>
                     ))
                 }
               </div>

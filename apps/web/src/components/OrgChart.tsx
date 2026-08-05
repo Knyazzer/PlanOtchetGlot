@@ -221,7 +221,7 @@ export function OrgChartTab() {
       </div>
 
       {/* Hint */}
-      <div style={{ position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 16px',fontSize:11,color:'var(--text-muted)',display:'flex',gap:12,pointerEvents:'none' }}>
+      <div style={{ position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 16px',fontSize:12,color:'var(--text-muted)',display:'flex',gap:12,pointerEvents:'none' }}>
         <span>Колесо — зум</span>
         <span>Тащи — пан</span>
         <span>ПКМ — новый департамент</span>

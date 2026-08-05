@@ -178,18 +178,18 @@ function DivCard({ div, dept, highlightIds, myId, cardRef, onPersonClick, onPers
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '0.7'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
           >
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: `${dept.color}22`, border: `1.5px solid ${dept.color}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: dept.color, flexShrink: 0 }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: `${dept.color}22`, border: `1.5px solid ${dept.color}66`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: dept.color, flexShrink: 0 }}>
               {formatName(div.head.name).trim().split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{formatName(div.head.name)}</div>
-              <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.3px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Руководитель</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)', whiteSpace: 'nowrap' }}>{formatName(div.head.name)}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.3px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Руководитель</div>
             </div>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Рук.</span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>не назначен</span>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Рук.</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>не назначен</span>
           </div>
         )}
       </div>
@@ -219,7 +219,7 @@ function DivCard({ div, dept, highlightIds, myId, cardRef, onPersonClick, onPers
                 background: isHighlighted ? '#F59E0B22' : isSelf ? 'rgba(99,102,241,0.15)' : `${dept.color}18`,
                 border: `1.5px solid ${isHighlighted ? '#F59E0B88' : isSelf ? 'rgba(99,102,241,0.45)' : dept.color + '55'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, fontWeight: 700,
+                fontSize: 12, fontWeight: 700,
                 color: isHighlighted ? '#F59E0B' : isSelf ? 'rgba(99,102,241,0.9)' : dept.color,
               }}>
                 {formatName(m.user.name).trim().split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase()}
@@ -232,15 +232,15 @@ function DivCard({ div, dept, highlightIds, myId, cardRef, onPersonClick, onPers
                   ...(isSelf ? { color: 'rgba(99,102,241,0.9)' } : {}),
                 }}>
                   {formatName(m.user.name)}
-                  {isSelf && <span style={{ marginLeft: 6, fontSize: 9, fontWeight: 700, color: 'rgba(99,102,241,0.7)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 4, padding: '0 3px' }}>вы</span>}
+                  {isSelf && <span style={{ marginLeft: 6, fontSize: 12, fontWeight: 700, color: 'rgba(99,102,241,0.7)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 4, padding: '0 3px' }}>вы</span>}
                 </div>
-                {(m.position || m.user.position) && <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{m.position || m.user.position}</div>}
+                {(m.position || m.user.position) && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{m.position || m.user.position}</div>}
               </div>
             </div>
           )
         })}
         {div.memberships.length === 0 && (
-          <div style={{ padding: '8px 14px', fontSize: 11, color: 'var(--text-muted)' }}>Нет сотрудников</div>
+          <div style={{ padding: '8px 14px', fontSize: 12, color: 'var(--text-muted)' }}>Нет сотрудников</div>
         )}
       </div>
     </div>
@@ -365,21 +365,21 @@ function DeptTree({ dept, highlightIds, myId, onPersonClick, onPersonCtx }: {
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '0.7'}
             onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
           >
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(0,0,0,0.28)', border: '1.5px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(0,0,0,0.28)', border: '1.5px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
               {formatName(dept.director.name).trim().split(/\s+/).slice(0, 2).map(w => w[0] ?? '').join('').toUpperCase()}
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>{formatName(dept.director.name)}</div>
-              <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.3px', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' }}>Директор</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>{formatName(dept.director.name)}</div>
+              <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.3px', color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' }}>Директор</div>
             </div>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, zIndex: 1 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>Директор</span>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>не назначен</span>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>Директор</span>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>не назначен</span>
           </div>
         )}
-        <div style={{ fontSize: 10, fontWeight: 600, color: 'rgba(255,255,255,0.45)', marginTop: 8, paddingTop: 7, borderTop: '1px solid rgba(255,255,255,0.12)', letterSpacing: '0.2px', zIndex: 1 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.45)', marginTop: 8, paddingTop: 7, borderTop: '1px solid rgba(255,255,255,0.12)', letterSpacing: '0.2px', zIndex: 1 }}>
           {memberCount} чел.
         </div>
       </div>
@@ -763,7 +763,7 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
               }}
             >{b.label}</button>
           ))}
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 36, textAlign: 'center' }}>
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 36, textAlign: 'center' }}>
             {Math.round(scale * 100)}%
           </span>
         </div>
@@ -772,7 +772,7 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
         <div style={{
           position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
           background: 'var(--surface-2)', border: '1px solid var(--border)',
-          borderRadius: 8, padding: '6px 14px', fontSize: 11, color: 'var(--text-muted)',
+          borderRadius: 8, padding: '6px 14px', fontSize: 12, color: 'var(--text-muted)',
           display: 'flex', gap: 12, pointerEvents: 'none',
         }}>
           <span>Колесо — зум</span>

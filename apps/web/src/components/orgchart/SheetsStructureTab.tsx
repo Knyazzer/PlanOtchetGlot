@@ -106,7 +106,7 @@ export function SheetsStructureTab() {
       ref={canvasRef}
     >
       {/* Read-only badge */}
-      <div style={{ position:'absolute',top:16,left:16,zIndex:10,background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:6,padding:'4px 10px',fontSize:11,color:'var(--text-muted)',pointerEvents:'none' }}>
+      <div style={{ position:'absolute',top:16,left:16,zIndex:10,background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:6,padding:'4px 10px',fontSize:12,color:'var(--text-muted)',pointerEvents:'none' }}>
         Снимок из Google Sheets · только просмотр
       </div>
 
@@ -121,20 +121,20 @@ export function SheetsStructureTab() {
             <div style={{ background:col.color,borderRadius:10,padding:'14px 20px 12px',minWidth:200,position:'relative',overflow:'hidden',boxShadow:`0 4px 24px ${col.color}44` }}>
               <div style={{ position:'absolute',inset:0,background:'linear-gradient(135deg,rgba(255,255,255,0.1),transparent)',pointerEvents:'none' }} />
               <div style={{ fontSize:13,fontWeight:800,color:'#fff',letterSpacing:'0.02em' }}>{col.name}</div>
-              <div style={{ fontSize:10,color:'rgba(255,255,255,0.6)',marginTop:3 }}>{col.subs.reduce((s,d)=>s+d.members.length,0)} чел.</div>
+              <div style={{ fontSize:12,color:'rgba(255,255,255,0.6)',marginTop:3 }}>{col.subs.reduce((s,d)=>s+d.members.length,0)} чел.</div>
             </div>
             {/* Division cards row */}
             <div style={{ display:'flex',flexDirection:'row',gap:12,alignItems:'flex-start' }}>
               {col.subs.map((sub, si) => (
                 <div key={si} style={{ minWidth:160,maxWidth:200,background:'var(--surface-1)',border:'1px solid var(--border)',borderTop:`3px solid ${col.color}`,borderRadius:8,overflow:'hidden' }}>
                   {sub.name && (
-                    <div style={{ padding:'8px 12px 6px',borderBottom:'1px solid var(--border)',fontSize:11,fontWeight:700,color:'var(--text-2)' }}>{sub.name}</div>
+                    <div style={{ padding:'8px 12px 6px',borderBottom:'1px solid var(--border)',fontSize:12,fontWeight:700,color:'var(--text-2)' }}>{sub.name}</div>
                   )}
                   <div style={{ padding:'4px 12px 8px' }}>
                     {sub.members.map((m, mi) => (
                       <div key={mi} style={{ padding:'3px 0',borderBottom: mi < sub.members.length - 1 ? '1px solid var(--border)' : 'none' }}>
                         <div style={{ fontSize:12,fontWeight:500,color:'var(--text-2)' }}>{shortName(m.name)}</div>
-                        {m.position && <div style={{ fontSize:10,color:'var(--text-muted)' }}>{m.position}</div>}
+                        {m.position && <div style={{ fontSize:12,color:'var(--text-muted)' }}>{m.position}</div>}
                       </div>
                     ))}
                   </div>

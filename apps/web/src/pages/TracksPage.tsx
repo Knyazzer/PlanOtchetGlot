@@ -76,7 +76,7 @@ const TASK_STATUS_COLOR: Record<string, string> = { backlog: '#464658', inprogre
 const TASK_STATUS_LABEL: Record<string, string> = { backlog: 'Бэклог', inprogress: 'В работе', done: 'Готово' }
 
 const lbl: React.CSSProperties = {
-  fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+  fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
   textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, display: 'block',
 }
 const inp: React.CSSProperties = {
@@ -112,7 +112,7 @@ function DonutChart({ done, total, label, color = '#FF6B35' }: { done: number; t
           {done}/{total}
         </text>
       </svg>
-      <span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</span>
     </div>
   )
 }
@@ -210,13 +210,13 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
                   <button
                     onClick={() => { if (confirm(`Удалить Этап ${i + 1}? Задачи открепятся.`)) deleteStageMut.mutate(stage.id) }}
                     title="Удалить этап"
-                    style={{ position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'rgba(232,25,75,0.85)', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}
+                    style={{ position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'rgba(232,25,75,0.85)', color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}
                   >×</button>
                 )}
               </div>
 
               {/* Label */}
-              <span style={{ fontSize: 10, fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', color: textColor, fontWeight: isSel ? 700 : 400 }}>
+              <span style={{ fontSize: 12, fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', color: textColor, fontWeight: isSel ? 700 : 400 }}>
                 {allDone ? '✓ Готово' : `Этап ${i + 1}`}
               </span>
 
@@ -224,11 +224,11 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
               <div style={{ width: '100%', padding: '0 8px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {stage.tasks.map(t => <TaskCard key={t.id} t={t} onOpen={() => onOpenTask(t.id)} />)}
                 {stage.tasks.length === 0 && (
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.12)', textAlign: 'center', padding: '6px 0', fontFamily: 'Inter,sans-serif' }}>—</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.12)', textAlign: 'center', padding: '6px 0', fontFamily: 'Inter,sans-serif' }}>—</div>
                 )}
                 {isInvolved && isSel && (
                   <button onClick={() => setCreatingTask(true)}
-                    style={{ fontSize: 11, color: 'rgba(255,107,53,0.65)', background: 'none', border: '1px dashed rgba(255,107,53,0.25)', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', textAlign: 'center', marginTop: 2 }}>
+                    style={{ fontSize: 12, color: 'rgba(255,107,53,0.65)', background: 'none', border: '1px dashed rgba(255,107,53,0.25)', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', textAlign: 'center', marginTop: 2 }}>
                     + задача
                   </button>
                 )}
@@ -244,7 +244,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
               onClick={() => !addStageMut.isPending && addStageMut.mutate()}
               style={{ width: CIRCLE_D, height: CIRCLE_D, borderRadius: '50%', border: '2px dashed rgba(255,107,53,0.35)', background: 'var(--bg,#0e0e14)', color: 'rgba(255,107,53,0.55)', fontSize: 22, cursor: addStageMut.isPending ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: addStageMut.isPending ? 0.4 : 1, fontFamily: 'Inter,sans-serif', lineHeight: 1 }}
             >+</button>
-            <span style={{ fontSize: 10, color: 'rgba(255,107,53,0.35)', fontFamily: 'Inter,sans-serif' }}>Этап</span>
+            <span style={{ fontSize: 12, color: 'rgba(255,107,53,0.35)', fontFamily: 'Inter,sans-serif' }}>Этап</span>
           </div>
         )}
       </div>
@@ -280,10 +280,10 @@ function TaskCard({ t, onOpen }: { t: StageTask; onOpen?: () => void }) {
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: sc, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{TASK_STATUS_LABEL[t.status]} · {t.assignee.name}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{TASK_STATUS_LABEL[t.status]} · {t.assignee.name}</div>
       </div>
       {t.deadline && (
-        <span style={{ fontSize: 11, color: daysDiff(t.deadline) <= 1 ? '#E8194B' : 'var(--text-muted)', flexShrink: 0 }}>{fmtDate(t.deadline)}</span>
+        <span style={{ fontSize: 12, color: daysDiff(t.deadline) <= 1 ? '#E8194B' : 'var(--text-muted)', flexShrink: 0 }}>{fmtDate(t.deadline)}</span>
       )}
     </div>
   )
@@ -294,9 +294,9 @@ function UnstageBlock({ tasks, onOpenTask }: { tasks: StageTask[]; onOpenTask?: 
   return (
     <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: collapsed ? 0 : 10, cursor: 'pointer' }} onClick={() => setCollapsed(v => !v)}>
-        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{collapsed ? '▶' : '▼'}</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Без этапа</span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({tasks.length})</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{collapsed ? '▶' : '▼'}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Без этапа</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({tasks.length})</span>
       </div>
       {!collapsed && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: STAGE_COL_W }}>
@@ -334,7 +334,7 @@ function UserPicker({ selected, onChange, label, hint }: { selected: string[]; o
         {selectedUsers.length === 0
           ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Не выбрано</span>
           : selectedUsers.map(u => (
-              <span key={u.id} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,107,53,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
+              <span key={u.id} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,107,53,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
             ))
         }
       </div>
@@ -347,7 +347,7 @@ function UserPicker({ selected, onChange, label, hint }: { selected: string[]; o
             {filtered.map(u => (
               <div key={u.id} onClick={() => toggle(u.id)}
                 style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: selected.includes(u.id) ? 'var(--accent-s)' : 'var(--text-2)' }}>
-                <span style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${selected.includes(u.id) ? 'var(--accent-s)' : 'var(--border)'}`, background: selected.includes(u.id) ? 'rgba(255,107,53,0.2)' : 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>
+                <span style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${selected.includes(u.id) ? 'var(--accent-s)' : 'var(--border)'}`, background: selected.includes(u.id) ? 'rgba(255,107,53,0.2)' : 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
                   {selected.includes(u.id) ? '✓' : ''}
                 </span>
                 {u.name}
@@ -540,7 +540,7 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
             <span style={lbl}>Участники (автоматически)</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px', background: 'var(--surface-3)', borderRadius: 8, border: '1px solid var(--border)' }}>
               {[track.leader, ...track.members.map(m => m.user)].map(u => (
-                <span key={u.id} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,107,53,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
+                <span key={u.id} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,107,53,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
               ))}
             </div>
           </div>
@@ -562,7 +562,7 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
 function MetaItem({ icon, label, value, highlight }: { icon: string; label: string; value: string; highlight?: string }) {
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{icon} {label}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{icon} {label}</div>
       <div style={{ fontSize: 13, fontWeight: 600, color: highlight ?? 'var(--text-1)' }}>{value}</div>
     </div>
   )
@@ -620,7 +620,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith }: { trackId: string; on
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, padding: 0, lineHeight: 1, marginTop: 3, flexShrink: 0 }}>←</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
             </div>
             <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>{track.title}</div>
             {track.description && <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 5, lineHeight: 1.5 }}>{track.description}</div>}
@@ -676,7 +676,7 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3, marginBottom: 2 }}>{track.title}</div>
-          {track.description && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.description}</div>}
+          {track.description && <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.description}</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <DonutChart done={doneTasks}  total={totalTasks}       label="Задачи" color="#0EA5E9" />
@@ -685,11 +685,11 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>👥 {memberCount}</span>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>👥 {memberCount}</span>
         </div>
         {daysLeft !== null && (
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (daysLeft < 0 ? '#E8194B' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)') + '22', color: daysLeft < 0 ? '#E8194B' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (daysLeft < 0 ? '#E8194B' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)') + '22', color: daysLeft < 0 ? '#E8194B' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)' }}>
             {daysLeft < 0 ? `просрочено ${Math.abs(daysLeft)} д.` : daysLeft === 0 ? 'сегодня' : `${daysLeft} дн.`}
           </span>
         )}
@@ -734,7 +734,7 @@ export function TracksPage({ onOpenChatWith }: { onOpenChatWith?: OpenChatFn } =
 
       {active.length > 0 && (
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Активные ({active.length})</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Активные ({active.length})</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
             {active.map(t => <TrackCard key={t.id} track={t} onClick={() => setDetailId(t.id)} />)}
           </div>
@@ -743,7 +743,7 @@ export function TracksPage({ onOpenChatWith }: { onOpenChatWith?: OpenChatFn } =
 
       {inactive.length > 0 && (
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Завершённые / Архив ({inactive.length})</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Завершённые / Архив ({inactive.length})</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
             {inactive.map(t => <TrackCard key={t.id} track={t} onClick={() => setDetailId(t.id)} />)}
           </div>

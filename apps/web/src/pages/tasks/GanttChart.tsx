@@ -167,7 +167,7 @@ export function GanttChart({ tasks, onUpdate, onOpenCreate, onEdit, currentUserI
         {/* Left panel */}
         <div style={{ width:240, flexShrink:0, background:'var(--surface-1)', borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', overflow:'hidden' }}>
           <div style={{ height:36, borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', padding:'0 16px', flexShrink:0 }}>
-            <span style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.8px', color:'var(--text-muted)' }}>Задачи</span>
+            <span style={{ fontSize:12, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.8px', color:'var(--text-muted)' }}>Задачи</span>
           </div>
           <div ref={listRef} onScroll={onListScroll} style={{ flex:1, overflowY:'auto', overflowX:'hidden' }}>
             {sorted.map(task => {
@@ -179,7 +179,7 @@ export function GanttChart({ tasks, onUpdate, onOpenCreate, onEdit, currentUserI
                 <div key={task.id} style={{ height:ROW_H, display:'flex', alignItems:'center', padding:'0 16px', borderBottom:'1px solid var(--border)', gap:10 }}>
                   <div
                     onClick={() => { if (!isCalendar) onUpdate(task.id, { status: isDone ? 'inprogress' : 'done' }) }}
-                    style={{ width:16, height:16, borderRadius:4, border:`1.5px solid ${isDone ? '#FF6B35' : 'var(--text-muted)'}`, background: isDone ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent', cursor: isCalendar ? 'default' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:10, color:'#fff', opacity: isCalendar ? 0.5 : 1 }}>
+                    style={{ width:16, height:16, borderRadius:4, border:`1.5px solid ${isDone ? '#FF6B35' : 'var(--text-muted)'}`, background: isDone ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent', cursor: isCalendar ? 'default' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:12, color:'#fff', opacity: isCalendar ? 0.5 : 1 }}>
                     {isDone ? '✓' : ''}
                   </div>
                   {isCalendar
@@ -223,7 +223,7 @@ export function GanttChart({ tasks, onUpdate, onOpenCreate, onEdit, currentUserI
                 return (
                   <div key={i} style={{ width:DAY_W, flexShrink:0, height:'100%', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:1, borderRight:'1px solid var(--border)', background: isToday ? 'rgba(232,25,75,0.08)' : isWE ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
                     <div style={{ fontSize:12, fontWeight:600, color: isToday ? '#E8194B' : 'var(--text-3)', lineHeight:1 }}>{d.getDate()}</div>
-                    <div style={{ fontSize:9, fontWeight:500, color: isToday ? '#E8194B' : 'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.4px', opacity: isToday ? 0.7 : 1 }}>{WDAYS_RU[dow]}</div>
+                    <div style={{ fontSize:12, fontWeight:500, color: isToday ? '#E8194B' : 'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.4px', opacity: isToday ? 0.7 : 1 }}>{WDAYS_RU[dow]}</div>
                   </div>
                 )
               })}
@@ -320,7 +320,7 @@ export function GanttChart({ tasks, onUpdate, onOpenCreate, onEdit, currentUserI
                             )
                           })()
                       }
-                      <div style={{ fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.92)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', pointerEvents:'none', textShadow:'0 1px 3px rgba(0,0,0,0.5)' }}>{task.title}</div>
+                      <div style={{ fontSize:12, fontWeight:600, color:'rgba(255,255,255,0.92)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', pointerEvents:'none', textShadow:'0 1px 3px rgba(0,0,0,0.5)' }}>{task.title}</div>
                     </div>
                   </div>
                 )

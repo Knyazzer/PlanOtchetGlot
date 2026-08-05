@@ -63,7 +63,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Уведомления</span>
           <button onClick={markAllRead} title="Отметить всё прочитанным"
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'inherit', fontSize: 11, cursor: 'pointer' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}>
             <CheckCheck size={13} /> Прочитано
           </button>
           <button onClick={onClose} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
@@ -78,7 +78,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
             }}>
               <MessageSquare size={15} style={{ color: '#0EA5E9', flexShrink: 0 }} />
               <span style={{ flex: 1, fontSize: 13, color: 'var(--text-1)' }}>Непрочитанные сообщения</span>
-              <span style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '1px 7px' }}>{unreadChats}</span>
+              <span style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 10, padding: '1px 7px' }}>{unreadChats}</span>
             </button>
           )}
 
@@ -91,7 +91,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
               <div key={g.key}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, padding: '0 2px' }}>
                   <Icon size={12} style={{ color: 'var(--text-muted)' }} />
-                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{g.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{g.label}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {g.items.map(item => {
@@ -107,7 +107,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
                         {fresh && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary, #4f46e5)', marginTop: 5, flexShrink: 0 }} />}
                         <span style={{ flex: 1, fontSize: 12, color: 'var(--text-1)', lineHeight: 1.45 }}>
                           {item.text}
-                          <span style={{ display: 'block', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{relTime(item.at)}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{relTime(item.at)}</span>
                         </span>
                       </button>
                     )

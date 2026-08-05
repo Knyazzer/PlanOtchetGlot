@@ -317,7 +317,7 @@ function ChatRightPanel({ chatOpen, onToggle, chatsProps, chatKey, totalUnread }
             <span style={{
               position: 'absolute', top: -2, right: -6,
               background: 'linear-gradient(135deg,#FF6B35,#E8194B)',
-              color: '#fff', fontSize: 9, fontWeight: 700,
+              color: '#fff', fontSize: 12, fontWeight: 700,
               borderRadius: 8, padding: '1px 4px', lineHeight: 1.4,
               pointerEvents: 'none',
             }}>{totalUnread > 99 ? '99+' : totalUnread}</span>

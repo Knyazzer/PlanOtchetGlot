@@ -297,14 +297,14 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
               {chat.isPinned && <span style={{ marginRight: 4, opacity: .5 }}>📌</span>}
               {name}
             </span>
-            {last && <span style={{ fontSize: 10, color: 'var(--text-muted)', flexShrink: 0 }}>{fmtTime(last.createdAt)}</span>}
+            {last && <span style={{ fontSize: 12, color: 'var(--text-muted)', flexShrink: 0 }}>{fmtTime(last.createdAt)}</span>}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 150 }}>
               {last ? (last.senderId === myId ? 'Вы: ' : '') + last.text : ''}
             </span>
             {uCount > 0 && (
-              <span style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '1px 6px', flexShrink: 0 }}>
+              <span style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 10, padding: '1px 6px', flexShrink: 0 }}>
                 {uCount > 99 ? '99+' : uCount}
               </span>
             )}
@@ -344,10 +344,10 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
           <div key={id} style={{ position: 'relative', width: '100%' }}>
             <button onClick={() => setFolder(id)} style={folderBtn(folder === id)}>
               <span style={{ fontSize: 20 }}>{icon}</span>
-              <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: '.3px' }}>{label}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.3px' }}>{label}</span>
             </button>
             {cnt > 0 && (
-              <span style={{ position: 'absolute', top: 8, right: 8, background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: 8, padding: '1px 4px', pointerEvents: 'none' }}>
+              <span style={{ position: 'absolute', top: 8, right: 8, background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 8, padding: '1px 4px', pointerEvents: 'none' }}>
                 {cnt > 99 ? '99+' : cnt}
               </span>
             )}
@@ -404,7 +404,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                     })}
                     style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', cursor: 'pointer', userSelect: 'none' }}
                   >
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)', transition: 'transform .15s', transform: expandedClients.has(client) ? 'rotate(90deg)' : 'none' }}>▶</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', transition: 'transform .15s', transform: expandedClients.has(client) ? 'rotate(90deg)' : 'none' }}>▶</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-2)' }}>{client}</span>
                   </div>
                   {expandedClients.has(client) && pchats.map(p => (
@@ -415,7 +415,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                       onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'transparent'}
                     >
                       <span style={{ fontSize: 14 }}>💬</span> {formatName(p.name)}
-                      <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text-muted)', background: 'var(--surface-3)', borderRadius: 4, padding: '1px 5px' }}>скоро</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', background: 'var(--surface-3)', borderRadius: 4, padding: '1px 5px' }}>скоро</span>
                     </div>
                   ))}
                 </div>
@@ -458,9 +458,9 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                   }
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{chatName(activeChat, myId, isAdmin)}</div>
-                    {activeChat.type === 'direct' && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>личный чат</div>}
-                    {activeChat.type === 'support' && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{isAdmin ? 'обращение в поддержку' : 'техподдержка'}</div>}
-                    {activeChat.type === 'group' && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{activeChat.otherMembers.length + 1} участн.</div>}
+                    {activeChat.type === 'direct' && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>личный чат</div>}
+                    {activeChat.type === 'support' && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{isAdmin ? 'обращение в поддержку' : 'техподдержка'}</div>}
+                    {activeChat.type === 'group' && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{activeChat.otherMembers.length + 1} участн.</div>}
                   </div>
                 </>
               )}
@@ -502,7 +502,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                     {/* Имя отправителя в группе */}
                     {showName && (
                       <div style={{ marginBottom: 3, marginLeft: 34 }}>
-                        <span style={{ fontSize: 11, fontWeight: 600, color: nameColor(msg.sender.name) }}>{formatName(msg.sender.name)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: nameColor(msg.sender.name) }}>{formatName(msg.sender.name)}</span>
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, flexDirection: mine ? 'row-reverse' : 'row' }}>
@@ -540,7 +540,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                             >
                               <div style={{ width: 4, flexShrink: 0, background: isDeleted ? (mine ? 'rgba(255,255,255,0.3)' : 'var(--text-muted)') : (mine ? 'rgba(255,255,255,0.7)' : '#FF6B35') }} />
                               <div style={{ padding: '8px 10px', flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color: mine ? 'rgba(255,255,255,0.55)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: mine ? 'rgba(255,255,255,0.55)' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                                   Задача
                                 </div>
                                 <div style={{ fontSize: 13, fontWeight: 700, color: mine ? '#fff' : 'var(--text-1)', lineHeight: 1.3, marginBottom: 4, wordBreak: 'break-word' }}>
@@ -548,8 +548,8 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                                 </div>
                                 {!isDeleted && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <span style={{ fontSize: 10, color: mine ? 'rgba(255,255,255,0.4)' : 'var(--text-muted)' }}>◈</span>
-                                    <span style={{ fontSize: 11, color: mine ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>Не выбран</span>
+                                    <span style={{ fontSize: 12, color: mine ? 'rgba(255,255,255,0.4)' : 'var(--text-muted)' }}>◈</span>
+                                    <span style={{ fontSize: 12, color: mine ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)' }}>Не выбран</span>
                                   </div>
                                 )}
                               </div>
@@ -558,12 +558,12 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                         })()}
                         {/* Метаданные float-right — пузырь растягивается под них автоматически */}
                         <span style={{ float: 'right', display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 10, marginBottom: -3, marginTop: 4, flexShrink: 0, whiteSpace: 'nowrap' }}>
-                          {msg.editedAt && <span style={{ fontSize: 10, opacity: .55 }}>ред.</span>}
-                          <span style={{ fontSize: 10, opacity: .55 }}>{fmtTime(msg.createdAt)}</span>
+                          {msg.editedAt && <span style={{ fontSize: 12, opacity: .55 }}>ред.</span>}
+                          <span style={{ fontSize: 12, opacity: .55 }}>{fmtTime(msg.createdAt)}</span>
                           {mine && (
                             <span style={{ position: 'relative', display: 'inline-flex', width: isRead ? 16 : 9, height: 11, flexShrink: 0 }}>
-                              <span style={{ position: 'absolute', right: 0, fontSize: 10, opacity: .85, lineHeight: 1 }}>✓</span>
-                              {isRead && <span style={{ position: 'absolute', right: 4, fontSize: 10, opacity: .85, lineHeight: 1 }}>✓</span>}
+                              <span style={{ position: 'absolute', right: 0, fontSize: 12, opacity: .85, lineHeight: 1 }}>✓</span>
+                              {isRead && <span style={{ position: 'absolute', right: 4, fontSize: 12, opacity: .85, lineHeight: 1 }}>✓</span>}
                             </span>
                           )}
                         </span>
@@ -579,7 +579,7 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
             {/* Редактирование — плашка */}
             {editingMsg && (
               <div style={{ padding: '6px 20px', background: 'var(--surface-2)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', flex: 1 }}>✏️ Редактирование: {editingMsg.text.slice(0, 60)}{editingMsg.text.length > 60 ? '…' : ''}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>✏️ Редактирование: {editingMsg.text.slice(0, 60)}{editingMsg.text.length > 60 ? '…' : ''}</span>
                 <button onMouseDown={() => { setEditingMsg(null); setInput('') }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16 }}>✕</button>
               </div>
             )}
@@ -595,11 +595,11 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--surface-1)' }}>
                   <div style={{ width: 4, flexShrink: 0, background: '#FF6B35' }} />
                   <div style={{ padding: '8px 12px', minWidth: 0 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>Задача</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>Задача</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>{attachedTask.title}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>◈</span>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Не выбран</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>◈</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Не выбран</span>
                     </div>
                   </div>
                 </div>

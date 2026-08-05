@@ -73,7 +73,7 @@ export function CreateGroupModal({
 
           {/* Color picker */}
           <div style={{ padding: '0 20px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Цвет аватарки</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>Цвет аватарки</div>
             <div style={{ display: 'flex', gap: 8 }}>
               {GROUP_COLORS.map(c => (
                 <div
@@ -91,7 +91,7 @@ export function CreateGroupModal({
 
           {/* Members */}
           <div style={{ borderTop: '1px solid var(--border)', padding: '12px 20px 8px' }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>
               Участники {selectedIds.size > 0 && <span style={{ color: 'var(--accent-s)' }}>· {selectedIds.size} выбрано</span>}
             </div>
             <input
@@ -124,7 +124,7 @@ export function CreateGroupModal({
                     background: selected ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {selected && <span style={{ color: '#fff', fontSize: 10, lineHeight: 1 }}>✓</span>}
+                    {selected && <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✓</span>}
                   </div>
                 </div>
               )

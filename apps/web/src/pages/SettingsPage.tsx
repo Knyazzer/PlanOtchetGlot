@@ -137,7 +137,7 @@ export function FormatsTab() {
     if (window.confirm(`Удалить формат «${v.label}»?\nЕсли он уже проставлен в чьих-то днях — будет снят с использования (история сохранится).`)) del.mutate(v.key)
   }
 
-  const th: React.CSSProperties = { padding: '8px 12px', fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', borderBottom: '1px solid var(--border)' }
+  const th: React.CSSProperties = { padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', borderBottom: '1px solid var(--border)' }
   const td: React.CSSProperties = { padding: '8px 12px', fontSize: 13, color: 'var(--text-1)', borderBottom: '1px solid var(--border)' }
   const inp: React.CSSProperties = { background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 7, padding: '5px 8px', color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 13, outline: 'none' }
   const btnPrimary: React.CSSProperties = { padding: '5px 14px', borderRadius: 7, border: 'none', background: 'var(--primary, #4f46e5)', color: '#fff', fontFamily: 'inherit', fontSize: 12, fontWeight: 600, cursor: 'pointer' }
@@ -212,7 +212,7 @@ export function FormatsTab() {
                 <input type="number" step={0.05} min={0} value={nScore} onChange={e => setNScore(e.target.value)} placeholder="балл" style={{ ...inp, width: 80, textAlign: 'right' }} />
                 <button onClick={() => add.mutate()} disabled={add.isPending || !keyValid || !nLabel.trim()} style={btnPrimary}>{add.isPending ? '…' : 'Добавить'}</button>
                 <button onClick={() => { setAdding(false); setNKey('') }} style={btnGhost}>Отмена</button>
-                {nKey.trim() && !keyValid && <span style={{ fontSize: 11, color: 'var(--danger, #e8194b)' }}>ключ: строчная латиница и «_», уникальный</span>}
+                {nKey.trim() && !keyValid && <span style={{ fontSize: 12, color: 'var(--danger, #e8194b)' }}>ключ: строчная латиница и «_», уникальный</span>}
               </div>
             ) : (
               <button onClick={() => setAdding(true)} style={{ ...btnGhost, color: 'var(--text-2)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -264,7 +264,7 @@ export function RolesTab() {
             <div key={d.id} style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface-2)', padding: '14px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{d.name}</span>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{d.employeeCount} чел · {d.grants.length} модулей</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{d.employeeCount} чел · {d.grants.length} модулей</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
                 {groups.map(g => registry.filter(m => m.group === g).map(m => {
@@ -283,14 +283,14 @@ export function RolesTab() {
                         <select
                           value={grant.editLevel}
                           onChange={e => setGrant.mutate({ deptId: d.id, moduleKey: m.key, editLevel: e.target.value })}
-                          style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 6px', color: 'var(--text-2)', fontFamily: 'inherit', fontSize: 11 }}
+                          style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 6px', color: 'var(--text-2)', fontFamily: 'inherit', fontSize: 12 }}
                         >
                           <option value="member">сотрудник+</option>
                           <option value="head">руковод.+</option>
                           <option value="director">директор</option>
                         </select>
                       )}
-                      {grant && m.readonly && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>просмотр</span>}
+                      {grant && m.readonly && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>просмотр</span>}
                     </div>
                   )
                 }))}
