@@ -1,26 +1,27 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Shield, Database, Plus, Trash2 } from 'lucide-react'
+import { Shield, Database, Plus, Trash2, CalendarDays } from 'lucide-react'
 import { api } from '../lib/api'
 import { useCurrentUser } from '../hooks/useAuth'
 
-// Настройки (только для администратора).
-// Живые вкладки: «Форматы дня» (версионируемый справочник, Q-DAY-5)
-// и «Роли и доступы» (гранты DepartmentModule, RBAC-MODEL §5.3).
+// Настройки. Вкладки: «Форматы дня» (admin/HR), «Роли и доступы» + «Бэкапы» (admin).
 // Профиль/тема/статус/пароль — в панели профиля (клик по имени в сайдбаре).
 
-type Tab = 'roles' | 'backups'
+type Tab = 'formats' | 'roles' | 'backups'
 
 export function SettingsPage() {
   const user = useCurrentUser()
   const isAdmin = !!user?.isAdmin
-  const [tab, setTab] = useState<Tab>('roles')
+  // HR (модуль hr.orgstructure/hr.absences с правкой) может вести справочник форматов дня
+  const canFormats = isAdmin || (user?.access?.modules ?? []).some(m => (m.key === 'hr.orgstructure' || m.key === 'hr.absences') && m.mode === 'edit')
 
-  const TABS: Array<{ id: Tab; label: string; icon: React.ElementType }> = [
-    { id: 'roles',     label: 'Роли и доступы', icon: Shield    },
-    { id: 'backups',   label: 'Бэкапы',         icon: Database  },
+  const TABS: Array<{ id: Tab; label: string; icon: React.ElementType; show: boolean }> = [
+    { id: 'formats',   label: 'Форматы дня',    icon: CalendarDays, show: canFormats },
+    { id: 'roles',     label: 'Роли и доступы', icon: Shield,       show: isAdmin },
+    { id: 'backups',   label: 'Бэкапы',         icon: Database,     show: isAdmin },
   ]
-  const visibleTabs = TABS
+  const visibleTabs = TABS.filter(t => t.show)
+  const [tab, setTab] = useState<Tab>(() => (isAdmin ? 'roles' : 'formats'))
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -46,6 +47,7 @@ export function SettingsPage() {
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+        {tab === 'formats' && canFormats && <FormatsTab />}
         {tab === 'roles' && isAdmin && <RolesTab />}
         {tab === 'backups' && isAdmin && <BackupsInfo />}
       </div>

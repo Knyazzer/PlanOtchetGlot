@@ -1,8 +1,19 @@
-import { FastifyInstance } from 'fastify'
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@nexus/db'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
 import { getOrgScope } from '../services/orgScope'
+import { hasModule } from '../services/access'
+
+// Управление справочником форматов дня — admin ИЛИ HR (модуль hr.orgstructure/hr.absences).
+async function assertFormatManager(req: FastifyRequest, reply: FastifyReply): Promise<boolean> {
+  const user = (req as any).user as { id: string; isAdmin: boolean }
+  if (user.isAdmin) return true
+  if (await hasModule(user.id, user.isAdmin, 'hr.orgstructure', 'edit')) return true
+  if (await hasModule(user.id, user.isAdmin, 'hr.absences', 'edit')) return true
+  reply.code(403).send({ error: 'Forbidden' })
+  return false
+}
 
 // День сотрудника: формат + время. Задачи дня живут в Task (startDate = дата).
 // Право правки: только сам сотрудник свой день (Q-DAY-2); admin — manage по запросу.
@@ -74,8 +85,9 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     return [...map.values()].filter(v => v.active).map(v => ({ key: v.key, label: v.label, isWork: v.isWork, score: v.score }))
   })
 
-  // ── GET /day-entries/formats/versions — вся история версий (админ-справочник) ─
-  app.get('/formats/versions', { preHandler: [authenticate, requireRole('admin')] }, async () => {
+  // ── GET /day-entries/formats/versions — вся история версий (admin/HR) ─
+  app.get('/formats/versions', { preHandler: authenticate }, async (req, reply) => {
+    if (!(await assertFormatManager(req, reply))) return
     return prisma.dayFormatVersion.findMany({
       orderBy: [{ key: 'asc' }, { effectiveFrom: 'desc' }],
       select: { id: true, key: true, label: true, isWork: true, score: true, active: true, effectiveFrom: true },
@@ -85,7 +97,8 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
   // ── POST /day-entries/formats — правка формата: новая версия с текущего периода ─
   // Q-DAY-5: прошлые периоды считаются по старым правилам; изменения действуют
   // с 1-го числа текущего месяца (версия на эту дату обновляется, не плодится).
-  app.post('/formats', { preHandler: [authenticate, requireRole('admin')] }, async (req, reply) => {
+  app.post('/formats', { preHandler: authenticate }, async (req, reply) => {
+    if (!(await assertFormatManager(req, reply))) return
     const schema = z.object({
       key: z.string().min(1).max(50).regex(/^[a-z_]+$/),
       label: z.string().min(1).max(100),
@@ -112,7 +125,8 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
   // Не используется в днях → удаляем все версии. Используется → «снимаем с
   // использования» (версия текущего месяца active=false; прошлые записи считаются
   // по активным версиям прошлых периодов — Q-DAY-5, история цела).
-  app.delete('/formats/:key', { preHandler: [authenticate, requireRole('admin')] }, async (req, reply) => {
+  app.delete('/formats/:key', { preHandler: authenticate }, async (req, reply) => {
+    if (!(await assertFormatManager(req, reply))) return
     const { key } = req.params as { key: string }
     const used = await prisma.dayEntry.count({ where: { dayFormat: key } })
 
