@@ -170,6 +170,7 @@ model Track {
   members     TrackMember[]
   tasks       Task[]
   stages      Stage[]
+  chat        Chat?       @relation("TrackChat")
   workItemId  String?     @map("work_item_id")
   workItem    WorkItem?   @relation(fields: [workItemId], references: [id], onDelete: SetNull)
   createdAt   DateTime    @default(now()) @map("created_at")
@@ -301,6 +302,9 @@ model Chat {
   inviteToken  String?     @unique  // токен для инвайт-ссылки (заготовка)
   // для project-чатов: привязка к клиенту/проекту (заготовка)
   projectId    String?
+  // чат трека (§9): один чат на трек, авто-создаётся с треком
+  trackId      String?     @unique @map("track_id")
+  track        Track?      @relation("TrackChat", fields: [trackId], references: [id], onDelete: Cascade)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt   // обновляется при новом сообщении — для сортировки
 

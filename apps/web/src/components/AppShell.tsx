@@ -44,6 +44,7 @@ type Page = AdminPage | UserPage
 
 interface ChatsOpenProps {
   initialUserId?: string
+  initialChatId?: string
   isSelf?: boolean
   initialTask?: { id: string; title: string; assigneeId: string; assignedById: string }
 }
@@ -162,6 +163,12 @@ export function AppShell() {
     setChatOpen(true)
   }
 
+  function openChatById(chatId: string) {
+    setChatsProps({ initialChatId: chatId })
+    setChatKey(k => k + 1)
+    setChatOpen(true)
+  }
+
   const { data: unread = {} } = useQuery<Record<string, number>>({
     queryKey: ['chats:unread'],
     queryFn:  () => api.get('/chats/unread').then(r => r.data),
@@ -251,7 +258,7 @@ export function AppShell() {
             pageLabel из nav → в сообщении видно, какая страница упала (диагностика прода). */}
         <ErrorBoundary key={page} pageLabel={[...USER_NAV, ...adminNav].find((n) => n.id === page)?.label ?? page}>
           {page === 'home'      && <HomePage onOpenChat={openDirectChat} />}
-          {page === 'dashboard' && <CabinetPage onOpenChatWith={openChatWith} />}
+          {page === 'dashboard' && <CabinetPage onOpenChatWith={openChatWith} onOpenTrackChat={openChatById} />}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
           {page === 'settings'  && isAdmin && <SettingsPage />}

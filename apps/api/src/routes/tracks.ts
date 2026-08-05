@@ -40,6 +40,7 @@ const TRACK_SELECT = {
   members:  { select: { user: { select: MEMBER_SELECT }, joinedAt: true } },
   tasks:    { select: { status: true } },
   stages:   { select: STAGE_SUMMARY_SELECT, orderBy: { order: 'asc' as const } },
+  chat:     { select: { id: true } },   // §9: чат трека
 } as const
 
 export async function tracksRoutes(app: FastifyInstance) {
@@ -86,6 +87,7 @@ export async function tracksRoutes(app: FastifyInstance) {
         createdAt: true, updatedAt: true,
         leader:  { select: MEMBER_SELECT },
         members: { select: { user: { select: MEMBER_SELECT }, joinedAt: true } },
+        chat:    { select: { id: true } },
         tasks: {
           select: {
             id: true, title: true, description: true, status: true,
@@ -127,6 +129,7 @@ export async function tracksRoutes(app: FastifyInstance) {
 
     const { title, description, type, clientName, projectName, deadline, memberIds, workItemId } = body.data
 
+    const memberOthers = [...new Set(memberIds.filter(mid => mid !== user.id))]
     const track = await prisma.track.create({
       data: {
         id: randomUUID(),
@@ -138,16 +141,21 @@ export async function tracksRoutes(app: FastifyInstance) {
         deadline: deadline ? new Date(deadline) : null,
         leaderId: user.id,
         workItemId: workItemId ?? null,
-        members: {
-          create: memberIds
-            .filter(mid => mid !== user.id)
-            .map(mid => ({ userId: mid, joinedAt: new Date() })),
-        },
+        members: { create: memberOthers.map(mid => ({ userId: mid, joinedAt: new Date() })) },
       },
-      select: TRACK_SELECT,
+      select: { id: true },
     })
 
-    return reply.code(201).send(track)
+    // §9 «трек = чат»: авто-создаём групповой чат трека, участники автоподключаются
+    await prisma.chat.create({
+      data: {
+        id: randomUUID(), type: 'group', name: title, color: '#7B61FF', trackId: track.id,
+        members: { create: [{ userId: user.id, isGroupAdmin: true }, ...memberOthers.map(mid => ({ userId: mid }))] },
+      },
+    })
+
+    const full = await prisma.track.findUnique({ where: { id: track.id }, select: TRACK_SELECT })
+    return reply.code(201).send(full)
   })
 
   // PATCH /tracks/:id
@@ -248,6 +256,18 @@ export async function tracksRoutes(app: FastifyInstance) {
         skipDuplicates: true,
       }),
     ])
+
+    // §9: синхронизируем участников чата трека с новым составом (лидер остаётся всегда)
+    const chat = await prisma.chat.findFirst({ where: { trackId: id }, select: { id: true } })
+    if (chat) {
+      const desired = new Set([track.leaderId, ...ids])
+      const chatMembers = await prisma.chatMember.findMany({ where: { chatId: chat.id }, select: { userId: true } })
+      const have = new Set(chatMembers.map(m => m.userId))
+      const toAdd = [...desired].filter(uid => !have.has(uid))
+      const toRemove = [...have].filter(uid => !desired.has(uid) && uid !== track.leaderId)
+      if (toAdd.length) await prisma.chatMember.createMany({ data: toAdd.map(userId => ({ chatId: chat.id, userId })), skipDuplicates: true })
+      if (toRemove.length) await prisma.chatMember.deleteMany({ where: { chatId: chat.id, userId: { in: toRemove } } })
+    }
 
     const updated = await prisma.track.findUnique({ where: { id }, select: TRACK_SELECT })
     return updated

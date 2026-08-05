@@ -22,6 +22,7 @@ interface Track {
   clientName: string | null; projectName: string | null
   deadline: string | null; leaderId: string
   workItemId: string | null
+  chat?: { id: string } | null
   leader: TrackUser; members: TrackMember[]
   tasks:  TrackSummaryTask[]
   stages: TrackSummaryStage[]
@@ -582,7 +583,7 @@ function OpenTask({ taskId, onClose, onDone, onOpenChatWith }: { taskId: string;
 
 // ── TrackDetail ────────────────────────────────────────────────────────────────
 
-function TrackDetail({ trackId, onClose, onOpenChatWith }: { trackId: string; onClose: () => void; onOpenChatWith?: OpenChatFn }) {
+function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { trackId: string; onClose: () => void; onOpenChatWith?: OpenChatFn; onOpenTrackChat?: (chatId: string) => void }) {
   const currentUser = useAuthStore(s => s.user)
   const qc = useQueryClient()
   const [editing,      setEditing]      = useState(false)
@@ -626,6 +627,12 @@ function TrackDetail({ trackId, onClose, onOpenChatWith }: { trackId: string; on
             {track.description && <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 5, lineHeight: 1.5 }}>{track.description}</div>}
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            {isMember && track.chat && onOpenTrackChat && (
+              <button onClick={() => onOpenTrackChat(track.chat!.id)}
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(123,97,255,0.35)', background: 'rgba(123,97,255,0.08)', color: '#7B61FF', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                💬 Чат трека
+              </button>
+            )}
             <button onClick={() => setCreatingEvent(true)}
               style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(14,165,233,0.35)', background: 'rgba(14,165,233,0.08)', color: '#0EA5E9', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               📅 Событие
@@ -700,7 +707,7 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-export function TracksPage({ onOpenChatWith }: { onOpenChatWith?: OpenChatFn } = {}) {
+export function TracksPage({ onOpenChatWith, onOpenTrackChat }: { onOpenChatWith?: OpenChatFn; onOpenTrackChat?: (chatId: string) => void } = {}) {
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
 
@@ -714,7 +721,7 @@ export function TracksPage({ onOpenChatWith }: { onOpenChatWith?: OpenChatFn } =
   const inactive = tracks.filter(t => t.status !== 'active')
 
   if (detailId) {
-    return <TrackDetail trackId={detailId} onClose={() => setDetailId(null)} onOpenChatWith={onOpenChatWith} />
+    return <TrackDetail trackId={detailId} onClose={() => setDetailId(null)} onOpenChatWith={onOpenChatWith} onOpenTrackChat={onOpenTrackChat} />
   }
 
   return (

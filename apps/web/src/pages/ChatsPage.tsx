@@ -15,7 +15,7 @@ import { CreateGroupModal } from './chats/CreateGroupModal'
 export { disconnectWS } from './chats/chatWs'
 
 // ── Main component ─────────────────────────────────────────────────────────────
-export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false }: ChatsPageProps = {}) {
+export function ChatsPage({ initialUserId, initialChatId, isSelf, initialTask, compact = false }: ChatsPageProps = {}) {
   const currentUser = useAuthStore(s => s.user)
   const qc = useQueryClient()
   const myId    = currentUser?.id ?? ''
@@ -202,6 +202,12 @@ export function ChatsPage({ initialUserId, isSelf, initialTask, compact = false 
     queryFn:  () => api.get(`/tasks/${viewingTaskId}`).then(r => r.data),
     enabled:  !!viewingTaskId,
   })
+
+  // ── Открытие конкретного чата по id (напр. чат трека) ────────────────────────
+  useEffect(() => {
+    if (initialChatId) { setActiveChatId(initialChatId); setFolder('groups') }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Открытие чата при навигации из модалки задачи ────────────────────────────
   useEffect(() => {

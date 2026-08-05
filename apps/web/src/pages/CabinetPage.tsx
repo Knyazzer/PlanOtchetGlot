@@ -11,7 +11,7 @@ type CabTab = 'overview' | 'tasks' | 'tracks'
 //   Задачи — доска/таблица/гант; Треки — этапы+задачи.
 // Задачи/Треки — тот же TasksPage с externalTab (свой переключатель он не рисует).
 // Переключатель — в китовой шапке (портал рендерится первым → слева от контролов страницы).
-export function CabinetPage({ onOpenChatWith }: { onOpenChatWith: OpenChatWith }) {
+export function CabinetPage({ onOpenChatWith, onOpenTrackChat }: { onOpenChatWith: OpenChatWith; onOpenTrackChat?: (chatId: string) => void }) {
   const [tab, setTab] = useState<CabTab>(() => {
     const s = localStorage.getItem('nexus:cabinet-tab')
     return s === 'tasks' || s === 'tracks' ? s : 'overview'
@@ -31,8 +31,8 @@ export function CabinetPage({ onOpenChatWith }: { onOpenChatWith: OpenChatWith }
         </div>
       </HeaderPortal>
       {tab === 'overview' && <DashboardPage />}
-      {tab === 'tasks'    && <TasksPage externalTab="tasks"  onOpenChatWith={onOpenChatWith} />}
-      {tab === 'tracks'   && <TasksPage externalTab="tracks" onOpenChatWith={onOpenChatWith} />}
+      {tab === 'tasks'    && <TasksPage externalTab="tasks"  onOpenChatWith={onOpenChatWith} onOpenTrackChat={onOpenTrackChat} />}
+      {tab === 'tracks'   && <TasksPage externalTab="tracks" onOpenChatWith={onOpenChatWith} onOpenTrackChat={onOpenTrackChat} />}
     </>
   )
 }

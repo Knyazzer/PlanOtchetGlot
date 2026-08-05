@@ -37,6 +37,7 @@ export interface AttachedTask { id: string; title: string; assigneeId: string; a
 
 export interface ChatsPageProps {
   initialUserId?: string
+  initialChatId?: string
   isSelf?: boolean
   initialTask?: AttachedTask
   compact?: boolean

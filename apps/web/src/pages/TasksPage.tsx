@@ -20,12 +20,13 @@ export { CalendarEventModal } from './tasks/CalendarEventModal'
 // ── Main page ──────────────────────────────────────────────────────────────────
 interface TasksPageProps {
   onOpenChatWith?: (userId: string, task: { id: string; title: string; assigneeId: string; assignedById: string }, isSelf: boolean) => void
+  onOpenTrackChat?: (chatId: string) => void
   /** внешнее управление вкладкой (из контейнера «Мой кабинет»): при заданном значении
    *  свой переключатель Задачи/Треки не рисуется — вкладками рулит кабинет. */
   externalTab?: 'tasks' | 'tracks'
 }
 
-export function TasksPage({ onOpenChatWith, externalTab }: TasksPageProps = {}) {
+export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab }: TasksPageProps = {}) {
   const currentUser = useAuthStore(s => s.user)
   const [internalTab, setTab] = useState<'tasks' | 'tracks'>('tasks')
   const tab = externalTab ?? internalTab
@@ -124,7 +125,7 @@ export function TasksPage({ onOpenChatWith, externalTab }: TasksPageProps = {}) 
         </HeaderPortal>
       )}
 
-      {tab === 'tracks' && <TracksPage onOpenChatWith={onOpenChatWith} />}
+      {tab === 'tracks' && <TracksPage onOpenChatWith={onOpenChatWith} onOpenTrackChat={onOpenTrackChat} />}
 
       {tab === 'tasks' && <>
       <div style={{ padding:'16px 24px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:12, flexShrink:0, flexWrap:'wrap' }}>
