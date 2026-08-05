@@ -91,7 +91,7 @@ function NewsChat() {
 
 // ── Кто работает сегодня — поиск + фильтр присутствия + клик→детализация/написать в чат ─────────
 // ── Производственный календарь месяца (общий, РФ): праздники, рабочие дни/часы ─────────────────
-interface Production { year: number; month: number; daysInMonth: number; workingDays: number; weekendDays: number; holidays: Array<{ date: string; label: string }>; workingHours: number }
+interface Production { year: number; month: number; daysInMonth: number; workingDays: number; weekendDays: number; holidays: Array<{ date: string; label: string }>; workingHours: number; quarter: number; quarterEnd: string; quarterDaysLeft: number; quarterWorkDaysLeft: number }
 function ProductionMonthCard() {
   const now = new Date()
   const mm = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`
@@ -111,6 +111,9 @@ function ProductionMonthCard() {
           <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих дней</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingDays}</b></div>
           <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих часов (норма)</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingHours} ч</b></div>
           <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Выходных / праздников</span><span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{data.weekendDays} / {data.holidays.length}</span></div>
+          <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0 2px' }} />
+          <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Квартал</span><b style={{ color: 'var(--accent-s)', fontVariantNumeric: 'tabular-nums' }}>Q{data.quarter}</b></div>
+          <div style={stat}><span style={{ color: 'var(--text-muted)' }}>До конца квартала</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.quarterDaysLeft} дн · {data.quarterWorkDaysLeft} раб.</b></div>
           {data.holidays.length > 0 && (
             <div style={{ marginTop: 6, borderTop: '1px solid var(--border)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Праздники</span>

@@ -4,7 +4,7 @@ import { prisma } from '@nexus/db'
 import { authenticate } from '../plugins/auth'
 import { getOrgScope } from '../services/orgScope'
 import { hasModule } from '../services/access'
-import { monthProduction } from '../services/calendarRf'
+import { monthProduction, businessDays } from '../services/calendarRf'
 
 // Управление справочником форматов дня — admin ИЛИ HR (модуль hr.orgstructure/hr.absences).
 async function assertFormatManager(req: FastifyRequest, reply: FastifyReply): Promise<boolean> {
@@ -150,13 +150,23 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     return { retired: true, key, usedBy: used }
   })
 
-  // ── GET /day-entries/production?month=YYYY-MM — производственная сводка месяца (РФ) ──
+  // ── GET /day-entries/production?month=YYYY-MM — производственная сводка месяца (РФ) + квартал ──
   app.get('/production', { preHandler: authenticate }, async (req, reply) => {
     const month = (req.query as { month?: string }).month
     const m = month && /^\d{4}-\d{2}$/.test(month) ? month : new Date().toISOString().slice(0, 7)
     const [y, mo] = m.split('-').map(Number)
     if (mo < 1 || mo > 12) return reply.code(400).send({ error: 'bad month' })
-    return monthProduction(y, mo - 1)
+
+    // квартал месяца + обратный отсчёт до его конца (от сегодня)
+    const quarter = Math.floor((mo - 1) / 3) + 1
+    const qEnd = new Date(Date.UTC(y, quarter * 3, 0)) // последний день последнего месяца квартала
+    const now = new Date()
+    const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    const quarterDaysLeft = Math.max(0, Math.round((qEnd.getTime() - todayUTC.getTime()) / 86_400_000))
+    const quarterWorkDaysLeft = todayUTC <= qEnd ? businessDays(todayUTC, qEnd) : 0
+    const qEndStr = qEnd.toISOString().slice(0, 10)
+
+    return { ...monthProduction(y, mo - 1), quarter, quarterEnd: qEndStr, quarterDaysLeft, quarterWorkDaysLeft }
   })
 
   // ── GET /day-entries?from&to[&userId] — свои дни; чужие — по орг-охвату ──────
