@@ -210,7 +210,7 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | `/users` | `routes/users.ts` | members; staff + freelancers (GET ?includeInactive / POST с автогеном табельного); PATCH /:id; lifecycle: /:id/deactivate, /:id/reactivate; /:id/reset-password; impersonate/:id; bulk-onboard; импорт из Sheets: staff-import(+/refresh), freelancers-import, bulk-import-staff, bulk-import-freelancers — всё admin |
 | `/chats` | `routes/chats.ts` | ws-token, WebSocket, list, unread, direct, self, support, **group** (создание, PATCH name/color, members add/remove, DELETE), messages CRUD, read, member patch |
 | `/tasks` | `routes/tasks.ts` | задачи: CRUD (+?scope=team), unseen-count, /:id/seen, /:id/log |
-| `/events` | `routes/events.ts` | личные события (meeting/task/personal) — CRUD + авто-задачи участникам |
+| `/events` | `routes/events.ts` | личные события (meeting/task/personal) — CRUD + авто-задачи участникам; **опц. `trackId`** (§9 «событие по треку» → видно в деталях трека) |
 | `/calendar-entries` | `routes/calendar-entries.ts` | общие записи (Знаменки/HR) — чтение всем, write admin |
 | `/database` | `routes/database.ts` | Google Sheets: config, refresh/:key, preview/:key — admin |
 | `/structure` | `routes/structure.ts` | дерево департаментов/отделов (GET — всем аутентифицированным), мутации + migrate-from-sheets — admin, Zod-валидация |
