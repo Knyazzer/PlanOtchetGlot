@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Sun, Moon } from 'lucide-react'
 import { useCurrentUser } from '../hooks/useAuth'
 import { api } from '../lib/api'
+import { supabase } from '../lib/supabase'
 import { formatName } from '../lib/utils'
 
 interface Props {
@@ -15,6 +16,53 @@ interface Props {
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/)
   return parts.slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('')
+}
+
+// Смена пароля: supabase.auth.updateUser → чистка временного пароля (как на PersonalCabinet).
+// В dev без Supabase-сессии вернёт ошибку — работает в проде.
+function PasswordChange() {
+  const [open, setOpen] = useState(false)
+  const [pw, setPw] = useState('')
+  const [msg, setMsg] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const inp: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-1)', fontSize: 13, fontFamily: 'Inter, sans-serif', outline: 'none' }
+  async function submit() {
+    setMsg(null)
+    if (pw.length < 8) { setMsg('Минимум 8 символов'); return }
+    setBusy(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pw })
+      if (error) throw new Error(error.message)
+      await api.post('/auth/change-password')
+      setPw(''); setOpen(false); setMsg('✓ Пароль изменён')
+    } catch (e: any) {
+      setMsg(e?.message ?? 'Не удалось сменить пароль')
+    } finally { setBusy(false) }
+  }
+  if (!open) {
+    return (
+      <>
+        <button onClick={() => { setOpen(true); setMsg(null) }}
+          style={{ textAlign: 'left', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-2)', fontSize: 13, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+          Изменить пароль
+        </button>
+        {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#29BF12' : '#E8194B' }}>{msg}</div>}
+      </>
+    )
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <input type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Новый пароль (мин. 8)" autoComplete="new-password"
+        onKeyDown={e => { if (e.key === 'Enter' && !busy) submit() }} autoFocus style={inp} />
+      {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#29BF12' : '#E8194B' }}>{msg}</div>}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={() => { setOpen(false); setPw(''); setMsg(null) }} disabled={busy}
+          style={{ flex: 1, padding: '8px 0', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-3)', fontSize: 13, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>Отмена</button>
+        <button onClick={submit} disabled={busy}
+          style={{ flex: 1, padding: '8px 0', background: 'var(--accent, #2563eb)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer', opacity: busy ? 0.7 : 1 }}>{busy ? '…' : 'Сохранить'}</button>
+      </div>
+    </div>
+  )
 }
 
 function Avatar({ name }: { name: string }) {
@@ -172,22 +220,12 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
             <div style={{ fontSize: 13, color: 'var(--text-2)', padding: '8px 0' }}>{user?.email}</div>
           </div>
 
-          {/* Password (stub) */}
+          {/* Password */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
               Пароль
             </label>
-            <button
-              disabled
-              style={{
-                textAlign: 'left', padding: '8px 12px',
-                background: 'var(--surface-2)', border: '1px solid var(--border)',
-                borderRadius: 8, color: 'var(--text-muted)', fontSize: 13,
-                fontFamily: 'Inter, sans-serif', cursor: 'not-allowed',
-              }}
-            >
-              Изменить пароль — скоро
-            </button>
+            <PasswordChange />
           </div>
         </div>
       </aside>
