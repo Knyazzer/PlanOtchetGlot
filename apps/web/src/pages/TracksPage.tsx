@@ -39,6 +39,7 @@ interface StageTask {
 
 interface DetailStage { id: string; title: string; order: number; tasks: StageTask[] }
 
+interface TrackEvent { id: string; type: string; title: string; date: string; startTime: string; endTime: string; status: string }
 interface TrackDetail extends Track {
   tasks: Array<StageTask & {
     description: string; startDate: string; seenAt: string | null
@@ -46,6 +47,7 @@ interface TrackDetail extends Track {
     createdAt: string; updatedAt: string
   }>
   stages: DetailStage[]
+  events?: TrackEvent[]
 }
 
 // ── Layout constants ───────────────────────────────────────────────────────────
@@ -512,8 +514,9 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
       startTime, endTime,
       location: [],
       participantIds: allParticipantIds,
+      trackId: track.id,   // §9: событие видно внутри трека
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['events'] }); onClose() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['events'] }); qc.invalidateQueries({ queryKey: ['track', track.id] }); onClose() },
     onError: (e: any) => alert(e?.response?.data?.error ?? 'Ошибка'),
   })
 
@@ -651,6 +654,23 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
           <MetaItem icon="👥" label="Участники" value={track.members.length === 0 ? 'Нет' : track.members.map(m => m.user.name).join(', ')} />
         </div>
       </div>
+
+      {/* §9: встречи, привязанные к треку (видны прямо здесь, не только в календаре) */}
+      {track.events && track.events.length > 0 && (
+        <div style={{ padding: '12px 32px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Встречи трека ({track.events.length})</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {track.events.map(ev => (
+              <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', fontSize: 12, opacity: ev.status === 'done' ? 0.6 : 1 }}>
+                <span style={{ color: '#8B5CF6', fontWeight: 700 }}>{new Date(ev.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{ev.startTime.slice(0, 5)}–{ev.endTime.slice(0, 5)}</span>
+                <span style={{ color: 'var(--text-1)' }}>{ev.title}</span>
+                {ev.status === 'done' && <span style={{ color: '#29BF12', fontSize: 11 }}>✓</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <StageTimeline track={track} isInvolved={isMember} canDeleteStage={canEdit} onOpenTask={id => setOpenTaskId(id)} onOpenChatWith={onOpenChatWith} />
 

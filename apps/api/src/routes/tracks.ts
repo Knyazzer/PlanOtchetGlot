@@ -88,6 +88,7 @@ export async function tracksRoutes(app: FastifyInstance) {
         leader:  { select: MEMBER_SELECT },
         members: { select: { user: { select: MEMBER_SELECT }, joinedAt: true } },
         chat:    { select: { id: true } },
+        events:  { select: { id: true, type: true, title: true, date: true, startTime: true, endTime: true, status: true }, orderBy: [{ date: 'asc' as const }, { startTime: 'asc' as const }] },
         tasks: {
           select: {
             id: true, title: true, description: true, status: true,

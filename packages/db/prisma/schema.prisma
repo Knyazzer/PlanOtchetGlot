@@ -171,6 +171,7 @@ model Track {
   tasks       Task[]
   stages      Stage[]
   chat        Chat?       @relation("TrackChat")
+  events      Event[]     @relation("TrackEvents")
   workItemId  String?     @map("work_item_id")
   workItem    WorkItem?   @relation(fields: [workItemId], references: [id], onDelete: SetNull)
   createdAt   DateTime    @default(now()) @map("created_at")
@@ -424,11 +425,15 @@ model Event {
   authorId     String   @map("author_id")
   author       User     @relation("EventsAuthor", fields: [authorId], references: [id])
   participants EventParticipant[]
+  // событие по треку (§9): видно в самом треке; удаление трека не удаляет событие
+  trackId      String?  @map("track_id")
+  track        Track?   @relation("TrackEvents", fields: [trackId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt      @map("updated_at")
 
   @@index([authorId])
   @@index([date])
+  @@index([trackId])
   @@map("events")
   @@schema("nexus")
 }

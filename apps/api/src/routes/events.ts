@@ -15,6 +15,7 @@ const EVENT_SELECT = {
   location: true,
   status: true,
   authorId: true,
+  trackId: true,
   author: { select: { id: true, name: true } },
   participants: { select: { userId: true, user: { select: { id: true, name: true } } } },
   createdAt: true,
@@ -30,6 +31,7 @@ const bodySchema = z.object({
   endTime:        z.string().regex(/^\d{2}:\d{2}$/),
   location:       z.array(z.string()).default([]),
   participantIds: z.array(z.string().uuid()).default([]),
+  trackId:        z.string().nullish(),   // §9: привязка события к треку
 })
 
 export async function eventsRoutes(app: FastifyInstance) {
@@ -77,7 +79,7 @@ export async function eventsRoutes(app: FastifyInstance) {
     const body = bodySchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
 
-    const { type, title, description, date, startTime, endTime, location, participantIds } = body.data
+    const { type, title, description, date, startTime, endTime, location, participantIds, trackId } = body.data
 
     const ev = await prisma.event.create({
       data: {
@@ -85,6 +87,7 @@ export async function eventsRoutes(app: FastifyInstance) {
         date: new Date(date),
         startTime, endTime, location,
         authorId: user.id,
+        trackId: trackId ?? null,
         participants: {
           create: participantIds
             .filter(uid => uid !== user.id)
