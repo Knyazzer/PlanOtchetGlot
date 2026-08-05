@@ -4,12 +4,9 @@ import { Pin, Trash2, Users, Target, Search, MessageSquare, Send, Clock } from '
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { formatName } from '../lib/utils'
-import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
-const pMin = (t?: string | null): number | null => (t && /^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null)
-const hm = (mins: number) => { const h = Math.floor(Math.abs(mins) / 60), m = Math.abs(mins) % 60; return m ? `${h}ч ${m}м` : `${h}ч` }
-const MONTHS_RU = ['январе', 'феврале', 'марте', 'апреле', 'мае', 'июне', 'июле', 'августе', 'сентябре', 'октябре', 'ноябре', 'декабре']
+const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
 interface Post { id: string; title: string; body: string; pinned: boolean; createdAt: string; author: { id: string; name: string } }
 interface Feed { posts: Post[]; canPost: boolean }
@@ -27,7 +24,7 @@ export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void
           <NewsChat />
         </div>
         <div style={{ flex: '1 1 300px', minWidth: 290, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0, overflowY: 'auto' }}>
-          <MyMonthCard />
+          <ProductionMonthCard />
           <WhoWorks onOpenChat={onOpenChat} />
           <DeptTasks />
         </div>
@@ -93,48 +90,40 @@ function NewsChat() {
 }
 
 // ── Кто работает сегодня — поиск + фильтр присутствия + клик→детализация/написать в чат ─────────
-// ── Мой месяц: отработанные часы + баланс к норме + выходные (П4/П5) ──────────────────────────
-interface DayEntryLite { date: string; dayFormat: string; startTime: string | null; endTime: string | null; breakMin: number }
-interface FmtLite { key: string; label: string; isWork: boolean }
-function MyMonthCard() {
+// ── Производственный календарь месяца (общий, РФ): праздники, рабочие дни/часы ─────────────────
+interface Production { year: number; month: number; daysInMonth: number; workingDays: number; weekendDays: number; holidays: Array<{ date: string; label: string }>; workingHours: number }
+function ProductionMonthCard() {
   const now = new Date()
-  const y = now.getFullYear(), m = now.getMonth()
-  const last = new Date(y, m + 1, 0).getDate()
-  const from = `${y}-${pad2(m + 1)}-01`, to = `${y}-${pad2(m + 1)}-${pad2(last)}`
-  const today = `${y}-${pad2(m + 1)}-${pad2(now.getDate())}`
-
-  const { data: entries = [] } = useQuery<DayEntryLite[]>({ queryKey: ['day-entries', from, to], queryFn: () => api.get(`/day-entries?from=${from}&to=${to}`).then(r => r.data) })
-  const { data: schedule } = useMyWorkSchedule()
-  const { data: formats = [] } = useQuery<FmtLite[]>({ queryKey: ['day-formats'], queryFn: () => api.get('/day-entries/formats').then(r => r.data), staleTime: 1000 * 60 * 60 })
-
-  const byDate = new Map(entries.map(e => [e.date.slice(0, 10), e]))
-  const isWorkKey = (k?: string) => { const f = formats.find(x => x.key === k); return f ? f.isWork : false }
-  const schedNorm = schedule ? (() => { const s = pMin(schedule.workStart), e = pMin(schedule.workEnd); return s != null && e != null ? Math.max(0, e - s - schedule.breakMin) : 0 })() : 0
-  let worked = 0, norm = 0, weekends = 0
-  for (let dn = 1; dn <= last; dn++) {
-    const ds = `${y}-${pad2(m + 1)}-${pad2(dn)}`
-    const e = byDate.get(ds)
-    if (e && e.startTime && e.endTime) { const s = pMin(e.startTime), en = pMin(e.endTime); if (s != null && en != null) worked += Math.max(0, en - s - (e.breakMin || 0)) }
-    const exp = expectedForDate(ds, schedule)
-    if (ds <= today && exp && isWorkKey(exp.format)) norm += schedNorm
-    const dow = new Date(y, m, dn).getDay()
-    if (exp ? exp.format === 'dayoff' : (dow === 0 || dow === 6)) weekends++
-  }
-  const bal = worked - norm
+  const mm = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`
+  const { data } = useQuery<Production>({ queryKey: ['production', mm], queryFn: () => api.get(`/day-entries/production?month=${mm}`).then(r => r.data), staleTime: 1000 * 60 * 60 })
 
   const stat: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12 }
   return (
     <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <Clock size={15} style={{ color: 'var(--text-muted)' }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Мои часы в {MONTHS_RU[m]}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{MONTHS_RU[now.getMonth()]} · производственный календарь</span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Отработано</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{hm(worked)}</b></div>
-        <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Норма (по сегодня)</span><span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{hm(norm)}</span></div>
-        <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Баланс</span><b style={{ color: Math.abs(bal) < 1 ? '#29BF12' : bal > 0 ? '#43b2f2' : '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>{Math.abs(bal) < 1 ? 'в норме' : `${bal > 0 ? '+' : '−'}${hm(bal)}`}</b></div>
-        <div style={{ ...stat, fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}><span>Выходных в месяце</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{weekends}</span></div>
-      </div>
+      {!data ? (
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Загрузка…</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих дней</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingDays}</b></div>
+          <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих часов (норма)</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingHours} ч</b></div>
+          <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Выходных / праздников</span><span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{data.weekendDays} / {data.holidays.length}</span></div>
+          {data.holidays.length > 0 && (
+            <div style={{ marginTop: 6, borderTop: '1px solid var(--border)', paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Праздники</span>
+              {data.holidays.map(h => (
+                <div key={h.date} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
+                  <span style={{ color: '#E8194B', fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 44 }}>{new Date(h.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                  <span style={{ color: 'var(--text-2)' }}>{h.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

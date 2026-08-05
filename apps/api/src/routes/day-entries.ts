@@ -4,6 +4,7 @@ import { prisma } from '@nexus/db'
 import { authenticate } from '../plugins/auth'
 import { getOrgScope } from '../services/orgScope'
 import { hasModule } from '../services/access'
+import { monthProduction } from '../services/calendarRf'
 
 // Управление справочником форматов дня — admin ИЛИ HR (модуль hr.orgstructure/hr.absences).
 async function assertFormatManager(req: FastifyRequest, reply: FastifyReply): Promise<boolean> {
@@ -147,6 +148,15 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
       create: { key, label: latest.label, isWork: latest.isWork, score: latest.score, active: false, effectiveFrom: periodStart },
     })
     return { retired: true, key, usedBy: used }
+  })
+
+  // ── GET /day-entries/production?month=YYYY-MM — производственная сводка месяца (РФ) ──
+  app.get('/production', { preHandler: authenticate }, async (req, reply) => {
+    const month = (req.query as { month?: string }).month
+    const m = month && /^\d{4}-\d{2}$/.test(month) ? month : new Date().toISOString().slice(0, 7)
+    const [y, mo] = m.split('-').map(Number)
+    if (mo < 1 || mo > 12) return reply.code(400).send({ error: 'bad month' })
+    return monthProduction(y, mo - 1)
   })
 
   // ── GET /day-entries?from&to[&userId] — свои дни; чужие — по орг-охвату ──────

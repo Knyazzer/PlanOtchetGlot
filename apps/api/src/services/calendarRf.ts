@@ -73,3 +73,31 @@ export function businessDays(from: Date, to: Date): number {
   }
   return count
 }
+
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** Праздники/нерабочие (кроме сб/вс) в месяце с подписями. month0 — 0-based. */
+export function holidaysInMonth(year: number, month0: number): Array<{ date: string; label: string }> {
+  const nw = nonWorking(year)
+  const labelByMd = new Map(RF_PUBLIC_HOLIDAYS.map(h => [h.md, h.label]))
+  const last = new Date(Date.UTC(year, month0 + 1, 0)).getUTCDate()
+  const res: Array<{ date: string; label: string }> = []
+  for (let d = 1; d <= last; d++) {
+    const md = `${pad2(month0 + 1)}-${pad2(d)}`
+    const ds = `${year}-${md}`
+    if (nw.has(ds)) res.push({ date: ds, label: labelByMd.get(md) ?? 'Перенос выходного' })
+  }
+  return res
+}
+
+/** Производственная сводка месяца: рабочие дни, выходные, праздники, норма часов (8ч/день). */
+export function monthProduction(year: number, month0: number) {
+  const first = new Date(Date.UTC(year, month0, 1))
+  const last = new Date(Date.UTC(year, month0 + 1, 0))
+  const daysInMonth = last.getUTCDate()
+  const workingDays = businessDays(first, last)
+  let weekendDays = 0
+  for (let d = 1; d <= daysInMonth; d++) { const dt = new Date(Date.UTC(year, month0, d)); if (dt.getUTCDay() === 0 || dt.getUTCDay() === 6) weekendDays++ }
+  const holidays = holidaysInMonth(year, month0)
+  return { year, month: month0 + 1, daysInMonth, workingDays, weekendDays, holidays, workingHours: workingDays * 8 }
+}
