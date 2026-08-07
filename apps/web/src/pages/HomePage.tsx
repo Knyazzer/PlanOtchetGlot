@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pin, Trash2, Users, Search, MessageSquare, Send, Clock } from 'lucide-react'
+import { Pin, Trash2, Users, Search, MessageSquare, Send } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { formatName } from '../lib/utils'
@@ -8,6 +8,7 @@ import { ROLE } from '../lib/roleColors'
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
 // ISO номер недели
 function isoWeek(d: Date): number {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
@@ -32,7 +33,7 @@ export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void
         <div style={{ flex: '1.4 1 440px', minWidth: 0, display: 'flex', minHeight: 0 }}>
           <NewsChat />
         </div>
-        <div style={{ flex: '1 1 300px', minWidth: 290, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0, overflowY: 'auto' }}>
+        <div style={{ flex: '1 1 300px', minWidth: 290, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
           <ProductionMonthCard />
           <WhoWorks onOpenChat={onOpenChat} />
         </div>
@@ -121,47 +122,48 @@ function ProductionMonthCard() {
     return { q: qi + 1, pct, cur }
   })
 
-  // геометрия доната
-  const R = 34, SW = 8, CIRC = 2 * Math.PI * R
+  // геометрия доната (толще/крупнее)
+  const R = 42, SW = 11, CIRC = 2 * Math.PI * R
   const dash = monthPct * CIRC
 
   const stat: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12 }
   return (
-    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <Clock size={15} style={{ color: 'var(--text-muted)' }} />
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>{MONTHS_RU[m]} · производственный календарь</span>
-      </div>
+    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px', flexShrink: 0 }}>
       {!data ? (
         <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Загрузка…</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {/* Круговая диаграмма месяца — % пройденных дней; центр: число дня + номер недели */}
-          <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 10px', position: 'relative' }}>
-            <svg width={96} height={96}>
-              <circle cx={48} cy={48} r={R} fill="none" stroke="var(--surface-3)" strokeWidth={SW} />
-              <circle cx={48} cy={48} r={R} fill="none" stroke={ROLE.primary} strokeWidth={SW} strokeLinecap="round" strokeDasharray={`${dash} ${CIRC}`} transform="rotate(-90 48 48)" />
-            </svg>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{dayOfMonth}</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>нед. {week}</span>
+          {/* Донат слева (число дня + месяц) · таблица справа */}
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <div style={{ position: 'relative', width: 108, height: 108, flexShrink: 0 }}>
+              <svg width={108} height={108}>
+                <circle cx={54} cy={54} r={R} fill="none" stroke="var(--surface-3)" strokeWidth={SW} />
+                <circle cx={54} cy={54} r={R} fill="none" stroke={ROLE.primary} strokeWidth={SW} strokeLinecap="round" strokeDasharray={`${dash} ${CIRC}`} transform="rotate(-90 54 54)" />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: 34, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{dayOfMonth}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{MONTHS_GEN[m]}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)', opacity: 0.75 }}>нед. {week}</span>
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
+              <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих дней</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingDays}</b></div>
+              <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих часов</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingHours} ч</b></div>
+              <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Выходных / празд.</span><span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{data.weekendDays} / {data.holidays.length}</span></div>
             </div>
           </div>
 
-          <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих дней</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingDays}</b></div>
-          <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих часов (норма)</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingHours} ч</b></div>
-          <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Выходных / праздников</span><span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{data.weekendDays} / {data.holidays.length}</span></div>
-
-          {/* Кварталы — 4 блока: пройденные закрашены, текущий заполняется по % дней */}
-          <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+          {/* Кварталы — 4 блока: пройденные закрашены, текущий по % дней; тултип — месяцы квартала */}
+          <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Кварталы</span>
               <span style={{ fontSize: 12, color: 'var(--text-3)' }}><b style={{ color: ROLE.highlight }}>Q{data.quarter}</b> · до конца {data.quarterDaysLeft} дн ({data.quarterWorkDaysLeft} раб.)</span>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {quarters.map(qq => (
-                <div key={qq.q} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <div style={{ width: '100%', height: 7, borderRadius: 4, background: 'var(--surface-3)', overflow: 'hidden' }}>
+                <div key={qq.q} title={`${MONTHS_RU[(qq.q - 1) * 3]} – ${MONTHS_RU[(qq.q - 1) * 3 + 2]}`}
+                  style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'help' }}>
+                  <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--surface-3)', overflow: 'hidden' }}>
                     <div style={{ width: `${qq.pct * 100}%`, height: '100%', background: qq.cur ? ROLE.highlight : ROLE.primary, borderRadius: 4, transition: 'width 0.3s' }} />
                   </div>
                   <span style={{ fontSize: 11, fontWeight: qq.cur ? 800 : 600, color: qq.cur ? ROLE.highlight : qq.pct >= 1 ? 'var(--text-2)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>Q{qq.q}</span>
@@ -207,8 +209,8 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
   const chips: Array<[typeof filter, string]> = [['all', 'Все'], ['working', 'В работе'], ['office', 'Офис'], ['remote', 'Удалёнка']]
 
   return (
-    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
         <Users size={15} style={{ color: 'var(--text-muted)' }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Кто работает сегодня</span>
         <span style={{ fontSize: 12, fontWeight: 700, color: '#46b884', fontVariantNumeric: 'tabular-nums' }} title="Сейчас в работе">{workingNow}</span>
@@ -222,7 +224,7 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
           <button key={v} onClick={() => setFilter(v)} style={{ flex: 1, padding: '5px 0', borderRadius: 7, border: `1px solid ${filter === v ? 'var(--accent-s)' : 'var(--border)'}`, background: filter === v ? 'rgba(123,97,255,0.14)' : 'none', color: filter === v ? 'var(--accent-s)' : 'var(--text-muted)', fontFamily: 'Inter,sans-serif', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
         ))}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 260, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0, overflowY: 'auto' }}>
         {list.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '6px 2px' }}>Никого не найдено</div>}
         {list.map(m => (
           <div key={m.userId} onClick={() => setSel(m)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, cursor: 'pointer' }}
