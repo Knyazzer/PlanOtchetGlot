@@ -58,7 +58,7 @@ export function FinanceTab({ projectId }: { projectId: string }) {
                 onClick={() => setSelectedWI(wi.id)}
                 style={{
                   padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer',
-                  background: isActive ? 'rgba(255,107,53,0.06)' : 'transparent',
+                  background: isActive ? 'rgba(123,97,255,0.06)' : 'transparent',
                   borderLeft: isActive ? '2px solid #FF6B35' : '2px solid transparent',
                   paddingLeft: isActive ? 12 : 14,
                   transition: 'background 0.1s',

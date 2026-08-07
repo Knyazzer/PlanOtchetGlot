@@ -195,7 +195,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
                 const sel = location.includes(loc.id)
                 return (
                   <button key={loc.id} onClick={() => isAuthor && toggleLoc(loc.id)}
-                    style={{ padding:'5px 12px', borderRadius:20, border:`1px solid ${sel ? '#FF6B35' : 'var(--border)'}`, background: sel ? 'rgba(255,107,53,0.15)' : 'none', color: sel ? '#FF6B35' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight: sel ? 600 : 400, cursor: isAuthor ? 'pointer' : 'default' }}>
+                    style={{ padding:'5px 12px', borderRadius:20, border:`1px solid ${sel ? '#FF6B35' : 'var(--border)'}`, background: sel ? 'rgba(123,97,255,0.15)' : 'none', color: sel ? '#FF6B35' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight: sel ? 600 : 400, cursor: isAuthor ? 'pointer' : 'default' }}>
                     {loc.label}
                   </button>
                 )

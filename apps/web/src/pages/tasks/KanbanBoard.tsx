@@ -28,7 +28,7 @@ function KanbanCard({ task, color, isDone, deadlineStr, dragId, onEdit, currentU
       className={isNew ? 'task-new' : undefined}
       style={{
         background: 'var(--surface-2)',
-        border: isNew ? '1px solid rgba(255,107,53,0.4)' : '1px solid var(--border)',
+        border: isNew ? '1px solid rgba(123,97,255,0.4)' : '1px solid var(--border)',
         borderRadius: 12, padding: '14px 16px', cursor: isCalendar ? 'default' : 'grab',
         opacity: isDone ? 0.55 : 1, position: 'relative',
       }}

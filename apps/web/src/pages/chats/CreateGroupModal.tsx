@@ -112,9 +112,9 @@ export function CreateGroupModal({
                 <div
                   key={u.id}
                   onMouseDown={() => toggle(u.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 20px', cursor: 'pointer', background: selected ? 'rgba(255,107,53,0.08)' : 'transparent', transition: 'background .1s' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 20px', cursor: 'pointer', background: selected ? 'rgba(123,97,255,0.08)' : 'transparent', transition: 'background .1s' }}
                   onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-2)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = selected ? 'rgba(255,107,53,0.08)' : 'transparent' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = selected ? 'rgba(123,97,255,0.08)' : 'transparent' }}
                 >
                   <UserAvatar name={u.name} size={34} />
                   <span style={{ fontSize: 14, color: 'var(--text-1)', flex: 1 }}>{formatName(u.name)}</span>

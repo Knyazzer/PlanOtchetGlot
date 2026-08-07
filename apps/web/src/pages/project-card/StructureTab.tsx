@@ -280,7 +280,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                     onClick={() => handleSelectDiv(div.id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 9,
-                      background: isActiveDept ? 'rgba(255,107,53,0.06)' : 'var(--surface-2)',
+                      background: isActiveDept ? 'rgba(123,97,255,0.06)' : 'var(--surface-2)',
                       border: `1px solid ${isActiveDept ? '#FF6B35' : 'rgba(255,255,255,0.13)'}`,
                       borderRadius: 9, padding: '8px 11px', cursor: 'pointer',
                       transition: 'border-color 0.12s, background 0.12s',

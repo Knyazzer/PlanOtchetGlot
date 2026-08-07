@@ -255,7 +255,7 @@ export function ChatsPage({ initialUserId, initialChatId, isSelf, initialTask, c
   const folderBtn = (active: boolean): React.CSSProperties => ({
     width: 64, height: 64, display: 'flex', flexDirection: 'column', alignItems: 'center',
     justifyContent: 'center', gap: 4, border: 'none', borderRadius: 0, cursor: 'pointer',
-    background: active ? 'rgba(255,107,53,0.12)' : 'transparent',
+    background: active ? 'rgba(123,97,255,0.12)' : 'transparent',
     borderLeft: active ? '3px solid #FF6B35' : '3px solid transparent',
     color: active ? 'var(--text-1)' : 'var(--text-muted)',
     transition: 'all .15s',
@@ -283,7 +283,7 @@ export function ChatsPage({ initialUserId, initialChatId, isSelf, initialTask, c
         style={{
           display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
           cursor: 'pointer', borderRadius: 8, margin: '2px 6px',
-          background: active ? 'rgba(255,107,53,0.1)' : 'transparent',
+          background: active ? 'rgba(123,97,255,0.1)' : 'transparent',
           transition: 'background .1s',
         }}
       >

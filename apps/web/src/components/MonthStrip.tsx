@@ -98,7 +98,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
                 flex: '1 1 0', minHeight: 22, padding: '0 10px', borderRadius: 8,
                 border: `1px solid ${isSel ? 'var(--accent-s)' : 'transparent'}`,
-                background: isSel ? 'rgba(255,107,53,0.12)' : 'none',
+                background: isSel ? 'rgba(123,97,255,0.12)' : 'none',
                 cursor: 'pointer', fontFamily: 'Inter,sans-serif',
               }}
             >

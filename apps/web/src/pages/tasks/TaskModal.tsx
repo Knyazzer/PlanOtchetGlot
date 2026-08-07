@@ -155,9 +155,9 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             {filteredMembers.map(m => (
               <div key={m.id}
                 onMouseDown={e => { e.preventDefault(); setAssigneeId(m.id); setAssigneeName(m.name); closePicker() }}
-                style={{ padding:'9px 12px', fontSize:14, color:'var(--text-1)', cursor:'pointer', background: m.id === assigneeId ? 'rgba(255,107,53,0.12)' : 'transparent' }}
+                style={{ padding:'9px 12px', fontSize:14, color:'var(--text-1)', cursor:'pointer', background: m.id === assigneeId ? 'rgba(123,97,255,0.12)' : 'transparent' }}
                 onMouseEnter={e => { if (m.id !== assigneeId) (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.05)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = m.id === assigneeId ? 'rgba(255,107,53,0.12)' : 'transparent' }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = m.id === assigneeId ? 'rgba(123,97,255,0.12)' : 'transparent' }}
               >{m.name}</div>
             ))}
           </div>

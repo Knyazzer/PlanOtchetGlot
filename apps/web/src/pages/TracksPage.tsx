@@ -199,7 +199,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
                 <svg width={CIRCLE_D} height={CIRCLE_D} style={{ cursor: 'pointer', display: 'block' }} onClick={() => setSelectedIdx(i)}>
                   {isSel && <circle cx={CRAD} cy={CRAD} r={CRAD - 1} fill="none" stroke="#FF6B35" strokeWidth={2} />}
                   <circle cx={CRAD} cy={CRAD} r={CRAD - 5}
-                    fill={isSel ? 'rgba(255,107,53,0.12)' : allDone ? 'rgba(41,191,18,0.08)' : 'var(--bg,#0e0e14)'}
+                    fill={isSel ? 'rgba(123,97,255,0.12)' : allDone ? 'rgba(41,191,18,0.08)' : 'var(--bg,#0e0e14)'}
                     stroke={isSel ? 'none' : allDone ? 'rgba(41,191,18,0.5)' : 'rgba(255,255,255,0.12)'}
                     strokeWidth={1.5}
                   />
@@ -232,7 +232,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
                 )}
                 {isInvolved && isSel && (
                   <button onClick={() => setCreatingTask(true)}
-                    style={{ fontSize: 12, color: 'rgba(255,107,53,0.65)', background: 'none', border: '1px dashed rgba(255,107,53,0.25)', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', textAlign: 'center', marginTop: 2 }}>
+                    style={{ fontSize: 12, color: 'rgba(123,97,255,0.65)', background: 'none', border: '1px dashed rgba(123,97,255,0.25)', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', textAlign: 'center', marginTop: 2 }}>
                     + задача
                   </button>
                 )}
@@ -246,9 +246,9 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
           <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 1, width: CIRCLE_D }}>
             <button
               onClick={() => !addStageMut.isPending && addStageMut.mutate()}
-              style={{ width: CIRCLE_D, height: CIRCLE_D, borderRadius: '50%', border: '2px dashed rgba(255,107,53,0.35)', background: 'var(--bg,#0e0e14)', color: 'rgba(255,107,53,0.55)', fontSize: 22, cursor: addStageMut.isPending ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: addStageMut.isPending ? 0.4 : 1, fontFamily: 'Inter,sans-serif', lineHeight: 1 }}
+              style={{ width: CIRCLE_D, height: CIRCLE_D, borderRadius: '50%', border: '2px dashed rgba(123,97,255,0.35)', background: 'var(--bg,#0e0e14)', color: 'rgba(123,97,255,0.55)', fontSize: 22, cursor: addStageMut.isPending ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: addStageMut.isPending ? 0.4 : 1, fontFamily: 'Inter,sans-serif', lineHeight: 1 }}
             >+</button>
-            <span style={{ fontSize: 12, color: 'rgba(255,107,53,0.35)', fontFamily: 'Inter,sans-serif' }}>Этап</span>
+            <span style={{ fontSize: 12, color: 'rgba(123,97,255,0.35)', fontFamily: 'Inter,sans-serif' }}>Этап</span>
           </div>
         )}
       </div>
@@ -278,7 +278,7 @@ function TaskCard({ t, onOpen }: { t: StageTask; onOpen?: () => void }) {
   return (
     <div
       onClick={onOpen}
-      onMouseEnter={e => onOpen && (e.currentTarget.style.borderColor = 'rgba(255,107,53,0.35)')}
+      onMouseEnter={e => onOpen && (e.currentTarget.style.borderColor = 'rgba(123,97,255,0.35)')}
       onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: onOpen ? 'pointer' : 'default' }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: sc, flexShrink: 0 }} />
@@ -338,7 +338,7 @@ function UserPicker({ selected, onChange, label, hint }: { selected: string[]; o
         {selectedUsers.length === 0
           ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Не выбрано</span>
           : selectedUsers.map(u => (
-              <span key={u.id} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,107,53,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
+              <span key={u.id} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: 'rgba(123,97,255,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
             ))
         }
       </div>
@@ -351,7 +351,7 @@ function UserPicker({ selected, onChange, label, hint }: { selected: string[]; o
             {filtered.map(u => (
               <div key={u.id} onClick={() => toggle(u.id)}
                 style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: selected.includes(u.id) ? 'var(--accent-s)' : 'var(--text-2)' }}>
-                <span style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${selected.includes(u.id) ? 'var(--accent-s)' : 'var(--border)'}`, background: selected.includes(u.id) ? 'rgba(255,107,53,0.2)' : 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                <span style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${selected.includes(u.id) ? 'var(--accent-s)' : 'var(--border)'}`, background: selected.includes(u.id) ? 'rgba(123,97,255,0.2)' : 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
                   {selected.includes(u.id) ? '✓' : ''}
                 </span>
                 {u.name}
@@ -545,7 +545,7 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
             <span style={lbl}>Участники (автоматически)</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px', background: 'var(--surface-3)', borderRadius: 8, border: '1px solid var(--border)' }}>
               {[track.leader, ...track.members.map(m => m.user)].map(u => (
-                <span key={u.id} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,107,53,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
+                <span key={u.id} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: 'rgba(123,97,255,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
               ))}
             </div>
           </div>

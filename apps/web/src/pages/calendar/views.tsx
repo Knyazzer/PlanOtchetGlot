@@ -48,9 +48,9 @@ export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDay
             <div key={i} onClick={() => onDayClick(ymd)}
               style={{ borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)', padding:6, cursor:'pointer', opacity: isThisMonth ? 1 : 0.35, overflow:'hidden' }}>
               <div style={{ width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:500, marginBottom:4,
-                background: isToday ? '#F97316' : isSel ? 'rgba(255,107,53,0.15)' : 'transparent',
-                color: isToday ? '#fff' : isSel ? '#FF6B35' : 'var(--text-3)',
-                outline: isSel && !isToday ? '1px solid rgba(255,107,53,0.4)' : 'none',
+                background: isToday ? '#F97316' : isSel ? 'rgba(123,97,255,0.15)' : 'transparent',
+                color: isToday ? '#fff' : isSel ? 'var(--accent-s)' : 'var(--text-3)',
+                outline: isSel && !isToday ? '1px solid rgba(123,97,255,0.4)' : 'none',
               }}>{d.getDate()}</div>
               {shown.map(evt => (
                 <div key={evt.id} onClick={e => { e.stopPropagation(); onEventClick(evt) }}
@@ -291,7 +291,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
 
   return (
     <div ref={colRef} onMouseDown={onMouseDown}
-      style={{ position:'relative', minHeight:1440, background: isToday ? 'rgba(255,107,53,0.015)' : 'transparent', ...style }}>
+      style={{ position:'relative', minHeight:1440, background: isToday ? 'rgba(123,97,255,0.015)' : 'transparent', ...style }}>
       <div style={{ position:'absolute', left:0, right:0, top:600, height:510, background:'rgba(255,255,255,0.025)', pointerEvents:'none', zIndex:0 }} />
       {Array.from({length:24},(_,h) => (
         <div key={h}>
@@ -347,7 +347,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
         const now = new Date(); const nowMin = now.getHours()*60+now.getMinutes()
         return <div style={{ position:'absolute', left:0, right:0, top:nowMin, height:2, background:'#F97316', zIndex:5, pointerEvents:'none' }}><div style={{ position:'absolute', left:-4, top:-4, width:10, height:10, borderRadius:'50%', background:'#FF6B35' }} /></div>
       })()}
-      <div ref={ghostRef} style={{ position:'absolute', left:4, right:4, borderRadius:6, zIndex:50, pointerEvents:'none', background:'rgba(255,107,53,0.2)', border:'2px dashed #FF6B35', padding:'4px 8px', fontSize:12, fontWeight:600, color:'#FF6B35', display:'none' }} />
+      <div ref={ghostRef} style={{ position:'absolute', left:4, right:4, borderRadius:6, zIndex:50, pointerEvents:'none', background:'rgba(123,97,255,0.2)', border:'2px dashed #FF6B35', padding:'4px 8px', fontSize:12, fontWeight:600, color:'#FF6B35', display:'none' }} />
     </div>
   )
 }

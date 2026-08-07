@@ -262,7 +262,7 @@ export function GanttChart({ tasks, onUpdate, onOpenCreate, onEdit, currentUserI
               })()}
 
               {/* Ghost */}
-              <div ref={ghostRef} style={{ position:'absolute', height:28, top:10, borderRadius:6, background:'rgba(255,107,53,0.4)', border:'2px dashed #FF6B35', pointerEvents:'none', zIndex:150, display:'none' }} />
+              <div ref={ghostRef} style={{ position:'absolute', height:28, top:10, borderRadius:6, background:'rgba(123,97,255,0.4)', border:'2px dashed #FF6B35', pointerEvents:'none', zIndex:150, display:'none' }} />
 
               {/* Deadline bars */}
               {sorted.map((task, taskIdx) => {

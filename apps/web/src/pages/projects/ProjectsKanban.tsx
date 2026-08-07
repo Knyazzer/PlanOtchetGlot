@@ -65,7 +65,7 @@ export function ProjectsKanban({ projects, isLoading, onOpen }: {
             onDrop={e => handleDrop(e, col.status)}
             onDragLeave={() => setOverCol(null)}
             style={{
-              background: isOver ? 'rgba(255,107,53,0.04)' : 'var(--bg)',
+              background: isOver ? 'rgba(123,97,255,0.04)' : 'var(--bg)',
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
               transition: 'background 0.1s',
             }}

@@ -182,7 +182,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
 
   return (
     <div style={{
-      background: 'var(--surface-1)', border: `1px solid ${active ? 'rgba(255,107,53,0.3)' : 'var(--border)'}`,
+      background: 'var(--surface-1)', border: `1px solid ${active ? 'rgba(123,97,255,0.3)' : 'var(--border)'}`,
       borderRadius: 10, marginBottom: 8, overflow: 'hidden',
     }}>
       {/* Row */}

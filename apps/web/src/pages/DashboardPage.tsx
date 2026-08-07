@@ -208,7 +208,7 @@ export function DashboardPage() {
           {dateStr}{isToday && currentUser?.name ? ` · Добро пожаловать, ${formatName(currentUser.name).split(' ')[0]}` : ''}
         </div>
         {!isToday && (
-          <button onClick={() => setSelDate(todayStr)} style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-s)', background: 'rgba(255,107,53,0.12)', border: '1px solid var(--accent-s)', borderRadius: 20, padding: '3px 12px', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>← Сегодня</button>
+          <button onClick={() => setSelDate(todayStr)} style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-s)', background: 'rgba(123,97,255,0.12)', border: '1px solid var(--accent-s)', borderRadius: 20, padding: '3px 12px', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>← Сегодня</button>
         )}
       </div>
 
@@ -263,7 +263,7 @@ export function DashboardPage() {
                 <button
                   key={d}
                   onClick={() => setDlThreshold(d)}
-                  style={{ padding:'2px 8px', borderRadius:20, border:`1px solid ${dlThreshold === d ? 'var(--accent-s)' : 'var(--border)'}`, background: dlThreshold === d ? 'rgba(255,107,53,0.15)' : 'none', color: dlThreshold === d ? 'var(--accent-s)' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}
+                  style={{ padding:'2px 8px', borderRadius:20, border:`1px solid ${dlThreshold === d ? 'var(--accent-s)' : 'var(--border)'}`, background: dlThreshold === d ? 'rgba(123,97,255,0.15)' : 'none', color: dlThreshold === d ? 'var(--accent-s)' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}
                 >{d}д</button>
               ))}
             </div>

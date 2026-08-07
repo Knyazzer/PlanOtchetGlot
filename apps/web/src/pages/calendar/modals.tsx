@@ -197,7 +197,7 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
                   const newLoc = sel ? modal.location.filter(l => l !== loc.id) : [...modal.location, loc.id]
                   onChange({ location: newLoc, ...(loc.id === 'vyezd' && sel ? { vyezdAddress: '' } : {}) })
                 }}
-                  style={{ padding:'5px 12px', borderRadius:20, border:`1px solid ${sel ? '#FF6B35' : 'var(--border)'}`, background: sel ? 'rgba(255,107,53,0.15)' : 'none', color: sel ? '#FF6B35' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight: sel ? 600 : 400, cursor:'pointer' }}>
+                  style={{ padding:'5px 12px', borderRadius:20, border:`1px solid ${sel ? '#FF6B35' : 'var(--border)'}`, background: sel ? 'rgba(123,97,255,0.15)' : 'none', color: sel ? '#FF6B35' : 'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight: sel ? 600 : 400, cursor:'pointer' }}>
                   {loc.label}
                 </button>
               )

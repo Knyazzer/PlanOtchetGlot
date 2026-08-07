@@ -52,8 +52,8 @@ function SubTab({ label, active, onClick }: { label: string; active: boolean; on
     <button onClick={onClick} style={{
       fontSize: 14, fontWeight: active ? 600 : 500,
       padding: '6px 16px', borderRadius: 8,
-      border: active ? '1px solid rgba(255,107,53,0.25)' : '1px solid transparent',
-      background: active ? 'rgba(255,107,53,0.1)' : 'none',
+      border: active ? '1px solid rgba(123,97,255,0.25)' : '1px solid transparent',
+      background: active ? 'rgba(123,97,255,0.1)' : 'none',
       color: active ? 'var(--accent-s)' : 'var(--text-3)',
       cursor: 'pointer', fontFamily: 'Inter, sans-serif',
       transition: 'all 0.12s',
@@ -693,9 +693,9 @@ function StaffTab() {
                 const isDupFree  = freelancerNames.has(p.name.toLowerCase())
                 return (
                   <tr key={p.id} onClick={() => setSelected(isSelected ? null : p)} style={{
-                    background: isSelected ? 'rgba(255,107,53,0.08)' : 'transparent',
+                    background: isSelected ? 'rgba(123,97,255,0.08)' : 'transparent',
                     cursor: 'pointer',
-                    outline: isSelected ? '1px solid rgba(255,107,53,0.3)' : 'none',
+                    outline: isSelected ? '1px solid rgba(123,97,255,0.3)' : 'none',
                   }}>
                     <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12, minWidth: 28 }}>{idx + 1}</td>
                     <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', width: 36 }}>
@@ -939,9 +939,9 @@ function FreelancersTab() {
                 const isDupStaff  = staffNames.has(nameKey)
                 return (
                   <tr key={p.id} onClick={() => setSelected(isSelected ? null : p)} style={{
-                    background: isSelected ? 'rgba(255,107,53,0.08)' : 'transparent',
+                    background: isSelected ? 'rgba(123,97,255,0.08)' : 'transparent',
                     cursor: 'pointer',
-                    outline: isSelected ? '1px solid rgba(255,107,53,0.3)' : 'none',
+                    outline: isSelected ? '1px solid rgba(123,97,255,0.3)' : 'none',
                   }}>
                     <td style={{ padding: '8px 10px 8px 14px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: 12, minWidth: 28 }}>{idx + 1}</td>
                     <td style={{ padding: '8px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'center', width: 36 }}>

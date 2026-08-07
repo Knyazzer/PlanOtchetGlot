@@ -63,7 +63,7 @@ export function DatePicker({ value, onChange, min }: { value: string; onChange: 
         onMouseDown={() => setOpen(o => !o)}
         style={{
           display:'flex', alignItems:'center', gap:8,
-          background:'var(--surface-2)', border:`1px solid ${open ? 'rgba(255,107,53,.5)' : 'var(--border)'}`,
+          background:'var(--surface-2)', border:`1px solid ${open ? 'rgba(123,97,255,.5)' : 'var(--border)'}`,
           borderRadius:8, padding:'8px 10px', cursor:'pointer',
           transition:'border-color .15s', userSelect:'none', fontSize:14,
           color: displayVal ? 'var(--text-1)' : 'var(--text-muted)',
