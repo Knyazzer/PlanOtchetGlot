@@ -6,6 +6,10 @@ import { useAuthStore } from '../stores/auth'
 import { formatName } from '../lib/utils'
 import { ROLE } from '../lib/roleColors'
 import { Tooltip } from '../components/Tooltip'
+import { getWeekStart, toYMD } from './calendar/utils'
+import type { ApiCalEntry } from './calendar/types'
+
+const WD_SHORT = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
@@ -31,14 +35,66 @@ export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void
   return (
     <div style={{ padding: '20px 24px', height: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
       <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', height: '100%', maxWidth: 1120, margin: '0 auto', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1.4 1 440px', minWidth: 0, display: 'flex', minHeight: 0 }}>
-          <NewsChat />
+        <div style={{ flex: '1.4 1 440px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
+          <WeekStripCard />
+          <div style={{ flex: 1, minHeight: 0, display: 'flex' }}><NewsChat /></div>
         </div>
         <div style={{ flex: '1 1 300px', minWidth: 290, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
           <ProductionMonthCard />
           <WhoWorks onOpenChat={onOpenChat} />
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Урезанный календарь недели (Пн–Вс): ключевые события компании (общий календарь), read-only.
+//    Проекты и люди на них подставятся автоматически с функционалом проектов (сейчас — просмотр). ──
+function WeekStripCard() {
+  const today = new Date()
+  const todayYMD = toYMD(today)
+  const ws = getWeekStart(today)
+  const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(ws); d.setDate(ws.getDate() + i); return d })
+  const from = toYMD(days[0]), to = toYMD(days[6])
+  const { data: entries = [] } = useQuery<ApiCalEntry[]>({
+    queryKey: ['calendar-entries', from, to],
+    queryFn: () => api.get(`/calendar-entries?from=${from}&to=${to}`).then(r => r.data),
+    staleTime: 60_000,
+  })
+  const byDate = new Map<string, ApiCalEntry[]>()
+  for (const e of entries) { if (e.type !== 'global') continue; const k = e.date.slice(0, 10); const arr = byDate.get(k) ?? []; arr.push(e); byDate.set(k, arr) }
+
+  return (
+    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Эта неделя · общий календарь</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>только просмотр</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
+        {days.map((d, i) => {
+          const ds = toYMD(d)
+          const isToday = ds === todayYMD
+          const weekend = i >= 5
+          const items = (byDate.get(ds) ?? []).sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
+          return (
+            <div key={ds} style={{ minHeight: 92, borderRadius: 9, border: `1px solid ${isToday ? ROLE.highlight : 'var(--border)'}`, background: isToday ? ROLE.highlight + '12' : 'var(--surface-2)', padding: 6, display: 'flex', flexDirection: 'column', gap: 3, opacity: weekend && !isToday ? 0.7 : 1 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'center', marginBottom: 2 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? ROLE.highlight : 'var(--text-muted)', letterSpacing: '0.3px' }}>{WD_SHORT[i]}</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? ROLE.highlight : 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>{d.getDate()}</span>
+              </div>
+              {items.length === 0 ? (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-muted)', opacity: 0.5 }}>—</div>
+              ) : items.slice(0, 3).map(e => (
+                <Tooltip key={e.id} text={`${e.title}${e.startTime ? ` · ${e.startTime.slice(0, 5)}` : ''}`} style={{ display: 'block' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-2)', background: ROLE.info + '1c', borderLeft: `2px solid ${ROLE.info}`, borderRadius: 3, padding: '2px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
+                </Tooltip>
+              ))}
+              {items.length > 3 && <div style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center' }}>+{items.length - 3}</div>}
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 8 }}>Проекты и люди на них появятся здесь с функционалом проектов.</div>
     </div>
   )
 }
@@ -197,17 +253,18 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
     refetchInterval: 60_000, refetchIntervalInBackground: false,
   })
   const [q, setQ] = useState('')
-  const [filter, setFilter] = useState<'all' | 'working' | 'office' | 'remote'>('all')
+  const [filter, setFilter] = useState<'all' | 'office' | 'remote' | 'sick' | 'vacation' | 'dayoff'>('all')
   const [sel, setSel] = useState<PresenceItem | null>(null)
   const down = useRef(false)
 
   const ql = q.trim().toLowerCase()
   const list = people
     .filter(m => m.name.toLowerCase().includes(ql))
-    .filter(m => filter === 'all' ? true : filter === 'working' ? m.state === 'working' : m.dayType === filter)
+    .filter(m => filter === 'all' ? true : m.dayType === filter)
   const workingNow = people.filter(m => m.state === 'working').length
 
-  const chips: Array<[typeof filter, string]> = [['all', 'Все'], ['working', 'В работе'], ['office', 'Офис'], ['remote', 'Удалёнка']]
+  // Фильтр по типу дня (HR-статус). «На проекте» — отдельным блоком позже (с функционалом проектов).
+  const chips: Array<[typeof filter, string]> = [['all', 'Все'], ['office', 'Офис'], ['remote', 'Удалёнка'], ['sick', 'Больничный'], ['vacation', 'Отпуск'], ['dayoff', 'Выходной']]
 
   return (
     <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -220,9 +277,9 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
         <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="Поиск сотрудника…" style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14 }} />
       </div>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap', flexShrink: 0 }}>
         {chips.map(([v, label]) => (
-          <button key={v} onClick={() => setFilter(v)} style={{ flex: 1, padding: '5px 0', borderRadius: 7, border: `1px solid ${filter === v ? 'var(--accent-s)' : 'var(--border)'}`, background: filter === v ? 'rgba(123,97,255,0.14)' : 'none', color: filter === v ? 'var(--accent-s)' : 'var(--text-muted)', fontFamily: 'Inter,sans-serif', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
+          <button key={v} onClick={() => setFilter(v)} style={{ padding: '4px 10px', borderRadius: 7, border: `1px solid ${filter === v ? 'var(--accent-s)' : 'var(--border)'}`, background: filter === v ? 'rgba(123,97,255,0.14)' : 'none', color: filter === v ? 'var(--accent-s)' : 'var(--text-muted)', fontFamily: 'Inter,sans-serif', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{label}</button>
         ))}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0, overflowY: 'auto' }}>
