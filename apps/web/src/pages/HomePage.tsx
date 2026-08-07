@@ -142,8 +142,8 @@ function ProductionMonthCard() {
                 <circle cx={C} cy={C} r={R} fill="none" stroke={ROLE.primary} strokeWidth={SW} strokeLinecap="round" strokeDasharray={`${dash} ${CIRC}`} transform={`rotate(-90 ${C} ${C})`} />
               </svg>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                <span style={{ fontSize: 42, fontWeight: 800, color: 'var(--text-1)', lineHeight: 0.95, fontVariantNumeric: 'tabular-nums' }}>{dayOfMonth}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{MONTHS_GEN[m]}</span>
+                <span style={{ fontSize: 30, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{dayOfMonth}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>{MONTHS_GEN[m]}</span>
                 <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>нед. {week}</span>
               </div>
             </div>
@@ -158,7 +158,7 @@ function ProductionMonthCard() {
           <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Кварталы</span>
-              <span style={{ fontSize: 12, color: 'var(--text-3)' }}><b style={{ color: ROLE.highlight }}>Q{data.quarter}</b> · до конца {data.quarterDaysLeft} дн ({data.quarterWorkDaysLeft} раб.)</span>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>до конца {data.quarterDaysLeft} дн ({data.quarterWorkDaysLeft} раб.)</span>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {quarters.map(qq => (
