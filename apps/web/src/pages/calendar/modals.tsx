@@ -28,7 +28,7 @@ const chipStyle: React.CSSProperties = {
 const miniBtn = (primary?: boolean): React.CSSProperties => ({
   flex: 1, borderRadius: 8, padding: '8px 0', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer',
   border: primary ? 'none' : '1px solid var(--border)',
-  background: primary ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'none',
+  background: primary ? '#7B61FF' : 'none',
   color: primary ? '#fff' : 'var(--text-2)',
 })
 
@@ -252,11 +252,11 @@ export function EventModal({ modal, onChange, onSubmit, onDelete, onClose, canEd
 
         <div style={{ display:'flex', gap:8 }}>
           {isEdit && canEdit && (
-            <button onClick={onDelete} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
+            <button onClick={onDelete} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#F43F5E', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
           )}
           <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>{canEdit ? 'Отмена' : 'Закрыть'}</button>
           {canEdit && (
-            <button onClick={onSubmit} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+            <button onClick={onSubmit} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'#7B61FF', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
               {isEdit ? 'Сохранить' : 'Создать'}
             </button>
           )}
@@ -339,10 +339,10 @@ export function EntryModal({ modal, onChange, onSubmit, onDelete, onClose }: {
 
         <div style={{ display:'flex', gap:8, marginTop:22 }}>
           {isEdit && (
-            <button onClick={onDelete} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
+            <button onClick={onDelete} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#F43F5E', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
           )}
           <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Отмена</button>
-          <button onClick={onSubmit} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+          <button onClick={onSubmit} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'#7B61FF', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
             {isEdit ? 'Сохранить' : 'Создать'}
           </button>
         </div>

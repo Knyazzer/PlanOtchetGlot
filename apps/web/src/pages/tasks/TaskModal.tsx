@@ -390,7 +390,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={onClose} style={{ padding:'8px 18px', borderRadius:8, border:'1px solid var(--border)', background:'none', color:'var(--text-3)', fontFamily:'Inter,sans-serif', fontSize:14, cursor:'pointer' }}>{isReadOnly ? 'Закрыть' : 'Отмена'}</button>
             {!isReadOnly && (
-              <button onClick={submit} disabled={!title.trim() || saveMutation.isPending} style={{ padding:'8px 20px', borderRadius:8, border:'none', background: title.trim() ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'rgba(255,255,255,0.08)', color: title.trim() ? '#fff' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, cursor: title.trim() ? 'pointer' : 'default' }}>
+              <button onClick={submit} disabled={!title.trim() || saveMutation.isPending} style={{ padding:'8px 20px', borderRadius:8, border:'none', background: title.trim() ? '#7B61FF' : 'rgba(255,255,255,0.08)', color: title.trim() ? '#fff' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, cursor: title.trim() ? 'pointer' : 'default' }}>
                 {saveMutation.isPending ? '...' : isEdit ? 'Сохранить' : 'Создать'}
               </button>
             )}

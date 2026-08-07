@@ -5,9 +5,9 @@ export const TASK_TYPE_OPTIONS: Array<{ value: string; label: string; color: str
   { value: 'task',            label: 'Задача',      color: '#64748b' },
   { value: 'zoom',            label: 'Zoom',        color: '#0EA5E9' },
   { value: 'meeting_offline', label: 'Встреча',     color: '#8B5CF6' },
-  { value: 'air',             label: 'Эфир',        color: '#E8194B' },
+  { value: 'air',             label: 'Эфир',        color: '#F43F5E' },
   { value: 'build',           label: 'Застройка',   color: '#F59E0B' },
-  { value: 'event',           label: 'Мероприятие', color: '#29BF12' },
+  { value: 'event',           label: 'Мероприятие', color: '#22C55E' },
 ]
 
 export const taskTypeMeta = (t: string) => TASK_TYPE_OPTIONS.find(o => o.value === t)

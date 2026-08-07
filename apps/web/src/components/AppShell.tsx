@@ -323,7 +323,7 @@ function ChatRightPanel({ chatOpen, onToggle, chatsProps, chatKey, totalUnread }
           {!chatOpen && totalUnread > 0 && (
             <span style={{
               position: 'absolute', top: -2, right: -6,
-              background: 'linear-gradient(135deg,#FF6B35,#E8194B)',
+              background: '#7B61FF',
               color: '#fff', fontSize: 12, fontWeight: 700,
               borderRadius: 8, padding: '1px 4px', lineHeight: 1.4,
               pointerEvents: 'none',
@@ -357,7 +357,7 @@ function NotifBellHeader({ badge, onClick }: { badge: number; onClick: () => voi
       {badge > 0 && (
         <span
           className="mono absolute -right-0.5 -top-0.5 grid h-4 min-w-[16px] place-items-center rounded-full px-1 text-[10px] font-bold text-white"
-          style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)' }}
+          style={{ background: '#7B61FF' }}
         >
           {badge > 99 ? '99+' : badge}
         </span>

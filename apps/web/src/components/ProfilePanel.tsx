@@ -46,7 +46,7 @@ function PasswordChange() {
           style={{ textAlign: 'left', padding: '8px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-2)', fontSize: 14, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
           Изменить пароль
         </button>
-        {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#29BF12' : '#E8194B' }}>{msg}</div>}
+        {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#22C55E' : '#F43F5E' }}>{msg}</div>}
       </>
     )
   }
@@ -54,7 +54,7 @@ function PasswordChange() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <input type="password" value={pw} onChange={e => setPw(e.target.value)} placeholder="Новый пароль (мин. 8)" autoComplete="new-password"
         onKeyDown={e => { if (e.key === 'Enter' && !busy) submit() }} autoFocus style={inp} />
-      {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#29BF12' : '#E8194B' }}>{msg}</div>}
+      {msg && <div style={{ fontSize: 12, color: msg.startsWith('✓') ? '#22C55E' : '#F43F5E' }}>{msg}</div>}
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={() => { setOpen(false); setPw(''); setMsg(null) }} disabled={busy}
           style={{ flex: 1, padding: '8px 0', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-3)', fontSize: 14, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>Отмена</button>

@@ -116,12 +116,12 @@ export function DatePicker({ value, onChange, min }: { value: string; onChange: 
                     fontSize:14, cursor: isDisabled ? 'default' : 'pointer',
                     fontWeight: isToday || isSel ? 700 : 400,
                     color: isDisabled ? 'var(--text-muted)' : isSel ? '#fff' : isToday ? 'var(--text-1)' : 'var(--text-2)',
-                    background: isSel ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent',
+                    background: isSel ? '#F97316' : 'transparent',
                     opacity: isDisabled ? 0.3 : 1,
                     transition:'all .1s',
                   }}
                   onMouseEnter={e => { if (!isSel && !isDisabled) (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-2)' }}
-                  onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLDivElement).style.background = isSel ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent' }}
+                  onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLDivElement).style.background = isSel ? '#F97316' : 'transparent' }}
                 >{d}</div>
               )
             })}

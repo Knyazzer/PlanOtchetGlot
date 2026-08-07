@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Unit tests for useAuthInit hook.
  *
  * Behaviour:

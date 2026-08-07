@@ -207,7 +207,7 @@ export function StructureTab({ projectId }: { projectId: string }) {
                             </select>
                           </div>
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button onClick={() => deleteWI.mutate(wi.id)} style={{ ...miniSelectStyle, cursor: 'pointer', color: '#E8194B', background: 'rgba(232,25,75,0.08)', borderColor: 'rgba(232,25,75,0.2)', fontFamily: 'Inter, sans-serif' }}>
+                            <button onClick={() => deleteWI.mutate(wi.id)} style={{ ...miniSelectStyle, cursor: 'pointer', color: '#F43F5E', background: 'rgba(232,25,75,0.08)', borderColor: 'rgba(232,25,75,0.2)', fontFamily: 'Inter, sans-serif' }}>
                               Удалить
                             </button>
                           </div>

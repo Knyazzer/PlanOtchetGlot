@@ -40,7 +40,7 @@ export function ProjectCardPage({ project, onBack }: { project: Project; onBack:
         position: 'relative',
       }}>
         {/* orange top line */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,#FF6B35,#E8194B)' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: '#F97316' }} />
 
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           {/* Left: eyebrow + title + status */}

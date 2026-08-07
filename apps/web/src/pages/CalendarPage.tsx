@@ -260,7 +260,7 @@ export function CalendarPage() {
             {(['month','week','day'] as CalView[]).map(v => (
               <button key={v} onClick={() => { setView(v); closePanel() }} style={{
                 padding:'5px 16px', borderRadius:7, border:'none', cursor:'pointer',
-                background: view === v ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'none',
+                background: view === v ? '#7B61FF' : 'none',
                 color: view === v ? '#fff' : 'var(--text-muted)', fontSize:14, fontWeight: view === v ? 600 : 400,
                 fontFamily:'Inter,sans-serif',
               }}>
@@ -372,7 +372,7 @@ export function CalendarPage() {
             <div style={{ fontSize:14, color:'var(--text-3)', marginBottom:18, lineHeight:1.5 }}>Изменения в событии не сохранены. Закрыть без сохранения?</div>
             <div style={{ display:'flex', gap:8 }}>
               <button onClick={() => setConfirmClose(false)} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-2)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Продолжить правку</button>
-              <button onClick={() => { setConfirmClose(false); setModal(BLANK_MODAL()) }} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'rgba(232,25,75,0.14)', border:'1px solid rgba(232,25,75,0.35)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Сбросить</button>
+              <button onClick={() => { setConfirmClose(false); setModal(BLANK_MODAL()) }} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'rgba(232,25,75,0.14)', border:'1px solid rgba(232,25,75,0.35)', color:'#F43F5E', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Сбросить</button>
             </div>
           </div>
         </div>

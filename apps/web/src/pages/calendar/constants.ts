@@ -4,24 +4,24 @@ import type { CatDef, EventType, EntryType, ModalState, EntryModalState } from '
 export const TYPE_COLOR: Record<string, string> = {
   meeting:             '#8B5CF6',
   task:                '#FF6B35',
-  personal:            '#29BF12',
+  personal:            '#22C55E',
   global:              '#0EA5E9',
   znamenka_kaminoka:   '#F59E0B',
   znamenka_chernaya:   '#6B7280',
   znamenka_kupol:      '#A855F7',
-  hr_sick:             '#E8194B',
+  hr_sick:             '#F43F5E',
   hr_vacation:         '#0EA5E9',
   hr_unpaid:           '#F59E0B',
-  hr_dayoff:           '#29BF12',
+  hr_dayoff:           '#22C55E',
 }
 
 // Toggleable categories (global always visible, not in this list for non-admins)
 export const MY_CATS: CatDef[]  = [{ id: 'my_events', label: 'Мои события', color: '#8B5CF6' }]
 export const HR_CATS: CatDef[]  = [
-  { id: 'hr_sick',    label: 'Больничный',           color: '#E8194B' },
+  { id: 'hr_sick',    label: 'Больничный',           color: '#F43F5E' },
   { id: 'hr_vacation',label: 'Отпуск',               color: '#0EA5E9' },
   { id: 'hr_unpaid',  label: 'Отпуск за свой счёт',  color: '#F59E0B' },
-  { id: 'hr_dayoff',  label: 'Отгул',                color: '#29BF12' },
+  { id: 'hr_dayoff',  label: 'Отгул',                color: '#22C55E' },
 ]
 
 export const LOCATIONS = [

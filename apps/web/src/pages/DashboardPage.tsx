@@ -29,7 +29,7 @@ function daysDiff(deadline: string) {
 function fmtTime(t: string) { return t.slice(0,5) }
 
 const TYPE_COLOR: Record<string, string> = {
-  meeting: '#8B5CF6', task: '#FF6B35', personal: '#29BF12',
+  meeting: '#8B5CF6', task: '#FF6B35', personal: '#22C55E',
 }
 const TYPE_LABEL: Record<string, string> = {
   meeting: 'Встреча', task: 'Задача', personal: 'Личное',
@@ -96,7 +96,7 @@ function QuickEventModal({ date, onClose, onCreated }: { date: string; onClose: 
 
         <div style={{ display:'flex', gap:8 }}>
           <button onClick={onClose} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(255,255,255,0.06)', border:'1px solid var(--border)', color:'var(--text-3)', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Отмена</button>
-          <button onClick={() => { if (title.trim()) createMut.mutate() }} disabled={!title.trim() || createMut.isPending} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer', opacity: title.trim() ? 1 : 0.5 }}>
+          <button onClick={() => { if (title.trim()) createMut.mutate() }} disabled={!title.trim() || createMut.isPending} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'#7B61FF', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer', opacity: title.trim() ? 1 : 0.5 }}>
             {createMut.isPending ? '...' : 'Создать'}
           </button>
         </div>
@@ -107,7 +107,7 @@ function QuickEventModal({ date, onClose, onCreated }: { date: string; onClose: 
 
 // ── Deadline badge ─────────────────────────────────────────────────────────────
 function DeadlineBadge({ days }: { days: number }) {
-  const color = days < 0 ? '#E8194B' : days === 0 ? '#FF6B35' : days <= 2 ? '#F59E0B' : 'var(--text-muted)'
+  const color = days < 0 ? '#F43F5E' : days === 0 ? '#FF6B35' : days <= 2 ? '#F59E0B' : 'var(--text-muted)'
   const label = days < 0 ? `просрочено ${Math.abs(days)} д.` : days === 0 ? 'сегодня' : `${days} дн.`
   return (
     <span style={{ fontSize:12, fontWeight:700, padding:'2px 8px', borderRadius:20, background: color+'22', color, whiteSpace:'nowrap' }}>

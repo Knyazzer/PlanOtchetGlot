@@ -116,7 +116,7 @@ export function GroupInfoModal({
                         ...(editColor !== null ? { color: editColor } : {}),
                       })}
                       disabled={updateGroupMutation.isPending || (editName ?? '').trim().length === 0}
-                      style={{ padding: '6px 20px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+                      style={{ padding: '6px 20px', borderRadius: 8, border: 'none', background: '#7B61FF', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
                     >
                       {updateGroupMutation.isPending ? 'Сохраняем...' : 'Сохранить'}
                     </button>

@@ -75,8 +75,8 @@ function fmtToday() {
 }
 
 const STATUS_LABEL: Record<TrackStatus, string> = { active: 'Активный', done: 'Завершён', archived: 'Архив' }
-const STATUS_COLOR: Record<TrackStatus, string> = { active: '#29BF12',  done: '#0EA5E9', archived: '#464658' }
-const TASK_STATUS_COLOR: Record<string, string> = { backlog: '#464658', inprogress: '#0EA5E9', done: '#29BF12' }
+const STATUS_COLOR: Record<TrackStatus, string> = { active: '#22C55E',  done: '#0EA5E9', archived: '#464658' }
+const TASK_STATUS_COLOR: Record<string, string> = { backlog: '#464658', inprogress: '#0EA5E9', done: '#22C55E' }
 const TASK_STATUS_LABEL: Record<string, string> = { backlog: 'Бэклог', inprogress: 'В работе', done: 'Готово' }
 
 const lbl: React.CSSProperties = {
@@ -189,7 +189,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
           const done    = stage.tasks.filter(t => t.status === 'done').length
           const total   = stage.tasks.length
           const allDone = stageIsDone(stage)
-          const textColor = isSel ? '#FF6B35' : allDone ? '#29BF12' : 'rgba(255,255,255,0.28)'
+          const textColor = isSel ? '#FF6B35' : allDone ? '#22C55E' : 'rgba(255,255,255,0.28)'
 
           return (
             <div key={stage.id} style={{ width: STAGE_COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -287,7 +287,7 @@ function TaskCard({ t, onOpen }: { t: StageTask; onOpen?: () => void }) {
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{TASK_STATUS_LABEL[t.status]} · {t.assignee.name}</div>
       </div>
       {t.deadline && (
-        <span style={{ fontSize: 12, color: daysDiff(t.deadline) <= 1 ? '#E8194B' : 'var(--text-muted)', flexShrink: 0 }}>{fmtDate(t.deadline)}</span>
+        <span style={{ fontSize: 12, color: daysDiff(t.deadline) <= 1 ? '#F43F5E' : 'var(--text-muted)', flexShrink: 0 }}>{fmtDate(t.deadline)}</span>
       )}
     </div>
   )
@@ -645,7 +645,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
         </div>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <MetaItem icon="👤" label="Лидер" value={track.leader.name} />
-          {track.deadline && <MetaItem icon="📅" label="Дедлайн" value={fmtDate(track.deadline) ?? ''} highlight={daysDiff(track.deadline) <= 3 ? '#E8194B' : undefined} />}
+          {track.deadline && <MetaItem icon="📅" label="Дедлайн" value={fmtDate(track.deadline) ?? ''} highlight={daysDiff(track.deadline) <= 3 ? '#F43F5E' : undefined} />}
           <MetaItem icon="👥" label="Участники" value={track.members.length === 0 ? 'Нет' : track.members.map(m => m.user.name).join(', ')} />
         </div>
       </div>
@@ -660,7 +660,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
                 <span style={{ color: '#8B5CF6', fontWeight: 700 }}>{new Date(ev.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
                 <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{ev.startTime.slice(0, 5)}–{ev.endTime.slice(0, 5)}</span>
                 <span style={{ color: 'var(--text-1)' }}>{ev.title}</span>
-                {ev.status === 'done' && <span style={{ color: '#29BF12', fontSize: 11 }}>✓</span>}
+                {ev.status === 'done' && <span style={{ color: '#22C55E', fontSize: 11 }}>✓</span>}
               </div>
             ))}
           </div>
@@ -711,7 +711,7 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>👥 {memberCount}</span>
         </div>
         {daysLeft !== null && (
-          <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (daysLeft < 0 ? '#E8194B' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)') + '22', color: daysLeft < 0 ? '#E8194B' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (daysLeft < 0 ? '#F43F5E' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)') + '22', color: daysLeft < 0 ? '#F43F5E' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)' }}>
             {daysLeft < 0 ? `просрочено ${Math.abs(daysLeft)} д.` : daysLeft === 0 ? 'сегодня' : `${daysLeft} дн.`}
           </span>
         )}

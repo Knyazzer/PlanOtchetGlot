@@ -6,13 +6,13 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
   draft: 'Черновик', active: 'Активный', done: 'Завершён', cancelled: 'Отменён',
 }
 export const STATUS_COLOR: Record<ProjectStatus, string> = {
-  draft: '#888', active: '#FF6B35', done: '#29BF12', cancelled: '#666',
+  draft: '#888', active: '#FF6B35', done: '#22C55E', cancelled: '#666',
 }
 export const WI_STATUS_LABEL: Record<WorkItemStatus, string> = {
   request: 'Заявка', active: 'В работе', done: 'Сдан', rejected: 'Отклонён', cancelled: 'Отменён',
 }
 export const WI_STATUS_COLOR: Record<WorkItemStatus, string> = {
-  request: '#888', active: '#FF6B35', done: '#29BF12', rejected: '#E8194B', cancelled: '#666',
+  request: '#888', active: '#FF6B35', done: '#22C55E', rejected: '#F43F5E', cancelled: '#666',
 }
 export const EXPENSE_CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   equipment: 'Оборудование', transport: 'Транспорт', fees: 'Гонорары',
@@ -40,7 +40,7 @@ export const cancelBtnStyle: React.CSSProperties = {
   fontFamily: 'Inter, sans-serif',
 }
 export const submitBtnStyle: React.CSSProperties = {
-  background: 'linear-gradient(135deg,#FF6B35,#E8194B)',
+  background: '#7B61FF',
   border: 'none', borderRadius: 8, color: '#fff',
   fontSize: 14, fontWeight: 600, padding: '8px 20px', cursor: 'pointer',
   fontFamily: 'Inter, sans-serif',

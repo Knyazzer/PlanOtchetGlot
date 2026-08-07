@@ -43,7 +43,7 @@ export function FinanceTab({ projectId }: { projectId: string }) {
         <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 7 }}>
           <FinSummaryRow label="Бюджет" value={fmtMoney(String(totalBudget))} color="#FF6B35" />
           <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 2, background: 'linear-gradient(90deg,#FF6B35,#E8194B)', width: totalBudget > 0 ? `${Math.min(100, totalExpenses / totalBudget * 100)}%` : '0%' }} />
+            <div style={{ height: '100%', borderRadius: 2, background: '#F97316', width: totalBudget > 0 ? `${Math.min(100, totalExpenses / totalBudget * 100)}%` : '0%' }} />
           </div>
           <FinSummaryRow label="Расходы" value={fmtMoney(String(totalExpenses))} />
         </div>
@@ -93,7 +93,7 @@ export function FinanceTab({ projectId }: { projectId: string }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
             <KpiCard label="Бюджет WI" value={fmtMoney(activeWI.budget)} color="#FF6B35" />
             <KpiCard label="Расходы" value={wiDetail ? fmtMoney(String(wiDetail.expenses.reduce((s, e) => s + Number(e.amount), 0))) : '—'} color="var(--text-2)" />
-            <KpiCard label="Треки" value={String(activeWI._count.tracks)} color="#29BF12" sub="активных" />
+            <KpiCard label="Треки" value={String(activeWI._count.tracks)} color="#22C55E" sub="активных" />
             <KpiCard label="Расходов" value={String(activeWI._count.expenses)} color="var(--text-3)" sub="записей" />
           </div>
 
@@ -157,7 +157,7 @@ export function ExpensesBlock({ wiId, projectId, expenses, budget }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {bud > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: total > bud ? '#E8194B' : '#29BF12', fontWeight: 600 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: total > bud ? '#F43F5E' : '#22C55E', fontWeight: 600 }}>
           <span>Итого: {fmtMoney(String(total))}</span>
           <span>Бюджет: {fmtMoney(budget)}</span>
         </div>
@@ -184,7 +184,7 @@ export function ExpensesBlock({ wiId, projectId, expenses, budget }: {
           </div>
           <input placeholder="Описание" value={desc} onChange={e => setDesc(e.target.value)} style={{ ...inputStyle, padding: '5px 8px', fontSize: 12 }} />
           <div style={{ display: 'flex', gap: 6 }}>
-            <button onClick={() => addExpense.mutate({ amount: Number(amount), category, description: desc })} disabled={!amount || addExpense.isPending} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: amount && !addExpense.isPending ? 1 : 0.5 }}>
+            <button onClick={() => addExpense.mutate({ amount: Number(amount), category, description: desc })} disabled={!amount || addExpense.isPending} style={{ fontSize: 12, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#7B61FF', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: amount && !addExpense.isPending ? 1 : 0.5 }}>
               {addExpense.isPending ? '...' : 'Добавить'}
             </button>
             <button onClick={() => setOpen(false)} style={{ fontSize: 12, padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Отмена</button>
@@ -222,7 +222,7 @@ function BudgetInput({ wiId, projectId, current }: { wiId: string; projectId: st
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
       <input autoFocus type="number" value={val} onChange={e => setVal(e.target.value)} placeholder="Сумма ₽" style={{ ...inputStyle, width: 140, padding: '4px 8px', fontSize: 12 }} onKeyDown={e => { if (e.key === 'Enter') save.mutate(); if (e.key === 'Escape') setEditing(false) }} />
-      <button onClick={() => save.mutate()} disabled={save.isPending} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: save.isPending ? 0.5 : 1 }}>{save.isPending ? '...' : 'OK'}</button>
+      <button onClick={() => save.mutate()} disabled={save.isPending} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: 'none', background: '#7B61FF', color: '#fff', cursor: 'pointer', fontFamily: 'Inter, sans-serif', opacity: save.isPending ? 0.5 : 1 }}>{save.isPending ? '...' : 'OK'}</button>
       <button onClick={() => setEditing(false)} style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>✕</button>
     </div>
   )

@@ -260,7 +260,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
           <div style={{ display:'flex', gap:8 }}>
             {isAuthor && (
               !confirmDel ? (
-                <button onClick={() => setConfirmDel(true)} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#E8194B', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
+                <button onClick={() => setConfirmDel(true)} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, background:'rgba(232,25,75,0.12)', border:'1px solid rgba(232,25,75,0.3)', color:'#F43F5E', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Удалить</button>
               ) : (
                 <div style={{ flex:1, display:'flex', gap:6 }}>
                   <button onClick={() => deleteMut.mutate()} style={{ flex:1, fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:700, background:'var(--danger)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>Да</button>
@@ -272,7 +272,7 @@ export function CalendarEventModal({ eventId, task, onClose, onSaved, onOpenChat
               {isAuthor ? 'Отмена' : 'Закрыть'}
             </button>
             {isAuthor && (
-              <button onClick={submit} disabled={updateMut.isPending} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+              <button onClick={submit} disabled={updateMut.isPending} style={{ flex:2, fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'#7B61FF', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
                 {updateMut.isPending ? '...' : 'Сохранить'}
               </button>
             )}

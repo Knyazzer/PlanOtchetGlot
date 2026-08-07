@@ -257,7 +257,7 @@ function CreateModal({ type, onClose, onCreated }: CreateModalProps) {
             disabled={!name.trim() || create.isPending}
             style={{
               fontSize: 14, padding: '8px 18px', borderRadius: 8, border: 'none',
-              background: name.trim() ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'rgba(255,255,255,0.07)',
+              background: name.trim() ? '#7B61FF' : 'rgba(255,255,255,0.07)',
               color: name.trim() ? '#fff' : 'var(--text-muted)',
               fontFamily: 'Inter, sans-serif', fontWeight: 600,
               cursor: name.trim() ? 'pointer' : 'default',
@@ -506,7 +506,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
               disabled={!isDirty || patch.isPending || isAdminUser}
               style={{
                 flex: 1, fontSize: 14, padding: '9px 0', borderRadius: 8, border: 'none',
-                background: (isDirty && !isAdminUser) ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'rgba(255,255,255,0.07)',
+                background: (isDirty && !isAdminUser) ? '#7B61FF' : 'rgba(255,255,255,0.07)',
                 color: (isDirty && !isAdminUser) ? '#fff' : 'var(--text-muted)',
                 fontFamily: 'Inter, sans-serif', fontWeight: 600,
                 cursor: (isDirty && !isAdminUser) ? 'pointer' : 'default',
@@ -660,7 +660,7 @@ function StaffTab() {
           >{bulkOnboard.isPending ? 'Завожу доступ...' : 'Выдать доступ всем (с почтой)'}</button>
           <button onClick={() => setShowCreate(true)} style={{
             fontSize: 12, padding: '7px 16px', borderRadius: 8, border: 'none',
-            background: 'linear-gradient(135deg,#FF6B35,#E8194B)',
+            background: '#7B61FF',
             color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 600, cursor: 'pointer',
           }}>+ Добавить сотрудника</button>
         </div>
@@ -907,7 +907,7 @@ function FreelancersTab() {
           <div style={{ flex: 1 }} />
           <button onClick={() => setShowCreate(true)} style={{
             fontSize: 12, padding: '7px 16px', borderRadius: 8, border: 'none',
-            background: 'linear-gradient(135deg,#FF6B35,#E8194B)',
+            background: '#7B61FF',
             color: '#fff', fontFamily: 'Inter, sans-serif', fontWeight: 600, cursor: 'pointer',
           }}>+ Добавить фрилансера</button>
         </div>

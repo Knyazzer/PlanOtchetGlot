@@ -138,7 +138,7 @@ export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab }: Task
         )}
         {isLoading && <span style={{ fontSize:12, color:'var(--text-muted)' }}>Загрузка...</span>}
         <div style={{ flex:1 }} />
-        <button onClick={() => openCreate()} style={{ padding:'7px 16px', borderRadius:8, border:'none', background:'linear-gradient(135deg,#FF6B35,#E8194B)', color:'#fff', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
+        <button onClick={() => openCreate()} style={{ padding:'7px 16px', borderRadius:8, border:'none', background:'#7B61FF', color:'#fff', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
           <span style={{ fontSize:16, lineHeight:1 }}>+</span> Задача
         </button>
       </div>

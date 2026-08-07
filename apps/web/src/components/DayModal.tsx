@@ -105,7 +105,7 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {tasks.map(t => (
               <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: t.status === 'done' ? '#29BF12' : t.status === 'inprogress' ? '#0EA5E9' : '#64748b' }} />
+                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: t.status === 'done' ? '#22C55E' : t.status === 'inprogress' ? '#0EA5E9' : '#64748b' }} />
                 <span style={{ flex: 1, fontSize: 12, color: 'var(--text-1)', textDecoration: t.status === 'done' ? 'line-through' : 'none', opacity: t.status === 'done' ? 0.65 : 1 }}>
                   {t.title}
                   {(t.client || t.project) && (

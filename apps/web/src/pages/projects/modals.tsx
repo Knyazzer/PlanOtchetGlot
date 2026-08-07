@@ -35,7 +35,7 @@ export function ProjectFormModal({ onClose }: { onClose: () => void }) {
       }}>
         <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>Новый проект</h3>
 
-        <label style={labelStyle}>Название <span style={{ color: '#E8194B' }}>*</span></label>
+        <label style={labelStyle}>Название <span style={{ color: '#F43F5E' }}>*</span></label>
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Название проекта"
           style={inputStyle} autoFocus />
 
@@ -95,7 +95,7 @@ export function WorkItemFormModal({ projectId, onClose }: { projectId: string; o
       }}>
         <h3 style={{ margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>Новый Work Item</h3>
 
-        <label style={labelStyle}>Название <span style={{ color: '#E8194B' }}>*</span></label>
+        <label style={labelStyle}>Название <span style={{ color: '#F43F5E' }}>*</span></label>
         <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Что нужно сделать"
           style={inputStyle} autoFocus />
 

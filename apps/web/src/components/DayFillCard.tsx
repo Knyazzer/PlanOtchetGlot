@@ -144,10 +144,10 @@ function WorkDayCard({ date, entry, formats, schedule }: {
               <button disabled style={bigBtn('#8a8f98', true)}>✓ Рабочий день завершён</button>
             ) : !started ? (
               <button disabled={startDisabled} onClick={() => save.mutate({ dayFormat: isWork ? dayType : 'office', startTime: nowHHMM(), endTime: null })}
-                title={startDisabled ? 'Начать можно только в текущий день' : ''} style={bigBtn('#29BF12', startDisabled)}>▶ Начать рабочий день</button>
+                title={startDisabled ? 'Начать можно только в текущий день' : ''} style={bigBtn('#22C55E', startDisabled)}>▶ Начать рабочий день</button>
             ) : (
               <button disabled={stopDisabled} onClick={() => save.mutate({ endTime: nowHHMM() })}
-                title={stopDisabled ? 'Завершить можно только в текущий день' : ''} style={bigBtn('#E8194B', stopDisabled)}>■ Закончить рабочий день</button>
+                title={stopDisabled ? 'Завершить можно только в текущий день' : ''} style={bigBtn('#F43F5E', stopDisabled)}>■ Закончить рабочий день</button>
             )}
             {finished && delta != null && <BalanceBadge delta={delta} />}
           </div>
@@ -203,7 +203,7 @@ function Header({ date, isToday, type, typeColor }: { date: string; isToday: boo
 }
 
 function BalanceBadge({ delta }: { delta: number }) {
-  if (Math.abs(delta) < 1) return <span style={{ fontSize: 12, fontWeight: 700, color: '#29BF12' }}>✓ норма</span>
+  if (Math.abs(delta) < 1) return <span style={{ fontSize: 12, fontWeight: 700, color: '#22C55E' }}>✓ норма</span>
   const over = delta > 0
   const c = over ? '#43b2f2' : '#f59e0b'
   return (

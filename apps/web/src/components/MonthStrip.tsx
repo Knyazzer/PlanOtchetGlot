@@ -13,7 +13,7 @@ type DayEntry = { id: string; date: string; dayFormat: string; startTime: string
 // Цвета типов дня (в форматах цвета нет — маппинг по ключу сида).
 const FMT_COLOR: Record<string, string> = {
   office: '#43b2f2', remote: '#22d3ee', shift_air: '#FF6B35', shift_edit: '#f0a63c',
-  shift_prep: '#8B5CF6', trip: '#7B61FF', vacation: '#a855f7', sick: '#E8194B',
+  shift_prep: '#8B5CF6', trip: '#7B61FF', vacation: '#a855f7', sick: '#F43F5E',
   dayoff: '#64748b', unpaid: '#94a3b8',
 }
 const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
@@ -141,7 +141,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
           <span style={{ color: 'var(--text-muted)' }}>Баланс</span>
-          <b style={{ color: Math.abs(balance) < 1 ? '#29BF12' : balance > 0 ? '#43b2f2' : '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
+          <b style={{ color: Math.abs(balance) < 1 ? '#22C55E' : balance > 0 ? '#43b2f2' : '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
             {Math.abs(balance) < 1 ? 'в норме' : `${balance > 0 ? '+' : '−'}${fmtHM(balance)}`}
           </b>
         </div>

@@ -161,7 +161,7 @@ export function PersonalCabinetPage({ user }: Props) {
             </div>
           </div>
         )}
-        {pwMsg && <span style={{ fontSize: 12, color: pwMsg.startsWith('✓') ? 'var(--success, #29BF12)' : '#dc2626' }}>{pwMsg}</span>}
+        {pwMsg && <span style={{ fontSize: 12, color: pwMsg.startsWith('✓') ? 'var(--success, #22C55E)' : '#dc2626' }}>{pwMsg}</span>}
       </div>
 
       <button

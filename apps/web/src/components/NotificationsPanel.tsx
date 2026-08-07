@@ -78,7 +78,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
             }}>
               <MessageSquare size={15} style={{ color: '#0EA5E9', flexShrink: 0 }} />
               <span style={{ flex: 1, fontSize: 14, color: 'var(--text-1)' }}>Непрочитанные сообщения</span>
-              <span style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 10, padding: '1px 7px' }}>{unreadChats}</span>
+              <span style={{ background: '#7B61FF', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 10, padding: '1px 7px' }}>{unreadChats}</span>
             </button>
           )}
 

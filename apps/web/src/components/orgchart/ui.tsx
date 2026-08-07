@@ -64,7 +64,7 @@ export function FieldSelect({ value, onChange, children }: { value: string; onCh
 
 export function BtnPrimary({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <button onClick={onClick} style={{ fontSize:14,padding:'8px 20px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#FF6B35,#E8194B)',color:'#fff',fontFamily:'Inter,sans-serif',fontWeight:600,cursor:'pointer' }}>
+    <button onClick={onClick} style={{ fontSize:14,padding:'8px 20px',borderRadius:8,border:'none',background:'#7B61FF',color:'#fff',fontFamily:'Inter,sans-serif',fontWeight:600,cursor:'pointer' }}>
       {children}
     </button>
   )

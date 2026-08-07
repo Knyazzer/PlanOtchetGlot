@@ -5,11 +5,11 @@ import type { TaskStatus, TaskLogEntry, HistoryGroup } from './types'
 export const COLS: { id: TaskStatus; label: string; color: string }[] = [
   { id: 'backlog',    label: 'Бэклог',   color: '#464658' },
   { id: 'inprogress', label: 'В работе', color: '#0EA5E9' },
-  { id: 'done',       label: 'Готово',   color: '#29BF12' },
+  { id: 'done',       label: 'Готово',   color: '#22C55E' },
 ]
 
 export const TASK_COLORS: Record<string, string> = {}
-export const COLOR_PALETTE = ['#8B5CF6','#0EA5E9','#FF6B35','#E8194B','#F59E0B','#29BF12']
+export const COLOR_PALETTE = ['#8B5CF6','#0EA5E9','#FF6B35','#F43F5E','#F59E0B','#22C55E']
 export function taskColor(id: string) {
   if (!TASK_COLORS[id]) {
     const idx = Object.keys(TASK_COLORS).length % COLOR_PALETTE.length
@@ -96,7 +96,7 @@ export const CAL_LOCS = [
 ]
 export const CAL_LOC_IDS = new Set(CAL_LOCS.map(l => l.id))
 export const CAL_TYPE_COLOR: Record<string, string> = {
-  meeting: '#8B5CF6', task: '#FF6B35', personal: '#29BF12',
+  meeting: '#8B5CF6', task: '#FF6B35', personal: '#22C55E',
 }
 export const CAL_TYPES = [
   { value: 'meeting',  label: 'Встреча' },

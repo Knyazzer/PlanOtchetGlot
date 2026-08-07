@@ -295,7 +295,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{
                           width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-                          background: track.status === 'done' ? '#29BF12' : track.status === 'archived' ? '#464658' : '#FF6B35',
+                          background: track.status === 'done' ? '#22C55E' : track.status === 'archived' ? '#464658' : '#FF6B35',
                         }} />
                         <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {track.title}
@@ -332,7 +332,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <BudgetInput wiId={wi.id} projectId={projectId} current={wi.budget} />
               {budget > 0 && totalExpenses > 0 && (
-                <span style={{ fontSize: 12, color: totalExpenses > budget ? '#E8194B' : '#29BF12' }}>
+                <span style={{ fontSize: 12, color: totalExpenses > budget ? '#F43F5E' : '#22C55E' }}>
                   Расходы: {fmtMoney(String(totalExpenses))} / Бюджет: {fmtMoney(wi.budget)}
                 </span>
               )}

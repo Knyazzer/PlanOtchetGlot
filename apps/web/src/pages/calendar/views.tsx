@@ -48,7 +48,7 @@ export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDay
             <div key={i} onClick={() => onDayClick(ymd)}
               style={{ borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)', padding:6, cursor:'pointer', opacity: isThisMonth ? 1 : 0.35, overflow:'hidden' }}>
               <div style={{ width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:500, marginBottom:4,
-                background: isToday ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : isSel ? 'rgba(255,107,53,0.15)' : 'transparent',
+                background: isToday ? '#F97316' : isSel ? 'rgba(255,107,53,0.15)' : 'transparent',
                 color: isToday ? '#fff' : isSel ? '#FF6B35' : 'var(--text-3)',
                 outline: isSel && !isToday ? '1px solid rgba(255,107,53,0.4)' : 'none',
               }}>{d.getDate()}</div>
@@ -133,7 +133,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
           return (
             <div key={i} style={{ padding:'8px 8px', textAlign:'center', borderRight: i<6 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
               <div style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.8px' }}>{WEEKDAYS_S[i]}</div>
-              <div style={{ fontSize:18, fontWeight:700, width:34, height:34, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'2px auto 0', background: isToday ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent', color: isToday ? '#fff' : 'var(--text-3)' }}>{d.getDate()}</div>
+              <div style={{ fontSize:18, fontWeight:700, width:34, height:34, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'2px auto 0', background: isToday ? '#F97316' : 'transparent', color: isToday ? '#fff' : 'var(--text-3)' }}>{d.getDate()}</div>
             </div>
           )
         })}
@@ -345,7 +345,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
       })()}
       {isToday && (() => {
         const now = new Date(); const nowMin = now.getHours()*60+now.getMinutes()
-        return <div style={{ position:'absolute', left:0, right:0, top:nowMin, height:2, background:'linear-gradient(90deg,#FF6B35,#E8194B)', zIndex:5, pointerEvents:'none' }}><div style={{ position:'absolute', left:-4, top:-4, width:10, height:10, borderRadius:'50%', background:'#FF6B35' }} /></div>
+        return <div style={{ position:'absolute', left:0, right:0, top:nowMin, height:2, background:'#F97316', zIndex:5, pointerEvents:'none' }}><div style={{ position:'absolute', left:-4, top:-4, width:10, height:10, borderRadius:'50%', background:'#FF6B35' }} /></div>
       })()}
       <div ref={ghostRef} style={{ position:'absolute', left:4, right:4, borderRadius:6, zIndex:50, pointerEvents:'none', background:'rgba(255,107,53,0.2)', border:'2px dashed #FF6B35', padding:'4px 8px', fontSize:12, fontWeight:600, color:'#FF6B35', display:'none' }} />
     </div>

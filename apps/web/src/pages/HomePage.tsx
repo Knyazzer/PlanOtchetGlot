@@ -82,7 +82,7 @@ function NewsChat() {
             placeholder="Написать новость…" rows={1}
             style={{ flex: 1, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '9px 12px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', resize: 'none', maxHeight: 120, lineHeight: 1.4 }} />
           <button onClick={() => { if (body.trim()) publish.mutate() }} disabled={!body.trim() || publish.isPending} title="Опубликовать"
-            style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', cursor: body.trim() ? 'pointer' : 'default', opacity: body.trim() ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Send size={16} /></button>
+            style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: '#7B61FF', color: '#fff', cursor: body.trim() ? 'pointer' : 'default', opacity: body.trim() ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Send size={16} /></button>
         </div>
       )}
     </div>
@@ -119,7 +119,7 @@ function ProductionMonthCard() {
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Праздники</span>
               {data.holidays.map(h => (
                 <div key={h.date} style={{ display: 'flex', gap: 8, fontSize: 12 }}>
-                  <span style={{ color: '#E8194B', fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 44 }}>{new Date(h.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                  <span style={{ color: '#F43F5E', fontWeight: 700, fontVariantNumeric: 'tabular-nums', minWidth: 44 }}>{new Date(h.date + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
                   <span style={{ color: 'var(--text-2)' }}>{h.label}</span>
                 </div>
               ))}

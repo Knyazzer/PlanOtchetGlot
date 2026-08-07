@@ -50,8 +50,8 @@ function monthTitle(from: string): string {
 
 function loadTone(pct: number | null): string {
   if (pct == null) return 'var(--text-muted)'
-  if (pct >= 100) return '#E8194B'
-  if (pct >= 80) return '#29BF12'
+  if (pct >= 100) return '#F43F5E'
+  if (pct >= 80) return '#22C55E'
   if (pct >= 50) return '#F59E0B'
   return '#64748b'
 }
@@ -195,7 +195,7 @@ export function AnalyticsPage() {
                   <YAxis tick={{ fontSize: 12, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
                   <Bar dataKey="Часы" fill="#2563eb" radius={[3, 3, 0, 0]} />
-                  <Bar dataKey="Часы задач" fill="#29BF12" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Часы задач" fill="#22C55E" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -236,7 +236,7 @@ export function AnalyticsPage() {
                       <td style={tdNum}>{e.score}</td>
                       <td style={tdNum}>{e.totalTasks}</td>
                       <td style={tdNum}>{e.doneTasks}</td>
-                      <td style={{ ...tdNum, color: e.overdue ? '#E8194B' : 'var(--text-muted)' }}>{e.overdue}</td>
+                      <td style={{ ...tdNum, color: e.overdue ? '#F43F5E' : 'var(--text-muted)' }}>{e.overdue}</td>
                     </tr>
                   ))}
                 </tbody>

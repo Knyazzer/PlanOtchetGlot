@@ -25,7 +25,7 @@ export function chatName(chat: ChatItem, myId: string, isAdmin: boolean): string
 
 // Детерминированный цвет по имени (как в Telegram/Slack)
 export const AVATAR_COLORS = [
-  '#E8194B', '#FF6B35', '#F59E0B', '#10B981',
+  '#F43F5E', '#FF6B35', '#F59E0B', '#10B981',
   '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899',
   '#14B8A6', '#F97316', '#6366F1', '#84CC16',
 ]
@@ -41,7 +41,7 @@ export function nameInitials(name: string): string {
 }
 
 export const GROUP_COLORS = [
-  '#E8194B', '#FF6B35', '#F59E0B', '#10B981',
+  '#F43F5E', '#FF6B35', '#F59E0B', '#10B981',
   '#06B6D4', '#3B82F6', '#8B5CF6', '#EC4899',
 ]
 

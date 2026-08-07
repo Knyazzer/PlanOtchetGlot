@@ -68,7 +68,7 @@ export function InfoTab({ project, onBack: _onBack }: { project: Project; onBack
           <KpiCard label="Work Items" value={`${wiDone} / ${workItems.length}`} color="#FF6B35" sub={workItems.length > 0 ? `${Math.round(wiDone/workItems.length*100)}%` : '0%'} />
           <KpiCard label="До дедлайна" value={daysLeft !== null ? String(daysLeft) : '—'} unit="дн." color="#F59E0B" sub="~90 дн. от создания" />
           <KpiCard label="Расходы"  value={fmtMoney(null)} color="var(--text-3)" sub="нет данных" />
-          <KpiCard label="Задачи"   value={String(tasksDone)} color="#29BF12" sub="из треков" />
+          <KpiCard label="Задачи"   value={String(tasksDone)} color="#22C55E" sub="из треков" />
         </div>
 
         {/* Work items list */}

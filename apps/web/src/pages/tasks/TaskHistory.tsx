@@ -11,9 +11,9 @@ export function HistoryGroupRow({ group, isFirst, isLast, hasLineAfter }: { grou
   const last  = group.entries[group.entries.length - 1]
 
   const dotBg = isFirst
-    ? 'linear-gradient(135deg,#FF6B35,#E8194B)'
+    ? '#7B61FF'
     : isLast
-      ? 'linear-gradient(135deg,#29BF12,#0EA5E9)'
+      ? 'linear-gradient(135deg,#22C55E,#0EA5E9)'
       : 'var(--surface-3)'
 
   return (

@@ -310,7 +310,7 @@ export function ChatsPage({ initialUserId, initialChatId, isSelf, initialTask, c
               {last ? (last.senderId === myId ? 'Вы: ' : '') + last.text : ''}
             </span>
             {uCount > 0 && (
-              <span style={{ background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 10, padding: '1px 6px', flexShrink: 0 }}>
+              <span style={{ background: '#7B61FF', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 10, padding: '1px 6px', flexShrink: 0 }}>
                 {uCount > 99 ? '99+' : uCount}
               </span>
             )}
@@ -353,7 +353,7 @@ export function ChatsPage({ initialUserId, initialChatId, isSelf, initialTask, c
               <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.3px' }}>{label}</span>
             </button>
             {cnt > 0 && (
-              <span style={{ position: 'absolute', top: 8, right: 8, background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 8, padding: '1px 4px', pointerEvents: 'none' }}>
+              <span style={{ position: 'absolute', top: 8, right: 8, background: '#7B61FF', color: '#fff', fontSize: 12, fontWeight: 700, borderRadius: 8, padding: '1px 4px', pointerEvents: 'none' }}>
                 {cnt > 99 ? '99+' : cnt}
               </span>
             )}
@@ -370,14 +370,14 @@ export function ChatsPage({ initialUserId, initialChatId, isSelf, initialTask, c
           {folder === 'contacts' && (
             <button
               onClick={() => setShowNewChat(true)}
-              style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: '#7B61FF', color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               title="Новый чат"
             >+</button>
           )}
           {folder === 'groups' && (
             <button
               onClick={() => setShowCreateGroup(true)}
-              style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+              style={{ width: 26, height: 26, borderRadius: 6, border: 'none', background: '#7B61FF', color: '#fff', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
               title="Новая группа"
             >+</button>
           )}
@@ -521,7 +521,7 @@ export function ChatsPage({ initialUserId, initialChatId, isSelf, initialTask, c
                       <div style={{
                         maxWidth: '78%', padding: '7px 11px',
                         ...(msg.task ? { minWidth: 260 } : {}),
-                        background: mine ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'var(--surface-2)',
+                        background: mine ? '#7B61FF' : 'var(--surface-2)',
                         color: mine ? '#fff' : 'var(--text-1)',
                         borderRadius: mine
                           ? `14px 14px ${isGroupEnd ? '2px' : '14px'} 14px`
@@ -657,7 +657,7 @@ export function ChatsPage({ initialUserId, initialChatId, isSelf, initialTask, c
                   disabled={!input.trim()}
                   style={{
                     width: 40, height: 40, borderRadius: 10, border: 'none', flexShrink: 0,
-                    background: input.trim() ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'var(--surface-3)',
+                    background: input.trim() ? '#7B61FF' : 'var(--surface-3)',
                     color: input.trim() ? '#fff' : 'var(--text-muted)',
                     fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 16, cursor: input.trim() ? 'pointer' : 'default',
                     transition: 'all .15s', display: 'flex', alignItems: 'center', justifyContent: 'center',

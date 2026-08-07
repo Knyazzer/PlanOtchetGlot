@@ -7,13 +7,13 @@ export const STATUS_LABEL: Record<ProjectStatus, string> = {
   draft: 'Черновик', active: 'В работе', done: 'Завершён', cancelled: 'Отменён',
 }
 export const STATUS_COLOR: Record<ProjectStatus, string> = {
-  draft: '#8A8A9A', active: '#FF6B35', done: '#29BF12', cancelled: '#555',
+  draft: '#8A8A9A', active: '#FF6B35', done: '#22C55E', cancelled: '#555',
 }
 export const WI_STATUS_LABEL: Record<WorkItemStatus, string> = {
   request: 'Заявка', active: 'В работе', done: 'Сдан', rejected: 'Отклонён', cancelled: 'Отменён',
 }
 export const WI_STATUS_COLOR: Record<WorkItemStatus, string> = {
-  request: '#8A8A9A', active: '#FF6B35', done: '#29BF12', rejected: '#E8194B', cancelled: '#555',
+  request: '#8A8A9A', active: '#FF6B35', done: '#22C55E', rejected: '#F43F5E', cancelled: '#555',
 }
 export const EXPENSE_LABEL: Record<ExpenseCategory, string> = {
   equipment: 'Оборудование', transport: 'Транспорт', fees: 'Гонорары',

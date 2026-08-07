@@ -121,7 +121,7 @@ export function CreateGroupModal({
                   <div style={{
                     width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
                     border: selected ? 'none' : '2px solid var(--border)',
-                    background: selected ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'transparent',
+                    background: selected ? '#F97316' : 'transparent',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
                     {selected && <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✓</span>}
@@ -141,7 +141,7 @@ export function CreateGroupModal({
           <button
             onMouseDown={() => canCreate && createMutation.mutate()}
             disabled={!canCreate || createMutation.isPending}
-            style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: canCreate ? 'linear-gradient(135deg,#FF6B35,#E8194B)' : 'var(--surface-3)', color: canCreate ? '#fff' : 'var(--text-muted)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: canCreate ? 'pointer' : 'default' }}
+            style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: canCreate ? '#7B61FF' : 'var(--surface-3)', color: canCreate ? '#fff' : 'var(--text-muted)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: canCreate ? 'pointer' : 'default' }}
           >{createMutation.isPending ? 'Создаём...' : 'Создать'}</button>
         </div>
       </div>

@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
             onClick={() => this.setState({ error: null })}
             style={{
               alignSelf: 'flex-start', fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
-              background: 'linear-gradient(135deg,#FF6B35,#E8194B)', border: 'none', color: '#fff',
+              background: '#7B61FF', border: 'none', color: '#fff',
               borderRadius: 8, padding: '9px 18px', cursor: 'pointer',
             }}
           >

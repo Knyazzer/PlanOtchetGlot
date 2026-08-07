@@ -85,7 +85,7 @@ export function SidePanel({ ymd, eventsFor, allDayFor, onClose, onEventClick, on
       </div>
 
       <div style={{ padding:'12px 14px', borderTop:'1px solid var(--border)', flexShrink:0 }}>
-        <button onClick={onCreateClick} style={{ width:'100%', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'linear-gradient(135deg,#FF6B35,#E8194B)', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
+        <button onClick={onCreateClick} style={{ width:'100%', fontFamily:'Inter,sans-serif', fontSize:14, fontWeight:700, background:'#7B61FF', border:'none', color:'#fff', borderRadius:8, padding:'9px 0', cursor:'pointer' }}>
           + Создать событие
         </button>
       </div>

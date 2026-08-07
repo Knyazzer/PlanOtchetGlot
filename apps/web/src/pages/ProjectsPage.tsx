@@ -57,7 +57,7 @@ export function ProjectsPage({ subPage, onSubPageChange: _onSubPageChange }: {
         {!openProjectId && (
           <button onClick={() => setShowForm(true)} style={{
             marginLeft: 'auto',
-            background: 'linear-gradient(135deg,#FF6B35,#E8194B)',
+            background: '#7B61FF',
             border: 'none', borderRadius: 7, color: '#fff',
             fontSize: 12, fontWeight: 600, padding: '4px 12px', cursor: 'pointer',
             fontFamily: 'Inter, sans-serif',

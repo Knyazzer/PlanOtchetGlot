@@ -31,7 +31,7 @@ export function TaskTable({ tasks, onEdit }: { tasks: Task[]; onEdit: (t: Task) 
   }
 
   const TT_STATUS_LABEL: Record<string, string> = { backlog: 'Бэклог', inprogress: 'В работе', done: 'Готово' }
-  const TT_STATUS_COLOR: Record<string, string> = { backlog: '#64748b', inprogress: '#0EA5E9', done: '#29BF12' }
+  const TT_STATUS_COLOR: Record<string, string> = { backlog: '#64748b', inprogress: '#0EA5E9', done: '#22C55E' }
 
   const th = (k: SortKey, label: string, right = false): React.ReactNode => (
     <th key={k} onClick={() => clickSort(k)} style={{
@@ -86,7 +86,7 @@ export function TaskTable({ tasks, onEdit }: { tasks: Task[]; onEdit: (t: Task) 
                   {(t.actualMinutes ?? t.plannedMinutes) != null ? fmtMinutes((t.actualMinutes ?? t.plannedMinutes)!) : '—'}
                 </td>
                 <td style={{ ...td, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap' }}>{toDateStr(t.startDate)}</td>
-                <td style={{ ...td, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', color: t.deadline && t.status !== 'done' && toDateStr(t.deadline) < fmtD(new Date()) ? '#E8194B' : 'var(--text-2)' }}>
+                <td style={{ ...td, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', color: t.deadline && t.status !== 'done' && toDateStr(t.deadline) < fmtD(new Date()) ? '#F43F5E' : 'var(--text-2)' }}>
                   {t.deadline ? toDateStr(t.deadline) : '—'}
                 </td>
               </tr>
