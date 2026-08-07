@@ -150,7 +150,7 @@ function NewsChat() {
       <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0 }}>Новости компании</div>
 
       {/* Лента утоплена (фон страницы) — посты-карточки всплывают над ней, а не сливаются с панелью */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg)' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg)' }}>
         {ordered.length === 0 && <div style={{ margin: 'auto', color: 'var(--text-muted)', fontSize: 14 }}>Пока нет новостей.</div>}
         {ordered.map(p => {
           const { text, images } = parsePost(p.body)
@@ -183,14 +183,24 @@ function NewsChat() {
   )
 }
 
-// Галерея изображений новости: 1 — крупно (16:9), 2+ — сетка 2 колонки (4:3). Клик — оригинал в новой вкладке.
+// Галерея новости: 1 картинка — целиком (по пропорции, до 460px высоты, без обрезки);
+// 2+ — сетка превью 2 колонки (заполняют ячейку). Клик — оригинал в новой вкладке.
 function PostImages({ images }: { images: string[] }) {
-  const cols = images.length === 1 ? 1 : 2
+  if (images.length === 1) {
+    const src = images[0]
+    return (
+      <a href={src} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
+        <img src={src} alt="" loading="lazy"
+          onError={e => { const a = e.currentTarget.closest('a'); if (a) (a as HTMLElement).style.display = 'none' }}
+          style={{ maxWidth: '100%', maxHeight: 460, width: 'auto', height: 'auto', display: 'block', margin: '0 auto', borderRadius: 10, border: '1px solid var(--border)' }} />
+      </a>
+    )
+  }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
       {images.map((src, i) => (
         <a key={i} href={src} target="_blank" rel="noreferrer"
-          style={{ display: 'block', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: images.length === 1 ? '16 / 9' : '4 / 3' }}>
+          style={{ display: 'block', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: '4 / 3' }}>
           <img src={src} alt="" loading="lazy"
             onError={e => { const a = e.currentTarget.closest('a'); if (a) (a as HTMLElement).style.display = 'none' }}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
