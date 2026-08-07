@@ -155,10 +155,14 @@ async function main() {
   if ((await prisma.post.count()) === 0) {
     const author = await prisma.user.findFirst({ where: { email: 'staff1@nexus.local' } }) // Иван Директоров, Администрация (право adm.news)
     if (author) {
+      // Новость = только текст (+ опц. изображения markdown). Без заголовка/закрепа. createdAt задаём явно — новые сверху.
+      const nowMs = Date.now()
+      const ago = (min: number) => new Date(nowMs - min * 60_000)
       await prisma.post.createMany({ data: [
-        { authorId: author.id, title: 'Добро пожаловать в Nexus', body: 'Запустили единую рабочую систему компании: задачи, календарь, отчётность и этот Пульс с новостями. Осваивайтесь!', pinned: true },
-        { authorId: author.id, title: '', body: 'В пятницу в 16:00 — общий сбор в зале «Каминка». Явка всех отделов.' },
-        { authorId: author.id, title: 'Итоги месяца', body: 'Команда отработала отлично — спасибо всем за эфиры и проекты. Подробности на сборе.' },
+        { authorId: author.id, createdAt: ago(3), body: 'В пятницу в 16:00 — общий сбор в зале «Каминка». Явка всех отделов.' },
+        { authorId: author.id, createdAt: ago(95), body: 'Переоснастили площадку к новому сезону — вот как теперь выглядит сцена:\n\n![](https://picsum.photos/seed/nexus-stage/1200/675)' },
+        { authorId: author.id, createdAt: ago(260), body: 'Итоги месяца: команда отработала отлично — спасибо всем за эфиры и проекты. Пара кадров с последних съёмок:\n\n![](https://picsum.photos/seed/nexus-a/800/600) ![](https://picsum.photos/seed/nexus-b/800/600) ![](https://picsum.photos/seed/nexus-c/800/600) ![](https://picsum.photos/seed/nexus-d/800/600)' },
+        { authorId: author.id, createdAt: ago(1440), body: 'Запустили единую рабочую систему компании: задачи, календарь, отчётность и этот Пульс с новостями. Осваивайтесь!' },
       ] })
     }
   }

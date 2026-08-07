@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pin, Trash2, Users, Search, MessageSquare, Send } from 'lucide-react'
+import { Trash2, Users, Search, MessageSquare, Send } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { formatName } from '../lib/utils'
@@ -43,6 +43,15 @@ const STATE_COLOR: Record<PresenceState, string> = { working: '#46b884', finishe
 const CARD: React.CSSProperties = {
   background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
   boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 12px 28px -22px rgba(0,0,0,0.6)',
+}
+
+// Разбор тела новости: изображения (markdown ![](url) или «голые» url картинок) отделяются от текста.
+// Форматирование текста (жирный/курсив «как в телеграме») — задел на будущее; пока текст как есть.
+function parsePost(body: string): { text: string; images: string[] } {
+  const images: string[] = []
+  let text = body.replace(/!\[[^\]]*\]\(([^)\s]+)[^)]*\)/g, (_m, u) => { images.push(u); return '' })
+  text = text.replace(/(https?:\/\/[^\s]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s]*)?)/gi, (_m, u) => { images.push(u); return '' })
+  return { text: text.replace(/\n{3,}/g, '\n\n').trim(), images }
 }
 
 function fmtWhen(iso: string) { return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }
@@ -93,9 +102,8 @@ function WeekStripCard() {
           // Блок дня — «кирпичик» на переднем плане: поверхность --surface (светлее фона в любой теме), крупнее и выше.
           <div key={ds} style={{
             minHeight: 148, borderRadius: 12, padding: 8, display: 'flex', flexDirection: 'column', gap: 5,
-            background: 'var(--surface)',
+            background: isToday ? ROLE.highlight + '12' : 'var(--surface)',
             border: `1px solid ${isToday ? ROLE.highlight : 'var(--border)'}`,
-            boxShadow: isToday ? `0 0 0 1px ${ROLE.highlight}` : '0 1px 2px rgba(0,0,0,0.06)',
             opacity: weekend && !isToday ? 0.75 : 1,
           }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, justifyContent: 'center' }}>
@@ -107,14 +115,12 @@ function WeekStripCard() {
             ) : items.slice(0, 3).map(e => {
               const cat = eventCat(e.title)
               return (
-                // Цветной «кирпичик» события: тон по типу, название переносом (до 2 строк), полный текст — в тултипе.
-                <Tooltip key={e.id} text={`${cat.label}: ${e.title}${e.startTime ? ` · ${e.startTime.slice(0, 5)}` : ''}`} width={200} style={{ display: 'block' }}>
-                  <div style={{
-                    fontSize: 11, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.22,
-                    background: cat.color + '26', borderLeft: `3px solid ${cat.color}`, borderRadius: 5, padding: '4px 6px',
-                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                  }}>{e.title}</div>
-                </Tooltip>
+                // Плашка события: цвет по типу, название переносом (до 2 строк). Клик — открыть в календаре (заглушка).
+                <div key={e.id} onClick={() => { /* TODO: открыть событие в календаре */ }} style={{
+                  fontSize: 11, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.22, cursor: 'pointer',
+                  background: cat.color + '26', borderLeft: `3px solid ${cat.color}`, borderRadius: 5, padding: '4px 6px',
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                }}>{e.title}</div>
               )
             })}
             {items.length > 3 && <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>+{items.length - 3}</div>}
@@ -125,58 +131,71 @@ function WeekStripCard() {
   )
 }
 
-// ── Новости — формат чата: сообщения без автора, скролл вверх, писать могут только с правом ──────
+// ── Новости компании — лента: новые сверху, старые снизу; только текст + изображения; писать по праву.
+//    Закрепа и заголовков нет. Форматирование текста (жирный/курсив) — задел на будущее. ─────────────
 function NewsChat() {
   const currentUser = useAuthStore(s => s.user)
   const qc = useQueryClient()
   const { data } = useQuery<Feed>({ queryKey: ['posts'], queryFn: () => api.get('/posts').then(r => r.data), refetchInterval: 60_000, refetchIntervalInBackground: false })
   const canPost = data?.canPost ?? false
-  // API отдаёт закреплённые+новые сверху; для чата разворачиваем «старые сверху, новые снизу»
-  const ordered = [...(data?.posts ?? [])].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  const ordered = [...(data?.posts ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt)) // новые сверху
   const canEdit = (p: Post) => !!currentUser?.isAdmin || p.author.id === currentUser?.id
-
-  const pinMut = useMutation({ mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) => api.patch(`/posts/${id}`, { pinned }), onSuccess: () => qc.invalidateQueries({ queryKey: ['posts'] }) })
   const delMut = useMutation({ mutationFn: (id: string) => api.delete(`/posts/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['posts'] }) })
 
   const [body, setBody] = useState('')
   const publish = useMutation({ mutationFn: () => api.post('/posts', { body: body.trim() }), onSuccess: () => { setBody(''); qc.invalidateQueries({ queryKey: ['posts'] }) } })
 
-  const scrollRef = useRef<HTMLDivElement>(null)
-  useEffect(() => { const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight }, [ordered.length])
-
   return (
     <div style={{ ...CARD, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0 }}>Новости компании</div>
 
-      <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Лента утоплена (фон страницы) — посты-карточки всплывают над ней, а не сливаются с панелью */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg)' }}>
         {ordered.length === 0 && <div style={{ margin: 'auto', color: 'var(--text-muted)', fontSize: 14 }}>Пока нет новостей.</div>}
-        {ordered.map(p => (
-          <div key={p.id} style={{ position: 'relative', alignSelf: 'stretch', background: 'var(--tile)', border: `1px solid ${p.pinned ? 'var(--accent-line, var(--border))' : 'var(--border)'}`, borderRadius: 12, padding: '11px 14px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              {p.pinned && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}><Pin size={10} /> Закреплено</span>}
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{fmtWhen(p.createdAt)}</span>
-              {canEdit(p) && (
-                <span style={{ display: 'flex', gap: 2 }}>
-                  <button onClick={() => pinMut.mutate({ id: p.id, pinned: !p.pinned })} title={p.pinned ? 'Открепить' : 'Закрепить'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: p.pinned ? 'var(--accent-s)' : 'var(--text-muted)', padding: 2, display: 'flex' }}><Pin size={13} /></button>
-                  <button onClick={() => { if (confirm('Удалить новость?')) delMut.mutate(p.id) }} title="Удалить" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex' }}><Trash2 size={13} /></button>
-                </span>
-              )}
-            </div>
-            {p.title && <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', marginBottom: 3 }}>{p.title}</div>}
-            <div style={{ fontSize: 14.5, color: 'var(--text-2)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{p.body}</div>
-          </div>
-        ))}
+        {ordered.map(p => {
+          const { text, images } = parsePost(p.body)
+          return (
+            <article key={p.id} style={{ alignSelf: 'stretch', background: 'var(--tile)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: 9 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{fmtWhen(p.createdAt)}</span>
+                {canEdit(p) && (
+                  <button onClick={() => { if (confirm('Удалить новость?')) delMut.mutate(p.id) }} title="Удалить"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex' }}><Trash2 size={14} /></button>
+                )}
+              </div>
+              {text && <div style={{ fontSize: 14.5, color: 'var(--text-1)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</div>}
+              {images.length > 0 && <PostImages images={images} />}
+            </article>
+          )
+        })}
       </div>
 
       {canPost && (
-        <div style={{ borderTop: '1px solid var(--border)', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0 }}>
+        <div style={{ borderTop: '1px solid var(--border)', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0, background: 'var(--surface)' }}>
           <textarea value={body} onChange={e => setBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (body.trim()) publish.mutate() } }}
             placeholder="Написать новость…" rows={1}
             style={{ flex: 1, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '9px 12px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', resize: 'none', maxHeight: 120, lineHeight: 1.4 }} />
           <button onClick={() => { if (body.trim()) publish.mutate() }} disabled={!body.trim() || publish.isPending} title="Опубликовать"
-            style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: '#7B61FF', color: '#fff', cursor: body.trim() ? 'pointer' : 'default', opacity: body.trim() ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Send size={16} /></button>
+            style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: ROLE.primary, color: '#fff', cursor: body.trim() ? 'pointer' : 'default', opacity: body.trim() ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Send size={16} /></button>
         </div>
       )}
+    </div>
+  )
+}
+
+// Галерея изображений новости: 1 — крупно (16:9), 2+ — сетка 2 колонки (4:3). Клик — оригинал в новой вкладке.
+function PostImages({ images }: { images: string[] }) {
+  const cols = images.length === 1 ? 1 : 2
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 6 }}>
+      {images.map((src, i) => (
+        <a key={i} href={src} target="_blank" rel="noreferrer"
+          style={{ display: 'block', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: images.length === 1 ? '16 / 9' : '4 / 3' }}>
+          <img src={src} alt="" loading="lazy"
+            onError={e => { const a = e.currentTarget.closest('a'); if (a) (a as HTMLElement).style.display = 'none' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        </a>
+      ))}
     </div>
   )
 }
