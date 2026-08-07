@@ -6,7 +6,6 @@ import { TaskModal, CalendarEventModal } from './TasksPage'
 import type { Task } from './TasksPage'
 import { DayFillCard } from '../components/DayFillCard'
 import { MonthStrip } from '../components/MonthStrip'
-import { formatName } from '../lib/utils'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -140,7 +139,6 @@ export function DashboardPage() {
   const [dlThreshold,     setDlThreshold]     = useState<1 | 3 | 7>(7)
 
   const isToday   = selDate === todayStr
-  const dateStr   = new Date(selDate + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const dayShort  = new Date(selDate + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 
   const { data: allTasks = [] } = useQuery<Task[]>({
@@ -203,16 +201,7 @@ export function DashboardPage() {
   return (
     <div style={{ display: 'flex', height: '100%', boxSizing: 'border-box' }}>
     <div style={{ flex: 1, minWidth: 0, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontSize: 14, color: 'var(--text-muted)', textTransform: 'capitalize' }}>
-          {dateStr}{isToday && currentUser?.name ? ` · Добро пожаловать, ${formatName(currentUser.name).split(' ')[0]}` : ''}
-        </div>
-        {!isToday && (
-          <button onClick={() => setSelDate(todayStr)} style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-s)', background: 'rgba(123,97,255,0.12)', border: '1px solid var(--accent-s)', borderRadius: 20, padding: '3px 12px', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>← Сегодня</button>
-        )}
-      </div>
-
-      {/* План дня (тип дня + время) на выбранную дату */}
+      {/* Мой рабочий день (тип дня + отметка времени) на выбранную дату */}
       <DayFillCard date={selDate} />
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
