@@ -125,7 +125,7 @@ export function TimePicker({
         {value || placeholder}
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content align="start" sideOffset={6} className="z-[1200] w-[248px] rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] p-4 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.6)]">
+        <Popover.Content align="start" sideOffset={6} onOpenAutoFocus={(e) => e.preventDefault()} className="z-[1200] w-[248px] rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--surface)] p-4 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.6)]">
           {/* две ячейки — как дисплей, но с ручным вводом (по 2 цифры) */}
           <div className="mb-3 flex items-center justify-center gap-2">
             <input
@@ -137,7 +137,7 @@ export function TimePicker({
               inputMode="numeric"
               maxLength={2}
               aria-label="Часы"
-              className="mono h-11 w-14 rounded-[var(--radius-sm)] bg-[var(--surface-2)] text-center text-[22px] font-bold text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+              className="mono h-11 w-14 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] text-center text-[22px] font-bold text-[var(--text)] outline-none transition-colors focus:border-[var(--accent)]"
             />
             <span className="mono text-[20px] text-[var(--muted)]">:</span>
             <input
@@ -149,7 +149,7 @@ export function TimePicker({
               inputMode="numeric"
               maxLength={2}
               aria-label="Минуты"
-              className="mono h-11 w-14 rounded-[var(--radius-sm)] bg-[var(--surface-2)] text-center text-[22px] font-bold text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--accent-soft)]"
+              className="mono h-11 w-14 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] text-center text-[22px] font-bold text-[var(--text)] outline-none transition-colors focus:border-[var(--accent)]"
             />
           </div>
           <div className="flex items-start justify-center gap-4">
@@ -162,7 +162,7 @@ export function TimePicker({
               <Wheel list={minutes} value={min} onChange={applyMin} />
             </div>
           </div>
-          <div className="mt-3 flex justify-end gap-2">
+          <div className="mt-3 flex justify-center gap-2">
             <Button variant="secondary" size="sm" onClick={() => setOpen(false)}>Отмена</Button>
             <Button variant="primary" size="sm" onClick={apply}>Применить</Button>
           </div>
