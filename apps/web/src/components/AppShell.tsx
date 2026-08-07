@@ -107,6 +107,15 @@ export function AppShell() {
     ? (stored && SYSTEM_PAGES.includes(stored) ? stored : 'personnel')
     : (stored && (!ADMIN_PAGES.includes(stored) || isAdmin) ? stored : defaultPage)
   const [page, setPage] = useState<Page>(initialPage)
+  // Вкладка «Мой кабинет» (Обзор/Задачи/Треки) — теперь под-пункты меню, не переключатель в шапке
+  const [cabinetTab, setCabinetTab] = useState<'overview' | 'tasks' | 'tracks'>(() => {
+    const s = localStorage.getItem('nexus:cabinet-tab')
+    return s === 'tasks' || s === 'tracks' ? s : 'overview'
+  })
+  function pickCabinet(t: 'overview' | 'tasks' | 'tracks') {
+    setCabinetTab(t); localStorage.setItem('nexus:cabinet-tab', t)
+    setPage('dashboard'); localStorage.setItem('nexus:page', 'dashboard')
+  }
 
   // Системному аккаунту: вместо «Настроек» — её разделы прямо в Администрировании.
   const adminNav: NavItem[] = isSystem
@@ -120,7 +129,7 @@ export function AppShell() {
 
   function navigateTo(p: Page) {
     // «Задачи» переехали внутрь «Мой кабинет» вкладкой — редиректим старые ссылки/уведомления
-    if (p === 'tasks') { localStorage.setItem('nexus:cabinet-tab', 'tasks'); p = 'dashboard' }
+    if (p === 'tasks') { setCabinetTab('tasks'); localStorage.setItem('nexus:cabinet-tab', 'tasks'); p = 'dashboard' }
     setPage(p)
     localStorage.setItem('nexus:page', p)
   }
@@ -211,6 +220,14 @@ export function AppShell() {
       label: item.label,
       icon: item.icon,
       badge: item.id === 'dashboard' && unseenTasks > 0 ? unseenTasks : undefined,
+      // «Мой кабинет» раскрывается под-пунктами (Обзор/Задачи/Треки) прямо в меню
+      ...(item.id === 'dashboard' ? {
+        children: [
+          { key: 'cab:overview', label: 'Обзор' },
+          { key: 'cab:tasks', label: 'Задачи', badge: unseenTasks > 0 ? unseenTasks : undefined },
+          { key: 'cab:tracks', label: 'Треки' },
+        ],
+      } : {}),
     })) : []),
     // Блоки продуктов/департаментов — по группам (section = m.group)
     ...sortedExtra.map((m) => ({
@@ -227,6 +244,7 @@ export function AppShell() {
 
   function handleNavigate(key: string) {
     if (key === 'ext.inventory') { openInventoryWithSession(); return }
+    if (key.startsWith('cab:')) { pickCabinet(key.slice(4) as 'overview' | 'tasks' | 'tracks'); return }
     navigateTo(key as Page)
   }
 
@@ -235,7 +253,7 @@ export function AppShell() {
       <KitAppShell
         product={{ name: 'Нексус', markSrc: nexusLogoSrc, company: 'Мегаполис Медиа' }}
         nav={navEntries}
-        active={page}
+        active={page === 'dashboard' ? `cab:${cabinetTab}` : page}
         onNavigate={handleNavigate}
         account={{ name: user ? formatName(user.name) : '', role: roleLabel(user), email: user?.email ?? undefined }}
         theme={theme}
@@ -258,7 +276,7 @@ export function AppShell() {
             pageLabel из nav → в сообщении видно, какая страница упала (диагностика прода). */}
         <ErrorBoundary key={page} pageLabel={[...USER_NAV, ...adminNav].find((n) => n.id === page)?.label ?? page}>
           {page === 'home'      && <HomePage onOpenChat={openDirectChat} />}
-          {page === 'dashboard' && <CabinetPage onOpenChatWith={openChatWith} onOpenTrackChat={openChatById} />}
+          {page === 'dashboard' && <CabinetPage tab={cabinetTab} onOpenChatWith={openChatWith} onOpenTrackChat={openChatById} />}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
           {page === 'settings'  && isAdmin && <SettingsPage />}
