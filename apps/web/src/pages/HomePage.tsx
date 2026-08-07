@@ -153,27 +153,36 @@ function NewsChat() {
     <div style={{ ...CARD, position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0 }}>Новости компании</div>
 
-      {/* Лента утоплена (фон страницы) — посты-карточки всплывают над ней, а не сливаются с панелью */}
+      {/* Лента-таймлайн: новости идут потоком вдоль вертикальной линии с узлом-точкой — без плашек-карточек */}
       <div ref={laneRef} onScroll={e => setShowTop((e.currentTarget as HTMLDivElement).scrollTop > 240)}
-        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg)' }}>
-        {ordered.length === 0 && <div style={{ margin: 'auto', color: 'var(--text-muted)', fontSize: 14 }}>Пока нет новостей.</div>}
-        {ordered.map(p => {
-          const { text, images } = parsePost(p.body)
-          return (
-            <article key={p.id} style={{ alignSelf: 'stretch', background: 'var(--tile)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {text && <div style={{ fontSize: 14.5, color: 'var(--text-1)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</div>}
-              {images.length > 0 && <PostImages images={images} onOpen={i => setLightbox({ images, index: i })} />}
-              {/* Дата — в правом нижнем углу; кнопка удаления (если есть право) — слева */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 1 }}>
-                {canEdit(p)
-                  ? <button onClick={() => { if (confirm('Удалить новость?')) delMut.mutate(p.id) }} title="Удалить"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><Trash2 size={14} /></button>
-                  : <span />}
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtWhen(p.createdAt)}</span>
-              </div>
-            </article>
-          )
-        })}
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 16px', background: 'var(--bg)' }}>
+        {ordered.length === 0
+          ? <div style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: '24px 0' }}>Пока нет новостей.</div>
+          : (
+            <div style={{ position: 'relative', paddingLeft: 20 }}>
+              {/* вертикальная линия таймлайна */}
+              <div style={{ position: 'absolute', left: 6, top: 9, bottom: 9, width: 2, background: 'var(--border)' }} />
+              {ordered.map(p => {
+                const { text, images } = parsePost(p.body)
+                return (
+                  <article key={p.id} style={{ position: 'relative', padding: '2px 2px 20px', display: 'flex', flexDirection: 'column', gap: 9 }}>
+                    {/* узел на линии */}
+                    <span style={{ position: 'absolute', left: -17, top: 7, width: 9, height: 9, borderRadius: '50%', background: 'var(--surface)', border: '2px solid var(--border-strong)' }} />
+                    {text && <div style={{ fontSize: 14.5, color: 'var(--text-1)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</div>}
+                    {images.length > 0 && <PostImages images={images} onOpen={i => setLightbox({ images, index: i })} />}
+                    {/* Дата — в правом нижнем углу; кнопка удаления (если есть право) — слева */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      {canEdit(p)
+                        ? <button onClick={() => { if (confirm('Удалить новость?')) delMut.mutate(p.id) }} title="Удалить"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><Trash2 size={14} /></button>
+                        : <span />}
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtWhen(p.createdAt)}</span>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
       </div>
 
       {/* Кнопка «наверх» — по центру сверху ленты, к самой свежей новости */}
