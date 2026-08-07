@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
 import { TaskModal } from './TasksPage'
 import { Hint } from '../components/Hint'
+import { ROLE, filled, tonal, outline } from '../lib/roleColors'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -479,7 +480,7 @@ export function TrackFormModal({
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexShrink: 0 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
           <button onClick={() => isEdit ? editMut.mutate() : createMut.mutate()} disabled={!title.trim() || pending}
-            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !pending ? 1 : 0.5 }}>
+            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !pending ? 1 : 0.5 }}>
             {pending ? '...' : isEdit ? 'Сохранить' : 'Создать трек'}
           </button>
         </div>
@@ -552,7 +553,7 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
           <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
           <button onClick={() => createMut.mutate()} disabled={!title.trim() || createMut.isPending}
-            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !createMut.isPending ? 1 : 0.5 }}>
+            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !createMut.isPending ? 1 : 0.5 }}>
             {createMut.isPending ? '...' : 'Создать событие'}
           </button>
         </div>
@@ -631,19 +632,13 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             {isMember && track.chat && onOpenTrackChat && (
-              <button onClick={() => onOpenTrackChat(track.chat!.id)}
-                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(123,97,255,0.35)', background: 'rgba(123,97,255,0.08)', color: '#7B61FF', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                💬 Чат трека
-              </button>
+              <button onClick={() => onOpenTrackChat(track.chat!.id)} style={{ ...tonal('primary'), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>💬 Чат трека</button>
             )}
-            <button onClick={() => setCreatingEvent(true)}
-              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(14,165,233,0.35)', background: 'rgba(14,165,233,0.08)', color: '#0EA5E9', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              📅 Событие
-            </button>
+            <button onClick={() => setCreatingEvent(true)} style={{ ...tonal('info'), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>📅 Событие</button>
             {canEdit && (
               <>
-                <button onClick={() => setEditing(true)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer' }}>Редактировать</button>
-                <button onClick={() => { if (confirm('Удалить трек?')) deleteMut.mutate() }} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(232,25,75,0.3)', background: 'rgba(232,25,75,0.08)', color: '#E8194B', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer' }}>Удалить</button>
+                <button onClick={() => setEditing(true)} style={{ ...outline(), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>Редактировать</button>
+                <button onClick={() => { if (confirm('Удалить трек?')) deleteMut.mutate() }} style={{ ...tonal('danger'), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>Удалить</button>
               </>
             )}
           </div>
@@ -698,7 +693,7 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
   return (
     <div onClick={onClick}
       style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10, transition: 'border-color 0.12s', fontFamily: 'Inter,sans-serif' }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,107,53,0.35)')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = ROLE.primary + '59')}
       onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -748,8 +743,7 @@ export function TracksPage({ onOpenChatWith, onOpenTrackChat }: { onOpenChatWith
     <div style={{ padding: '28px 32px', fontFamily: 'Inter,sans-serif', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>Треки</div>
-        <button onClick={() => setCreating(true)}
-          style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+        <button onClick={() => setCreating(true)} style={filled('primary')}>
           + Новый трек
         </button>
       </div>

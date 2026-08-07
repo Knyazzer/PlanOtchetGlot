@@ -34,6 +34,17 @@
   input, textarea, select { font-size: 16px !important; }
 }
 
+/* ── Семантические роли цвета (канон DESIGN.md §Семантические роли, вариант A).
+   Цвет = функция действия, не экран. Держать в синхроне с lib/roleColors.ts. */
+:root {
+  --role-primary:   #7B61FF;  /* главная CTA / активная вкладка */
+  --role-success:   #22C55E;  /* добавить / начать / положительное */
+  --role-danger:    #F43F5E;  /* только деструктив */
+  --role-info:      #0EA5E9;  /* события / инфо-акцент (текст #38BDF8) */
+  --role-warning:   #F59E0B;  /* дедлайны / предупреждения */
+  --role-highlight: #F97316;  /* «сейчас/сегодня» / выделение */
+}
+
 /* Токены из Figma-макета v2 (.figma/ux-ui prototype v2/src/styles/theme.css).
    Сайдбар-группа едина для обеих тем — сайдбар всегда тёмный. */
 /* shadcn-токены выведены из единого ui-kit (ui-kit/tokens.css) — контент-компоненты shadcn/Radix
