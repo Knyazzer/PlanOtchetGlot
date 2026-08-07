@@ -11,6 +11,16 @@ import type { ApiCalEntry } from './calendar/types'
 
 const WD_SHORT = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
 
+// Категориальный цвет события недельной полосы (не семантические роли кнопок, а типы записей календаря).
+// Пока запись одна (type='global') — различаем по ключевым словам; с моделью проектов подставится настоящий тип.
+function eventCat(title: string): { color: string; label: string } {
+  const t = title.toLowerCase()
+  if (/(проект|съёмк|съемк|монтаж|продакшн)/.test(t)) return { color: ROLE.primary, label: 'Производство' } // фиолетовый
+  if (/(знаменк|эфир|трансл|каминк|купол)/.test(t)) return { color: ROLE.info, label: 'Эфир' }             // голубой
+  if (/(планёрк|планерк|сбор|ретро|встреч|созвон|митап)/.test(t)) return { color: ROLE.highlight, label: 'Встреча' } // оранжевый
+  return { color: ROLE.info, label: 'Событие' }
+}
+
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 const MONTHS_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
@@ -65,26 +75,41 @@ function WeekStripCard() {
   for (const e of entries) { if (e.type !== 'global') continue; const k = e.date.slice(0, 10); const arr = byDate.get(k) ?? []; arr.push(e); byDate.set(k, arr) }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, flexShrink: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 8, flexShrink: 0 }}>
       {days.map((d, i) => {
         const ds = toYMD(d)
         const isToday = ds === todayYMD
         const weekend = i >= 5
         const items = (byDate.get(ds) ?? []).sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
         return (
-          <div key={ds} style={{ minHeight: 96, borderRadius: 10, border: `1px solid ${isToday ? ROLE.highlight : 'var(--border)'}`, background: isToday ? ROLE.highlight + '12' : 'var(--surface-2)', padding: 6, display: 'flex', flexDirection: 'column', gap: 3, opacity: weekend && !isToday ? 0.7 : 1 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'center', marginBottom: 2 }}>
-              <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? ROLE.highlight : 'var(--text-muted)', letterSpacing: '0.3px' }}>{WD_SHORT[i]}</span>
-              <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? ROLE.highlight : 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>{d.getDate()}</span>
+          // Блок дня — «кирпичик» на переднем плане: поверхность --surface (светлее фона в любой теме), крупнее и выше.
+          <div key={ds} style={{
+            minHeight: 148, borderRadius: 12, padding: 8, display: 'flex', flexDirection: 'column', gap: 5,
+            background: 'var(--surface)',
+            border: `1px solid ${isToday ? ROLE.highlight : 'var(--border)'}`,
+            boxShadow: isToday ? `0 0 0 1px ${ROLE.highlight}` : '0 1px 2px rgba(0,0,0,0.18)',
+            opacity: weekend && !isToday ? 0.75 : 1,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, justifyContent: 'center' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: isToday ? ROLE.highlight : 'var(--text-muted)', letterSpacing: '0.4px' }}>{WD_SHORT[i]}</span>
+              <span style={{ fontSize: 18, fontWeight: 800, color: isToday ? ROLE.highlight : 'var(--text-1)', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{d.getDate()}</span>
             </div>
             {items.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-muted)', opacity: 0.4 }}>—</div>
-            ) : items.slice(0, 3).map(e => (
-              <Tooltip key={e.id} text={`${e.title}${e.startTime ? ` · ${e.startTime.slice(0, 5)}` : ''}`} style={{ display: 'block' }}>
-                <div style={{ fontSize: 10, color: 'var(--text-2)', background: ROLE.info + '1c', borderLeft: `2px solid ${ROLE.info}`, borderRadius: 3, padding: '2px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
-              </Tooltip>
-            ))}
-            {items.length > 3 && <div style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center' }}>+{items.length - 3}</div>}
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--text-muted)', opacity: 0.35 }}>—</div>
+            ) : items.slice(0, 3).map(e => {
+              const cat = eventCat(e.title)
+              return (
+                // Цветной «кирпичик» события: тон по типу, название переносом (до 2 строк), полный текст — в тултипе.
+                <Tooltip key={e.id} text={`${cat.label}: ${e.title}${e.startTime ? ` · ${e.startTime.slice(0, 5)}` : ''}`} width={200} style={{ display: 'block' }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.22,
+                    background: cat.color + '26', borderLeft: `3px solid ${cat.color}`, borderRadius: 5, padding: '4px 6px',
+                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                  }}>{e.title}</div>
+                </Tooltip>
+              )
+            })}
+            {items.length > 3 && <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>+{items.length - 3}</div>}
           </div>
         )
       })}
@@ -112,13 +137,13 @@ function NewsChat() {
   useEffect(() => { const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight }, [ordered.length])
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'transparent', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
       <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0 }}>Новости компании</div>
 
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {ordered.length === 0 && <div style={{ margin: 'auto', color: 'var(--text-muted)', fontSize: 14 }}>Пока нет новостей.</div>}
         {ordered.map(p => (
-          <div key={p.id} style={{ position: 'relative', alignSelf: 'stretch', background: 'var(--surface-2)', border: `1px solid ${p.pinned ? 'var(--accent-line, var(--border))' : 'var(--border)'}`, borderRadius: 12, padding: '11px 14px' }}>
+          <div key={p.id} style={{ position: 'relative', alignSelf: 'stretch', background: 'var(--surface)', border: `1px solid ${p.pinned ? 'var(--accent-line, var(--border))' : 'var(--border)'}`, borderRadius: 12, padding: '11px 14px', boxShadow: '0 1px 2px rgba(0,0,0,0.16)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               {p.pinned && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}><Pin size={10} /> Закреплено</span>}
               <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{fmtWhen(p.createdAt)}</span>
@@ -260,7 +285,7 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
   const chips: Array<[typeof filter, string]> = [['all', 'Все'], ['office', 'Офис'], ['remote', 'Удалёнка'], ['sick', 'Больничный'], ['vacation', 'Отпуск'], ['dayoff', 'Выходной']]
 
   return (
-    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
         <Users size={15} style={{ color: 'var(--text-muted)' }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Кто работает сегодня</span>
@@ -279,7 +304,7 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
         {list.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '6px 2px' }}>Никого не найдено</div>}
         {list.map(m => (
           <div key={m.userId} onClick={() => setSel(m)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, cursor: 'pointer' }}
-            onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-2)'} onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'none'}>
+            onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'var(--surface)'} onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'none'}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATE_COLOR[m.state], flexShrink: 0, opacity: m.state === 'working' ? 1 : 0.75 }} />
             <span style={{ fontSize: 14, color: 'var(--text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatName(m.name)}</span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{m.label}</span>
