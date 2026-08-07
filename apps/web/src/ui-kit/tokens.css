@@ -13,12 +13,12 @@
    Тёмная «аппаратная» тема по умолчанию. Акцент переключается по продукту.
    ──────────────────────────────────────────────────────────────────────── */
 :root, [data-theme='dark'] {
-  --bg: #0a0c11;
-  --surface: #10131a;
-  --surface-2: #171c25;
-  --surface-3: #1e2432;
-  --border: #252b37;
-  --border-strong: #313a4b;
+  --bg: #090b0f;
+  --surface: #12151e;
+  --surface-2: #1b212d;
+  --surface-3: #262e3d;
+  --border: #2c3444;
+  --border-strong: #3a4457;
   --text: #e8ebf1;
   --muted: #8a93a6;
 
@@ -95,12 +95,12 @@
 
 /* Сайдбар всегда тёмный (канон Nexus) — внутри scope токены = тёмные в любой теме */
 .sidebar-dark {
-  --bg: #0a0c11;
-  --surface: #10131a;
-  --surface-2: #171c25;
-  --surface-3: #1e2432;
-  --border: #252b37;
-  --border-strong: #313a4b;
+  --bg: #090b0f;
+  --surface: #12151e;
+  --surface-2: #1b212d;
+  --surface-3: #262e3d;
+  --border: #2c3444;
+  --border-strong: #3a4457;
   --text: #e8ebf1;
   --muted: #8a93a6;
   /* акцент-производные тоже пиним — иначе на светлой теме активный пункт «плывёт» */
