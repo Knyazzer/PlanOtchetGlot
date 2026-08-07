@@ -186,6 +186,23 @@ async function main() {
   }
   console.log(`Work schedules seeded: ${staffUsers.length}`)
 
+  // ── Демо общего календаря для недельной витрины Пульса (global CalendarEntry текущей недели) ──
+  if ((await prisma.calendarEntry.count({ where: { type: 'global' } })) === 0) {
+    const admin = await prisma.user.findFirst({ where: { email: 'admin@nexus.local' } })
+    if (admin) {
+      const mon = new Date(); const wd = (mon.getDay() + 6) % 7; mon.setDate(mon.getDate() - wd); mon.setHours(12, 0, 0, 0) // понедельник этой недели
+      const day = (off: number) => { const d = new Date(mon); d.setDate(mon.getDate() + off); return d }
+      await prisma.calendarEntry.createMany({ data: [
+        { type: 'global', title: 'Планёрка команды',        date: day(0), startTime: '10:00', endTime: '10:30', createdById: admin.id },
+        { type: 'global', title: 'Общий сбор · Каминка',     date: day(2), startTime: '16:00', endTime: '17:00', createdById: admin.id },
+        { type: 'global', title: 'Проект: Съёмка Знаменка',  date: day(2), startTime: '11:00', endTime: '15:00', createdById: admin.id },
+        { type: 'global', title: 'Проект: Монтаж ролика',    date: day(3), startTime: '12:00', endTime: '18:00', createdById: admin.id },
+        { type: 'global', title: 'Ретро спринта',            date: day(4), startTime: '17:00', endTime: '18:00', createdById: admin.id },
+      ] })
+      console.log('Demo global calendar entries seeded: 5 (текущая неделя)')
+    }
+  }
+
   console.log('Seed complete.')
 }
 

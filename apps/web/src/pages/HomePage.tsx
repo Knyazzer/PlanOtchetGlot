@@ -65,36 +65,29 @@ function WeekStripCard() {
   for (const e of entries) { if (e.type !== 'global') continue; const k = e.date.slice(0, 10); const arr = byDate.get(k) ?? []; arr.push(e); byDate.set(k, arr) }
 
   return (
-    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', flexShrink: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Эта неделя · общий календарь</span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>только просмотр</span>
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6 }}>
-        {days.map((d, i) => {
-          const ds = toYMD(d)
-          const isToday = ds === todayYMD
-          const weekend = i >= 5
-          const items = (byDate.get(ds) ?? []).sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
-          return (
-            <div key={ds} style={{ minHeight: 92, borderRadius: 9, border: `1px solid ${isToday ? ROLE.highlight : 'var(--border)'}`, background: isToday ? ROLE.highlight + '12' : 'var(--surface-2)', padding: 6, display: 'flex', flexDirection: 'column', gap: 3, opacity: weekend && !isToday ? 0.7 : 1 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? ROLE.highlight : 'var(--text-muted)', letterSpacing: '0.3px' }}>{WD_SHORT[i]}</span>
-                <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? ROLE.highlight : 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>{d.getDate()}</span>
-              </div>
-              {items.length === 0 ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-muted)', opacity: 0.5 }}>—</div>
-              ) : items.slice(0, 3).map(e => (
-                <Tooltip key={e.id} text={`${e.title}${e.startTime ? ` · ${e.startTime.slice(0, 5)}` : ''}`} style={{ display: 'block' }}>
-                  <div style={{ fontSize: 10, color: 'var(--text-2)', background: ROLE.info + '1c', borderLeft: `2px solid ${ROLE.info}`, borderRadius: 3, padding: '2px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
-                </Tooltip>
-              ))}
-              {items.length > 3 && <div style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center' }}>+{items.length - 3}</div>}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 6, flexShrink: 0 }}>
+      {days.map((d, i) => {
+        const ds = toYMD(d)
+        const isToday = ds === todayYMD
+        const weekend = i >= 5
+        const items = (byDate.get(ds) ?? []).sort((a, b) => (a.startTime ?? '').localeCompare(b.startTime ?? ''))
+        return (
+          <div key={ds} style={{ minHeight: 96, borderRadius: 10, border: `1px solid ${isToday ? ROLE.highlight : 'var(--border)'}`, background: isToday ? ROLE.highlight + '12' : 'var(--surface-2)', padding: 6, display: 'flex', flexDirection: 'column', gap: 3, opacity: weekend && !isToday ? 0.7 : 1 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'center', marginBottom: 2 }}>
+              <span style={{ fontSize: 9, fontWeight: 700, color: isToday ? ROLE.highlight : 'var(--text-muted)', letterSpacing: '0.3px' }}>{WD_SHORT[i]}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? ROLE.highlight : 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>{d.getDate()}</span>
             </div>
-          )
-        })}
-      </div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic', marginTop: 8 }}>Проекты и люди на них появятся здесь с функционалом проектов.</div>
+            {items.length === 0 ? (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--text-muted)', opacity: 0.4 }}>—</div>
+            ) : items.slice(0, 3).map(e => (
+              <Tooltip key={e.id} text={`${e.title}${e.startTime ? ` · ${e.startTime.slice(0, 5)}` : ''}`} style={{ display: 'block' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-2)', background: ROLE.info + '1c', borderLeft: `2px solid ${ROLE.info}`, borderRadius: 3, padding: '2px 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
+              </Tooltip>
+            ))}
+            {items.length > 3 && <div style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center' }}>+{items.length - 3}</div>}
+          </div>
+        )
+      })}
     </div>
   )
 }
