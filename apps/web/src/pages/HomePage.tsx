@@ -44,7 +44,7 @@ function fmtWhen(iso: string) { return new Date(iso).toLocaleString('ru-RU', { d
 export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
   return (
     <div style={{ padding: '20px 24px', height: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', height: '100%', maxWidth: 1120, margin: '0 auto', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', height: '100%', maxWidth: 1500, margin: '0 auto', flexWrap: 'wrap' }}>
         <div style={{ flex: '1.4 1 440px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
           <WeekStripCard />
           <div style={{ flex: 1, minHeight: 0, display: 'flex' }}><NewsChat /></div>
