@@ -59,7 +59,7 @@ function fmtWhen(iso: string) { return new Date(iso).toLocaleString('ru-RU', { d
 export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
   return (
     <div style={{ padding: '20px 24px', height: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', height: '100%', maxWidth: 1500, margin: '0 auto', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', height: '100%', maxWidth: 1500, margin: '0 auto' }}>
         {/* Слева — узкая колонка: сводка месяца + кто сегодня на смене (компактные виджеты) */}
         <div style={{ flex: '1 1 300px', minWidth: 300, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
           <ProductionMonthCard />
