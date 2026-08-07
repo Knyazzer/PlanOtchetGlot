@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Users, Search, MessageSquare, Send } from 'lucide-react'
+import { Trash2, Users, Search, MessageSquare, Send, X, ChevronLeft, ChevronRight, Plus, Minus, Download, ArrowUp } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { formatName } from '../lib/utils'
@@ -145,30 +145,44 @@ function NewsChat() {
   const [body, setBody] = useState('')
   const publish = useMutation({ mutationFn: () => api.post('/posts', { body: body.trim() }), onSuccess: () => { setBody(''); qc.invalidateQueries({ queryKey: ['posts'] }) } })
 
+  const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null)
+  const laneRef = useRef<HTMLDivElement>(null)
+  const [showTop, setShowTop] = useState(false) // кнопка «наверх» появляется при прокрутке вниз
+
   return (
-    <div style={{ ...CARD, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+    <div style={{ ...CARD, position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0 }}>Новости компании</div>
 
       {/* Лента утоплена (фон страницы) — посты-карточки всплывают над ней, а не сливаются с панелью */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg)' }}>
+      <div ref={laneRef} onScroll={e => setShowTop((e.currentTarget as HTMLDivElement).scrollTop > 240)}
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bg)' }}>
         {ordered.length === 0 && <div style={{ margin: 'auto', color: 'var(--text-muted)', fontSize: 14 }}>Пока нет новостей.</div>}
         {ordered.map(p => {
           const { text, images } = parsePost(p.body)
           return (
             <article key={p.id} style={{ alignSelf: 'stretch', background: 'var(--tile)', border: '1px solid var(--border)', borderRadius: 14, padding: '12px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: 9 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{fmtWhen(p.createdAt)}</span>
-                {canEdit(p) && (
-                  <button onClick={() => { if (confirm('Удалить новость?')) delMut.mutate(p.id) }} title="Удалить"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 2, display: 'flex' }}><Trash2 size={14} /></button>
-                )}
-              </div>
               {text && <div style={{ fontSize: 14.5, color: 'var(--text-1)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</div>}
-              {images.length > 0 && <PostImages images={images} />}
+              {images.length > 0 && <PostImages images={images} onOpen={i => setLightbox({ images, index: i })} />}
+              {/* Дата — в правом нижнем углу; кнопка удаления (если есть право) — слева */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 1 }}>
+                {canEdit(p)
+                  ? <button onClick={() => { if (confirm('Удалить новость?')) delMut.mutate(p.id) }} title="Удалить"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><Trash2 size={14} /></button>
+                  : <span />}
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtWhen(p.createdAt)}</span>
+              </div>
             </article>
           )
         })}
       </div>
+
+      {/* Кнопка «наверх» — по центру сверху ленты, к самой свежей новости */}
+      {showTop && (
+        <button onClick={() => laneRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} title="К свежим новостям"
+          style={{ position: 'absolute', top: 56, left: '50%', transform: 'translateX(-50%)', zIndex: 5, width: 34, height: 34, borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-1)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.28)' }}>
+          <ArrowUp size={17} />
+        </button>
+      )}
 
       {canPost && (
         <div style={{ borderTop: '1px solid var(--border)', padding: 10, display: 'flex', gap: 8, alignItems: 'flex-end', flexShrink: 0, background: 'var(--surface)' }}>
@@ -179,33 +193,93 @@ function NewsChat() {
             style={{ width: 38, height: 38, borderRadius: 10, border: 'none', background: ROLE.primary, color: '#fff', cursor: body.trim() ? 'pointer' : 'default', opacity: body.trim() ? 1 : 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Send size={16} /></button>
         </div>
       )}
+
+      {lightbox && <NewsLightbox images={lightbox.images} index={lightbox.index} onClose={() => setLightbox(null)} onIndex={i => setLightbox({ images: lightbox.images, index: i })} />}
     </div>
   )
 }
 
 // Галерея новости: 1 картинка — целиком (по пропорции, до 460px высоты, без обрезки);
-// 2+ — сетка превью 2 колонки (заполняют ячейку). Клик — оригинал в новой вкладке.
-function PostImages({ images }: { images: string[] }) {
+// 2+ — сетка превью 2 колонки (заполняют ячейку). Клик — открыть в лайтбоксе (просмотр на странице).
+function PostImages({ images, onOpen }: { images: string[]; onOpen: (index: number) => void }) {
+  const imgBtn: React.CSSProperties = { padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', display: 'block' }
   if (images.length === 1) {
-    const src = images[0]
     return (
-      <a href={src} target="_blank" rel="noreferrer" style={{ display: 'block' }}>
-        <img src={src} alt="" loading="lazy"
-          onError={e => { const a = e.currentTarget.closest('a'); if (a) (a as HTMLElement).style.display = 'none' }}
+      <button type="button" onClick={() => onOpen(0)} style={imgBtn}>
+        <img src={images[0]} alt="" loading="lazy"
+          onError={e => { e.currentTarget.style.display = 'none' }}
           style={{ maxWidth: '100%', maxHeight: 460, width: 'auto', height: 'auto', display: 'block', margin: '0 auto', borderRadius: 10, border: '1px solid var(--border)' }} />
-      </a>
+      </button>
     )
   }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
       {images.map((src, i) => (
-        <a key={i} href={src} target="_blank" rel="noreferrer"
-          style={{ display: 'block', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: '4 / 3' }}>
+        <button type="button" key={i} onClick={() => onOpen(i)}
+          style={{ ...imgBtn, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: '4 / 3', width: '100%' }}>
           <img src={src} alt="" loading="lazy"
-            onError={e => { const a = e.currentTarget.closest('a'); if (a) (a as HTMLElement).style.display = 'none' }}
+            onError={e => { e.currentTarget.style.display = 'none' }}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        </a>
+        </button>
       ))}
+    </div>
+  )
+}
+
+// Лайтбокс: просмотр картинок новости на этой же странице — зум (колесо/кнопки/двойной клик),
+// пан при увеличении, листание (←/→ и кнопки), Esc/крестик. Закрытие — по правилу попапов
+// (и mousedown, и mouseup на самом оверлее).
+function NewsLightbox({ images, index, onClose, onIndex }: { images: string[]; index: number; onClose: () => void; onIndex: (i: number) => void }) {
+  const [scale, setScale] = useState(1)
+  const [tx, setTx] = useState(0)
+  const [ty, setTy] = useState(0)
+  const drag = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null)
+  const overlayDown = useRef(false)
+  const src = images[index]
+  const many = images.length > 1
+
+  const reset = () => { setScale(1); setTx(0); setTy(0) }
+  const go = (d: number) => { const n = index + d; if (n >= 0 && n < images.length) onIndex(n) }
+  useEffect(() => { reset() }, [index])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); else if (e.key === 'ArrowLeft') go(-1); else if (e.key === 'ArrowRight') go(1) }
+    document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  }, [index, images.length]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const clamp = (s: number) => Math.min(8, Math.max(1, s))
+  const zoomBy = (f: number) => setScale(s => { const n = clamp(s * f); if (n === 1) { setTx(0); setTy(0) } return n })
+  const imgDown = (e: React.MouseEvent) => { e.stopPropagation(); if (scale <= 1) return; drag.current = { x: e.clientX, y: e.clientY, tx, ty } }
+  const move = (e: React.MouseEvent) => { if (!drag.current) return; setTx(drag.current.tx + (e.clientX - drag.current.x)); setTy(drag.current.ty + (e.clientY - drag.current.y)) }
+
+  const tb: React.CSSProperties = { height: 32, minWidth: 32, padding: '0 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 8, border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(0,0,0,0.4)', color: '#fff', fontSize: 13, cursor: 'pointer' }
+  const nav: React.CSSProperties = { position: 'absolute', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(0,0,0,0.4)', color: '#fff', cursor: 'pointer' }
+
+  return (
+    <div onMouseDown={e => { if (e.target === e.currentTarget) overlayDown.current = true }}
+      onMouseUp={e => { drag.current = null; if (overlayDown.current && e.target === e.currentTarget) onClose(); overlayDown.current = false }}
+      onMouseMove={move}
+      onWheel={e => zoomBy(e.deltaY < 0 ? 1.15 : 1 / 1.15)}
+      style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', background: 'rgba(0,0,0,0.82)', userSelect: 'none' }}>
+      {/* тулбар (клики не закрывают оверлей) */}
+      <div onMouseDown={e => e.stopPropagation()} onMouseUp={e => e.stopPropagation()} style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        {many && <span style={{ marginRight: 4, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{index + 1} / {images.length}</span>}
+        <button style={tb} onClick={() => zoomBy(1 / 1.3)} title="Уменьшить"><Minus size={16} /></button>
+        <button style={tb} onClick={reset} title="Сбросить масштаб">{Math.round(scale * 100)}%</button>
+        <button style={tb} onClick={() => zoomBy(1.3)} title="Увеличить"><Plus size={16} /></button>
+        <a style={tb} href={src} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} title="Открыть оригинал"><Download size={16} /></a>
+        <button style={tb} onClick={onClose} title="Закрыть (Esc)"><X size={16} /></button>
+      </div>
+
+      {many && <>
+        <button style={{ ...nav, left: 12, opacity: index === 0 ? 0.3 : 1 }} disabled={index === 0} onMouseDown={e => e.stopPropagation()} onMouseUp={e => e.stopPropagation()} onClick={() => go(-1)} title="Предыдущая (←)"><ChevronLeft size={22} /></button>
+        <button style={{ ...nav, right: 12, opacity: index === images.length - 1 ? 0.3 : 1 }} disabled={index === images.length - 1} onMouseDown={e => e.stopPropagation()} onMouseUp={e => e.stopPropagation()} onClick={() => go(1)} title="Следующая (→)"><ChevronRight size={22} /></button>
+      </>}
+
+      <img src={src} alt="" draggable={false} onMouseDown={imgDown}
+        onDoubleClick={e => { e.stopPropagation(); scale > 1 ? reset() : zoomBy(2) }}
+        style={{ maxHeight: '90vh', maxWidth: '94vw', borderRadius: 6, transform: `translate(${tx}px, ${ty}px) scale(${scale})`, transition: drag.current ? 'none' : 'transform 0.12s ease', cursor: scale > 1 ? 'grab' : 'zoom-in', willChange: 'transform' }} />
     </div>
   )
 }
