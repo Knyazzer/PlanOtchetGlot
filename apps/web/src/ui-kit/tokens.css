@@ -17,6 +17,7 @@
   --surface: #12151e;
   --surface-2: #1b212d;
   --surface-3: #262e3d;
+  --tile: var(--surface-2); /* фон приподнятого элемента внутри карточки (elevated tile) */
   --border: #2c3444;
   --border-strong: #3a4457;
   --text: #e8ebf1;
@@ -45,6 +46,7 @@
   --surface: #ffffff;
   --surface-2: #edf0f5;
   --surface-3: #e5e9f0;
+  --tile: #ffffff; /* приподнятый элемент = белый (в light «выше» = белее, разделяется рамкой) */
   --border: #d8dde6;
   --border-strong: #c4ccd8;
   --text: #171a21;
@@ -99,6 +101,7 @@
   --surface: #12151e;
   --surface-2: #1b212d;
   --surface-3: #262e3d;
+  --tile: var(--surface-2); /* фон приподнятого элемента внутри карточки (elevated tile) */
   --border: #2c3444;
   --border-strong: #3a4457;
   --text: #e8ebf1;

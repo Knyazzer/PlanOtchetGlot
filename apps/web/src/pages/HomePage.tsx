@@ -39,19 +39,27 @@ type PresenceState = 'working' | 'finished' | 'absent' | 'expected' | 'off'
 interface PresenceItem { userId: string; name: string; position?: string | null; department?: string | null; state: PresenceState; label: string; dayType: string | null }
 const STATE_COLOR: Record<PresenceState, string> = { working: '#46b884', finished: '#8a8f98', absent: '#f59e0b', expected: '#6b7280', off: '#5b6068' }
 
+// Единый стиль карточки-секции дашборда (elevation уровня 1). Все сек+блоки одного визуального веса.
+const CARD: React.CSSProperties = {
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
+  boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 12px 28px -22px rgba(0,0,0,0.6)',
+}
+
 function fmtWhen(iso: string) { return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }
 
 export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
   return (
     <div style={{ padding: '20px 24px', height: '100%', boxSizing: 'border-box', overflow: 'hidden' }}>
       <div style={{ display: 'flex', gap: 16, alignItems: 'stretch', height: '100%', maxWidth: 1500, margin: '0 auto', flexWrap: 'wrap' }}>
-        <div style={{ flex: '1.4 1 440px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
-          <WeekStripCard />
-          <div style={{ flex: 1, minHeight: 0, display: 'flex' }}><NewsChat /></div>
-        </div>
-        <div style={{ flex: '1 1 300px', minWidth: 290, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
+        {/* Слева — узкая колонка: сводка месяца + кто сегодня на смене (компактные виджеты) */}
+        <div style={{ flex: '1 1 300px', minWidth: 300, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
           <ProductionMonthCard />
           <WhoWorks onOpenChat={onOpenChat} />
+        </div>
+        {/* Справа — широкая колонка: неделя (7 дней) + лента новостей (первичный контент) */}
+        <div style={{ flex: '1.6 1 460px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
+          <WeekStripCard />
+          <div style={{ flex: 1, minHeight: 0, display: 'flex' }}><NewsChat /></div>
         </div>
       </div>
     </div>
@@ -87,7 +95,7 @@ function WeekStripCard() {
             minHeight: 148, borderRadius: 12, padding: 8, display: 'flex', flexDirection: 'column', gap: 5,
             background: 'var(--surface)',
             border: `1px solid ${isToday ? ROLE.highlight : 'var(--border)'}`,
-            boxShadow: isToday ? `0 0 0 1px ${ROLE.highlight}` : '0 1px 2px rgba(0,0,0,0.18)',
+            boxShadow: isToday ? `0 0 0 1px ${ROLE.highlight}` : '0 1px 2px rgba(0,0,0,0.06)',
             opacity: weekend && !isToday ? 0.75 : 1,
           }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, justifyContent: 'center' }}>
@@ -137,13 +145,13 @@ function NewsChat() {
   useEffect(() => { const el = scrollRef.current; if (el) el.scrollTop = el.scrollHeight }, [ordered.length])
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'transparent', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+    <div style={{ ...CARD, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
       <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--border)', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', flexShrink: 0 }}>Новости компании</div>
 
       <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {ordered.length === 0 && <div style={{ margin: 'auto', color: 'var(--text-muted)', fontSize: 14 }}>Пока нет новостей.</div>}
         {ordered.map(p => (
-          <div key={p.id} style={{ position: 'relative', alignSelf: 'stretch', background: 'var(--surface)', border: `1px solid ${p.pinned ? 'var(--accent-line, var(--border))' : 'var(--border)'}`, borderRadius: 12, padding: '11px 14px', boxShadow: '0 1px 2px rgba(0,0,0,0.16)' }}>
+          <div key={p.id} style={{ position: 'relative', alignSelf: 'stretch', background: 'var(--tile)', border: `1px solid ${p.pinned ? 'var(--accent-line, var(--border))' : 'var(--border)'}`, borderRadius: 12, padding: '11px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               {p.pinned && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: 'var(--accent-s)' }}><Pin size={10} /> Закреплено</span>}
               <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>{fmtWhen(p.createdAt)}</span>
@@ -203,7 +211,7 @@ function ProductionMonthCard() {
 
   const stat: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12 }
   return (
-    <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '16px', flexShrink: 0 }}>
+    <div style={{ ...CARD, padding: '16px', flexShrink: 0 }}>
       {!data ? (
         <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Загрузка…</div>
       ) : (
@@ -285,7 +293,7 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
   const chips: Array<[typeof filter, string]> = [['all', 'Все'], ['office', 'Офис'], ['remote', 'Удалёнка'], ['sick', 'Больничный'], ['vacation', 'Отпуск'], ['dayoff', 'Выходной']]
 
   return (
-    <div style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+    <div style={{ ...CARD, padding: '14px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexShrink: 0 }}>
         <Users size={15} style={{ color: 'var(--text-muted)' }} />
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Кто работает сегодня</span>
@@ -304,7 +312,7 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
         {list.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '6px 2px' }}>Никого не найдено</div>}
         {list.map(m => (
           <div key={m.userId} onClick={() => setSel(m)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 8, cursor: 'pointer' }}
-            onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'var(--surface)'} onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'none'}>
+            onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.background = 'var(--tile)'} onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.background = 'none'}>
             <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATE_COLOR[m.state], flexShrink: 0, opacity: m.state === 'working' ? 1 : 0.75 }} />
             <span style={{ fontSize: 14, color: 'var(--text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formatName(m.name)}</span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{m.label}</span>
