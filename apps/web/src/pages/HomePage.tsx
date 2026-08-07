@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { formatName } from '../lib/utils'
 import { ROLE } from '../lib/roleColors'
+import { Tooltip } from '../components/Tooltip'
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
@@ -122,8 +123,8 @@ function ProductionMonthCard() {
     return { q: qi + 1, pct, cur }
   })
 
-  // геометрия доната (толще/крупнее)
-  const R = 42, SW = 11, CIRC = 2 * Math.PI * R
+  // геометрия доната (крупнее радиусом)
+  const SIZE = 128, R = 50, SW = 12, C = SIZE / 2, CIRC = 2 * Math.PI * R
   const dash = monthPct * CIRC
 
   const stat: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12 }
@@ -134,19 +135,19 @@ function ProductionMonthCard() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {/* Донат слева (число дня + месяц) · таблица справа */}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <div style={{ position: 'relative', width: 108, height: 108, flexShrink: 0 }}>
-              <svg width={108} height={108}>
-                <circle cx={54} cy={54} r={R} fill="none" stroke="var(--surface-3)" strokeWidth={SW} />
-                <circle cx={54} cy={54} r={R} fill="none" stroke={ROLE.primary} strokeWidth={SW} strokeLinecap="round" strokeDasharray={`${dash} ${CIRC}`} transform="rotate(-90 54 54)" />
+          <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+            <div style={{ position: 'relative', width: SIZE, height: SIZE, flexShrink: 0 }}>
+              <svg width={SIZE} height={SIZE}>
+                <circle cx={C} cy={C} r={R} fill="none" stroke="var(--surface-3)" strokeWidth={SW} />
+                <circle cx={C} cy={C} r={R} fill="none" stroke={ROLE.primary} strokeWidth={SW} strokeLinecap="round" strokeDasharray={`${dash} ${CIRC}`} transform={`rotate(-90 ${C} ${C})`} />
               </svg>
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 34, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{dayOfMonth}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{MONTHS_GEN[m]}</span>
-                <span style={{ fontSize: 10, color: 'var(--text-muted)', opacity: 0.75 }}>нед. {week}</span>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                <span style={{ fontSize: 42, fontWeight: 800, color: 'var(--text-1)', lineHeight: 0.95, fontVariantNumeric: 'tabular-nums' }}>{dayOfMonth}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-2)' }}>{MONTHS_GEN[m]}</span>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>нед. {week}</span>
               </div>
             </div>
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 7 }}>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
               <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих дней</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingDays}</b></div>
               <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Рабочих часов</span><b style={{ color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{data.workingHours} ч</b></div>
               <div style={stat}><span style={{ color: 'var(--text-muted)' }}>Выходных / празд.</span><span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{data.weekendDays} / {data.holidays.length}</span></div>
@@ -161,13 +162,13 @@ function ProductionMonthCard() {
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               {quarters.map(qq => (
-                <div key={qq.q} title={`${MONTHS_RU[(qq.q - 1) * 3]} – ${MONTHS_RU[(qq.q - 1) * 3 + 2]}`}
+                <Tooltip key={qq.q} text={`${MONTHS_RU[(qq.q - 1) * 3]} – ${MONTHS_RU[(qq.q - 1) * 3 + 2]}`}
                   style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, cursor: 'help' }}>
                   <div style={{ width: '100%', height: 8, borderRadius: 4, background: 'var(--surface-3)', overflow: 'hidden' }}>
                     <div style={{ width: `${qq.pct * 100}%`, height: '100%', background: qq.cur ? ROLE.highlight : ROLE.primary, borderRadius: 4, transition: 'width 0.3s' }} />
                   </div>
                   <span style={{ fontSize: 11, fontWeight: qq.cur ? 800 : 600, color: qq.cur ? ROLE.highlight : qq.pct >= 1 ? 'var(--text-2)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>Q{qq.q}</span>
-                </div>
+                </Tooltip>
               ))}
             </div>
           </div>
