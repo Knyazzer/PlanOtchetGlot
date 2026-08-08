@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { X, ClipboardList, MessageSquare, Calendar as CalendarIcon, CheckCheck } from 'lucide-react'
+import { X, ClipboardList, MessageSquare, Calendar as CalendarIcon, CheckCheck, Inbox } from 'lucide-react'
 import { api } from '../lib/api'
 import { NOTIF_SEEN_LS_KEY } from '../hooks/useNotificationsBadge'
 
 // Панель уведомлений (эталон v2 Notifications.tsx): derived-агрегатор.
 // «Прочитанность» ленты — клиентская метка в localStorage (mark-all-read сдвигает её).
 
-type NotifItem = { id: string; kind: 'task' | 'calendar'; text: string; at: string; taskId?: string; eventId?: string }
-type NotifData = { tasks: NotifItem[]; events: NotifItem[] }
+type NotifItem = { id: string; kind: 'task' | 'calendar' | 'request'; text: string; at: string; taskId?: string; eventId?: string; requestId?: string }
+type NotifData = { tasks: NotifItem[]; events: NotifItem[]; requests?: NotifItem[] }
 
 function relTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -20,12 +20,13 @@ function relTime(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenChats, fullWidth = false }: {
+export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenChats, onOpenRequests, fullWidth = false }: {
   unreadChats: number
   fullWidth?: boolean
   onClose: () => void
   onOpenPage: (page: string) => void
   onOpenChats: () => void
+  onOpenRequests: () => void
 }) {
   const { data, isLoading } = useQuery<NotifData>({
     queryKey: ['notifications'],
@@ -49,6 +50,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
 
   const groups = useMemo(() => ([
     { key: 'task', label: 'Задачи', icon: ClipboardList, items: data?.tasks ?? [] },
+    { key: 'request', label: 'Заявки', icon: Inbox, items: data?.requests ?? [] },
     { key: 'calendar', label: 'Календарь', icon: CalendarIcon, items: data?.events ?? [] },
   ]), [data])
 
@@ -95,10 +97,10 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {g.items.map(item => {
-                    const fresh = g.key === 'task' ? item.at > seenAt : false
+                    const fresh = (g.key === 'task' || g.key === 'request') ? item.at > seenAt : false
                     return (
                       <button key={item.id}
-                        onClick={() => { onClose(); onOpenPage(item.kind === 'task' ? 'tasks' : 'calendar') }}
+                        onClick={() => { onClose(); if (item.kind === 'request') onOpenRequests(); else onOpenPage(item.kind === 'task' ? 'tasks' : 'calendar') }}
                         style={{
                           display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 11px', borderRadius: 9,
                           border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',

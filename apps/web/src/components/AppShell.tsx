@@ -307,6 +307,7 @@ export function AppShell() {
           onClose={() => setNotifOpen(false)}
           onOpenPage={(p) => navigateTo(p as Page)}
           onOpenChats={() => setChatOpen(true)}
+          onOpenRequests={() => { pickCabinet('requests'); navigateTo('dashboard') }}
         />
       )}
     </PageHeaderProvider>

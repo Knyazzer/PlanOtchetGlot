@@ -40,7 +40,7 @@ export function RequestsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const typeLabel = (k: string) => types.find(t => t.key === k)?.label ?? k
 
-  const invalidate = () => { qc.invalidateQueries({ queryKey: ['requests', 'mine'] }); qc.invalidateQueries({ queryKey: ['requests', 'inbox'] }); qc.invalidateQueries({ queryKey: ['requests:unseen'] }) }
+  const invalidate = () => { qc.invalidateQueries({ queryKey: ['requests', 'mine'] }); qc.invalidateQueries({ queryKey: ['requests', 'inbox'] }); qc.invalidateQueries({ queryKey: ['requests:unseen'] }); qc.invalidateQueries({ queryKey: ['notifications'] }) }
 
   // Открыли вкладку — помечаем ответы по заявкам просмотренными (снимаем badge «новый ответ»)
   useEffect(() => {
