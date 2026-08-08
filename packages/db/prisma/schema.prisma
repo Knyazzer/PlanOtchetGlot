@@ -657,7 +657,8 @@ model DayEntry {
   divisionId  String?   @map("division_id")
   division    Division? @relation("DivisionDayEntries", fields: [divisionId], references: [id], onDelete: SetNull)
   date        DateTime  @db.Date
-  dayFormat   String    @map("day_format") // ключ из DayFormatVersion (office|remote|shift_air|...)
+  dayFormat   String    @map("day_format") // СТАТУС дня: working|weekend|vacation|sick|dayoff (см. docs/DAY-STATUS-MODEL.md)
+  place       String?   @map("place")      // где работал: office|remote|project|trip (null — не работал)
   startTime   String?   @map("start_time") // "HH:MM"
   endTime     String?   @map("end_time")
   breakMin    Int       @default(0) @map("break_min")

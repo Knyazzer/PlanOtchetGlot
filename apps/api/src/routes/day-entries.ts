@@ -25,7 +25,8 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 
 const upsertSchema = z.object({
   date: z.string().regex(DATE_RE),
-  dayFormat: z.string().min(1),
+  dayFormat: z.string().min(1),                                  // СТАТУС дня: working|weekend|vacation|sick|dayoff
+  place: z.enum(['office', 'remote', 'project', 'trip']).nullish(), // где работал (null — не работал)
   startTime: z.string().regex(TIME_RE).nullish(),
   endTime: z.string().regex(TIME_RE).nullish(),
   breakMin: z.number().int().min(0).max(24 * 60).optional(),
@@ -77,7 +78,7 @@ async function resolveDivisionId(userId: string): Promise<string | null> {
 }
 
 const DAY_SELECT = {
-  id: true, userId: true, divisionId: true, date: true, dayFormat: true,
+  id: true, userId: true, divisionId: true, date: true, dayFormat: true, place: true,
   startTime: true, endTime: true, breakMin: true, updatedAt: true,
 } as const
 
@@ -196,18 +197,18 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     const user = (req as any).user as { id: string }
     const parsed = upsertSchema.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: 'validation', details: parsed.error.flatten() })
-    const { date, dayFormat, startTime, endTime, breakMin } = parsed.data
+    const { date, dayFormat, place, startTime, endTime, breakMin } = parsed.data
 
     const formats = await dayFormatsAt(new Date(date))
     const fmt = formats.get(dayFormat)
-    if (!fmt || !fmt.active) return reply.code(400).send({ error: `Неизвестный формат дня: ${dayFormat}` })
+    if (!fmt || !fmt.active) return reply.code(400).send({ error: `Неизвестный статус дня: ${dayFormat}` })
 
     const divisionId = await resolveDivisionId(user.id) // снапшот отдела на момент записи
     const entry = await prisma.dayEntry.upsert({
       where: { userId_date: { userId: user.id, date: new Date(date) } },
-      update: { dayFormat, startTime: startTime ?? null, endTime: endTime ?? null, breakMin: breakMin ?? 0 },
+      update: { dayFormat, place: place ?? null, startTime: startTime ?? null, endTime: endTime ?? null, breakMin: breakMin ?? 0 },
       create: {
-        userId: user.id, divisionId, date: new Date(date), dayFormat,
+        userId: user.id, divisionId, date: new Date(date), dayFormat, place: place ?? null,
         startTime: startTime ?? null, endTime: endTime ?? null, breakMin: breakMin ?? 0,
       },
       select: DAY_SELECT,

@@ -51,7 +51,7 @@ export async function workScheduleRoutes(app: FastifyInstance) {
     })
     const ids = members.map(m => m.id)
     const [entries, schedules, formats] = await Promise.all([
-      prisma.dayEntry.findMany({ where: { userId: { in: ids }, date: new Date(todayYMD) }, select: { userId: true, dayFormat: true, startTime: true, endTime: true } }),
+      prisma.dayEntry.findMany({ where: { userId: { in: ids }, date: new Date(todayYMD) }, select: { userId: true, dayFormat: true, place: true, startTime: true, endTime: true } }),
       prisma.workSchedule.findMany({ where: { userId: { in: ids } } }),
       dayFormatsAt(new Date(todayYMD)),
     ])
@@ -61,24 +61,27 @@ export async function workScheduleRoutes(app: FastifyInstance) {
     return members.map(m => {
       const e = entryBy.get(m.id)
       const sched = schedBy.get(m.id) as any
+      const PLACE_KEYS = ['office', 'remote', 'project', 'trip']
       let state: 'working' | 'finished' | 'absent' | 'expected' | 'off' = 'off'
       let label = '—'
       let dayType: string | null = null
+      let place: string | null = null
       if (e) {
         const fmt = formats.get(e.dayFormat)
         dayType = e.dayFormat
-        if (fmt && !fmt.isWork) { state = 'absent'; label = fmt.label }
-        else if (e.startTime && !e.endTime) { state = 'working'; label = 'В работе' }
+        place = e.place ?? null
+        if (e.startTime && !e.endTime) { state = 'working'; label = 'В работе' }
         else if (e.startTime && e.endTime) { state = 'finished'; label = 'Закончил день' }
+        else if (fmt && !fmt.isWork) { state = 'absent'; label = fmt.label }
         else { state = 'expected'; label = fmt?.label ?? 'Рабочий день' }
       } else if (sched) {
-        const key = sched[wkField] as string
+        const key = sched[wkField] as string          // план: место (office/remote) или 'weekend'
         const fmt = formats.get(key)
-        dayType = key
-        if (fmt && !fmt.isWork) { state = 'off'; label = fmt.label }
-        else { state = 'expected'; label = 'По графику' }
+        if (PLACE_KEYS.includes(key)) { dayType = 'working'; place = key; state = 'expected'; label = 'По графику' }
+        else if (fmt && !fmt.isWork) { dayType = key; state = 'off'; label = fmt.label }
+        else { dayType = 'working'; state = 'expected'; label = 'По графику' }
       }
-      return { userId: m.id, name: m.name, position: m.position, department: m.department, state, label, dayType }
+      return { userId: m.id, name: m.name, position: m.position, department: m.department, state, label, dayType, place }
     })
   })
 

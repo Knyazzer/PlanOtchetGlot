@@ -36,7 +36,7 @@ function isoWeek(d: Date): number {
 interface Post { id: string; title: string; body: string; pinned: boolean; createdAt: string; author: { id: string; name: string } }
 interface Feed { posts: Post[]; canPost: boolean }
 type PresenceState = 'working' | 'finished' | 'absent' | 'expected' | 'off'
-interface PresenceItem { userId: string; name: string; position?: string | null; department?: string | null; state: PresenceState; label: string; dayType: string | null }
+interface PresenceItem { userId: string; name: string; position?: string | null; department?: string | null; state: PresenceState; label: string; dayType: string | null; place: string | null }
 const STATE_COLOR: Record<PresenceState, string> = { working: '#46b884', finished: '#8a8f98', absent: '#f59e0b', expected: '#6b7280', off: '#5b6068' }
 
 // Единый стиль карточки-секции дашборда (elevation уровня 1). Все сек+блоки одного визуального веса.
@@ -398,11 +398,11 @@ function WhoWorks({ onOpenChat }: { onOpenChat?: (userId: string) => void }) {
   const ql = q.trim().toLowerCase()
   const list = people
     .filter(m => m.name.toLowerCase().includes(ql))
-    .filter(m => filter === 'all' ? true : m.dayType === filter)
+    .filter(m => filter === 'all' ? true : (m.dayType === filter || m.place === filter))
   const workingNow = people.filter(m => m.state === 'working').length
 
   // Фильтр по типу дня (HR-статус). «На проекте» — отдельным блоком позже (с функционалом проектов).
-  const chips: Array<[typeof filter, string]> = [['all', 'Все'], ['office', 'Офис'], ['remote', 'Удалёнка'], ['sick', 'Больничный'], ['vacation', 'Отпуск'], ['dayoff', 'Выходной']]
+  const chips: Array<[typeof filter, string]> = [['all', 'Все'], ['office', 'Офис'], ['remote', 'Удалёнка'], ['sick', 'Больничный'], ['vacation', 'Отпуск'], ['dayoff', 'Отгул']]
 
   return (
     <div style={{ ...CARD, padding: '14px 16px', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

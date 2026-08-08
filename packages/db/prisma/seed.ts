@@ -30,17 +30,12 @@ async function main() {
   // Базовый набор (6) — без «донорских» смен (эфир/монтаж/подготовка) и «без оплаты».
   // Дополнительные типы (отгул, отпуск за свой счёт и пр.) HR добавляет через справочник форматов.
   const dayFormats: Array<{ key: string; label: string; isWork: boolean; score: number | null }> = [
-    // Места работы (isWork) — где сотрудник работает:
-    { key: 'office',     label: 'Офис',          isWork: true,  score: 0 },
-    { key: 'remote',     label: 'Удалёнка',      isWork: true,  score: 0 },
-    { key: 'project',    label: 'Проект',        isWork: true,  score: 0 },
-    { key: 'trip',       label: 'Командировка',  isWork: true,  score: 1.5 },
-    // Календарный выходной (сб/вс) — не отдых сотрудника, работать можно:
-    { key: 'weekend',    label: 'Выходной',      isWork: false, score: null },
-    // Отсутствия (работать нельзя / факт «не работал»):
-    { key: 'vacation',   label: 'Отпуск',        isWork: false, score: 0.55 },
-    { key: 'sick',       label: 'Больничный',    isWork: false, score: 0.55 },
-    { key: 'dayoff',     label: 'Отгул',         isWork: false, score: null },
+    // Форматы дня = СТАТУСЫ (место работы вынесено в DayEntry.place). score — редактируем, логика по времени.
+    { key: 'working',  label: 'Рабочий день', isWork: true,  score: 0 },
+    { key: 'weekend',  label: 'Выходной',     isWork: false, score: null },  // календарный выходной (работать можно)
+    { key: 'vacation', label: 'Отпуск',       isWork: false, score: 0.55 },
+    { key: 'sick',     label: 'Больничный',   isWork: false, score: 0.55 },
+    { key: 'dayoff',   label: 'Отгул',        isWork: false, score: null },
   ]
   for (const f of dayFormats) {
     await prisma.dayFormatVersion.upsert({
@@ -50,7 +45,8 @@ async function main() {
     })
   }
   // Убрать снятые типы: удалить если не используются в днях, иначе retire (active=false, история цела)
-  const REMOVED_FORMATS = ['shift_air', 'shift_edit', 'shift_prep', 'unpaid']
+  // office/remote/project/trip больше не форматы, а места (DayEntry.place) — снимаем из справочника форматов
+  const REMOVED_FORMATS = ['shift_air', 'shift_edit', 'shift_prep', 'unpaid', 'office', 'remote', 'project', 'trip']
   for (const key of REMOVED_FORMATS) {
     const used = await prisma.dayEntry.count({ where: { dayFormat: key } })
     if (used === 0) await prisma.dayFormatVersion.deleteMany({ where: { key } })

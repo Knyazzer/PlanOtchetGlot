@@ -10,10 +10,11 @@ import { TimePicker } from '../ui-kit/components/TimePicker'
 
 type DayFormat = { key: string; label: string; isWork: boolean; score: number | null }
 type DayEntry = {
-  id: string; date: string; dayFormat: string
+  id: string; date: string; dayFormat: string; place: string | null
   startTime: string | null; endTime: string | null; breakMin: number
   updatedAt: string
 }
+const PLACE_KEYS = ['office', 'remote', 'project', 'trip']
 
 function todayStr() { return new Date().toISOString().slice(0, 10) }
 function pad(n: number) { return String(n).padStart(2, '0') }
@@ -50,7 +51,11 @@ function WorkDayCard({ date, entry, formats, schedule }: {
   const qc = useQueryClient()
   const isToday = date === todayStr()
   const expected = expectedForDate(date, schedule)
-  const dayType = entry?.dayFormat ?? expected?.format ?? 'office'
+  const expectedFormat = expected?.format ?? 'office'                        // план: место (office/remote) или 'weekend'
+  const expectedStatus = PLACE_KEYS.includes(expectedFormat) ? 'working' : expectedFormat
+  const expectedPlace = PLACE_KEYS.includes(expectedFormat) ? expectedFormat : null
+  const dayType = entry?.dayFormat ?? expectedStatus                         // СТАТУС дня
+  const place = entry?.place ?? expectedPlace                               // где работает
   const fmt = formats.find(f => f.key === dayType)
   const isWork = fmt?.isWork ?? true
   const start = entry?.startTime ?? null
@@ -58,10 +63,11 @@ function WorkDayCard({ date, entry, formats, schedule }: {
   const breakMin = entry?.breakMin ?? schedule?.breakMin ?? 0
 
   const save = useMutation({
-    mutationFn: (patch: Partial<{ dayFormat: string; startTime: string | null; endTime: string | null; breakMin: number }>) =>
+    mutationFn: (patch: Partial<{ dayFormat: string; place: string | null; startTime: string | null; endTime: string | null; breakMin: number }>) =>
       api.put('/day-entries', {
         date,
         dayFormat: patch.dayFormat ?? dayType,
+        place: patch.place !== undefined ? patch.place : place,
         startTime: patch.startTime !== undefined ? patch.startTime : start,
         endTime: patch.endTime !== undefined ? patch.endTime : end,
         breakMin: patch.breakMin ?? breakMin,
@@ -96,10 +102,9 @@ function WorkDayCard({ date, entry, formats, schedule }: {
   // Календарный выходной (weekend) — рабочий (можно начать). Отпуск/больничный/отгул — статус-метка.
   // TODO: «работать во время отпуска/больничного» без потери статуса требует отдельного поля места (схема).
   const isAbsence = ['vacation', 'sick', 'dayoff'].includes(dayType)
-  // План (расписание) vs факт (override-запись дня). Место можно вернуть к расписанию.
-  const expectedFmt = expected?.format ?? 'office'
-  const placeOverridden = dayType !== expectedFmt
-  const resetToSchedule = () => { if (started) save.mutate({ dayFormat: expectedFmt }); else deleteDay.mutate() }
+  // План (расписание) vs факт (override). Статус/место можно вернуть к расписанию.
+  const placeOverridden = dayType !== expectedStatus || place !== expectedPlace
+  const resetToSchedule = () => { if (started) save.mutate({ dayFormat: expectedStatus, place: expectedPlace }); else deleteDay.mutate() }
   // Начинаем/заканчиваем только кнопками: до старта Начало недоступно, Конец — до нажатия «Закончить».
   const startHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Начните рабочий день кнопкой' : ''
   const endHint = !canEdit ? 'Отметить время можно только в текущий день' : !finished ? 'Завершите рабочий день кнопкой' : ''
@@ -121,9 +126,10 @@ function WorkDayCard({ date, entry, formats, schedule }: {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 2 }}>Место:</span>
             {PLACES.map(p => {
-              const sel = dayType === p.key
+              const sel = place === p.key
+              // Выбор места = где работает. В календарный выходной выбор места делает день рабочим (статус working).
               return (
-                <button key={p.key} disabled={!canEdit} onClick={() => save.mutate({ dayFormat: p.key })}
+                <button key={p.key} disabled={!canEdit} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
                   title={!canEdit ? 'Сменить место можно только в текущий день' : ''}
                   style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: canEdit ? 'pointer' : 'not-allowed', opacity: canEdit ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
               )
@@ -155,8 +161,8 @@ function WorkDayCard({ date, entry, formats, schedule }: {
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
             ) : !started ? (
-              <button disabled={!canEdit || !isWork} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null })}
-                title={!isWork ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit || !isWork)}>Начать рабочий день</button>
+              <button disabled={!canEdit || !place} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                title={!place ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit || !place)}>Начать рабочий день</button>
             ) : (
               <button disabled={!canEdit} onClick={() => save.mutate({ endTime: nowHHMM() })}
                 title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !canEdit)}>Закончить рабочий день</button>
