@@ -225,6 +225,7 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | `/access` | `routes/access.ts` | admin: registry (реестр модулей из кода), grants GET/PUT (выдача/уровень/отзыв модуля департаменту) |
 | `/analytics` | `routes/analytics.ts` | GET ?from&to&scope=self\|team\|company — KPI/сотрудники/проекты по формулам донора; businessDays по производственному календарю РФ (`services/calendarRf.ts`); company — admin или модуль adm.analytics-company |
 | `/work-items` | `routes/projects.ts` | сводный GET (фильтры status/projectId/producerId/search), GET/:id (+треки с прогрессом, расходы), PATCH, DELETE, PUT /:id/departments, расходы /:id/expenses CRUD |
+| `/requests` | `routes/requests.ts` | заявки (отпуск/больничный/отгул): GET /types, GET ?scope=mine\|inbox, POST, PATCH /:id/decision (согласующий/админ), PATCH /:id/cancel (автор); согласующий = рук. отдела→директор департамента→админ. Спека — docs/REQUESTS-MODULE.md |
 
 **Новый роут — чеклист:** файл в `routes/`, зарегистрировать в `server.ts`, **добавить префикс в `apps/web/nginx.conf`** (allow-list прокси — иначе путь уйдёт в SPA-fallback и фронт получит `index.html` вместо JSON → краш `X.find is not a function`, см. `docs/POSTMORTEM-2026-06-15-proxy-allowlist.md`), `preHandler` auth, Zod-валидация через `.safeParse`, тест `*.test.ts` рядом, обновить таблицу выше.
 
