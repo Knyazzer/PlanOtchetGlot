@@ -75,12 +75,6 @@ function WorkDayCard({ date, entry, formats, schedule }: {
       alert(e?.response?.data?.error ?? 'Ошибка сохранения')
     },
   })
-  // снять статус/очистить день (вернуть к типу из графика)
-  const deleteDay = useMutation({
-    mutationFn: () => api.delete(`/day-entries/${date}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['day-entries'] }); qc.invalidateQueries({ queryKey: ['svod'] }) },
-  })
-
   // отработано (мин): закрытый день — end−start−break; идёт — сейчас−start−break
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes()
   const s0 = parseMin(start)
@@ -89,16 +83,11 @@ function WorkDayCard({ date, entry, formats, schedule }: {
     : isToday ? Math.max(0, nowMin - s0 - breakMin)
     : 0
 
-  const isAbsentMarked = !!entry && !isWork   // явно отмечен нерабочий день (больничный/отпуск/выходной)
+  const isAbsentMarked = !!entry && !isWork   // нерабочий день (больничный/отпуск) — ставится в отдельном функционале
   const started = !!start
   const finished = !!start && !!end
-  const startDisabled = !isToday || isAbsentMarked
-  const stopDisabled = !isToday
-
-  // какие поля показываем: прошлые дни — всё редактируемо для ручного заполнения
-  const showStart = started || !isToday
-  const showEnd = finished || !isToday
-  const showFields = started || !isToday
+  // Редактировать факт можно только в текущий день; прошлые/будущие — только просмотр.
+  const canEdit = isToday
 
   const wrap: React.CSSProperties = { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', width: '100%', boxSizing: 'border-box' }
 
@@ -107,67 +96,38 @@ function WorkDayCard({ date, entry, formats, schedule }: {
       <Header date={date} isToday={isToday} type={fmt?.label ?? dayType} typeColor={isWork ? 'var(--accent-s)' : 'var(--text-muted)'} />
 
       {isAbsentMarked ? (
-        // Отмечено отсутствие — крупным статусом
+        // День отмечен как отсутствие — крупным статусом (управление — в разделе заявок/отсутствий)
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12 }}>
           <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)' }}>{fmt?.label ?? dayType}</span>
         </div>
       ) : (
-        // Основная строка: слева поля/подсказка, справа кнопка действия (space-between — без пустоты справа)
+        // Все элементы показаны всегда; активность зависит от стадии и от того, текущий ли день.
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end', flexWrap: 'wrap', minHeight: 44 }}>
-            {showStart && (
-              <Field label="Начало">
-                <TimePicker value={start ?? ''} onChange={v => save.mutate({ startTime: v || null })} />
-              </Field>
-            )}
-            {showEnd && (
-              <Field label="Конец">
-                <TimePicker value={end ?? ''} onChange={v => save.mutate({ endTime: v || null })} />
-              </Field>
-            )}
-            {showFields && (
-              <Field label="Перерыв, мин">
-                <BreakStepper value={breakMin} onChange={v => save.mutate({ breakMin: v })} />
-              </Field>
-            )}
-            {(finished || worked > 0) && (
-              <Field label="Отработано">
-                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums', lineHeight: '38px' }}>{fmtHM(worked)}</div>
-              </Field>
-            )}
-            {isToday && !started && (
-              <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: '44px' }}>Рабочий день ещё не начат — отметьте начало</div>
-            )}
+          <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <Field label="Начало">
+              <TimePicker value={start ?? ''} disabled={!canEdit} onChange={v => save.mutate({ startTime: v || null })} />
+            </Field>
+            <Field label="Конец">
+              <TimePicker value={end ?? ''} disabled={!canEdit || !started} onChange={v => save.mutate({ endTime: v || null })} />
+            </Field>
+            <Field label="Перерыв, мин">
+              <BreakStepper value={breakMin} disabled={!canEdit || !started} onChange={v => save.mutate({ breakMin: v })} />
+            </Field>
+            <Field label="Отработано">
+              <div style={{ fontSize: 20, fontWeight: 800, color: worked > 0 ? 'var(--text-1)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: '38px' }}>{worked > 0 ? fmtHM(worked) : '—'}</div>
+            </Field>
           </div>
 
-          {/* Кнопка действия */}
+          {/* Кнопка действия — одинаковый размер во всех стадиях (стабильное выравнивание) */}
           {finished ? (
-            <button disabled style={bigBtn('#8a8f98', true)}>✓ Рабочий день завершён</button>
+            <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
           ) : !started ? (
-            <button disabled={startDisabled} onClick={() => save.mutate({ dayFormat: isWork ? dayType : 'office', startTime: nowHHMM(), endTime: null })}
-              title={startDisabled ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, startDisabled)}>Начать рабочий день</button>
+            <button disabled={!canEdit} onClick={() => save.mutate({ dayFormat: isWork ? dayType : 'office', startTime: nowHHMM(), endTime: null })}
+              title={!canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit)}>Начать рабочий день</button>
           ) : (
-            <button disabled={stopDisabled} onClick={() => save.mutate({ endTime: nowHHMM() })}
-              title={stopDisabled ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, stopDisabled)}>Закончить рабочий день</button>
+            <button disabled={!canEdit} onClick={() => save.mutate({ endTime: nowHHMM() })}
+              title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !canEdit)}>Закончить рабочий день</button>
           )}
-        </div>
-      )}
-
-      {/* Самостоятельный статус: сотрудник сам ставит больничный/отпуск (сегодня) */}
-      {isToday && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Отметить отсутствие:</span>
-          {(['sick', 'vacation'] as const).map(k => {
-            const label = formats.find(f => f.key === k)?.label ?? k
-            const active = isAbsentMarked && dayType === k
-            return (
-              <button key={k}
-                onClick={() => active ? deleteDay.mutate() : save.mutate({ dayFormat: k, startTime: null, endTime: null })}
-                style={{ padding: '5px 12px', borderRadius: 20, border: `1px solid ${active ? ROLE.warning : 'var(--border)'}`, background: active ? ROLE.warning + '26' : 'none', color: active ? ROLE.warning : 'var(--text-3)', fontSize: 12, fontWeight: active ? 700 : 400, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
-                {label}{active ? ' ✕' : ''}
-              </button>
-            )
-          })}
         </div>
       )}
     </div>
@@ -195,14 +155,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 // Перерыв — степпер в дизайн-системе (не нативный number-spinner)
-function BreakStepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const stepBtn: React.CSSProperties = { width: 34, height: 36, border: 'none', background: 'none', color: 'var(--text-2)', fontSize: 20, lineHeight: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-  const set = (n: number) => onChange(Math.max(0, n))
+function BreakStepper({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled?: boolean }) {
+  const stepBtn: React.CSSProperties = { width: 34, height: 36, border: 'none', background: 'none', color: disabled ? 'var(--text-muted)' : 'var(--text-2)', fontSize: 20, lineHeight: 1, cursor: disabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+  const set = (n: number) => { if (!disabled) onChange(Math.max(0, n)) }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', height: 36, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-      <button onClick={() => set(value - 5)} title="−5 мин" style={stepBtn}>−</button>
+    <div style={{ display: 'flex', alignItems: 'center', height: 36, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', opacity: disabled ? 0.5 : 1 }}>
+      <button onClick={() => set(value - 5)} disabled={disabled} title="−5 мин" style={stepBtn}>−</button>
       <span style={{ minWidth: 40, textAlign: 'center', fontSize: 14, fontWeight: 600, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
-      <button onClick={() => set(value + 5)} title="+5 мин" style={stepBtn}>+</button>
+      <button onClick={() => set(value + 5)} disabled={disabled} title="+5 мин" style={stepBtn}>+</button>
     </div>
   )
 }
@@ -213,5 +173,6 @@ function bigBtn(color: string, disabled?: boolean): React.CSSProperties {
     border: disabled ? '1px solid var(--border)' : 'none', borderRadius: 10, padding: '11px 22px',
     fontFamily: 'Inter,sans-serif', fontSize: 15, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
     boxShadow: disabled ? 'none' : `0 6px 18px ${color}44`, opacity: disabled ? 0.7 : 1, whiteSpace: 'nowrap',
+    minWidth: 230, textAlign: 'center',
   }
 }

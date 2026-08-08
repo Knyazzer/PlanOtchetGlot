@@ -80,12 +80,14 @@ export function TimePicker({
   minuteStep = 5,
   placeholder = 'Время',
   className,
+  disabled,
 }: {
   value?: string
   onChange?: (v: string) => void
   minuteStep?: number
   placeholder?: string
   className?: string
+  disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const init = parse(value)
@@ -115,9 +117,11 @@ export function TimePicker({
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
+        disabled={disabled}
         className={cn(
           'inline-flex h-9 items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-3 text-[14px] outline-none transition-colors hover:border-[var(--border-strong)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-soft)]',
           value ? 'text-[var(--text)]' : 'text-[var(--muted)]',
+          disabled && 'pointer-events-none opacity-50',
           className,
         )}
       >
