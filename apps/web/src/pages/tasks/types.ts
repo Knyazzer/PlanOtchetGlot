@@ -40,6 +40,7 @@ export interface Task {
   track:            { id: string; title: string; type: string } | null
   stageId:          string | null
   stage:            { id: string; title: string } | null
+  goalId:           string | null
   createdAt:        string
   updatedAt:        string
   assignedBy:       TaskUser

@@ -153,9 +153,29 @@ model StrategicGoal {
   closedAt      DateTime? @map("closed_at")
   closedById    String?   @map("closed_by_id")
 
+  logs          StrategicGoalLog[]
+
   @@index([deptId, periodKey])
   @@index([divisionId, periodKey])
   @@map("strategic_goals")
+  @@schema("nexus")
+}
+
+// История изменений стратегической цели (неизменяемая лента, как TaskLog).
+// userName — снапшот имени на момент действия; связи на User нет (стиль снапшотов StrategicGoal).
+model StrategicGoalLog {
+  id        String        @id @default(uuid())
+  goalId    String        @map("goal_id")
+  goal      StrategicGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  userId    String        @map("user_id")
+  userName  String        @map("user_name")
+  action    String                          // created | edited | status | reopened | track_attached | track_detached
+  details   String?                         // готовый человекочитаемый текст изменения
+  meta      Json?
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@index([goalId, createdAt])
+  @@map("strategic_goal_logs")
   @@schema("nexus")
 }
 

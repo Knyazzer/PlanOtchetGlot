@@ -26,6 +26,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
   const [plannedMin,   setPlannedMin]   = useState<string>(editTask?.plannedMinutes != null ? String(editTask.plannedMinutes) : '')
   const [actualMin,    setActualMin]    = useState<string>(editTask?.actualMinutes != null ? String(editTask.actualMinutes) : '')
   const [projectId,    setProjectId]    = useState<string | null>(editTask?.projectId ?? null)
+  const [goalId,       setGoalId]       = useState<string | null>(editTask?.goalId ?? null)
   const [repeatRule,   setRepeatRule]   = useState<string>('')   // только при создании
   const [repeatUntil,  setRepeatUntil]  = useState<string>('')
   const [members,      setMembers]      = useState<TaskUser[]>([])
@@ -64,6 +65,12 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
     queryFn: () => api.get('/projects').then(r => r.data),
     staleTime: 1000 * 60 * 5,
   })
+  // Стратегические цели (текущий период) в охвате пользователя — для привязки задачи к цели
+  const { data: goalOptions = [] } = useQuery<Array<{ id: string; title: string }>>({
+    queryKey: ['strategic-goals'],
+    queryFn: () => api.get('/strategic-goals').then(r => r.data),
+    staleTime: 1000 * 60 * 2,
+  })
 
   useEffect(() => {
     if (!showPicker) return
@@ -80,6 +87,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
     type: taskType,
     client: client.trim() || null,
     projectId,
+    goalId,
     plannedMinutes: plannedMin !== '' ? Number(plannedMin) : null,
     actualMinutes: actualMin !== '' ? Number(actualMin) : null,
   })
@@ -314,6 +322,18 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
               }
             </Field>
           </div>
+
+          <Field label="Стратегическая цель" hint="Привязывает задачу к квартальной цели. Задача учитывается в прогрессе этой цели (раздел «Стратегия»).">
+            {isReadOnly
+              ? <div style={{ ...inputStyle, color:'var(--text-3)' }}>{goalOptions.find(g => g.id === goalId)?.title ?? (goalId ? 'Цель' : '—')}</div>
+              : <select value={goalId ?? ''} onChange={e => setGoalId(e.target.value || null)}
+                  style={{ ...inputStyle, width:'100%' }}>
+                  <option value="">—</option>
+                  {goalId && !goalOptions.some(g => g.id === goalId) && <option value={goalId}>Текущая цель (вне периода)</option>}
+                  {goalOptions.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                </select>
+            }
+          </Field>
 
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
             <Field label="План, мин" hint="Планируемое время на задачу в минутах. Учитывается в расчёте нагрузки сотрудника в Аналитике.">

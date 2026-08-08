@@ -32,6 +32,7 @@ const TASK_SELECT = {
   track:            { select: { id: true, title: true, type: true } },
   stageId: true,
   stage:            { select: { id: true, title: true } },
+  goalId: true,     // привязка к стратегической цели (скаляр — Prisma-связи нет; заголовок берём из /strategic-goals)
   createdAt: true,
   updatedAt: true,
   assignedBy: { select: { id: true, name: true } },
@@ -184,6 +185,7 @@ export async function tasksRoutes(app: FastifyInstance) {
       startDate:   z.string().optional(),
       trackId:     z.string().nullable().optional(),
       stageId:     z.string().nullable().optional(),
+      goalId:      z.string().nullable().optional(),  // привязка задачи к стратегической цели
       type:           z.enum(TASK_TYPES).optional(),
       client:         z.string().max(200).nullable().optional(),
       projectId:      z.string().nullable().optional(),
@@ -195,7 +197,7 @@ export async function tasksRoutes(app: FastifyInstance) {
     const body = schema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
 
-    const { title, description, assigneeId, deadline, startDate, trackId, stageId,
+    const { title, description, assigneeId, deadline, startDate, trackId, stageId, goalId,
             type, client, projectId, plannedMinutes, actualMinutes, repeatRule, repeatUntil } = body.data
 
     const assigneeExists = await prisma.user.findUnique({ where: { id: assigneeId }, select: { id: true, name: true } })
@@ -221,6 +223,7 @@ export async function tasksRoutes(app: FastifyInstance) {
       deadline: deadline ? new Date(deadline) : null,
       trackId: trackId ?? null,
       stageId: stageId ?? null,
+      goalId: goalId ?? null,
       type: type ?? 'task',
       client: client ?? null,
       projectId: projectId ?? null,
@@ -292,6 +295,7 @@ export async function tasksRoutes(app: FastifyInstance) {
       deadline:    z.string().nullable().optional(),
       trackId:     z.string().nullable().optional(),
       stageId:     z.string().nullable().optional(),
+      goalId:      z.string().nullable().optional(),  // привязка задачи к стратегической цели
       type:           z.enum(TASK_TYPES).optional(),
       client:         z.string().max(200).nullable().optional(),
       projectId:      z.string().nullable().optional(),
@@ -369,6 +373,7 @@ export async function tasksRoutes(app: FastifyInstance) {
         ...(d.deadline    !== undefined && { deadline: d.deadline ? new Date(d.deadline) : null }),
         ...(d.trackId     !== undefined && { trackId: d.trackId }),
         ...(d.stageId     !== undefined && { stageId: d.stageId }),
+        ...(d.goalId      !== undefined && { goalId: d.goalId }),
         ...(d.type        !== undefined && { type: d.type }),
         ...(d.client      !== undefined && { client: d.client }),
         ...(d.projectId   !== undefined && { projectId: d.projectId }),

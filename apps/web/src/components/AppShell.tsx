@@ -81,14 +81,8 @@ function roleLabel(user: AuthUser | null): string {
   if (!user) return ''
   if (user.isSystemAccount) return 'Системный аккаунт'
   if (user.isAdmin) return 'Администратор системы'
-  const primaryDiv = user.divMemberships?.[0]
-  if (primaryDiv) return `${primaryDiv.position} · ${primaryDiv.division.department.name}`
-  const depts = user.access?.departments ?? []
-  if (depts.length) {
-    const lvl: Record<string, string> = { director: 'Директор', head: 'Руководитель', member: 'Сотрудник' }
-    return depts.map((d) => `${d.name} · ${lvl[d.level] ?? d.level}`).join(', ')
-  }
-  return 'Сотрудник'
+  // Подпись под именем — «уточнение (специализация)» из назначения; нет специализации → пусто.
+  return user.positions?.find(p => p.spec)?.spec ?? ''
 }
 
 export function AppShell() {
@@ -117,6 +111,8 @@ export function AppShell() {
   function pickCabinet(t: 'overview' | 'tasks' | 'tracks' | 'requests') {
     setCabinetTab(t); localStorage.setItem('nexus:cabinet-tab', t)
     setPage('dashboard'); localStorage.setItem('nexus:page', 'dashboard')
+    // Открыли «Треки» → сбрасываем метку «новых треков» (бейдж гаснет)
+    if (t === 'tracks') localStorage.setItem('nexus:tracks-seen-at', new Date().toISOString())
   }
 
   // Системному аккаунту: вместо «Настроек» — её разделы прямо в Администрировании.
@@ -204,6 +200,15 @@ export function AppShell() {
   const reqAnswersUnseen = (reqCounts?.answers ?? []).filter((d) => !reqSeen || d > reqSeen).length
   const requestsBadge = (reqCounts?.inbox ?? 0) + reqAnswersUnseen
 
+  // Счётчик треков: подключения к чужим трекам (из ленты /notifications), новее localStorage-метки.
+  const { data: notifData } = useQuery<{ tracks?: Array<{ at: string }> }>({
+    queryKey: ['notifications'],
+    queryFn:  () => api.get('/notifications').then(r => r.data),
+    refetchInterval: 30_000,
+  })
+  const tracksSeen = localStorage.getItem('nexus:tracks-seen-at') ?? ''
+  const tracksBadge = (notifData?.tracks ?? []).filter((t) => t.at > tracksSeen).length
+
   // ── nav: USER_NAV/ADMIN_NAV (+ департаментные RBAC-модули, чья страница не входит в USER_NAV) ──
   // Департаментные допмодули — только для не-админов (как в прежнем AppShell): admin уже видит всё
   // через ADMIN_NAV/Настройки.
@@ -231,13 +236,13 @@ export function AppShell() {
       key: item.id,
       label: item.label,
       icon: item.icon,
-      badge: item.id === 'dashboard' && (unseenTasks + requestsBadge) > 0 ? unseenTasks + requestsBadge : undefined,
+      badge: item.id === 'dashboard' && (unseenTasks + requestsBadge + tracksBadge) > 0 ? unseenTasks + requestsBadge + tracksBadge : undefined,
       // «Мой кабинет» раскрывается под-пунктами (Обзор/Задачи/Треки/Заявки) прямо в меню; badge = сумма под-вкладок
       ...(item.id === 'dashboard' ? {
         children: [
           { key: 'cab:overview', label: 'Обзор' },
           { key: 'cab:tasks', label: 'Задачи', badge: unseenTasks > 0 ? unseenTasks : undefined },
-          { key: 'cab:tracks', label: 'Треки' },
+          { key: 'cab:tracks', label: 'Треки', badge: tracksBadge > 0 ? tracksBadge : undefined },
           { key: 'cab:requests', label: 'Заявки', badge: requestsBadge > 0 ? requestsBadge : undefined },
         ],
       } : {}),
@@ -311,6 +316,7 @@ export function AppShell() {
           onOpenPage={(p) => navigateTo(p as Page)}
           onOpenChats={() => setChatOpen(true)}
           onOpenRequests={() => { pickCabinet('requests'); navigateTo('dashboard') }}
+          onOpenTracks={() => { pickCabinet('tracks'); navigateTo('dashboard') }}
         />
       )}
     </PageHeaderProvider>
@@ -403,6 +409,7 @@ function NotifBellHeader({ badge, onClick }: { badge: number; onClick: () => voi
 // Тема и «Выйти» — уже даёт китовый ProfilePanel, здесь не дублируются. ──────────────────────────
 function NexusProfileExtra() {
   const user = useCurrentUser()
+  const setUser = useAuthStore((s) => s.setUser)
   const qc   = useQueryClient()
 
   const [status, setStatus] = useState(user?.status ?? '')
@@ -410,27 +417,44 @@ function NexusProfileExtra() {
 
   useEffect(() => { setStatus(user?.status ?? '') }, [user?.status])
 
+  // Панель монтируется при каждом открытии (Drawer размонтирует контент) — тянем свежий профиль,
+  // должности могли поменяться в оргструктуре в этой же сессии.
+  useEffect(() => {
+    api.get('/auth/me').then((r) => setUser(r.data)).catch(() => {})
+  }, [setUser])
+
   const saveStatus = useMutation({
     mutationFn: (val: string) => api.patch('/auth/me/profile', { status: val || null }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
   })
 
-  const primaryDiv = user?.divMemberships?.[0]
-  const position   = primaryDiv?.position ?? null
-  // Если нет членства в отделе — показываем департамент из access (напр. директор без UserDivision)
-  const dept = primaryDiv
-    ? `${primaryDiv.division.department.name} · ${primaryDiv.division.name}`
-    : (user?.access?.departments ?? []).map((d) => {
-        const lvl: Record<string, string> = { director: 'Директор', head: 'Руководитель', member: 'Сотрудник' }
-        return `${d.name} · ${lvl[d.level] ?? d.level}`
-      }).join(', ') || null
+  // Должности строго из оргструктуры: тип (Директор/Руководитель/Сотрудник) · отдел · департамент.
+  const ROLE_LABEL: Record<string, string> = { director: 'Директор', head: 'Руководитель', member: 'Сотрудник' }
+  const positions = user?.positions ?? []
 
   return (
     <div className="flex flex-col gap-6">
-      {(position || dept) && (
-        <div className="text-center">
-          {position && <div className="text-[12px] text-[var(--muted)]">{position}</div>}
-          {dept && <div className="mt-0.5 text-[11px] text-[var(--muted)]">{dept}</div>}
+      {positions.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <div className="eyebrow">{positions.length > 1 ? 'Должности' : 'Должность'}</div>
+          <div className="flex flex-col gap-1">
+            {positions.map((p, i) => {
+              // Тип · отдел · департамент (у директора отдела нет — пропускаем).
+              // Перенос — только между сегментами (· breakable), сами словосочетания не рвём (whitespace-nowrap).
+              const segs = [ROLE_LABEL[p.role] ?? p.role, p.division, p.dept].filter(Boolean) as string[]
+              return (
+                <div key={i} className="text-[13px] text-[var(--text)]">
+                  {positions.length > 1 && <span className="text-[var(--muted)]">{i + 1}. </span>}
+                  {segs.map((s, j) => (
+                    <span key={j}>
+                      {j > 0 && <span className="text-[var(--muted)]"> · </span>}
+                      <span className="whitespace-nowrap">{s}</span>
+                    </span>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

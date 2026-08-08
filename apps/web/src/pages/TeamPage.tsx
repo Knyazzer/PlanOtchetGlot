@@ -424,6 +424,10 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
     staleTime: 1000 * 60 * 5,
   })
 
+  // Директор любого департамента (как и админ) может смотреть структуру ВСЕХ департаментов, переключаясь между ними.
+  const isDirector = useMemo(() => allDepts.some(d => d.directorId === me?.id), [allDepts, me?.id])
+  const canSeeAll = isAdmin || isDirector
+
   // Departments the user is actually assigned to (from org membership)
   const myDepts = useMemo<Department[]>(() => {
     const accessDepts: Array<{ id: string }> = (me?.access as any)?.departments ?? []
@@ -636,32 +640,28 @@ export function TeamPage({ onOpenChat }: { onOpenChat?: (userId: string) => void
       {/* Контролы страницы — в китовую шапку (заголовок «Команда» даёт AppShell) */}
       <HeaderPortal>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Dept selector */}
-          {myDepts.length === 1 && selectedDepts[0] && (
+          {/* Dept selector: статичный бейдж — только если один департамент и нет права видеть все */}
+          {!canSeeAll && myDepts.length === 1 && selectedDepts[0] && (
             <span style={{
               fontSize: 14, fontWeight: 700, color: selectedDepts[0].color,
               background: selectedDepts[0].color + '22', borderRadius: 6, padding: '4px 10px',
             }}>{selectedDepts[0].name}</span>
           )}
 
-          {myDepts.length > 1 && (
-            <select value={selectedDeptId ?? 'all'} onChange={e => setSelectedDeptId(e.target.value)} style={selectStyle}>
-              <option value="all">{allLabel}</option>
-              <optgroup label="Мои">
-                {myDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </optgroup>
+          {/* Переключатель: несколько своих ИЛИ директор/админ (видит все департаменты) */}
+          {(myDepts.length > 1 || (canSeeAll && allDepts.length > 0)) && (
+            <select value={selectedDeptId ?? ''} onChange={e => setSelectedDeptId(e.target.value)} style={selectStyle}>
+              {myDepts.length > 1 && <option value="all">{allLabel}</option>}
+              {myDepts.length > 0 && (
+                <optgroup label="Мои">
+                  {myDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </optgroup>
+              )}
               {otherDepts.length > 0 && (
-                <optgroup label="Все">
+                <optgroup label={myDepts.length > 0 ? 'Другие департаменты' : 'Департаменты'}>
                   {otherDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </optgroup>
               )}
-            </select>
-          )}
-
-          {/* Admin flat list (not assigned to any dept via org structure) */}
-          {isAdmin && myDepts.length === 0 && allDepts.length > 0 && (
-            <select value={selectedDeptId ?? ''} onChange={e => setSelectedDeptId(e.target.value)} style={selectStyle}>
-              {allDepts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
           )}
 

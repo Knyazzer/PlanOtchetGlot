@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import { prisma } from '@nexus/db'
 import { authenticate } from '../plugins/auth'
+import { canContributeToGoal, logGoal } from './strategic-goals'
 import { randomUUID } from 'crypto'
 
 const MEMBER_SELECT = { id: true, name: true } as const
@@ -33,6 +34,7 @@ const TRACK_SELECT = {
   projectName: true,
   deadline: true,
   leaderId: true,
+  goalId: true,
   workItemId: true,
   createdAt: true,
   updatedAt: true,
@@ -42,6 +44,14 @@ const TRACK_SELECT = {
   stages:   { select: STAGE_SUMMARY_SELECT, orderBy: { order: 'asc' as const } },
   chat:     { select: { id: true } },   // §9: чат трека
 } as const
+
+// Подмешать данные цели (Track.goalId — скаляр-заготовка без Prisma-связи): { ...track, goal }.
+async function attachGoals<T extends { goalId?: string | null }>(tracks: T[]): Promise<Array<T & { goal: { id: string; title: string; description: string | null } | null }>> {
+  const ids = [...new Set(tracks.map(t => t.goalId).filter(Boolean) as string[])]
+  const goals = ids.length ? await prisma.strategicGoal.findMany({ where: { id: { in: ids } }, select: { id: true, title: true, description: true } }) : []
+  const byId = new Map(goals.map(g => [g.id, g]))
+  return tracks.map(t => ({ ...t, goal: t.goalId ? (byId.get(t.goalId) ?? null) : null }))
+}
 
 export async function tracksRoutes(app: FastifyInstance) {
 
@@ -56,11 +66,12 @@ export async function tracksRoutes(app: FastifyInstance) {
       ],
     }
 
-    return prisma.track.findMany({
+    const tracks = await prisma.track.findMany({
       where,
       select: TRACK_SELECT,
       orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
     })
+    return attachGoals(tracks)
   })
 
   // GET /tracks/:id
@@ -84,6 +95,7 @@ export async function tracksRoutes(app: FastifyInstance) {
       select: {
         id: true, title: true, description: true, type: true, status: true,
         clientName: true, projectName: true, deadline: true, leaderId: true,
+        goalId: true, workItemId: true,
         createdAt: true, updatedAt: true,
         leader:  { select: MEMBER_SELECT },
         members: { select: { user: { select: MEMBER_SELECT }, joinedAt: true } },
@@ -106,8 +118,8 @@ export async function tracksRoutes(app: FastifyInstance) {
         },
       },
     })
-
-    return track
+    if (!track) return track
+    return (await attachGoals([track]))[0]
   })
 
   // POST /tracks
@@ -164,7 +176,7 @@ export async function tracksRoutes(app: FastifyInstance) {
     const user = (request as any).user as { id: string; isAdmin: boolean }
     const { id } = request.params as { id: string }
 
-    const track = await prisma.track.findUnique({ where: { id }, select: { leaderId: true } })
+    const track = await prisma.track.findUnique({ where: { id }, select: { leaderId: true, title: true, goalId: true } })
     if (!track) return reply.code(404).send({ error: 'Трек не найден' })
     if (!user.isAdmin && track.leaderId !== user.id) return reply.code(403).send({ error: 'Только лидер может редактировать трек' })
 
@@ -178,12 +190,21 @@ export async function tracksRoutes(app: FastifyInstance) {
       deadline:    z.string().datetime({ offset: true }).nullable().optional(),
       leaderId:    z.string().optional(),
       workItemId:  z.string().nullable().optional(),
+      goalId:      z.string().nullable().optional(),  // привязка трека к стратегической цели (Фаза 3)
     })
 
     const body = schema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: body.error.issues[0]?.message })
 
-    const { deadline, type, clientName, projectName, workItemId, ...rest } = body.data
+    const { deadline, type, clientName, projectName, workItemId, goalId, ...rest } = body.data
+
+    // Привязка к цели: трек может привязать только его лидер (проверено выше) И тот, кто имеет доступ к цели
+    // (директор департамента цели ИЛИ рук/сотрудник отдела цели). Отвязка (goalId=null) — лидеру достаточно.
+    if (goalId) {
+      const goal = await prisma.strategicGoal.findUnique({ where: { id: goalId }, select: { id: true, deptId: true, divisionId: true } })
+      if (!goal) return reply.code(400).send({ error: 'Цель не найдена' })
+      if (!(await canContributeToGoal(user.id, user.isAdmin, goal))) return reply.code(403).send({ error: 'Нет доступа к этой цели (не ваш отдел/департамент)' })
+    }
 
     const updated = await prisma.track.update({
       where: { id },
@@ -197,9 +218,16 @@ export async function tracksRoutes(app: FastifyInstance) {
         } : {}),
         ...(deadline    !== undefined ? { deadline:    deadline    ? new Date(deadline) : null } : {}),
         ...(workItemId  !== undefined ? { workItemId:  workItemId  ?? null               } : {}),
+        ...(goalId      !== undefined ? { goalId:      goalId      ?? null               } : {}),
       },
       select: TRACK_SELECT,
     })
+
+    // История цели: привязали/отвязали трек
+    if (goalId !== undefined && goalId !== track.goalId) {
+      if (goalId) await logGoal(goalId, user.id, 'track_attached', `привязан трек «${track.title}»`)
+      else if (track.goalId) await logGoal(track.goalId, user.id, 'track_detached', `отвязан трек «${track.title}»`)
+    }
 
     return updated
   })

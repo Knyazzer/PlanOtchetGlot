@@ -51,6 +51,31 @@ const USER_SELECT = {
   mustChangePassword: true, tempPassword: true,
 } as const
 
+// Орг-роль сотрудника для таблицы персонала: ТИП (Директор/Руководитель/специализация) + департамент + отдел,
+// вычисленные из реальных связей по СТАРШЕЙ роли. У директора отдела нет. Плоские поля не используем — дрейфуют.
+type OrgRels = {
+  id: string
+  deptDirectorOf: { name: string }[]
+  divHeadOf: { name: string; department: { name: string } }[]
+  divMemberships: { position: string; division: { name: string; headId: string | null; department: { name: string } } }[]
+}
+function orgRole(u: OrgRels): { position: string | null; department: string | null; subDept: string | null } {
+  if (u.deptDirectorOf.length) return { position: 'Директор', department: u.deptDirectorOf[0].name, subDept: null }
+  if (u.divHeadOf.length) { const d = u.divHeadOf[0]; return { position: 'Руководитель', department: d.department.name, subDept: d.name } }
+  const mem = u.divMemberships.find(m => m.division.headId !== u.id) ?? u.divMemberships[0]
+  if (mem) {
+    const spec = mem.position?.trim()
+    const pos = spec && spec !== 'Руководитель отдела' ? spec : 'Сотрудник'
+    return { position: pos, department: mem.division.department.name, subDept: mem.division.name }
+  }
+  return { position: null, department: null, subDept: null }
+}
+const ORG_RELS_SELECT = {
+  deptDirectorOf: { select: { name: true } },
+  divHeadOf: { select: { name: true, department: { select: { name: true } } } },
+  divMemberships: { select: { position: true, division: { select: { name: true, headId: true, department: { select: { name: true } } } } } },
+} as const
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 export async function usersRoutes(app: FastifyInstance) {
@@ -80,10 +105,16 @@ export async function usersRoutes(app: FastifyInstance) {
 
   app.get('/staff', { preHandler: requireRole('admin') }, async (request) => {
     const { includeInactive } = request.query as { includeInactive?: string }
-    return prisma.user.findMany({
+    const users = await prisma.user.findMany({
       where: { ...(includeInactive ? {} : { isActive: true }), userType: 'staff', isSystemAccount: false },  // системные аккаунты скрыты
-      select: USER_SELECT,
+      select: { ...USER_SELECT, ...ORG_RELS_SELECT },
       orderBy: { name: 'asc' },
+    })
+    // Должность/деп/отдел — из орг-связей (снимок плоских полей мог устареть). Нет связей → плоские поля.
+    return users.map(({ deptDirectorOf, divHeadOf, divMemberships, ...rest }) => {
+      if (!deptDirectorOf.length && !divHeadOf.length && !divMemberships.length) return rest
+      const r = orgRole({ id: rest.id, deptDirectorOf, divHeadOf, divMemberships })
+      return { ...rest, position: r.position, department: r.department, subDept: r.subDept }
     })
   })
 
@@ -253,16 +284,19 @@ export async function usersRoutes(app: FastifyInstance) {
       for (const d of wasDirOf) if (!desiredDirDeptIds.has(d.id)) await tx.department.update({ where: { id: d.id }, data: { directorId: null } })
       for (const deptId of desiredDirDeptIds) await tx.department.update({ where: { id: deptId }, data: { directorId: id } })
 
-      // 4. Денормализация плоских полей из основного (первого) назначения (решение A)
-      const primary = assignments[0]
-      const flatPosition = primary.type === 'director' ? 'Директор департамента'
-        : primary.type === 'head' ? 'Руководитель отдела'
+      // 4. Денормализация плоских полей из СТАРШЕГО по иерархии назначения (директор > рук. > сотрудник).
+      // position — только ТИП роли (без «департамента/отдела»); у члена — его специализация. Отдел (subDept)
+      // у директора отсутствует. Плоские поля — снимок для быстрых списков; таблица персонала считает из связей.
+      const rank: Record<string, number> = { director: 3, head: 2, member: 1 }
+      const primary = [...assignments].sort((a, b) => rank[b.type] - rank[a.type])[0]
+      const flatPosition = primary.type === 'director' ? 'Директор'
+        : primary.type === 'head' ? 'Руководитель'
         : (primary.specialization?.trim() || 'Сотрудник')
       await tx.user.update({
         where: { id },
         data: {
           department: deptMap.get(primary.deptId)!.name,
-          subDept: primary.divId ? (divMap.get(primary.divId)?.name ?? null) : null,
+          subDept: primary.type === 'director' ? null : (primary.divId ? (divMap.get(primary.divId)?.name ?? null) : null),
           position: flatPosition,
         },
       })

@@ -24,7 +24,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
     const user = (req as any).user as { id: string }
     const since = new Date(Date.now() - 7 * 86_400_000) // лента за 7 дней
 
-    const [logs, events, reqInbox, reqAnswers] = await Promise.all([
+    const [logs, events, reqInbox, reqAnswers, trackAdds] = await Promise.all([
       // действия других людей над задачами, где я исполнитель или автор
       prisma.taskLog.findMany({
         where: {
@@ -61,6 +61,12 @@ export async function notificationsRoutes(app: FastifyInstance) {
         where: { userId: user.id, status: { in: ['approved', 'rejected', 'revoked'] }, decidedAt: { gte: since } },
         orderBy: { decidedAt: 'desc' }, take: 20,
         select: { id: true, type: true, status: true, decidedAt: true },
+      }),
+      // меня подключили к чужому треку за 7 дней (я — участник, но не лидер)
+      prisma.trackMember.findMany({
+        where: { userId: user.id, joinedAt: { gte: since }, track: { leaderId: { not: user.id } } },
+        orderBy: { joinedAt: 'desc' }, take: 20,
+        select: { joinedAt: true, track: { select: { id: true, title: true, leader: { select: { name: true } } } } },
       }),
     ])
 
@@ -99,7 +105,15 @@ export async function notificationsRoutes(app: FastifyInstance) {
       })),
     ].sort((a, b) => (a.at < b.at ? 1 : -1))
 
-    return { tasks: taskItems, events: eventItems, requests: requestItems }
+    const trackItems = trackAdds.map(m => ({
+      id: `track:${m.track.id}`,
+      kind: 'track' as const,
+      text: `${m.track.leader.name} подключил(а) вас к треку «${m.track.title}»`,
+      at: m.joinedAt,
+      trackId: m.track.id,
+    }))
+
+    return { tasks: taskItems, events: eventItems, requests: requestItems, tracks: trackItems }
   })
 }
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Sun, Moon } from 'lucide-react'
 import { useCurrentUser } from '../hooks/useAuth'
+import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { formatName } from '../lib/utils'
@@ -86,26 +87,27 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
   const user = useCurrentUser()
   const qc   = useQueryClient()
 
+  const setUser = useAuthStore(s => s.setUser)
   const [status, setStatus] = useState(user?.status ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
   const mdRef    = useRef(false)
 
   useEffect(() => { setStatus(user?.status ?? '') }, [user?.status])
 
+  // При каждом открытии панели тянем свежий профиль — должности/роли могли измениться в оргструктуре в этой же сессии.
+  useEffect(() => {
+    if (!open) return
+    api.get('/auth/me').then(r => setUser(r.data)).catch(() => {})
+  }, [open, setUser])
+
   const saveStatus = useMutation({
     mutationFn: (val: string) => api.patch('/auth/me/profile', { status: val || null }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
   })
 
-  const primaryDiv = user?.divMemberships?.[0]
-  const position   = primaryDiv?.position ?? null
-  // Если нет членства в отделе — показываем департамент из access (напр. директор без UserDivision)
-  const dept = primaryDiv
-    ? `${primaryDiv.division.department.name} · ${primaryDiv.division.name}`
-    : ((user?.access as any)?.departments ?? []).map((d: { name: string; level: string }) => {
-        const lvl: Record<string, string> = { director: 'Директор', head: 'Руководитель', member: 'Сотрудник' }
-        return `${d.name} · ${lvl[d.level] ?? d.level}`
-      }).join(', ') || null
+  // Должности сотрудника из оргструктуры (может быть несколько — штатно). Тип строго: Директор/Руководитель/Сотрудник.
+  const ROLE_LABEL: Record<string, string> = { director: 'Директор', head: 'Руководитель', member: 'Сотрудник' }
+  const positions = user?.positions ?? []
 
   if (!open) return null
 
@@ -141,14 +143,40 @@ export function ProfilePanel({ open, onClose, theme = 'dark', onToggleTheme }: P
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Avatar + name */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <Avatar name={user?.name ?? ''} />
-            <div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-1)' }}>{user ? formatName(user.name) : ''}</div>
-              {position && <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>{position}</div>}
-              {dept     && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{dept}</div>}
-            </div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-1)', textAlign: 'center' }}>{user ? formatName(user.name) : ''}</div>
           </div>
+
+          {/* Должности — мини-таблица: Тип · Отдел · Департамент (штатно их может быть несколько) */}
+          {positions.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: -8 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                {positions.length > 1 ? 'Должности' : 'Должность'}
+              </label>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8,
+                  padding: '6px 10px', background: 'var(--surface-2)',
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.4px', textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                }}>
+                  <span>Тип</span><span>Отдел</span><span>Департамент</span>
+                </div>
+                {positions.map((p, i) => (
+                  <div key={i} style={{
+                    display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8,
+                    padding: '8px 10px', fontSize: 12, alignItems: 'center',
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                  }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-2)' }}>{ROLE_LABEL[p.role] ?? p.role}</span>
+                    <span style={{ color: 'var(--text-3)' }}>{p.division ?? '—'}</span>
+                    <span style={{ color: 'var(--text-3)' }}>{p.dept}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Status */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

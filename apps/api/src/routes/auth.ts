@@ -57,7 +57,21 @@ export async function authRoutes(app: FastifyInstance) {
     if (!user || !user.isActive) return reply.code(404).send({ error: 'User not found' })
     // КИТ 1+2: департаменты с уровнем + модули с режимом view/edit (спека docs/RBAC-MODEL.md §4.5)
     const access = await getUserAccess(user.id, user.isAdmin)
-    return { ...user, access }
+    // Должности сотрудника — строго из оргструктуры (тип роли, НЕ из свободного текста position).
+    // Директор — только у департамента (отдела нет); руководитель/сотрудник — у отдела.
+    const [directed, headed, memberships] = await Promise.all([
+      prisma.department.findMany({ where: { directorId: id }, select: { name: true } }),
+      prisma.division.findMany({ where: { headId: id }, select: { name: true, department: { select: { name: true } } } }),
+      prisma.userDivision.findMany({ where: { userId: id }, select: { position: true, division: { select: { name: true, headId: true, department: { select: { name: true } } } } } }),
+    ])
+    // spec — «уточнение (специализация)» из назначения-члена (UserDivision.position); только у member, иначе null.
+    const positions = [
+      ...directed.map(d => ({ role: 'director' as const, dept: d.name, division: null as string | null, spec: null as string | null })),
+      ...headed.map(h => ({ role: 'head' as const, dept: h.department.name, division: h.name, spec: null as string | null })),
+      // членство как «Сотрудник»; если он же глава этого отдела — уже учтён строкой head, не дублируем
+      ...memberships.filter(m => m.division.headId !== id).map(m => ({ role: 'member' as const, dept: m.division.department.name, division: m.division.name, spec: m.position?.trim() || null })),
+    ]
+    return { ...user, access, positions }
   })
 
   // PATCH /auth/me/profile

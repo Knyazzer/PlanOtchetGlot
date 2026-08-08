@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, RotateCcw } from 'lucide-react'
+import { Plus, Pencil, Trash2, RotateCcw, X, Link2 } from 'lucide-react'
 import { api } from '../lib/api'
 import { ROLE } from '../lib/roleColors'
 import { useAuthStore } from '../stores/auth'
@@ -8,7 +8,9 @@ import { useConfirm } from '../components/ConfirmModal'
 
 // Стратегия компании — канбан целей квартала/года, каскад департамент→отдел. См. docs/STRATEGIC-GOALS.md §11.
 
-interface Goal { id: string; title: string; description: string | null; deptId: string; divisionId: string | null; parentGoalId: string | null; kind: string; horizon: string; periodKey: string; status: string; outcome: string | null; sortOrder: number; createdById: string; closedAt: string | null }
+interface Goal { id: string; title: string; description: string | null; deptId: string; divisionId: string | null; parentGoalId: string | null; kind: string; horizon: string; periodKey: string; status: string; outcome: string | null; sortOrder: number; createdById: string; closedAt: string | null; tasksTotal?: number; tasksDone?: number; trackCount?: number }
+interface TrackLite { id: string; title: string; status: string; goalId: string | null; total: number; done: number }
+interface GoalDetailData extends Goal { tracks: TrackLite[]; looseTasks: Array<{ id: string; title: string; status: string }>; progress: { total: number; done: number; trackCount: number } }
 interface Div { id: string; name: string; head?: { id: string; name: string } | null; memberships: Array<{ user: { id: string } }> }
 interface Dept { id: string; name: string; color?: string; director?: { id: string; name: string } | null; divisions: Div[] }
 
@@ -41,7 +43,17 @@ export function StrategyPage() {
 
   const canManage = (dept?: Dept | null, div?: Div | null) => !!dept && (isAdmin || dept.director?.id === me?.id || (!!div && div.head?.id === me?.id))
   const mine = (dept: Dept) => isAdmin || canManage(dept) || dept.divisions.some(dv => dv.head?.id === me?.id || dv.memberships.some(m => m.user.id === me?.id))
-  const depts = useMemo(() => structure.filter(d => mine(d) || goals.some(g => g.deptId === d.id)), [structure, goals, isAdmin, me?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Директор любого департамента видит ВСЕ департаменты (как и админ); остальные — свой охват.
+  const isDirector = structure.some(d => d.director?.id === me?.id)
+  // Кто может ПРИВЯЗЫВАТЬ треки/задачи к цели (вклад ≠ правка): админ | директор департамента цели | рук/сотрудник отдела цели.
+  const canContributeGoal = (g: Goal): boolean => {
+    if (isAdmin) return true
+    const d = structure.find(x => x.id === g.deptId)
+    if (d?.director?.id === me?.id) return true
+    if (g.divisionId && d) { const dv = d.divisions.find(v => v.id === g.divisionId); return !!dv && (dv.head?.id === me?.id || dv.memberships.some(m => m.user.id === me?.id)) }
+    return false
+  }
+  const depts = useMemo(() => (isAdmin || isDirector) ? structure : structure.filter(d => mine(d) || goals.some(g => g.deptId === d.id)), [structure, goals, isAdmin, isDirector, me?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // выбранный департамент по умолчанию — первый доступный
   useEffect(() => { if (!deptId && depts.length) setDeptId(depts[0].id) }, [depts, deptId])
@@ -55,6 +67,7 @@ export function StrategyPage() {
 
   const [modal, setModal] = useState<{ deptId: string; divisionId: string | null; kind: 'goal' | 'growth'; edit?: Goal } | null>(null)
   const [closing, setClosing] = useState<Goal | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
 
   // цели текущего уровня (департамент или отдел)
   const levelGoals = goals.filter(g => g.deptId === deptId && (g.divisionId ?? null) === divId)
@@ -112,6 +125,7 @@ export function StrategyPage() {
                   {cards.map(g => (
                     <GoalCard key={g.id} g={g} editable={editable}
                       draggable={editable}
+                      onOpen={() => setDetailId(g.id)}
                       onEdit={() => setModal({ deptId: g.deptId, divisionId: g.divisionId, kind: 'goal', edit: g })}
                       onClose={() => setClosing(g)}
                       onDelete={() => confirm({ message: 'Удалить цель?', confirmLabel: 'Удалить', danger: true }).then(ok => ok && del.mutate(g.id))} />
@@ -145,25 +159,41 @@ export function StrategyPage() {
 
       {modal && <GoalModal ctx={modal} periodKey={periodKey} year={year} onClose={() => setModal(null)} onSaved={invalidate} />}
       {closing && <CloseGoalModal goal={closing} onClose={() => setClosing(null)} onSaved={invalidate} />}
+      {detailId && <GoalDetail goalId={detailId} canContribute={(() => { const dg = goals.find(g => g.id === detailId); return dg ? canContributeGoal(dg) : false })()} meId={me?.id} onClose={() => setDetailId(null)} onChanged={invalidate} />}
       {confirmUI}
     </div>
   )
 }
 
-function GoalCard({ g, editable, draggable, onEdit, onClose, onDelete }: { g: Goal; editable: boolean; draggable: boolean; onEdit: () => void; onClose: () => void; onDelete: () => void }) {
+function GoalCard({ g, editable, draggable, onOpen, onEdit, onClose, onDelete }: { g: Goal; editable: boolean; draggable: boolean; onOpen: () => void; onEdit: () => void; onClose: () => void; onDelete: () => void }) {
   const st = STATUS[g.status] ?? { label: g.status, color: 'var(--text-muted)' }
+  const total = g.tasksTotal ?? 0, done = g.tasksDone ?? 0
+  const pct = total ? Math.round((done / total) * 100) : 0
   return (
     <div draggable={draggable} onDragStart={e => e.dataTransfer.setData('text/plain', g.id)}
       style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 9, padding: '10px 12px', marginBottom: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', cursor: draggable ? 'grab' : 'default' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.3 }}>
+          <div onClick={onOpen} title="Открыть цель" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.3, cursor: 'pointer' }}>
             {g.title}
             {g.horizon === 'year' && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: ROLE.primary, background: ROLE.primary + '1c', padding: '1px 6px', borderRadius: 5 }}>ГОД</span>}
           </div>
           {g.description && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{g.description}</div>}
           {(g.status === 'partial' || g.status === 'dropped') && <span style={{ display: 'inline-block', marginTop: 5, fontSize: 10, fontWeight: 800, padding: '1px 7px', borderRadius: 20, background: st.color + '22', color: st.color }}>{st.label}</span>}
           {g.closedAt && g.outcome && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5, borderTop: '1px dashed var(--border)', paddingTop: 5 }}>Итог: {g.outcome}</div>}
+          {/* Прогресс по задачам привязанных треков (+ прямые задачи, у департамента — roll-up) */}
+          {(total > 0 || (g.trackCount ?? 0) > 0) && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ height: 5, borderRadius: 3, background: 'var(--surface-3)', overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: ROLE.success, transition: 'width 0.3s' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 11, color: 'var(--text-muted)' }}>
+                <span>{done}/{total} задач</span>
+                {(g.trackCount ?? 0) > 0 && <span>· {g.trackCount} трек{plural(g.trackCount!)}</span>}
+                <span style={{ marginLeft: 'auto', fontWeight: 700, color: pct === 100 ? ROLE.success : 'var(--text-muted)' }}>{pct}%</span>
+              </div>
+            </div>
+          )}
         </div>
         {editable && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flexShrink: 0 }}>
@@ -172,6 +202,223 @@ function GoalCard({ g, editable, draggable, onEdit, onClose, onDelete }: { g: Go
             {!g.closedAt && <button onClick={onDelete} title="Удалить" style={iconBtn}><Trash2 size={13} /></button>}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// склонение «трек/трека/треков»
+function plural(n: number): string {
+  const m10 = n % 10, m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return ''
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return 'а'
+  return 'ов'
+}
+
+// Панель деталей цели: прогресс, привязанные треки (с прогрессом каждого), прямые задачи,
+// привязка/отвязка трека к цели. Сбоку (не модал, без блюра); закрытие — правило попапов + Esc + ✕.
+function GoalDetail({ goalId, canContribute, meId, onClose, onChanged }: { goalId: string; canContribute: boolean; meId?: string; onClose: () => void; onChanged: () => void }) {
+  const qc = useQueryClient()
+  const mdRef = useRef(false)
+  const { data: d, isLoading } = useQuery<GoalDetailData>({ queryKey: ['strategic-goal', goalId], queryFn: () => api.get(`/strategic-goals/${goalId}`).then(r => r.data), staleTime: 10_000 })
+  const { data: allTracks = [] } = useQuery<Array<{ id: string; title: string; goalId: string | null; leaderId?: string }>>({ queryKey: ['tracks'], queryFn: () => api.get('/tracks').then(r => r.data), staleTime: 30_000, enabled: canContribute })
+  const { data: members = [] } = useQuery<Array<{ id: string; name: string }>>({ queryKey: ['members'], queryFn: () => api.get('/users/members').then(r => r.data), staleTime: 300_000, enabled: canContribute })
+
+  const [menu, setMenu] = useState(false)          // открыт список привязки/создания
+  const [creating, setCreating] = useState(false)  // форма создания трека
+  const [newTitle, setNewTitle] = useState('')
+  const [newMembers, setNewMembers] = useState<Set<string>>(new Set())
+  const [tab, setTab] = useState<'overview' | 'history'>('overview')
+
+  const { data: logs = [] } = useQuery<Array<{ id: string; action: string; details: string | null; userName: string; createdAt: string; meta?: { changes?: Array<{ field: string; label: string; from: string | null; to: string | null }> } | null }>>({
+    queryKey: ['strategic-goal-log', goalId],
+    queryFn: () => api.get(`/strategic-goals/${goalId}/log`).then(r => r.data),
+    enabled: tab === 'history',
+    staleTime: 0,
+  })
+
+  useEffect(() => { const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (menu ? setMenu(false) : onClose()); document.addEventListener('keydown', onKey); return () => document.removeEventListener('keydown', onKey) }, [onClose, menu])
+
+  const refresh = () => { qc.invalidateQueries({ queryKey: ['strategic-goal', goalId] }); qc.invalidateQueries({ queryKey: ['tracks'] }); onChanged() }
+  const attach = useMutation({ mutationFn: (trackId: string) => api.patch(`/tracks/${trackId}`, { goalId }), onSuccess: () => { setMenu(false); refresh() }, onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось привязать трек') })
+  const detach = useMutation({ mutationFn: (trackId: string) => api.patch(`/tracks/${trackId}`, { goalId: null }), onSuccess: refresh, onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось отвязать') })
+  const create = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/tracks', { title: newTitle.trim(), memberIds: [...newMembers] })
+      const id = res.data?.id
+      if (id) await api.patch(`/tracks/${id}`, { goalId })  // сразу привязываем к цели
+    },
+    onSuccess: () => { setCreating(false); setMenu(false); setNewTitle(''); setNewMembers(new Set()); refresh() },
+    onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось создать трек'),
+  })
+
+  // Привязать можно свой трек (лидер), ещё не привязанный к этой цели; админ — любой
+  const available = allTracks.filter(t => t.goalId !== goalId && (!t.leaderId || t.leaderId === meId))
+  const toggleMember = (id: string) => setNewMembers(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const pct = d && d.progress.total ? Math.round((d.progress.done / d.progress.total) * 100) : 0
+  const st = d ? (STATUS[d.status] ?? { label: d.status, color: 'var(--text-muted)' }) : null
+
+  return (
+    <div onMouseDown={e => { mdRef.current = e.target === e.currentTarget }} onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose(); mdRef.current = false }}
+      style={{ position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(0,0,0,0.4)', display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ width: 420, maxWidth: '100%', height: '100%', background: 'var(--surface-1)', borderLeft: '1px solid var(--border)', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.35)' }}>
+        {/* header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 13, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', flex: 1 }}>Цель</span>
+          <button onClick={onClose} style={iconBtn}><X size={16} /></button>
+        </div>
+
+        {/* вкладки: Обзор | История */}
+        <div style={{ display: 'flex', gap: 4, padding: '8px 12px 0', borderBottom: '1px solid var(--border)' }}>
+          {(['overview', 'history'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', padding: '8px 12px', color: tab === t ? 'var(--text-1)' : 'var(--text-muted)', borderBottom: tab === t ? `2px solid ${ROLE.primary}` : '2px solid transparent', marginBottom: -1 }}>
+              {t === 'overview' ? 'Обзор' : 'История'}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {isLoading || !d ? <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка…</div>
+          : tab === 'history' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {logs.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: 13, fontStyle: 'italic' }}>Изменений пока нет.</div>}
+              {logs.map(l => (
+                <div key={l.id} style={{ display: 'flex', gap: 10, padding: '10px 12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: '50%', marginTop: 5, flexShrink: 0, background: l.action === 'status' ? ROLE.success : l.action === 'created' ? ROLE.info : l.action.startsWith('track') ? ROLE.primary : 'var(--text-muted)' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: 'var(--text-1)', lineHeight: 1.4 }}><b style={{ fontWeight: 600 }}>{l.userName}</b> {l.details ?? l.action}</div>
+                    {/* Диф «Было → Стало» по каждому изменённому полю */}
+                    {l.meta?.changes?.map((c, ci) => (
+                      <div key={ci} style={{ marginTop: 6, fontSize: 12, background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>{c.label}</div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                          <span style={{ color: ROLE.danger, fontSize: 10, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>было</span>
+                          <span style={{ color: 'var(--text-3)', textDecoration: 'line-through', wordBreak: 'break-word' }}>{c.from || '—'}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'baseline', marginTop: 2 }}>
+                          <span style={{ color: ROLE.success, fontSize: 10, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>стало</span>
+                          <span style={{ color: 'var(--text-1)', wordBreak: 'break-word' }}>{c.to || '—'}</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{new Date(l.createdAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3 }}>{d.title}</div>
+                {d.description && <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 6, lineHeight: 1.5 }}>{d.description}</div>}
+                {st && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 11, fontWeight: 800, padding: '2px 9px', borderRadius: 20, background: st.color + '22', color: st.color }}>{st.label}</span>}
+                {d.closedAt && d.outcome && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8, borderTop: '1px dashed var(--border)', paddingTop: 8 }}>Итог: {d.outcome}</div>}
+              </div>
+
+              {/* Прогресс */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', flex: 1 }}>Прогресс</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: pct === 100 ? ROLE.success : 'var(--text-2)' }}>{pct}%</span>
+                </div>
+                <div style={{ height: 7, borderRadius: 4, background: 'var(--surface-3)', overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: ROLE.success, transition: 'width 0.3s' }} />
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>
+                  {d.progress.done}/{d.progress.total} задач · {d.progress.trackCount} трек{plural(d.progress.trackCount)}
+                  {d.divisionId === null && <span> · включая цели отделов (roll-up)</span>}
+                </div>
+              </div>
+
+              {/* Треки */}
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>Треки цели</div>
+                {d.tracks.length === 0 && <div style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>Трек ещё не привязан.</div>}
+                {d.tracks.map(t => {
+                  const tp = t.total ? Math.round((t.done / t.total) * 100) : 0
+                  return (
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 6 }}>
+                      <Link2 size={13} style={{ color: ROLE.info, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-1)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{t.done}/{t.total} задач · {tp}%</div>
+                      </div>
+                      {canContribute && <button onClick={() => detach.mutate(t.id)} title="Отвязать" style={iconBtn}><X size={13} /></button>}
+                    </div>
+                  )
+                })}
+
+                {/* Привязка / создание трека — тематический дропдаун (не нативный select) */}
+                {canContribute && !creating && (
+                  <div style={{ position: 'relative', marginTop: 8 }}>
+                    <button onClick={() => setMenu(m => !m)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-2)', fontSize: 13, padding: '8px 11px', cursor: 'pointer', textAlign: 'left' }}>
+                      <Plus size={14} style={{ color: ROLE.primary }} />
+                      <span style={{ flex: 1 }}>Привязать или создать трек</span>
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)', transform: menu ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+                    </button>
+                    {menu && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 5, background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.28)', overflow: 'hidden', maxHeight: 260, overflowY: 'auto' }}>
+                        <button onClick={() => { setCreating(true); setMenu(false) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', color: ROLE.primary, fontWeight: 600, fontSize: 13, padding: '9px 11px', cursor: 'pointer', textAlign: 'left' }}>
+                          <Plus size={14} /> Создать новый трек…
+                        </button>
+                        {available.length === 0 && <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '9px 11px', fontStyle: 'italic' }}>Своих свободных треков нет</div>}
+                        {available.map(t => (
+                          <button key={t.id} onClick={() => attach.mutate(t.id)} disabled={attach.isPending}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', color: 'var(--text-1)', fontSize: 13, padding: '9px 11px', cursor: 'pointer', textAlign: 'left' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-2)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                            <Link2 size={13} style={{ color: ROLE.info, flexShrink: 0 }} />
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Форма создания трека под цель (лидер = я, участники, сразу привязка) */}
+                {canContribute && creating && (
+                  <div style={{ marginTop: 8, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
+                    <input autoFocus value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="Название трека"
+                      style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text-1)', fontSize: 13, padding: '8px 10px', outline: 'none' }} />
+                    <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: 'var(--text-muted)', margin: '10px 0 6px' }}>Участники</div>
+                    <div style={{ maxHeight: 150, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {members.filter(m => m.id !== meId).map(m => (
+                        <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-1)', padding: '4px 2px', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={newMembers.has(m.id)} onChange={() => toggleMember(m.id)} />
+                          {m.name}
+                        </label>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <button onClick={() => create.mutate()} disabled={!newTitle.trim() || create.isPending}
+                        style={{ background: ROLE.primary, color: '#fff', border: 'none', borderRadius: 7, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: newTitle.trim() ? 'pointer' : 'default', opacity: newTitle.trim() ? 1 : 0.5 }}>
+                        {create.isPending ? 'Создаю…' : 'Создать и привязать'}
+                      </button>
+                      <button onClick={() => { setCreating(false); setNewTitle(''); setNewMembers(new Set()) }}
+                        style={{ background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 7, padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>Отмена</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Прямые задачи (без трека) */}
+              {d.looseTasks.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 8 }}>Задачи напрямую</div>
+                  {d.looseTasks.map(t => (
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-2)', padding: '4px 0' }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: t.status === 'done' ? ROLE.success : 'var(--text-muted)', flexShrink: 0 }} />
+                      <span style={{ textDecoration: t.status === 'done' ? 'line-through' : 'none' }}>{t.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

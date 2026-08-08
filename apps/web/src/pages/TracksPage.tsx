@@ -23,6 +23,8 @@ interface Track {
   clientName: string | null; projectName: string | null
   deadline: string | null; leaderId: string
   workItemId: string | null
+  goalId?: string | null
+  goal?: { id: string; title: string; description: string | null } | null
   chat?: { id: string } | null
   leader: TrackUser; members: TrackMember[]
   tasks:  TrackSummaryTask[]
@@ -593,6 +595,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
   const [editing,      setEditing]      = useState(false)
   const [creatingEvent, setCreatingEvent] = useState(false)
   const [openTaskId,   setOpenTaskId]   = useState<string | null>(null)
+  const [goalOpen,     setGoalOpen]     = useState(false)
 
   const { data: track, isLoading, error } = useQuery<TrackDetail>({
     queryKey: ['track', trackId],
@@ -629,6 +632,22 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
             </div>
             <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>{track.title}</div>
             {track.description && <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 5, lineHeight: 1.5 }}>{track.description}</div>}
+            {/* Привязка к стратегической цели — клик раскрывает её описание */}
+            {track.goal && (
+              <div style={{ marginTop: 8 }}>
+                <button onClick={() => setGoalOpen(o => !o)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: ROLE.info + '18', border: '1px solid ' + ROLE.info + '44', borderRadius: 8, color: ROLE.info, fontSize: 12, fontWeight: 600, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  🎯 Квартальная цель: {track.goal.title}
+                  <span style={{ fontSize: 9, transform: goalOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+                </button>
+                {goalOpen && (
+                  <div style={{ marginTop: 6, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, maxWidth: 560 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>{track.goal.title}</div>
+                    {track.goal.description || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Без описания</span>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
             {isMember && track.chat && onOpenTrackChat && (
@@ -706,9 +725,15 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>👥 {memberCount}</span>
+          {/* Микрочип «к чему привязан» — квартальная цель или проект */}
+          {track.goal
+            ? <span title={track.goal.title} style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: ROLE.info + '1f', color: ROLE.info, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎯 {track.goal.title}</span>
+            : track.workItemId
+              ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: ROLE.primary + '1f', color: ROLE.primary }}>📁 Проект</span>
+              : null}
         </div>
         {daysLeft !== null && (
           <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (daysLeft < 0 ? '#F43F5E' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)') + '22', color: daysLeft < 0 ? '#F43F5E' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)' }}>

@@ -5,6 +5,14 @@ export interface AuthUserDivision {
   division: { name: string; department: { name: string } }
 }
 
+// Должность из оргструктуры: тип роли + отдел (у директора отдела нет) + департамент.
+export interface AuthPosition {
+  role: 'director' | 'head' | 'member'
+  dept: string
+  division: string | null
+  spec: string | null   // уточнение (специализация) — только у member-назначения
+}
+
 export interface AccessModule {
   key: string
   name: string
@@ -33,6 +41,7 @@ export interface AuthUser {
   status?: string | null
   tabNumber?: string | null
   divMemberships?: AuthUserDivision[]
+  positions?: AuthPosition[]
   access?: UserAccess
 }
 
