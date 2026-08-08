@@ -86,7 +86,9 @@ describe('workMinutes (формула донора)', () => {
   it('end − start − break, не меньше нуля', () => {
     expect(workMinutes({ startTime: '09:00', endTime: '18:00', breakMin: 60 })).toBe(480)
     expect(workMinutes({ startTime: '10:00', endTime: '10:00', breakMin: 0 })).toBe(0)
-    expect(workMinutes({ startTime: '10:00', endTime: '09:00', breakMin: 0 })).toBe(0)
+    // ночная смена (переход через полночь): конец на след. сутки
+    expect(workMinutes({ startTime: '20:00', endTime: '04:00', breakMin: 0 })).toBe(480)   // 8ч
+    expect(workMinutes({ startTime: '22:00', endTime: '06:00', breakMin: 30 })).toBe(450)  // 7ч30м
     expect(workMinutes({ startTime: null, endTime: '18:00' })).toBe(0)
   })
 })

@@ -50,11 +50,13 @@ export function parseTimeMinutes(t?: string | null): number | null {
   return h * 60 + m
 }
 
-// Формула донора: MAX(0, end − start − break) (аудит §6, dayEntryDomain.js:109)
+// Формула донора: MAX(0, end − start − break) (аудит §6, dayEntryDomain.js:109).
+// Ночная смена: если конец ≤ начала — смена перешла через полночь, конец на след. сутки (+24ч).
 export function workMinutes(e: { startTime?: string | null; endTime?: string | null; breakMin?: number | null }): number {
   const s = parseTimeMinutes(e.startTime)
-  const en = parseTimeMinutes(e.endTime)
+  let en = parseTimeMinutes(e.endTime)
   if (s == null || en == null) return 0
+  if (en < s) en += 24 * 60
   return Math.max(0, en - s - (e.breakMin ?? 0))
 }
 

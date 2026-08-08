@@ -78,8 +78,9 @@ function WorkDayCard({ date, entry, formats, schedule }: {
   // отработано (мин): закрытый день — end−start−break; идёт — сейчас−start−break
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes()
   const s0 = parseMin(start)
+  const e0 = parseMin(end)
   const worked = s0 == null ? 0
-    : end != null ? Math.max(0, parseMin(end)! - s0 - breakMin)
+    : e0 != null ? Math.max(0, (e0 < s0 ? e0 + 24 * 60 : e0) - s0 - breakMin) // ночная смена: конец < начала → +сутки
     : isToday ? Math.max(0, nowMin - s0 - breakMin)
     : 0
 
