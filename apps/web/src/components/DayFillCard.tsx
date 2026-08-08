@@ -75,6 +75,12 @@ function WorkDayCard({ date, entry, formats, schedule }: {
       alert(e?.response?.data?.error ?? 'Ошибка сохранения')
     },
   })
+  // Сброс к расписанию: удалить override-запись дня (вернуться к плану из графика)
+  const deleteDay = useMutation({
+    mutationFn: () => api.delete(`/day-entries/${date}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['day-entries'] }); qc.invalidateQueries({ queryKey: ['svod'] }) },
+  })
+
   // отработано (мин): закрытый день — end−start−break; идёт — сейчас−start−break
   const nowMin = new Date().getHours() * 60 + new Date().getMinutes()
   const s0 = parseMin(start)
@@ -90,6 +96,10 @@ function WorkDayCard({ date, entry, formats, schedule }: {
   // Календарный выходной (weekend) — рабочий (можно начать). Отпуск/больничный/отгул — статус-метка.
   // TODO: «работать во время отпуска/больничного» без потери статуса требует отдельного поля места (схема).
   const isAbsence = ['vacation', 'sick', 'dayoff'].includes(dayType)
+  // План (расписание) vs факт (override-запись дня). Место можно вернуть к расписанию.
+  const expectedFmt = expected?.format ?? 'office'
+  const placeOverridden = dayType !== expectedFmt
+  const resetToSchedule = () => { if (started) save.mutate({ dayFormat: expectedFmt }); else deleteDay.mutate() }
   const startHint = !canEdit ? 'Отметить время можно только в текущий день' : ''
   const endHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Сначала начните рабочий день' : ''
 
@@ -116,6 +126,10 @@ function WorkDayCard({ date, entry, formats, schedule }: {
                   style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: canEdit ? 'pointer' : 'not-allowed', opacity: canEdit ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
               )
             })}
+            {canEdit && placeOverridden
+              ? <button onClick={resetToSchedule} title="Вернуть к расписанию (план)"
+                  style={{ marginLeft: 4, padding: '4px 10px', borderRadius: 20, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>↺ По расписанию</button>
+              : !placeOverridden && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>по расписанию</span>}
           </div>
 
           {/* Фиксированная сетка — поля всегда на своих местах; активность по стадии/дате (подсказка при наведении). */}
