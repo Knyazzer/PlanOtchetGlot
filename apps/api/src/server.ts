@@ -31,6 +31,7 @@ import { accessRoutes } from './routes/access'
 import { notificationsRoutes } from './routes/notifications'
 import { refsRoutes } from './routes/refs'
 import { postsRoutes } from './routes/posts'
+import { requestsRoutes } from './routes/requests'
 
 const app = Fastify({ logger: true })
 
@@ -119,6 +120,7 @@ async function main() {
   await app.register(notificationsRoutes,   { prefix: '/notifications' })
   await app.register(refsRoutes,            { prefix: '/refs' })
   await app.register(postsRoutes,           { prefix: '/posts' })
+  await app.register(requestsRoutes,        { prefix: '/requests' })
 
   const port = Number(process.env.PORT ?? 4000)
   await app.listen({ port, host: '0.0.0.0' })

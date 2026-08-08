@@ -72,8 +72,33 @@ model User {
   workSchedule             WorkSchedule?   @relation("UserSchedule")
   boardColumns             BoardColumn[]   @relation("UserBoardColumns")
   taskPlacements           TaskPlacement[] @relation("UserTaskPlacements")
+  requestsAuthored         Request[]       @relation("RequestAuthor")
+  requestsToApprove        Request[]       @relation("RequestApprover")
 
   @@map("users")
+  @@schema("nexus")
+}
+
+// Заявки сотрудника (отпуск/больничный/отгул) → согласование руководителем. См. docs/REQUESTS-MODULE.md
+model Request {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  user         User      @relation("RequestAuthor", fields: [userId], references: [id])
+  type         String    // vacation | sick | dayoff
+  status       String    @default("pending") // pending | approved | rejected | canceled
+  dateFrom     String    @map("date_from")   // YYYY-MM-DD
+  dateTo       String    @map("date_to")     // YYYY-MM-DD (== dateFrom для одного дня)
+  comment      String?
+  approverId   String?   @map("approver_id")
+  approver     User?     @relation("RequestApprover", fields: [approverId], references: [id])
+  decidedAt    DateTime? @map("decided_at")
+  decisionNote String?   @map("decision_note")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([approverId, status])
+  @@map("requests")
   @@schema("nexus")
 }
 
