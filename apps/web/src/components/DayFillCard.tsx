@@ -100,8 +100,10 @@ function WorkDayCard({ date, entry, formats, schedule }: {
   const expectedFmt = expected?.format ?? 'office'
   const placeOverridden = dayType !== expectedFmt
   const resetToSchedule = () => { if (started) save.mutate({ dayFormat: expectedFmt }); else deleteDay.mutate() }
-  const startHint = !canEdit ? 'Отметить время можно только в текущий день' : ''
-  const endHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Сначала начните рабочий день' : ''
+  // Начинаем/заканчиваем только кнопками: до старта Начало недоступно, Конец — до нажатия «Закончить».
+  const startHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Начните рабочий день кнопкой' : ''
+  const endHint = !canEdit ? 'Отметить время можно только в текущий день' : !finished ? 'Завершите рабочий день кнопкой' : ''
+  const breakHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Сначала начните рабочий день' : ''
 
   const wrap: React.CSSProperties = { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', width: '100%', boxSizing: 'border-box' }
 
@@ -136,12 +138,12 @@ function WorkDayCard({ date, entry, formats, schedule }: {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '96px 96px 118px 96px', gap: 18, alignItems: 'end' }}>
               <Field label="Начало" hint={startHint}>
-                <TimePicker className="w-full" value={start ?? ''} disabled={!canEdit} onChange={v => save.mutate({ startTime: v || null })} />
+                <TimePicker className="w-full" value={start ?? ''} disabled={!canEdit || !started} onChange={v => save.mutate({ startTime: v || null })} />
               </Field>
               <Field label="Конец" hint={endHint}>
-                <TimePicker className="w-full" value={end ?? ''} disabled={!canEdit || !started} onChange={v => save.mutate({ endTime: v || null })} />
+                <TimePicker className="w-full" value={end ?? ''} disabled={!canEdit || !finished} onChange={v => save.mutate({ endTime: v || null })} />
               </Field>
-              <Field label="Перерыв, мин" hint={endHint}>
+              <Field label="Перерыв, мин" hint={breakHint}>
                 <BreakStepper value={breakMin} disabled={!canEdit || !started} onChange={v => save.mutate({ breakMin: v })} />
               </Field>
               <Field label="Отработано">
@@ -153,8 +155,8 @@ function WorkDayCard({ date, entry, formats, schedule }: {
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
             ) : !started ? (
-              <button disabled={!canEdit} onClick={() => save.mutate({ dayFormat: isWork ? dayType : 'office', startTime: nowHHMM(), endTime: null })}
-                title={!canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit)}>Начать рабочий день</button>
+              <button disabled={!canEdit || !isWork} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null })}
+                title={!isWork ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit || !isWork)}>Начать рабочий день</button>
             ) : (
               <button disabled={!canEdit} onClick={() => save.mutate({ endTime: nowHHMM() })}
                 title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !canEdit)}>Закончить рабочий день</button>
