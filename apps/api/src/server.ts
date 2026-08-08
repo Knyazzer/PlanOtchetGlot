@@ -33,6 +33,7 @@ import { refsRoutes } from './routes/refs'
 import { postsRoutes } from './routes/posts'
 import { requestsRoutes } from './routes/requests'
 import { companyGoalsRoutes } from './routes/company-goals'
+import { personalGoalsRoutes } from './routes/personal-goals'
 
 const app = Fastify({ logger: true })
 
@@ -123,6 +124,7 @@ async function main() {
   await app.register(postsRoutes,           { prefix: '/posts' })
   await app.register(requestsRoutes,        { prefix: '/requests' })
   await app.register(companyGoalsRoutes,    { prefix: '/company-goals' })
+  await app.register(personalGoalsRoutes,   { prefix: '/personal-goals' })
 
   const port = Number(process.env.PORT ?? 4000)
   await app.listen({ port, host: '0.0.0.0' })

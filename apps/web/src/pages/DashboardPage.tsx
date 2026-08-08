@@ -6,6 +6,7 @@ import { TaskModal, CalendarEventModal } from './TasksPage'
 import type { Task } from './TasksPage'
 import { DayFillCard } from '../components/DayFillCard'
 import { MonthStrip } from '../components/MonthStrip'
+import { ROLE } from '../lib/roleColors'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -319,6 +320,8 @@ export function DashboardPage() {
         </div>
       </div>
 
+      <PersonalGoalsCard />
+
       {/* Modals */}
       {showCreateTask && (
         <TaskModal
@@ -350,6 +353,70 @@ export function DashboardPage() {
       )}
     </div>
       <MonthStrip selected={selDate} today={todayStr} onSelect={setSelDate} />
+    </div>
+  )
+}
+
+// ── Мои цели — личные стратегические цели сотрудника (к ним подвяжутся задачи, отдельным заходом) ──
+interface PGoal { id: string; text: string; done: boolean }
+function PersonalGoalsCard() {
+  const qc = useQueryClient()
+  const { data: goals = [] } = useQuery<PGoal[]>({ queryKey: ['personal-goals'], queryFn: () => api.get('/personal-goals').then(r => r.data), staleTime: 60_000 })
+  const [edit, setEdit] = useState(false)
+  const put = useMutation({ mutationFn: (list: Array<{ text: string; done: boolean }>) => api.put('/personal-goals', { goals: list }), onSuccess: () => qc.invalidateQueries({ queryKey: ['personal-goals'] }) })
+  const toggle = (id: string) => put.mutate(goals.map(g => ({ text: g.text, done: g.id === id ? !g.done : g.done })))
+
+  const card: React.CSSProperties = { background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 22px' }
+  return (
+    <div style={card}>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', flex: 1 }}>Мои цели</span>
+        <button onClick={() => setEdit(true)} style={{ background: 'none', border: 'none', color: 'var(--accent-s)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>{goals.length ? 'Изменить' : '+ Добавить'}</button>
+      </div>
+      {goals.length === 0 ? (
+        <div style={{ fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>Задайте личные цели — к ним будете подвязывать задачи.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+          {goals.map(g => (
+            <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <button onClick={() => toggle(g.id)} title={g.done ? 'Снять отметку' : 'Отметить достигнутой'}
+                style={{ width: 18, height: 18, borderRadius: 5, border: `1.5px solid ${g.done ? ROLE.success : 'var(--border)'}`, background: g.done ? ROLE.success : 'none', cursor: 'pointer', flexShrink: 0, marginTop: 1, color: '#fff', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{g.done ? '✓' : ''}</button>
+              <span style={{ fontSize: 14, color: g.done ? 'var(--text-muted)' : 'var(--text-1)', textDecoration: g.done ? 'line-through' : 'none', lineHeight: 1.4 }}>{g.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {edit && <EditPersonalGoalsModal goals={goals} onClose={() => setEdit(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['personal-goals'] })} />}
+    </div>
+  )
+}
+
+function EditPersonalGoalsModal({ goals, onClose, onSaved }: { goals: PGoal[]; onClose: () => void; onSaved: () => void }) {
+  const [text, setText] = useState(goals.map(g => g.text).join('\n'))
+  const down = useRef(false)
+  const put = useMutation({
+    mutationFn: () => {
+      const doneByText = new Map(goals.map(g => [g.text, g.done]))
+      const list = text.split('\n').map(s => s.trim()).filter(Boolean).map(t => ({ text: t, done: doneByText.get(t) ?? false }))
+      return api.put('/personal-goals', { goals: list })
+    },
+    onSuccess: () => { onSaved(); onClose() },
+    onError: (e: unknown) => { const err = e as { response?: { data?: { error?: string } } }; alert(err?.response?.data?.error ?? 'Не удалось сохранить') },
+  })
+  return (
+    <div onMouseDown={e => { down.current = e.target === e.currentTarget }} onMouseUp={e => { if (down.current && e.target === e.currentTarget) onClose(); down.current = false }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onMouseDown={e => e.stopPropagation()} style={{ width: 460, maxWidth: '100%', background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)', marginBottom: 6 }}>Мои цели</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>Одна цель — одна строка. Отметки «достигнуто» сохранятся.</div>
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={8}
+          placeholder={'Пройти курс по монтажу\nВзять на себя новый проект\n…'}
+          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', resize: 'vertical', lineHeight: 1.5 }} />
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+          <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>Отмена</button>
+          <button onClick={() => put.mutate()} disabled={put.isPending} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>{put.isPending ? '…' : 'Сохранить'}</button>
+        </div>
+      </div>
     </div>
   )
 }

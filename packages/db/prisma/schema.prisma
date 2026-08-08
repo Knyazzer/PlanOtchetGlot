@@ -74,6 +74,7 @@ model User {
   taskPlacements           TaskPlacement[] @relation("UserTaskPlacements")
   requestsAuthored         Request[]       @relation("RequestAuthor")
   requestsToApprove        Request[]       @relation("RequestApprover")
+  personalGoals            PersonalGoal[]  @relation("PersonalGoals")
 
   @@map("users")
   @@schema("nexus")
@@ -99,6 +100,22 @@ model Request {
   @@index([userId, status])
   @@index([approverId, status])
   @@map("requests")
+  @@schema("nexus")
+}
+
+// Личные цели сотрудника (Обзор кабинета) — к ним подвязываются задачи (Task-линк — отдельным заходом).
+model PersonalGoal {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation("PersonalGoals", fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  order     Int      @default(0)
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@index([userId])
+  @@map("personal_goals")
   @@schema("nexus")
 }
 
