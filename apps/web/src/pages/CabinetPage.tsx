@@ -1,8 +1,9 @@
 import { DashboardPage } from './DashboardPage'
 import { TasksPage } from './TasksPage'
+import { RequestsPage } from './RequestsPage'
 
 type OpenChatWith = (userId: string, task: { id: string; title: string; assigneeId: string; assignedById: string }, isSelf: boolean) => void
-type CabTab = 'overview' | 'tasks' | 'tracks'
+type CabTab = 'overview' | 'tasks' | 'tracks' | 'requests'
 
 // «Мой кабинет» — контейнер личной работы сотрудника с внутренними вкладками:
 //   Обзор — рабочий стол (статус, план дня, задачи/дедлайны/события);
@@ -19,6 +20,7 @@ export function CabinetPage({ tab, onOpenChatWith, onOpenTrackChat }: {
       {tab === 'overview' && <DashboardPage />}
       {tab === 'tasks'    && <TasksPage externalTab="tasks"  onOpenChatWith={onOpenChatWith} onOpenTrackChat={onOpenTrackChat} />}
       {tab === 'tracks'   && <TasksPage externalTab="tracks" onOpenChatWith={onOpenChatWith} onOpenTrackChat={onOpenTrackChat} />}
+      {tab === 'requests' && <RequestsPage />}
     </>
   )
 }

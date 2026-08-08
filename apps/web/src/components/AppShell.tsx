@@ -108,11 +108,11 @@ export function AppShell() {
     : (stored && (!ADMIN_PAGES.includes(stored) || isAdmin) ? stored : defaultPage)
   const [page, setPage] = useState<Page>(initialPage)
   // Вкладка «Мой кабинет» (Обзор/Задачи/Треки) — теперь под-пункты меню, не переключатель в шапке
-  const [cabinetTab, setCabinetTab] = useState<'overview' | 'tasks' | 'tracks'>(() => {
+  const [cabinetTab, setCabinetTab] = useState<'overview' | 'tasks' | 'tracks' | 'requests'>(() => {
     const s = localStorage.getItem('nexus:cabinet-tab')
     return s === 'tasks' || s === 'tracks' ? s : 'overview'
   })
-  function pickCabinet(t: 'overview' | 'tasks' | 'tracks') {
+  function pickCabinet(t: 'overview' | 'tasks' | 'tracks' | 'requests') {
     setCabinetTab(t); localStorage.setItem('nexus:cabinet-tab', t)
     setPage('dashboard'); localStorage.setItem('nexus:page', 'dashboard')
   }
@@ -226,6 +226,7 @@ export function AppShell() {
           { key: 'cab:overview', label: 'Обзор' },
           { key: 'cab:tasks', label: 'Задачи', badge: unseenTasks > 0 ? unseenTasks : undefined },
           { key: 'cab:tracks', label: 'Треки' },
+          { key: 'cab:requests', label: 'Заявки' },
         ],
       } : {}),
     })) : []),
@@ -244,7 +245,7 @@ export function AppShell() {
 
   function handleNavigate(key: string) {
     if (key === 'ext.inventory') { openInventoryWithSession(); return }
-    if (key.startsWith('cab:')) { pickCabinet(key.slice(4) as 'overview' | 'tasks' | 'tracks'); return }
+    if (key.startsWith('cab:')) { pickCabinet(key.slice(4) as 'overview' | 'tasks' | 'tracks' | 'requests'); return }
     navigateTo(key as Page)
   }
 
