@@ -81,7 +81,7 @@ export async function requestsRoutes(app: FastifyInstance) {
     const user = (request as any).user as { id: string }
     const [inbox, decided] = await Promise.all([
       prisma.request.count({ where: { approverId: user.id, status: 'pending' } }),
-      prisma.request.findMany({ where: { userId: user.id, status: { in: ['approved', 'rejected'] }, decidedAt: { not: null } }, select: { decidedAt: true }, orderBy: { decidedAt: 'desc' }, take: 50 }),
+      prisma.request.findMany({ where: { userId: user.id, status: { in: ['approved', 'rejected', 'revoked'] }, decidedAt: { not: null } }, select: { decidedAt: true }, orderBy: { decidedAt: 'desc' }, take: 50 }),
     ])
     return { inbox, answers: decided.map(d => d.decidedAt!.toISOString()) }
   })
@@ -131,7 +131,7 @@ export async function requestsRoutes(app: FastifyInstance) {
     if (existing.approverId !== user.id && !user.isAdmin) return reply.code(403).send({ error: 'Только согласующий или админ' })
     if (existing.status !== 'approved') return reply.code(400).send({ error: 'Отозвать можно только одобренную заявку' })
     await unreflectLeave(existing) // снять статус дней (вернуть к расписанию)
-    return prisma.request.update({ where: { id }, data: { status: 'canceled', decisionNote: 'Отозвано' }, include })
+    return prisma.request.update({ where: { id }, data: { status: 'revoked', decisionNote: 'Отозвано', decidedAt: new Date() }, include })
   })
 
   // GET /requests/:id/document — заявление docx (для одобренного отпуска; автор или админ)

@@ -6,6 +6,7 @@ import { ROLE } from '../lib/roleColors'
 import { DatePicker } from '../ui-kit/components/DatePicker'
 import type { DateRange } from 'react-day-picker'
 import { formatName } from '../lib/utils'
+import { useConfirm } from '../components/ConfirmModal'
 
 // «Заявки» (под-вкладка «Мой кабинет»): мои заявки + на согласование (для руководителя),
 // оформление заявки (тип/период/коммент). Спека — docs/REQUESTS-MODULE.md.
@@ -22,6 +23,7 @@ const STATUS: Record<string, { label: string; color: string }> = {
   approved: { label: 'Одобрено',        color: ROLE.success },
   rejected: { label: 'Отклонено',       color: ROLE.danger },
   canceled: { label: 'Отменено',        color: '#8a8f98' },
+  revoked:  { label: 'Отозвано',        color: '#8a8f98' },
 }
 
 function pad(n: number) { return String(n).padStart(2, '0') }
@@ -38,6 +40,7 @@ export function RequestsPage() {
   const { data: inbox = [] } = useQuery<Req[]>({ queryKey: ['requests', 'inbox'], queryFn: () => api.get('/requests?scope=inbox').then(r => r.data), refetchInterval: 60_000, refetchIntervalInBackground: false })
 
   const [showCreate, setShowCreate] = useState(false)
+  const { confirm, confirmUI } = useConfirm()
   const typeLabel = (k: string) => types.find(t => t.key === k)?.label ?? k
 
   // Инвалидируем и производные представления одной сущности «статус дня» (кабинет/присутствие/свод) — консистентность.
@@ -87,7 +90,7 @@ export function RequestsPage() {
                     ) : (
                       <>
                         <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: ROLE.success + '22', color: ROLE.success }}>Одобрено</span>
-                        <button onClick={() => { if (confirm('Отозвать одобренную заявку? Дни вернутся к расписанию.')) revoke.mutate(r.id) }} style={btnOutline('var(--text-muted)')}>Отозвать</button>
+                        <button onClick={() => confirm({ title: 'Отзыв заявки', message: 'Отозвать одобренную заявку? Дни вернутся к расписанию.', confirmLabel: 'Отозвать', danger: true }).then(ok => ok && revoke.mutate(r.id))} style={btnOutline('var(--text-muted)')}>Отозвать</button>
                       </>
                     )}
                   </div>
@@ -138,6 +141,7 @@ export function RequestsPage() {
       </div>
 
       {showCreate && <CreateRequestModal types={types} onClose={() => setShowCreate(false)} onCreated={invalidate} />}
+      {confirmUI}
     </div>
   )
 }

@@ -58,7 +58,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
       }),
       // ответы по моим заявкам за 7 дней
       prisma.request.findMany({
-        where: { userId: user.id, status: { in: ['approved', 'rejected'] }, decidedAt: { gte: since } },
+        where: { userId: user.id, status: { in: ['approved', 'rejected', 'revoked'] }, decidedAt: { gte: since } },
         orderBy: { decidedAt: 'desc' }, take: 20,
         select: { id: true, type: true, status: true, decidedAt: true },
       }),
@@ -94,7 +94,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
       })),
       ...reqAnswers.map(r => ({
         id: `req-ans:${r.id}`, kind: 'request' as const,
-        text: `Ваша заявка (${REQ_LABEL[r.type] ?? r.type}) ${r.status === 'approved' ? 'одобрена' : 'отклонена'}`,
+        text: `Ваша заявка (${REQ_LABEL[r.type] ?? r.type}) ${r.status === 'approved' ? 'одобрена' : r.status === 'revoked' ? 'отозвана' : 'отклонена'}`,
         at: r.decidedAt!, requestId: r.id,
       })),
     ].sort((a, b) => (a.at < b.at ? 1 : -1))

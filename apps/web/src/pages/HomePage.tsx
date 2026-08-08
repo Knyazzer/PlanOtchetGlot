@@ -7,6 +7,7 @@ import { formatName } from '../lib/utils'
 import { ROLE } from '../lib/roleColors'
 import { Tooltip } from '../components/Tooltip'
 import { getWeekStart, toYMD } from './calendar/utils'
+import { useConfirm } from '../components/ConfirmModal'
 import type { ApiCalEntry } from './calendar/types'
 
 const WD_SHORT = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']
@@ -144,6 +145,7 @@ function NewsChat() {
 
   const [body, setBody] = useState('')
   const publish = useMutation({ mutationFn: () => api.post('/posts', { body: body.trim() }), onSuccess: () => { setBody(''); qc.invalidateQueries({ queryKey: ['posts'] }) } })
+  const { confirm, confirmUI } = useConfirm()
 
   const [lightbox, setLightbox] = useState<{ images: string[]; index: number } | null>(null)
   const laneRef = useRef<HTMLDivElement>(null)
@@ -173,7 +175,7 @@ function NewsChat() {
                     {/* Дата — в правом нижнем углу; кнопка удаления (если есть право) — слева */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       {canEdit(p)
-                        ? <button onClick={() => { if (confirm('Удалить новость?')) delMut.mutate(p.id) }} title="Удалить"
+                        ? <button onClick={() => confirm({ message: 'Удалить новость?', confirmLabel: 'Удалить', danger: true }).then(ok => ok && delMut.mutate(p.id))} title="Удалить"
                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}><Trash2 size={14} /></button>
                         : <span />}
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtWhen(p.createdAt)}</span>
@@ -204,6 +206,7 @@ function NewsChat() {
       )}
 
       {lightbox && <NewsLightbox images={lightbox.images} index={lightbox.index} onClose={() => setLightbox(null)} onIndex={i => setLightbox({ images: lightbox.images, index: i })} />}
+      {confirmUI}
     </div>
   )
 }
