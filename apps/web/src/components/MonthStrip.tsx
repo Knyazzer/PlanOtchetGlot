@@ -8,14 +8,16 @@ import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
 // в т.ч. планирование на будущее). Навигация по месяцам — независимая от выбора.
 
 type DayFormat = { key: string; label: string; isWork: boolean; score: number | null }
-type DayEntry = { id: string; date: string; dayFormat: string; startTime: string | null; endTime: string | null; breakMin: number }
+type DayEntry = { id: string; date: string; dayFormat: string; place: string | null; startTime: string | null; endTime: string | null; breakMin: number }
 
-// Цвета типов дня (в форматах цвета нет — маппинг по ключу сида).
+// Цвета статусов и мест (в форматах цвета нет — маппинг по ключу).
 const FMT_COLOR: Record<string, string> = {
-  office: '#43b2f2', remote: '#22d3ee', shift_air: '#FF6B35', shift_edit: '#f0a63c',
-  shift_prep: '#8B5CF6', trip: '#7B61FF', vacation: '#a855f7', sick: '#F43F5E',
-  dayoff: '#64748b', unpaid: '#94a3b8',
+  working: '#43b2f2', weekend: '#64748b',
+  office: '#43b2f2', remote: '#22d3ee', project: '#6366f1', trip: '#7B61FF',
+  vacation: '#a855f7', sick: '#F43F5E', dayoff: '#94a3b8',
 }
+const PLACE_LABEL: Record<string, string> = { office: 'Офис', remote: 'Удалёнка', project: 'Проект', trip: 'Командировка' }
+const isPlace = (k?: string | null) => !!k && k in PLACE_LABEL
 const WD = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -52,13 +54,18 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
   const { data: schedule } = useMyWorkSchedule()
   const byDate = new Map(entries.map(e => [e.date.slice(0, 10), e]))
   const labelOf = (k: string) => formats.find(f => f.key === k)?.label ?? k
+  // Отображение дня: рабочий день → метка МЕСТА; иначе → метка статуса.
+  const dayView = (status: string, place: string | null): { label: string; color: string } => {
+    if (status === 'working') { const p = place ?? 'office'; return { label: PLACE_LABEL[p] ?? 'Рабочий день', color: FMT_COLOR[p] ?? '#43b2f2' } }
+    return { label: labelOf(status), color: FMT_COLOR[status] ?? 'var(--text-muted)' }
+  }
 
   const shift = (delta: number) => setCursor(c => { const d = new Date(c.y, c.m + delta, 1); return { y: d.getFullYear(), m: d.getMonth() } })
 
   const days = Array.from({ length: lastDay }, (_, i) => i + 1)
 
   // ── Сводка месяца (П3/П4): отработано / норма по сегодня / баланс ──
-  const isWorkKey = (k?: string) => { const f = formats.find(x => x.key === k); return f ? f.isWork : false }
+  const isWorkKey = (k?: string) => isPlace(k) || k === 'working' || (formats.find(x => x.key === k)?.isWork ?? false)
   const schedNorm = schedule ? (() => { const s = parseMin(schedule.workStart), e = parseMin(schedule.workEnd); return s != null && e != null ? Math.max(0, e - s - schedule.breakMin) : 0 })() : 0
   let workedMin = 0, normMin = 0, weekendCount = 0
   for (const dn of days) {
@@ -68,7 +75,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
     if (e && e.startTime && e.endTime) { const s = parseMin(e.startTime), en = parseMin(e.endTime); if (s != null && en != null) workedMin += Math.max(0, en - s - (e.breakMin || 0)) }
     const exp = expectedForDate(ds, schedule)
     if (ds <= today && exp && isWorkKey(exp.format)) normMin += schedNorm // норма только за прошедшие рабочие дни
-    if (exp ? exp.format === 'dayoff' : (dow === 0 || dow === 6)) weekendCount++
+    if (exp ? exp.format === 'weekend' : (dow === 0 || dow === 6)) weekendCount++
   }
   const balance = workedMin - normMin
 
@@ -89,7 +96,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
           const e = byDate.get(ds)
           const isSel = ds === selected
           const isToday = ds === today
-          const color = e ? (FMT_COLOR[e.dayFormat] ?? 'var(--text-muted)') : null
+          const view = e ? dayView(e.dayFormat, e.place) : null
           return (
             <button
               key={ds}
@@ -106,22 +113,22 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
               <span style={{ width: 22, flexShrink: 0, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: isToday ? 'var(--accent-s)' : 'var(--text-muted)' }}>{WD[dow]}</span>
               {e ? (
                 <>
-                  <span style={{ width: 8, height: 8, borderRadius: 2, background: color!, flexShrink: 0 }} />
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{labelOf(e.dayFormat)}</span>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: view!.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{view!.label}</span>
                 </>
               ) : (() => {
-                // пустой день: ожидаемый тип из графика (полый кубик, бледно) либо «выходной/не заполнен»
+                // пустой день: ожидаемое из графика (полый кубик, бледно) либо «выходной/не заполнен»
                 const exp = expectedForDate(ds, schedule)
-                if (exp && exp.format !== 'dayoff') {
-                  const ec = FMT_COLOR[exp.format] ?? 'var(--text-muted)'
+                if (exp && exp.format !== 'weekend') {
+                  const v = dayView(isPlace(exp.format) ? 'working' : exp.format, isPlace(exp.format) ? exp.format : null)
                   return (
                     <>
-                      <span style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${ec}`, opacity: 0.6, flexShrink: 0 }} />
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Ожидается по графику">{labelOf(exp.format)}</span>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${v.color}`, opacity: 0.6, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Ожидается по графику">{v.label}</span>
                     </>
                   )
                 }
-                return <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend || exp?.format === 'dayoff' ? 'выходной' : 'не заполнен'}</span>
+                return <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend || exp?.format === 'weekend' ? 'выходной' : 'не заполнен'}</span>
               })()}
               {isToday && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-s)', flexShrink: 0 }} title="Сегодня" />}
             </button>
