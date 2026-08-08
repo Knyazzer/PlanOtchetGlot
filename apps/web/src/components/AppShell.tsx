@@ -18,6 +18,7 @@ const SERVICE_LOGOS: Record<string, string> = {
 import { ListsPage }     from '../pages/ListsPage'
 import { PersonnelPage } from '../pages/PersonnelPage'
 import { HomePage }      from '../pages/HomePage'
+import { StrategyPage }  from '../pages/StrategyPage'
 import { CalendarPage }  from '../pages/CalendarPage'
 import { CabinetPage }   from '../pages/CabinetPage'
 import { ProjectsPage }  from '../pages/ProjectsPage'
@@ -34,12 +35,12 @@ import { AppShell as KitAppShell, type NavEntry } from '../ui-kit/components/App
 import {
   Home, Calendar, BarChart3, PieChart, FolderKanban,
   Users, UsersRound, MessageSquare, Bell, Settings as SettingsIcon,
-  User, Shield, Archive, List, Package,
+  User, Shield, Archive, List, Package, Target,
   type LucideIcon,
 } from 'lucide-react'
 
 type AdminPage = 'personnel' | 'lists' | 'set-roles' | 'set-backups'
-type UserPage  = 'home' | 'dashboard' | 'calendar' | 'tasks' | 'projects' | 'analytics' | 'team' | 'settings'
+type UserPage  = 'home' | 'dashboard' | 'calendar' | 'tasks' | 'projects' | 'analytics' | 'team' | 'settings' | 'strategy'
 type Page = AdminPage | UserPage
 
 interface ChatsOpenProps {
@@ -68,6 +69,7 @@ const USER_NAV: NavItem[] = [
   { id: 'analytics', label: 'Аналитика',    icon: PieChart },
   { id: 'projects',  label: 'Проекты',      icon: FolderKanban },
   { id: 'team',      label: 'Команда',      icon: UsersRound },
+  { id: 'strategy',  label: 'Стратегия',    icon: Target },
 ]
 
 function applyTheme(theme: 'dark' | 'light') {
@@ -290,6 +292,7 @@ export function AppShell() {
           {page === 'dashboard' && <CabinetPage tab={cabinetTab} onOpenChatWith={openChatWith} onOpenTrackChat={openChatById} />}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
+          {page === 'strategy'  && <StrategyPage />}
           {page === 'settings'  && isAdmin && <SettingsPage />}
           {page === 'set-roles'   && isAdmin && <div style={{ padding: '24px 28px' }}><RolesTab /></div>}
           {page === 'set-backups' && isAdmin && <div style={{ padding: '24px 28px' }}><BackupsInfo /></div>}

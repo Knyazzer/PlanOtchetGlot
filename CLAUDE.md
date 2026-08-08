@@ -284,6 +284,7 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | Svod | `SvodPage.tsx` | ✅ rebuild-v4: месячная сетка день×сотрудник, легенда, подвал; клик по ячейке → DayModal (свой день — правка). **Больше НЕ отдельный пункт меню** — вложен внутренней вкладкой в Analytics (persist `nexus:analytics-tab`; миграция старого `page='svod'`→`analytics`) | все (вкладка в Аналитике) |
 | Analytics | `AnalyticsPage.tsx` | ✅ rebuild-v4: KPI + recharts-чарт + вкладки Сотрудники/Эффективность/Проекты + CSV; **внутренние вкладки `[Аналитика \| Свод]`** — переключатель в китовой шапке (HeaderPortal) | все (company-скоуп по модулю) |
 | Team | `TeamPage.tsx` | ✅ rebuild-v4: оргдерево департамент→отдел→сотрудники, поиск, директор/руководитель | все |
+| Strategy | `StrategyPage.tsx` | ✅ Фаза 1: цели квартала/года по департаментам→отделам, статусы, создание/правка/закрытие (итог); видимость своего департамента; спека docs/STRATEGIC-GOALS.md | все (свой департамент) |
 | Settings | `SettingsPage.tsx` | ✅ rebuild-v4: 6 вкладок (скелет v2); живые — Форматы дня (версионирование Q-DAY-5), Роли и доступы (гранты модулей) | все; админ-вкладки — admin |
 | Tracks | `TracksPage.tsx` | ✅ вкладка внутри Tasks; модал формы переиспользуют Projects | admin (до снятия гейта) |
 | Projects | `ProjectsPage.tsx` | ✅ подстраницы «Реестр» / «Workflow» (sidebar), детальная панель WI | admin (до снятия гейта) |
