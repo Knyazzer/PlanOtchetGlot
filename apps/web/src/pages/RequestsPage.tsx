@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, FileDown } from 'lucide-react'
 import { api } from '../lib/api'
@@ -40,7 +40,13 @@ export function RequestsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const typeLabel = (k: string) => types.find(t => t.key === k)?.label ?? k
 
-  const invalidate = () => { qc.invalidateQueries({ queryKey: ['requests', 'mine'] }); qc.invalidateQueries({ queryKey: ['requests', 'inbox'] }) }
+  const invalidate = () => { qc.invalidateQueries({ queryKey: ['requests', 'mine'] }); qc.invalidateQueries({ queryKey: ['requests', 'inbox'] }); qc.invalidateQueries({ queryKey: ['requests:unseen'] }) }
+
+  // Открыли вкладку — помечаем ответы по заявкам просмотренными (снимаем badge «новый ответ»)
+  useEffect(() => {
+    localStorage.setItem('nexus:requests-answers-seen', new Date().toISOString())
+    qc.invalidateQueries({ queryKey: ['requests:unseen'] })
+  }, [qc])
   const decide = useMutation({ mutationFn: ({ id, decision }: { id: string; decision: 'approved' | 'rejected' }) => api.patch(`/requests/${id}/decision`, { decision }), onSuccess: invalidate })
   const cancel = useMutation({ mutationFn: (id: string) => api.patch(`/requests/${id}/cancel`), onSuccess: invalidate })
 

@@ -192,6 +192,16 @@ export function AppShell() {
     refetchInterval: 15_000,
   })
 
+  // Счётчик заявок: inbox (на моё согласование) + новые ответы по моим заявкам (новизна — по last-seen на клиенте).
+  const { data: reqCounts } = useQuery<{ inbox: number; answers: string[] }>({
+    queryKey: ['requests:unseen'],
+    queryFn:  () => api.get('/requests/unseen-count').then(r => r.data),
+    refetchInterval: 30_000,
+  })
+  const reqSeen = localStorage.getItem('nexus:requests-answers-seen')
+  const reqAnswersUnseen = (reqCounts?.answers ?? []).filter((d) => !reqSeen || d > reqSeen).length
+  const requestsBadge = (reqCounts?.inbox ?? 0) + reqAnswersUnseen
+
   // ── nav: USER_NAV/ADMIN_NAV (+ департаментные RBAC-модули, чья страница не входит в USER_NAV) ──
   // Департаментные допмодули — только для не-админов (как в прежнем AppShell): admin уже видит всё
   // через ADMIN_NAV/Настройки.
@@ -219,14 +229,14 @@ export function AppShell() {
       key: item.id,
       label: item.label,
       icon: item.icon,
-      badge: item.id === 'dashboard' && unseenTasks > 0 ? unseenTasks : undefined,
-      // «Мой кабинет» раскрывается под-пунктами (Обзор/Задачи/Треки) прямо в меню
+      badge: item.id === 'dashboard' && (unseenTasks + requestsBadge) > 0 ? unseenTasks + requestsBadge : undefined,
+      // «Мой кабинет» раскрывается под-пунктами (Обзор/Задачи/Треки/Заявки) прямо в меню; badge = сумма под-вкладок
       ...(item.id === 'dashboard' ? {
         children: [
           { key: 'cab:overview', label: 'Обзор' },
           { key: 'cab:tasks', label: 'Задачи', badge: unseenTasks > 0 ? unseenTasks : undefined },
           { key: 'cab:tracks', label: 'Треки' },
-          { key: 'cab:requests', label: 'Заявки' },
+          { key: 'cab:requests', label: 'Заявки', badge: requestsBadge > 0 ? requestsBadge : undefined },
         ],
       } : {}),
     })) : []),

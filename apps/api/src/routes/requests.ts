@@ -51,6 +51,17 @@ export async function requestsRoutes(app: FastifyInstance) {
   // GET /requests/types — реестр типов заявок
   app.get('/types', { preHandler: authenticate }, async () => REQUEST_TYPES)
 
+  // GET /requests/unseen-count — для badge меню: inbox (на моё согласование, pending) +
+  // answers (decidedAt моих решённых заявок; «новизну» ответа определяет клиент по last-seen).
+  app.get('/unseen-count', { preHandler: authenticate }, async (request) => {
+    const user = (request as any).user as { id: string }
+    const [inbox, decided] = await Promise.all([
+      prisma.request.count({ where: { approverId: user.id, status: 'pending' } }),
+      prisma.request.findMany({ where: { userId: user.id, status: { in: ['approved', 'rejected'] }, decidedAt: { not: null } }, select: { decidedAt: true }, orderBy: { decidedAt: 'desc' }, take: 50 }),
+    ])
+    return { inbox, answers: decided.map(d => d.decidedAt!.toISOString()) }
+  })
+
   // GET /requests?scope=mine|inbox — мои заявки / заявки на моё согласование
   app.get('/', { preHandler: authenticate }, async (request) => {
     const user = (request as any).user as { id: string; isAdmin: boolean }
