@@ -131,6 +131,33 @@ model CompanyGoal {
   @@schema("nexus")
 }
 
+// Стратегическая цель (квартал/год) — каскад департамент→отдел. См. docs/STRATEGIC-GOALS.md.
+// deptId/divisionId/createdById — снапшот-строки (без FK, как у DayEntry.divisionId): реорг не переписывает прошлое.
+model StrategicGoal {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  deptId        String    @map("dept_id")        // департамент-владелец (снапшот)
+  divisionId    String?   @map("division_id")    // null = уровень департамента
+  parentGoalId  String?   @map("parent_goal_id") // цель отдела → цель департамента
+  horizon       String    @default("quarter")    // quarter | year
+  periodKey     String    @map("period_key")     // 2026-Q3 | 2026
+  status        String    @default("active")     // active | done | partial | dropped
+  outcome       String?                          // «итог/почему» — обязателен при закрытии не-done
+  carriedFromId String?   @map("carried_from_id") // перенос из прошлого периода (Фаза 2)
+  sortOrder     Int       @default(0) @map("sort_order")
+  createdById   String    @map("created_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  closedAt      DateTime? @map("closed_at")
+  closedById    String?   @map("closed_by_id")
+
+  @@index([deptId, periodKey])
+  @@index([divisionId, periodKey])
+  @@map("strategic_goals")
+  @@schema("nexus")
+}
+
 model Department {
   id         String     @id @default(uuid())
   name       String
@@ -227,6 +254,7 @@ model Track {
   chat        Chat?       @relation("TrackChat")
   events      Event[]     @relation("TrackEvents")
   workItemId  String?     @map("work_item_id")
+  goalId      String?     @map("goal_id")        // привязка трека к стратегической цели (StrategicGoal)
   workItem    WorkItem?   @relation(fields: [workItemId], references: [id], onDelete: SetNull)
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt      @map("updated_at")
@@ -281,6 +309,7 @@ model Task {
   client         String?                       // строкой, как у донора; FK на Client — v2
   projectId      String?    @map("project_id")
   project        Project?   @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: SetNull)
+  goalId         String?    @map("goal_id")       // привязка задачи к стратегической цели (StrategicGoal)
   divisionId     String?    @map("division_id") // денормализация из assignee — для свода/аналитики
   division       Division?  @relation("DivisionTasks", fields: [divisionId], references: [id], onDelete: SetNull)
   plannedMinutes Int?       @map("planned_minutes") // медиана донора 45, шаг ввода 15
