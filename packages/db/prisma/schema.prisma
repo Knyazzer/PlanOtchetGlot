@@ -140,6 +140,7 @@ model StrategicGoal {
   deptId        String    @map("dept_id")        // департамент-владелец (снапшот)
   divisionId    String?   @map("division_id")    // null = уровень департамента
   parentGoalId  String?   @map("parent_goal_id") // цель отдела → цель департамента
+  kind          String    @default("goal")       // goal | growth (зона роста — в блоке снизу, не в канбане)
   horizon       String    @default("quarter")    // quarter | year
   periodKey     String    @map("period_key")     // 2026-Q3 | 2026
   status        String    @default("active")     // active | done | partial | dropped
@@ -155,6 +156,19 @@ model StrategicGoal {
   @@index([deptId, periodKey])
   @@index([divisionId, periodKey])
   @@map("strategic_goals")
+  @@schema("nexus")
+}
+
+// Доработки к собранию — заметки к квартальной встрече, уровень департамента (один блок на деп+период).
+model MeetingNote {
+  id        String   @id @default(uuid())
+  deptId    String   @map("dept_id")
+  periodKey String   @map("period_key")
+  text      String   @default("")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([deptId, periodKey])
+  @@map("meeting_notes")
   @@schema("nexus")
 }
 

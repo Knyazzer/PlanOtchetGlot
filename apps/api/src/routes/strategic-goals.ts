@@ -30,14 +30,15 @@ async function canManage(userId: string, isAdmin: boolean, deptId: string, divis
   return false
 }
 
-const sel = { id: true, title: true, description: true, deptId: true, divisionId: true, parentGoalId: true, horizon: true, periodKey: true, status: true, outcome: true, sortOrder: true, createdById: true, closedAt: true } as const
+const sel = { id: true, title: true, description: true, deptId: true, divisionId: true, parentGoalId: true, kind: true, horizon: true, periodKey: true, status: true, outcome: true, sortOrder: true, createdById: true, closedAt: true } as const
 
 const createSchema = z.object({
-  title: z.string().trim().min(1).max(300),
+  title: z.string().trim().min(1).max(500),
   description: z.string().max(3000).optional(),
   deptId: z.string(),
   divisionId: z.string().nullish(),
   parentGoalId: z.string().nullish(),
+  kind: z.enum(['goal', 'growth']).default('goal'),
   horizon: z.enum(['quarter', 'year']).default('quarter'),
   periodKey: z.string().regex(/^\d{4}(-Q[1-4])?$/).optional(),
 })
@@ -68,7 +69,7 @@ export async function strategicGoalsRoutes(app: FastifyInstance) {
     if (!(await canManage(user.id, user.isAdmin, p.data.deptId, p.data.divisionId ?? null))) return reply.code(403).send({ error: 'Нет прав на этот департамент/отдел' })
     const periodKey = p.data.periodKey ?? currentPeriodKey(p.data.horizon)
     const created = await prisma.strategicGoal.create({
-      data: { title: p.data.title, description: p.data.description ?? null, deptId: p.data.deptId, divisionId: p.data.divisionId ?? null, parentGoalId: p.data.parentGoalId ?? null, horizon: p.data.horizon, periodKey, createdById: user.id },
+      data: { title: p.data.title, description: p.data.description ?? null, deptId: p.data.deptId, divisionId: p.data.divisionId ?? null, parentGoalId: p.data.parentGoalId ?? null, kind: p.data.kind, horizon: p.data.horizon, periodKey, createdById: user.id },
       select: sel,
     })
     return reply.code(201).send(created)
