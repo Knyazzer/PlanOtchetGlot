@@ -87,8 +87,11 @@ function WorkDayCard({ date, entry, formats, schedule }: {
   const started = !!start
   const finished = !!start && !!end
   const canEdit = isToday                        // править факт можно только в текущий день
-  const canWork = isWork                         // рабочий ли день по типу (в выходной поля/кнопка неактивны)
-  const isAbsence = ['sick', 'vacation', 'unpaid'].includes(dayType) // отсутствие — крупным статусом (управление в «Заявках»)
+  // Календарный выходной (weekend) — рабочий (можно начать). Отпуск/больничный/отгул — статус-метка.
+  // TODO: «работать во время отпуска/больничного» без потери статуса требует отдельного поля места (схема).
+  const isAbsence = ['vacation', 'sick', 'dayoff'].includes(dayType)
+  const startHint = !canEdit ? 'Отметить время можно только в текущий день' : ''
+  const endHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Сначала начните рабочий день' : ''
 
   const wrap: React.CSSProperties = { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', width: '100%', boxSizing: 'border-box' }
 
@@ -101,39 +104,56 @@ function WorkDayCard({ date, entry, formats, schedule }: {
           <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)' }}>{fmt?.label ?? dayType}</span>
         </div>
       ) : (
-        // Фиксированная сетка — поля всегда на своих местах; внутри лишь появляются данные.
-        // В выходной поля и кнопка показаны, но неактивны (условия не выполнены).
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '96px 96px 118px 96px', gap: 18, alignItems: 'end' }}>
-            <Field label="Начало">
-              <TimePicker className="w-full" value={start ?? ''} disabled={!canEdit || !canWork} onChange={v => save.mutate({ startTime: v || null })} />
-            </Field>
-            <Field label="Конец">
-              <TimePicker className="w-full" value={end ?? ''} disabled={!canEdit || !canWork || !started} onChange={v => save.mutate({ endTime: v || null })} />
-            </Field>
-            <Field label="Перерыв, мин">
-              <BreakStepper value={breakMin} disabled={!canEdit || !canWork || !started} onChange={v => save.mutate({ breakMin: v })} />
-            </Field>
-            <Field label="Отработано">
-              <div style={{ fontSize: 20, fontWeight: 800, color: worked > 0 ? 'var(--text-1)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: '38px' }}>{worked > 0 ? fmtHM(worked) : '—'}</div>
-            </Field>
+        <>
+          {/* Место работы — где сотрудник работает (базово из графика; можно сменить). Детализация офисов — позже. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 2 }}>Место:</span>
+            {PLACES.map(p => {
+              const sel = dayType === p.key
+              return (
+                <button key={p.key} disabled={!canEdit} onClick={() => save.mutate({ dayFormat: p.key })}
+                  title={!canEdit ? 'Сменить место можно только в текущий день' : ''}
+                  style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: canEdit ? 'pointer' : 'not-allowed', opacity: canEdit ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
+              )
+            })}
           </div>
 
-          {/* Кнопка действия — одинаковый размер во всех стадиях (стабильное выравнивание) */}
-          {finished ? (
-            <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
-          ) : !started ? (
-            <button disabled={!canEdit || !canWork} onClick={() => save.mutate({ dayFormat: dayType, startTime: nowHHMM(), endTime: null })}
-              title={!canWork ? 'Нерабочий день' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit || !canWork)}>Начать рабочий день</button>
-          ) : (
-            <button disabled={!canEdit} onClick={() => save.mutate({ endTime: nowHHMM() })}
-              title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !canEdit)}>Закончить рабочий день</button>
-          )}
-        </div>
+          {/* Фиксированная сетка — поля всегда на своих местах; активность по стадии/дате (подсказка при наведении). */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '96px 96px 118px 96px', gap: 18, alignItems: 'end' }}>
+              <Field label="Начало" hint={startHint}>
+                <TimePicker className="w-full" value={start ?? ''} disabled={!canEdit} onChange={v => save.mutate({ startTime: v || null })} />
+              </Field>
+              <Field label="Конец" hint={endHint}>
+                <TimePicker className="w-full" value={end ?? ''} disabled={!canEdit || !started} onChange={v => save.mutate({ endTime: v || null })} />
+              </Field>
+              <Field label="Перерыв, мин" hint={endHint}>
+                <BreakStepper value={breakMin} disabled={!canEdit || !started} onChange={v => save.mutate({ breakMin: v })} />
+              </Field>
+              <Field label="Отработано">
+                <div style={{ fontSize: 20, fontWeight: 800, color: worked > 0 ? 'var(--text-1)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: '38px' }}>{worked > 0 ? fmtHM(worked) : '—'}</div>
+              </Field>
+            </div>
+
+            {/* Кнопка действия — одинаковый размер во всех стадиях */}
+            {finished ? (
+              <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
+            ) : !started ? (
+              <button disabled={!canEdit} onClick={() => save.mutate({ dayFormat: isWork ? dayType : 'office', startTime: nowHHMM(), endTime: null })}
+                title={!canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit)}>Начать рабочий день</button>
+            ) : (
+              <button disabled={!canEdit} onClick={() => save.mutate({ endTime: nowHHMM() })}
+                title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !canEdit)}>Закончить рабочий день</button>
+            )}
+          </div>
+        </>
       )}
     </div>
   )
 }
+
+// Места работы (базовые). Детализация офисов (3 шт.) и «на проекте» из назначения — отдельным заходом.
+const PLACES = [{ key: 'office', label: 'Офис' }, { key: 'remote', label: 'Удалёнка' }, { key: 'project', label: 'Проект' }]
 
 function Header({ date, isToday, type, typeColor }: { date: string; isToday: boolean; type: string; typeColor: string }) {
   return (
@@ -151,8 +171,8 @@ function Header({ date, isToday, type, typeColor }: { date: string; isToday: boo
 
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6, display: 'block' }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div><label style={lbl}>{label}</label>{children}</div>
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  return <div title={hint || undefined}><label style={lbl}>{label}</label>{children}</div>
 }
 
 // Перерыв — степпер в дизайн-системе (не нативный number-spinner)

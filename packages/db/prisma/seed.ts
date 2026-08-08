@@ -30,12 +30,17 @@ async function main() {
   // Базовый набор (6) — без «донорских» смен (эфир/монтаж/подготовка) и «без оплаты».
   // Дополнительные типы (отгул, отпуск за свой счёт и пр.) HR добавляет через справочник форматов.
   const dayFormats: Array<{ key: string; label: string; isWork: boolean; score: number | null }> = [
+    // Места работы (isWork) — где сотрудник работает:
     { key: 'office',     label: 'Офис',          isWork: true,  score: 0 },
     { key: 'remote',     label: 'Удалёнка',      isWork: true,  score: 0 },
+    { key: 'project',    label: 'Проект',        isWork: true,  score: 0 },
     { key: 'trip',       label: 'Командировка',  isWork: true,  score: 1.5 },
+    // Календарный выходной (сб/вс) — не отдых сотрудника, работать можно:
+    { key: 'weekend',    label: 'Выходной',      isWork: false, score: null },
+    // Отсутствия (работать нельзя / факт «не работал»):
     { key: 'vacation',   label: 'Отпуск',        isWork: false, score: 0.55 },
     { key: 'sick',       label: 'Больничный',    isWork: false, score: 0.55 },
-    { key: 'dayoff',     label: 'Выходной',      isWork: false, score: null },
+    { key: 'dayoff',     label: 'Отгул',         isWork: false, score: null },
   ]
   for (const f of dayFormats) {
     await prisma.dayFormatVersion.upsert({
