@@ -47,6 +47,30 @@ async function resolveApprover(userId: string): Promise<string | null> {
   return admin?.id ?? null
 }
 
+// Отражение одобренной заявки в дне: статус дня = тип заявки (vacation/sick/dayoff) на весь диапазон.
+// Единый источник (DayEntry.status) → виден в кабинете/присутствии/своде/календаре. См. docs/DAY-STATUS-MODEL.md.
+function eachDay(from: string, to: string): string[] {
+  const days: string[] = []
+  let d = new Date(from + 'T00:00:00'); const end = new Date(to + 'T00:00:00')
+  while (d <= end) { days.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 86_400_000) }
+  return days
+}
+async function reflectLeave(r: { userId: string; type: string; dateFrom: string; dateTo: string }) {
+  const ud = await prisma.userDivision.findFirst({ where: { userId: r.userId }, select: { divId: true } })
+  for (const day of eachDay(r.dateFrom, r.dateTo)) {
+    await prisma.dayEntry.upsert({
+      where: { userId_date: { userId: r.userId, date: new Date(day) } },
+      update: { dayFormat: r.type, place: null, startTime: null, endTime: null, breakMin: 0 },
+      create: { userId: r.userId, divisionId: ud?.divId ?? null, date: new Date(day), dayFormat: r.type, breakMin: 0 },
+    })
+  }
+}
+async function unreflectLeave(r: { userId: string; type: string; dateFrom: string; dateTo: string }) {
+  for (const day of eachDay(r.dateFrom, r.dateTo)) {
+    await prisma.dayEntry.deleteMany({ where: { userId: r.userId, date: new Date(day), dayFormat: r.type } })
+  }
+}
+
 export async function requestsRoutes(app: FastifyInstance) {
   // GET /requests/types — реестр типов заявок
   app.get('/types', { preHandler: authenticate }, async () => REQUEST_TYPES)
@@ -93,7 +117,21 @@ export async function requestsRoutes(app: FastifyInstance) {
     if (!existing) return reply.code(404).send({ error: 'Request not found' })
     if (existing.approverId !== user.id && !user.isAdmin) return reply.code(403).send({ error: 'Только согласующий или админ' })
     if (existing.status !== 'pending') return reply.code(400).send({ error: 'Заявка уже обработана' })
-    return prisma.request.update({ where: { id }, data: { status: p.data.decision, decisionNote: p.data.note ?? null, decidedAt: new Date() }, include })
+    const updated = await prisma.request.update({ where: { id }, data: { status: p.data.decision, decisionNote: p.data.note ?? null, decidedAt: new Date() }, include })
+    if (p.data.decision === 'approved') await reflectLeave(existing) // одобрено → проставить статус дней
+    return updated
+  })
+
+  // PATCH /requests/:id/revoke — отозвать одобренную заявку (согласующий/админ): откат статуса дней
+  app.patch('/:id/revoke', { preHandler: authenticate }, async (request, reply) => {
+    const user = (request as any).user as { id: string; isAdmin: boolean }
+    const { id } = request.params as { id: string }
+    const existing = await prisma.request.findUnique({ where: { id } })
+    if (!existing) return reply.code(404).send({ error: 'Request not found' })
+    if (existing.approverId !== user.id && !user.isAdmin) return reply.code(403).send({ error: 'Только согласующий или админ' })
+    if (existing.status !== 'approved') return reply.code(400).send({ error: 'Отозвать можно только одобренную заявку' })
+    await unreflectLeave(existing) // снять статус дней (вернуть к расписанию)
+    return prisma.request.update({ where: { id }, data: { status: 'canceled', decisionNote: 'Отозвано' }, include })
   })
 
   // GET /requests/:id/document — заявление docx (для одобренного отпуска; автор или админ)

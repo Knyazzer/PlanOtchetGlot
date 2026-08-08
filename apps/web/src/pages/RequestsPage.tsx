@@ -40,7 +40,10 @@ export function RequestsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const typeLabel = (k: string) => types.find(t => t.key === k)?.label ?? k
 
-  const invalidate = () => { qc.invalidateQueries({ queryKey: ['requests', 'mine'] }); qc.invalidateQueries({ queryKey: ['requests', 'inbox'] }); qc.invalidateQueries({ queryKey: ['requests:unseen'] }); qc.invalidateQueries({ queryKey: ['notifications'] }) }
+  // Инвалидируем и производные представления одной сущности «статус дня» (кабинет/присутствие/свод) — консистентность.
+  const invalidate = () => {
+    for (const key of [['requests', 'mine'], ['requests', 'inbox'], ['requests:unseen'], ['notifications'], ['day-entries'], ['work-schedule'], ['svod']]) qc.invalidateQueries({ queryKey: key })
+  }
 
   // Открыли вкладку — помечаем ответы по заявкам просмотренными (снимаем badge «новый ответ»)
   useEffect(() => {
@@ -49,8 +52,10 @@ export function RequestsPage() {
   }, [qc])
   const decide = useMutation({ mutationFn: ({ id, decision }: { id: string; decision: 'approved' | 'rejected' }) => api.patch(`/requests/${id}/decision`, { decision }), onSuccess: invalidate })
   const cancel = useMutation({ mutationFn: (id: string) => api.patch(`/requests/${id}/cancel`), onSuccess: invalidate })
+  const revoke = useMutation({ mutationFn: (id: string) => api.patch(`/requests/${id}/revoke`), onSuccess: invalidate })
 
   const inboxPending = inbox.filter(r => r.status === 'pending')
+  const inboxActive = inbox.filter(r => r.status === 'pending' || r.status === 'approved')
 
   async function downloadDoc(id: string) {
     const res = await api.get(`/requests/${id}/document`, { responseType: 'blob' })
@@ -63,19 +68,28 @@ export function RequestsPage() {
       <div style={{ maxWidth: 860, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
 
         {/* На согласовании — только если есть входящие (руководитель) */}
-        {inboxPending.length > 0 && (
+        {inboxActive.length > 0 && (
           <section>
-            <SectionTitle>На согласовании <Count n={inboxPending.length} color={ROLE.warning} /></SectionTitle>
+            <SectionTitle>На согласовании {inboxPending.length > 0 && <Count n={inboxPending.length} color={ROLE.warning} />}</SectionTitle>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {inboxPending.map(r => (
+              {inboxActive.map(r => (
                 <div key={r.id} style={cardStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <TypeBadge label={typeLabel(r.type)} />
                     <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{formatName(r.user.name)}</span>
                     <span style={{ fontSize: 13, color: 'var(--text-2)' }}>{fmtRange(r.dateFrom, r.dateTo)}</span>
                     <div style={{ flex: 1 }} />
-                    <button onClick={() => decide.mutate({ id: r.id, decision: 'approved' })} style={btn(ROLE.success)}>Одобрить</button>
-                    <button onClick={() => decide.mutate({ id: r.id, decision: 'rejected' })} style={btnOutline(ROLE.danger)}>Отклонить</button>
+                    {r.status === 'pending' ? (
+                      <>
+                        <button onClick={() => decide.mutate({ id: r.id, decision: 'approved' })} style={btn(ROLE.success)}>Одобрить</button>
+                        <button onClick={() => decide.mutate({ id: r.id, decision: 'rejected' })} style={btnOutline(ROLE.danger)}>Отклонить</button>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: ROLE.success + '22', color: ROLE.success }}>Одобрено</span>
+                        <button onClick={() => { if (confirm('Отозвать одобренную заявку? Дни вернутся к расписанию.')) revoke.mutate(r.id) }} style={btnOutline('var(--text-muted)')}>Отозвать</button>
+                      </>
+                    )}
                   </div>
                   {r.comment && <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 8, whiteSpace: 'pre-wrap' }}>{r.comment}</div>}
                 </div>
