@@ -4,6 +4,7 @@ import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
 import { prisma } from '@nexus/db'
 import { requestsRoutes } from './requests'
+import { buildVacationDoc } from '../services/requestDocx'
 
 // Заявки: автор создаёт → согласующий (руководитель отдела) одобряет/отклоняет; чужой — 403; автор отменяет.
 
@@ -108,5 +109,12 @@ describe('/requests — гарды и флоу', () => {
     const byAuthor = await app.inject({ method: 'PATCH', url: `/requests/${id}/cancel`, headers: hdr(authorToken) })
     expect(byAuthor.statusCode).toBe(200)
     expect(byAuthor.json().status).toBe('canceled')
+  })
+})
+
+describe('docx-заявление на отпуск', () => {
+  it('генерит непустой .docx-буфер', async () => {
+    const buf = await buildVacationDoc({ name: 'Иванов Иван Иванович', position: 'оператор', dateFrom: '2026-09-01', dateTo: '2026-09-14', submittedAt: '2026-08-08' })
+    expect(buf.length).toBeGreaterThan(500)
   })
 })

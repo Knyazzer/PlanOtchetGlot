@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { Plus, FileDown } from 'lucide-react'
 import { api } from '../lib/api'
 import { ROLE } from '../lib/roleColors'
 import { DatePicker } from '../ui-kit/components/DatePicker'
@@ -45,6 +45,12 @@ export function RequestsPage() {
   const cancel = useMutation({ mutationFn: (id: string) => api.patch(`/requests/${id}/cancel`), onSuccess: invalidate })
 
   const inboxPending = inbox.filter(r => r.status === 'pending')
+
+  async function downloadDoc(id: string) {
+    const res = await api.get(`/requests/${id}/document`, { responseType: 'blob' })
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'zayavlenie-otpusk.docx'; a.click(); URL.revokeObjectURL(url)
+  }
 
   return (
     <div style={{ padding: '28px 32px', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
@@ -92,6 +98,9 @@ export function RequestsPage() {
                       <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>{fmtRange(r.dateFrom, r.dateTo)}</span>
                       <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 20, background: st.color + '22', color: st.color }}>{st.label}</span>
                       <div style={{ flex: 1 }} />
+                      {r.status === 'approved' && r.type === 'vacation' && (
+                        <button onClick={() => downloadDoc(r.id)} style={{ ...btnOutline(ROLE.primary), display: 'inline-flex', alignItems: 'center', gap: 6 }}><FileDown size={14} /> Скачать заявление</button>
+                      )}
                       {r.status === 'pending' && <button onClick={() => cancel.mutate(r.id)} style={btnOutline('var(--text-muted)')}>Отменить</button>}
                     </div>
                     {r.comment && <div style={{ fontSize: 13, color: 'var(--text-2)', marginTop: 8, whiteSpace: 'pre-wrap' }}>{r.comment}</div>}

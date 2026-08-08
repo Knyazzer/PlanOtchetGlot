@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@nexus/db'
 import { authenticate } from '../plugins/auth'
+import { buildVacationDoc } from '../services/requestDocx'
 
 // Заявки сотрудника (отпуск/больничный/отгул) → согласование руководителем. См. docs/REQUESTS-MODULE.md
 export const REQUEST_TYPES = [
@@ -82,6 +83,21 @@ export async function requestsRoutes(app: FastifyInstance) {
     if (existing.approverId !== user.id && !user.isAdmin) return reply.code(403).send({ error: 'Только согласующий или админ' })
     if (existing.status !== 'pending') return reply.code(400).send({ error: 'Заявка уже обработана' })
     return prisma.request.update({ where: { id }, data: { status: p.data.decision, decisionNote: p.data.note ?? null, decidedAt: new Date() }, include })
+  })
+
+  // GET /requests/:id/document — заявление docx (для одобренного отпуска; автор или админ)
+  app.get('/:id/document', { preHandler: authenticate }, async (request, reply) => {
+    const user = (request as any).user as { id: string; isAdmin: boolean }
+    const { id } = request.params as { id: string }
+    const req = await prisma.request.findUnique({ where: { id }, include: { user: { select: { name: true, position: true } } } })
+    if (!req) return reply.code(404).send({ error: 'Request not found' })
+    if (req.userId !== user.id && !user.isAdmin) return reply.code(403).send({ error: 'Только автор или админ' })
+    if (req.type !== 'vacation') return reply.code(400).send({ error: 'Заявление доступно только для отпуска' })
+    if (req.status !== 'approved') return reply.code(400).send({ error: 'Заявление доступно после одобрения' })
+    const buffer = await buildVacationDoc({ name: req.user.name, position: req.user.position, dateFrom: req.dateFrom, dateTo: req.dateTo, submittedAt: req.createdAt.toISOString().slice(0, 10) })
+    reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    reply.header('Content-Disposition', `attachment; filename="zayavlenie-otpusk-${id}.docx"`)
+    return reply.send(buffer)
   })
 
   // PATCH /requests/:id/cancel — отменить свою pending-заявку (автор)
