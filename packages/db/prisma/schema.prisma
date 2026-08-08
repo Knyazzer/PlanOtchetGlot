@@ -102,6 +102,18 @@ model Request {
   @@schema("nexus")
 }
 
+// Цели компании — тезисы для микро-блока на Пульсе (видят все, правит админ). Простой список.
+model CompanyGoal {
+  id        String   @id @default(uuid())
+  text      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("company_goals")
+  @@schema("nexus")
+}
+
 model Department {
   id         String     @id @default(uuid())
   name       String

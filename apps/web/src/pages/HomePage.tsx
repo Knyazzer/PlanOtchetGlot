@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, Users, Search, MessageSquare, Send, X, ChevronLeft, ChevronRight, Plus, Minus, Download, ArrowUp } from 'lucide-react'
+import { Trash2, Users, Search, MessageSquare, Send, X, ChevronLeft, ChevronRight, Plus, Minus, Download, ArrowUp, Target, Pencil } from 'lucide-react'
 import { api } from '../lib/api'
 import { useAuthStore } from '../stores/auth'
 import { formatName } from '../lib/utils'
@@ -64,6 +64,7 @@ export function HomePage({ onOpenChat }: { onOpenChat?: (userId: string) => void
         {/* Слева — узкая колонка: сводка месяца + кто сегодня на смене (компактные виджеты) */}
         <div style={{ flex: '1 1 300px', minWidth: 300, maxWidth: 380, display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
           <ProductionMonthCard />
+          <CompanyGoalsCard />
           <WhoWorks onOpenChat={onOpenChat} />
         </div>
         {/* Справа — широкая колонка: неделя (7 дней) + лента новостей (первичный контент) */}
@@ -384,6 +385,89 @@ function ProductionMonthCard() {
         </div>
       )}
     </div>
+  )
+}
+
+// ── Цели компании — микро-инфоблок (тезисы). Читают все; правит админ. ─────────────────────────
+interface Goal { id: string; text: string }
+function CompanyGoalsCard() {
+  const isAdmin = useAuthStore(s => s.user?.isAdmin)
+  const qc = useQueryClient()
+  const { data: goals = [] } = useQuery<Goal[]>({ queryKey: ['company-goals'], queryFn: () => api.get('/company-goals').then(r => r.data), staleTime: 300_000 })
+  const [edit, setEdit] = useState(false)
+  const [detail, setDetail] = useState(false)
+  const MAX = 4
+
+  return (
+    <div style={{ ...CARD, padding: '14px 16px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: goals.length ? 10 : 0 }}>
+        <Target size={15} style={{ color: 'var(--text-muted)' }} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)', flex: 1, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Цели компании</span>
+        {isAdmin && <button onClick={() => setEdit(true)} title="Изменить" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 2 }}><Pencil size={13} /></button>}
+      </div>
+      {goals.length === 0 ? (
+        <div style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>{isAdmin ? 'Задайте цели компании — кнопка ✎' : 'Цели пока не заданы'}</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {goals.slice(0, MAX).map(g => (
+            <div key={g.id} style={{ display: 'flex', gap: 8, fontSize: 13.5, color: 'var(--text-2)', lineHeight: 1.4 }}>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: ROLE.primary, marginTop: 6, flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{g.text}</span>
+            </div>
+          ))}
+          {goals.length > MAX && <button onClick={() => setDetail(true)} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: ROLE.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: '2px 0', fontFamily: 'Inter,sans-serif' }}>Ещё {goals.length - MAX} →</button>}
+        </div>
+      )}
+      {detail && <GoalsModal title="Цели компании" onClose={() => setDetail(false)}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {goals.map(g => (
+            <div key={g.id} style={{ display: 'flex', gap: 9, fontSize: 14, color: 'var(--text-1)', lineHeight: 1.45 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: ROLE.primary, marginTop: 6, flexShrink: 0 }} />
+              <span style={{ whiteSpace: 'pre-wrap' }}>{g.text}</span>
+            </div>
+          ))}
+        </div>
+      </GoalsModal>}
+      {edit && <EditGoalsModal goals={goals} onClose={() => setEdit(false)} onSaved={() => qc.invalidateQueries({ queryKey: ['company-goals'] })} />}
+    </div>
+  )
+}
+
+// Обёртка-модал (по правилу попапов, без блюра)
+function GoalsModal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  const down = useRef(false)
+  return (
+    <div onMouseDown={e => { down.current = e.target === e.currentTarget }} onMouseUp={e => { if (down.current && e.target === e.currentTarget) onClose(); down.current = false }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onMouseDown={e => e.stopPropagation()} style={{ width: 460, maxWidth: '100%', maxHeight: '80vh', overflowY: 'auto', background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 16, padding: 22, boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>{title}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}><X size={18} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function EditGoalsModal({ goals, onClose, onSaved }: { goals: Goal[]; onClose: () => void; onSaved: () => void }) {
+  const [text, setText] = useState(goals.map(g => g.text).join('\n'))
+  const save = useMutation({
+    mutationFn: () => api.put('/company-goals', { goals: text.split('\n').map(s => s.trim()).filter(Boolean) }),
+    onSuccess: () => { onSaved(); onClose() },
+    onError: (e: unknown) => { const err = e as { response?: { data?: { error?: string } } }; alert(err?.response?.data?.error ?? 'Не удалось сохранить') },
+  })
+  return (
+    <GoalsModal title="Цели компании — редактирование" onClose={onClose}>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Одна цель — одна строка.</div>
+      <textarea value={text} onChange={e => setText(e.target.value)} rows={8}
+        placeholder={'Выйти на 1000+ пользователей\nЗапустить 3 новых продукта\n…'}
+        style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', resize: 'vertical', lineHeight: 1.5 }} />
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+        <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>Отмена</button>
+        <button onClick={() => save.mutate()} disabled={save.isPending} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>{save.isPending ? '…' : 'Сохранить'}</button>
+      </div>
+    </GoalsModal>
   )
 }
 
