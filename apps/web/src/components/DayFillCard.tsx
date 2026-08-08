@@ -83,11 +83,11 @@ function WorkDayCard({ date, entry, formats, schedule }: {
     : isToday ? Math.max(0, nowMin - s0 - breakMin)
     : 0
 
-  const isAbsentMarked = !!entry && !isWork   // нерабочий день (больничный/отпуск) — ставится в отдельном функционале
   const started = !!start
   const finished = !!start && !!end
-  // Редактировать факт можно только в текущий день; прошлые/будущие — только просмотр.
-  const canEdit = isToday
+  const canEdit = isToday                        // править факт можно только в текущий день
+  const canWork = isWork                         // рабочий ли день по типу (в выходной поля/кнопка неактивны)
+  const isAbsence = ['sick', 'vacation', 'unpaid'].includes(dayType) // отсутствие — крупным статусом (управление в «Заявках»)
 
   const wrap: React.CSSProperties = { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', width: '100%', boxSizing: 'border-box' }
 
@@ -95,23 +95,23 @@ function WorkDayCard({ date, entry, formats, schedule }: {
     <div style={wrap}>
       <Header date={date} isToday={isToday} type={fmt?.label ?? dayType} typeColor={isWork ? 'var(--accent-s)' : 'var(--text-muted)'} />
 
-      {isAbsentMarked ? (
-        // День отмечен как отсутствие — крупным статусом (управление — в разделе заявок/отсутствий)
+      {isAbsence ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12 }}>
           <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)' }}>{fmt?.label ?? dayType}</span>
         </div>
       ) : (
-        // Все элементы показаны всегда; активность зависит от стадии и от того, текущий ли день.
+        // Фиксированная сетка — поля всегда на своих местах; внутри лишь появляются данные.
+        // В выходной поля и кнопка показаны, но неактивны (условия не выполнены).
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: 18, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '96px 96px 118px 96px', gap: 18, alignItems: 'end' }}>
             <Field label="Начало">
-              <TimePicker value={start ?? ''} disabled={!canEdit} onChange={v => save.mutate({ startTime: v || null })} />
+              <TimePicker className="w-full" value={start ?? ''} disabled={!canEdit || !canWork} onChange={v => save.mutate({ startTime: v || null })} />
             </Field>
             <Field label="Конец">
-              <TimePicker value={end ?? ''} disabled={!canEdit || !started} onChange={v => save.mutate({ endTime: v || null })} />
+              <TimePicker className="w-full" value={end ?? ''} disabled={!canEdit || !canWork || !started} onChange={v => save.mutate({ endTime: v || null })} />
             </Field>
             <Field label="Перерыв, мин">
-              <BreakStepper value={breakMin} disabled={!canEdit || !started} onChange={v => save.mutate({ breakMin: v })} />
+              <BreakStepper value={breakMin} disabled={!canEdit || !canWork || !started} onChange={v => save.mutate({ breakMin: v })} />
             </Field>
             <Field label="Отработано">
               <div style={{ fontSize: 20, fontWeight: 800, color: worked > 0 ? 'var(--text-1)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: '38px' }}>{worked > 0 ? fmtHM(worked) : '—'}</div>
@@ -122,8 +122,8 @@ function WorkDayCard({ date, entry, formats, schedule }: {
           {finished ? (
             <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
           ) : !started ? (
-            <button disabled={!canEdit} onClick={() => save.mutate({ dayFormat: isWork ? dayType : 'office', startTime: nowHHMM(), endTime: null })}
-              title={!canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit)}>Начать рабочий день</button>
+            <button disabled={!canEdit || !canWork} onClick={() => save.mutate({ dayFormat: dayType, startTime: nowHHMM(), endTime: null })}
+              title={!canWork ? 'Нерабочий день' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit || !canWork)}>Начать рабочий день</button>
           ) : (
             <button disabled={!canEdit} onClick={() => save.mutate({ endTime: nowHHMM() })}
               title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !canEdit)}>Закончить рабочий день</button>
