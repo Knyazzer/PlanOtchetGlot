@@ -53,6 +53,13 @@ export function CalendarPage() {
     staleTime: 0, refetchOnMount: 'always',
     refetchInterval: 30_000, refetchIntervalInBackground: false,
   })
+  // Мои отсутствия (из статуса дня DayEntry — единый источник; заявки отражаются сюда). Read-only.
+  const { data: myDays = [] } = useQuery<Array<{ date: string; dayFormat: string }>>({
+    queryKey: ['day-entries', from, to],
+    queryFn:  () => api.get(`/day-entries?from=${from}&to=${to}`).then(r => r.data),
+    staleTime: 0, refetchOnMount: 'always',
+    refetchInterval: 30_000, refetchIntervalInBackground: false,
+  })
 
   const allEvents = useMemo<CalEvent[]>(() => {
     const evts: CalEvent[] = apiEvents.map(e => ({
@@ -69,8 +76,17 @@ export function CalendarPage() {
       color: TYPE_COLOR[e.type] ?? '#0EA5E9',
       type: e.type, isAllDay: e.isAllDay, source: 'entry',
     }))
-    return [...evts, ...entries]
-  }, [apiEvents, apiEntries])
+    // отсутствия из статуса дня → all-day записи в HR-категориях (те же цвета/фильтры)
+    const DAY_LABEL: Record<string, string> = { vacation: 'Отпуск', sick: 'Больничный', dayoff: 'Отгул' }
+    const DAY_TYPE: Record<string, string> = { vacation: 'hr_vacation', sick: 'hr_sick', dayoff: 'hr_dayoff' }
+    const days: CalEvent[] = myDays.filter(d => DAY_TYPE[d.dayFormat]).map(d => ({
+      id: `day:${d.date.slice(0, 10)}`, title: DAY_LABEL[d.dayFormat],
+      date: d.date.slice(0, 10), start: '00:00', end: '23:59',
+      color: TYPE_COLOR[DAY_TYPE[d.dayFormat]] ?? '#0EA5E9',
+      type: DAY_TYPE[d.dayFormat], isAllDay: true, source: 'day',
+    }))
+    return [...evts, ...entries, ...days]
+  }, [apiEvents, apiEntries, myDays])
 
   function catKey(evt: CalEvent) { return evt.source === 'event' ? 'my_events' : evt.type }
   function eventsFor(ymd: string): CalEvent[] {
@@ -109,6 +125,7 @@ export function CalendarPage() {
     setModal(next); snapshotRef.current = modalKey(next); setConfirmClose(false)
   }
   function openEdit(evt: CalEvent) {
+    if (evt.source === 'day') return // отсутствие из статуса дня — read-only (управляется заявками/карточкой дня)
     if (evt.source === 'entry') {
       const entry = apiEntries.find(e => e.id === evt.id)
       if (!entry || !isAdmin) return

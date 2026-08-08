@@ -24,7 +24,7 @@ export interface ApiMember {
 
 export interface CalEvent {
   id: string; title: string; date: string; start: string; end: string
-  color: string; type: string; isAllDay: boolean; source: 'event' | 'entry'
+  color: string; type: string; isAllDay: boolean; source: 'event' | 'entry' | 'day'
   location?: string[]
 }
 
