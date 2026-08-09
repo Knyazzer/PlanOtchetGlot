@@ -5,7 +5,10 @@
     "AppShell",
     "DatePicker",
     "TimePicker",
-    "ClockDial"
+    "ClockDial",
+    "primitives",
+    "Combobox",
+    "Select"
   ],
   "tokens": true,
   "forked": []

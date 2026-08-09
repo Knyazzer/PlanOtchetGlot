@@ -167,3 +167,18 @@
   .sidebar-dark svg,
   .sidebar-dark img { display: block; vertical-align: middle; }  /* иконки/лого — block, как в preflight (без inline-сдвига) */
 }
+
+/* ── Radix-порталы (Select/Combobox/Popover, position="popper") портируют контент в <body>,
+   ВНЕ `.sidebar-dark` → без среза preflight выпадашки рисуются с браузерной «чёрной окантовкой»
+   и кривым box-model. Реплицируем тот же сброс на popper-wrapper (токены темы приходят с <html>). */
+@layer base {
+  [data-radix-popper-content-wrapper], [data-radix-popper-content-wrapper] *,
+  [data-radix-popper-content-wrapper] ::before, [data-radix-popper-content-wrapper] ::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;   /* иначе Tailwind-класс `border` (border-width) без style:solid не рисуется, и вылезает дефолт */
+  }
+  [data-radix-popper-content-wrapper] svg,
+  [data-radix-popper-content-wrapper] img { display: block; vertical-align: middle; }
+}

@@ -3,6 +3,7 @@ import { api } from '../lib/api'
 import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
 import { ROLE } from '../lib/roleColors'
 import { TimePicker } from '../ui-kit/components/TimePicker'
+import { Tooltip } from './Tooltip'
 
 // «Мой рабочий день»: одна кнопка Начать/Закончить (без живого таймера). Поля появляются по стадии —
 // начали → «Начало» + «Перерыв»; закончили → добавляется «Конец» + итог «Отработано». Время правится
@@ -102,6 +103,9 @@ function WorkDayCard({ date, entry, formats, schedule }: {
   // Календарный выходной (weekend) — рабочий (можно начать). Отпуск/больничный/отгул — статус-метка.
   // TODO: «работать во время отпуска/больничного» без потери статуса требует отдельного поля места (схема).
   const isAbsence = ['vacation', 'sick', 'dayoff'].includes(dayType)
+  // Контролы дня отображаются ВСЕГДА (вёрстка не скачет), но на отпуске/больничном/отгуле неактивны.
+  // (Работа во время отпуска/больничного — отдельная фича, TODO ниже.)
+  const interactive = canEdit && !isAbsence
   // План (расписание) vs факт (override). Статус/место можно вернуть к расписанию.
   const placeOverridden = dayType !== expectedStatus || place !== expectedPlace
   const resetToSchedule = () => { if (started) save.mutate({ dayFormat: expectedStatus, place: expectedPlace }); else deleteDay.mutate() }
@@ -116,12 +120,8 @@ function WorkDayCard({ date, entry, formats, schedule }: {
     <div style={wrap}>
       <Header date={date} isToday={isToday} type={fmt?.label ?? dayType} typeColor={isWork ? 'var(--accent-s)' : 'var(--text-muted)'} />
 
-      {isAbsence ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12 }}>
-          <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-1)' }}>{fmt?.label ?? dayType}</span>
-        </div>
-      ) : (
-        <>
+      {/* Контролы всегда на месте (вёрстка не скачет); на отпуске/больничном/отгуле — неактивны */}
+      <>
           {/* Место работы — где сотрудник работает (базово из графика; можно сменить). Детализация офисов — позже. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 2 }}>Место:</span>
@@ -129,12 +129,12 @@ function WorkDayCard({ date, entry, formats, schedule }: {
               const sel = place === p.key
               // Выбор места = где работает. В календарный выходной выбор места делает день рабочим (статус working).
               return (
-                <button key={p.key} disabled={!canEdit} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
-                  title={!canEdit ? 'Сменить место можно только в текущий день' : ''}
-                  style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: canEdit ? 'pointer' : 'not-allowed', opacity: canEdit ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
+                <button key={p.key} disabled={!interactive} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                  title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !canEdit ? 'Сменить место можно только в текущий день' : ''}
+                  style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: interactive ? 'pointer' : 'not-allowed', opacity: interactive ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
               )
             })}
-            {canEdit && placeOverridden
+            {interactive && placeOverridden
               ? <button onClick={resetToSchedule} title="Вернуть к расписанию (план)"
                   style={{ marginLeft: 4, padding: '4px 10px', borderRadius: 20, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>↺ По расписанию</button>
               : !placeOverridden && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>по расписанию</span>}
@@ -144,13 +144,13 @@ function WorkDayCard({ date, entry, formats, schedule }: {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '96px 96px 118px 96px', gap: 18, alignItems: 'end' }}>
               <Field label="Начало" hint={startHint}>
-                <TimePicker className="w-full" value={start ?? ''} disabled={!canEdit || !started} onChange={v => save.mutate({ startTime: v || null })} />
+                <TimePicker className="w-full" value={start ?? ''} disabled={!interactive || !started} onChange={v => save.mutate({ startTime: v || null })} />
               </Field>
               <Field label="Конец" hint={endHint}>
-                <TimePicker className="w-full" value={end ?? ''} disabled={!canEdit || !finished} onChange={v => save.mutate({ endTime: v || null })} />
+                <TimePicker className="w-full" value={end ?? ''} disabled={!interactive || !finished} onChange={v => save.mutate({ endTime: v || null })} />
               </Field>
               <Field label="Перерыв, мин" hint={breakHint}>
-                <BreakStepper value={breakMin} disabled={!canEdit || !started} onChange={v => save.mutate({ breakMin: v })} />
+                <BreakStepper value={breakMin} disabled={!interactive || !started} onChange={v => save.mutate({ breakMin: v })} />
               </Field>
               <Field label="Отработано">
                 <div style={{ fontSize: 20, fontWeight: 800, color: worked > 0 ? 'var(--text-1)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: '38px' }}>{worked > 0 ? fmtHM(worked) : '—'}</div>
@@ -161,15 +161,14 @@ function WorkDayCard({ date, entry, formats, schedule }: {
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
             ) : !started ? (
-              <button disabled={!canEdit || !place} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
-                title={!place ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !canEdit || !place)}>Начать рабочий день</button>
+              <button disabled={!interactive || !place} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !place ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !interactive || !place)}>Начать рабочий день</button>
             ) : (
-              <button disabled={!canEdit} onClick={() => save.mutate({ endTime: nowHHMM() })}
-                title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !canEdit)}>Закончить рабочий день</button>
+              <button disabled={!interactive} onClick={() => save.mutate({ endTime: nowHHMM() })}
+                title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
             )}
           </div>
-        </>
-      )}
+      </>
     </div>
   )
 }
@@ -194,7 +193,9 @@ function Header({ date, isToday, type, typeColor }: { date: string; isToday: boo
 const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6, display: 'block' }
 
 function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
-  return <div title={hint || undefined}><label style={lbl}>{label}</label>{children}</div>
+  // Подпись поля с нашим Tooltip (не нативный title) — объясняет, почему поле неактивно
+  const lab = <label style={{ ...lbl, cursor: hint ? 'help' : 'default' }}>{label}</label>
+  return <div>{hint ? <Tooltip text={hint}>{lab}</Tooltip> : lab}{children}</div>
 }
 
 // Перерыв — степпер в дизайн-системе (не нативный number-spinner)
