@@ -171,11 +171,14 @@ export function DashboardPage() {
 
   // Рабочий набор дня: мои задачи, взятые в работу на этот день (inprogress) + выполненные в этот день.
   // Единый источник дня — startDate; авто-переноса нет (переключил день → показываются только его задачи).
-  const dayTasks = regularTasks.filter(t =>
-    t.assignee.id === currentUser?.id &&
-    (t.status === 'inprogress' || t.status === 'done') &&
-    toDay(t.startDate) === selDate,
-  )
+  const dayTasks = regularTasks
+    .filter(t =>
+      t.assignee.id === currentUser?.id &&
+      (t.status === 'inprogress' || t.status === 'done') &&
+      toDay(t.startDate) === selDate,
+    )
+    // Порядок = порядок создания: последняя добавленная снизу (ручной порядок — кусок №2)
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
 
   const sortedEvents = [...dayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
