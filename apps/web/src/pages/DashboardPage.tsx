@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
@@ -7,6 +7,13 @@ import type { Task } from './TasksPage'
 import { DayFillCard } from '../components/DayFillCard'
 import { MonthStrip } from '../components/MonthStrip'
 import { ROLE } from '../lib/roleColors'
+import { Combobox } from '../ui-kit/components/Combobox'
+import { TimePicker } from '../ui-kit/components/TimePicker'
+import { DataTable, EditableCell } from '../ui-kit/components/DataTable'
+import { Tooltip } from '../components/Tooltip'
+import { cn } from '../ui-kit/lib/cn'
+import { Maximize2 } from 'lucide-react'
+import type { ColumnDef } from '@tanstack/react-table'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -137,7 +144,6 @@ export function DashboardPage() {
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [editTask,        setEditTask]        = useState<Task | null>(null)
   const [viewEventId,     setViewEventId]     = useState<string | null>(null)
-  const [dlThreshold,     setDlThreshold]     = useState<1 | 3 | 7>(7)
 
   const isToday   = selDate === todayStr
   const dayShort  = new Date(selDate + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
@@ -156,27 +162,20 @@ export function DashboardPage() {
 
 
   const doneMut = useMutation({
-    mutationFn: (id: string) => api.patch(`/tasks/${id}`, { status: 'done' }),
+    mutationFn: (t: Task) => api.patch(`/tasks/${t.id}`, { status: t.status === 'done' ? 'inprogress' : 'done' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
   })
 
   // Only regular (non-calendar) tasks
   const regularTasks = allTasks.filter(t => !t.calendarEventId)
 
-  const dayTasks = regularTasks.filter(t => {
-    if (t.status === 'done') return false
-    const started = toDay(t.startDate) <= selDate
-    const notPast = !t.deadline || toDay(t.deadline) >= selDate
-    return started && notPast
-  })
-
-  const deadlineTasks = regularTasks
-    .filter(t => {
-      if (!t.deadline || t.status === 'done') return false
-      const days = daysDiff(t.deadline)
-      return days <= dlThreshold
-    })
-    .sort((a, b) => a.deadline!.localeCompare(b.deadline!))
+  // Рабочий набор дня: мои задачи, взятые в работу на этот день (inprogress) + выполненные в этот день.
+  // Единый источник дня — startDate; авто-переноса нет (переключил день → показываются только его задачи).
+  const dayTasks = regularTasks.filter(t =>
+    t.assignee.id === currentUser?.id &&
+    (t.status === 'inprogress' || t.status === 'done') &&
+    toDay(t.startDate) === selDate,
+  )
 
   const sortedEvents = [...dayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
@@ -209,72 +208,17 @@ export function DashboardPage() {
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
 
-        {/* ── Задачи на сегодня ── */}
-        <div style={card}>
-          <div style={colTitle}>
-            <span>Задачи на {isToday ? 'сегодня' : dayShort}</span>
-            <button style={addBtn} title="Новая задача" onClick={() => setShowCreateTask(true)}>+</button>
-          </div>
-          {dayTasks.length === 0
-            ? <div style={emptyText}>Нет активных задач</div>
-            : dayTasks.map(t => {
-                const isAssignee = t.assignee.id === currentUser?.id
-                return (
-                  <div
-                    key={t.id}
-                    style={rowStyle}
-                    onClick={() => setEditTask(t)}
-                  >
-                    <button
-                      disabled={!isAssignee || doneMut.isPending}
-                      onClick={e => { e.stopPropagation(); if (isAssignee) doneMut.mutate(t.id) }}
-                      title={!isAssignee ? 'Только исполнитель может отметить' : 'Отметить выполненной'}
-                      style={{ width:18, height:18, borderRadius:5, border:'1.5px solid var(--border)', background:'none', cursor: isAssignee ? 'pointer' : 'default', flexShrink:0, marginTop:1, opacity: isAssignee ? 1 : 0.4 }}
-                    />
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', lineHeight:1.4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
-                      <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4, flexWrap:'wrap' }}>
-                        <span style={{ fontSize:12, padding:'1px 7px', borderRadius:20, background:'rgba(255,255,255,0.04)', border:'1px solid var(--border)', color:'var(--text-muted)', display:'inline-flex', alignItems:'center', gap:3 }}>
-                          <span style={{ fontSize:12 }}>◈</span> Не выбран
-                        </span>
-                        {t.deadline && <DeadlineBadge days={daysDiff(t.deadline)} />}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
-          }
-        </div>
-
-        {/* ── Дедлайны ── */}
-        <div style={card}>
-          <div style={colTitle}>
-            <span>Дедлайны</span>
-            <div style={{ display:'flex', gap:4 }}>
-              {([1,3,7] as const).map(d => (
-                <button
-                  key={d}
-                  onClick={() => setDlThreshold(d)}
-                  style={{ padding:'2px 8px', borderRadius:20, border:`1px solid ${dlThreshold === d ? 'var(--accent-s)' : 'var(--border)'}`, background: dlThreshold === d ? 'rgba(123,97,255,0.15)' : 'none', color: dlThreshold === d ? 'var(--accent-s)' : 'var(--text-muted)', fontFamily:'Inter,sans-serif', fontSize:12, fontWeight:700, cursor:'pointer' }}
-                >{d}д</button>
-              ))}
-            </div>
-          </div>
-          {deadlineTasks.length === 0
-            ? <div style={emptyText}>Нет дедлайнов в ближайшие {dlThreshold} дн.</div>
-            : deadlineTasks.map(t => (
-                <div key={t.id} style={{ ...rowStyle, alignItems:'center' }} onClick={() => setEditTask(t)}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{t.title}</div>
-                    <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>
-                      {new Date(t.deadline!).toLocaleDateString('ru-RU', { day:'numeric', month:'short' })}
-                    </div>
-                  </div>
-                  <DeadlineBadge days={daysDiff(t.deadline!)} />
-                </div>
-              ))
-          }
-        </div>
+        {/* ── Задачи на сегодня — таблица с быстрым созданием (клик по строке → полная карточка) ── */}
+        <TodayTasksTable
+          title={`Задачи на ${isToday ? 'сегодня' : dayShort}`}
+          tasks={dayTasks}
+          meId={currentUser?.id}
+          day={selDate}
+          onOpen={t => setEditTask(t)}
+          onToggle={t => doneMut.mutate(t)}
+          onChanged={() => qc.invalidateQueries({ queryKey: ['tasks'] })}
+          onAdd={() => setShowCreateTask(true)}
+        />
 
         {/* ── События сегодня ── */}
         <div style={card}>
@@ -322,7 +266,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <PersonalGoalsCard />
+      <DeptGoalsCard />
 
       {/* Modals */}
       {showCreateTask && (
@@ -419,6 +363,125 @@ function EditPersonalGoalsModal({ goals, onClose, onSaved }: { goals: PGoal[]; o
           <button onClick={() => put.mutate()} disabled={put.isPending} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>{put.isPending ? '…' : 'Сохранить'}</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Задачи на сегодня: канон DataTable (TanStack). Иконка-открыть слева; «Добавить задачу» — inline-строка ──
+type Draft = { client: string; projectId: string; title: string; time: string }
+const DRAFT_ID = '__draft__'
+// В светлой теме чипы (выпадашка/время) — белые, как фон таблицы (не серые surface-2)
+const chipWhite = 'w-full !bg-[var(--surface)]'
+
+function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged, onAdd: _onAdd }: {
+  title: string; tasks: Task[]; meId?: string; day: string
+  onOpen: (t: Task) => void; onToggle: (t: Task) => void; onChanged: () => void; onAdd: () => void
+}) {
+  const { data: projects = [] } = useQuery<Array<{ id: string; title: string }>>({ queryKey: ['projects'], queryFn: () => api.get('/projects').then(r => r.data), staleTime: 300_000 })
+  const { data: clients = [] } = useQuery<Array<{ id: string; name: string }>>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data), staleTime: 300_000 })
+  const patch = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => api.patch(`/tasks/${id}`, data), onSuccess: onChanged, onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось сохранить') })
+  const [draft, setDraft] = useState<Draft | null>(null)
+  const projectOpts = projects.map(p => ({ value: p.id, label: p.title }))
+  const clientOpts = clients.map(c => ({ value: c.name, label: c.name }))
+  const toMinutes = (hhmm: string) => { if (!hhmm) return null; const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
+  const toHHMM = (min?: number | null) => min ? `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` : ''
+
+  const create = useMutation({
+    mutationFn: (d: Draft) => api.post('/tasks', { title: d.title.trim(), assigneeId: meId, status: 'inprogress', startDate: day, client: d.client || null, projectId: d.projectId || null, plannedMinutes: toMinutes(d.time) }),
+    onSuccess: () => { setDraft(null); onChanged() },
+    onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось создать задачу'),
+  })
+
+  // Клик вне строки-черновика: заполнено название → создать; пусто → отменить (убрать строку).
+  // Клики внутри самой строки (ячейки помечены data-draft-cell) и в открытых радикс-попапах — игнор.
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  const draftActive = !!draft
+  useEffect(() => {
+    if (!draftActive) return
+    const onDown = (e: MouseEvent) => {
+      const el = e.target as HTMLElement
+      if (el.closest('[data-draft-cell]') || el.closest('[data-radix-popper-content-wrapper]')) return
+      const d = draftRef.current
+      if (d?.title.trim() && meId) create.mutate(d)
+      else setDraft(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [draftActive, meId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Черновик рисуется как обычная строка (Task-образный объект)
+  const draftRow = draft ? ({ id: DRAFT_ID, title: draft.title, client: draft.client || null, projectId: draft.projectId || null, plannedMinutes: toMinutes(draft.time), status: 'backlog', assignee: { id: meId ?? '', name: '' } } as unknown as Task) : null
+  const rows = draftRow ? [...tasks, draftRow] : tasks
+
+  const columns = useMemo<ColumnDef<Task, unknown>[]>(() => [
+    { id: 'open', header: '', enableSorting: false, meta: { width: '34px' },
+      cell: ({ row }) => row.original.id === DRAFT_ID ? null
+        : <Tooltip text="Открыть карточку"><button onClick={() => onOpen(row.original)} className="inline-flex text-[var(--muted)] hover:text-[var(--accent)]"><Maximize2 className="h-3.5 w-3.5" /></button></Tooltip> },
+    { id: 'client', header: 'Клиент', enableSorting: false, meta: { width: '150px' },
+      cell: ({ row }) => { const dr = row.original.id === DRAFT_ID
+        const cb = <Combobox options={clientOpts} value={(dr ? draft?.client : row.original.client) || undefined} placeholder="—" className={chipWhite}
+          onChange={v => dr ? setDraft(d => ({ ...d!, client: v })) : patch.mutate({ id: row.original.id, data: { client: v || null } })} />
+        return dr ? <span data-draft-cell className="block w-full">{cb}</span> : cb } },
+    { id: 'project', header: 'Проект', enableSorting: false, meta: { width: '150px' },
+      cell: ({ row }) => { const dr = row.original.id === DRAFT_ID
+        const cb = <Combobox options={projectOpts} value={(dr ? draft?.projectId : row.original.projectId) || undefined} placeholder="—" className={chipWhite}
+          onChange={v => dr ? setDraft(d => ({ ...d!, projectId: v })) : patch.mutate({ id: row.original.id, data: { projectId: v || null } })} />
+        return dr ? <span data-draft-cell className="block w-full">{cb}</span> : cb } },
+    { id: 'title', header: 'Задача', accessorKey: 'title', enableSorting: false,
+      cell: ({ row }) => {
+        const t = row.original, dr = t.id === DRAFT_ID, done = t.status === 'done'
+        if (dr) return <input data-draft-cell autoFocus value={draft?.title ?? ''} onChange={e => setDraft(d => ({ ...d!, title: e.target.value }))}
+          onKeyDown={e => { if (e.key === 'Enter' && (draft?.title.trim()) && meId) create.mutate(draft!); if (e.key === 'Escape') setDraft(null) }}
+          placeholder="Название задачи" className="h-6 w-full rounded-[6px] border border-[var(--accent)] bg-[var(--surface)] px-1.5 text-[14px] leading-6 text-[var(--text)] outline-none" />
+        return <span className={cn('block min-w-0', done && 'line-through opacity-60')}><EditableCell value={t.title} onChange={v => v.trim() && patch.mutate({ id: t.id, data: { title: v.trim() } })} /></span>
+      } },
+    { id: 'time', header: 'Время', enableSorting: false, meta: { width: '112px', align: 'right' },
+      cell: ({ row }) => { const dr = row.original.id === DRAFT_ID
+        const tp = <TimePicker value={dr ? (draft?.time ?? '') : toHHMM(row.original.plannedMinutes)} className={chipWhite}
+          onChange={v => dr ? setDraft(d => ({ ...d!, time: v })) : patch.mutate({ id: row.original.id, data: { plannedMinutes: toMinutes(v) } })} />
+        return dr ? <span data-draft-cell className="block w-full">{tp}</span> : tp } },
+    { id: 'done', header: '', enableSorting: false, meta: { width: '44px' },
+      cell: ({ row }) => {
+        const t = row.original
+        if (t.id === DRAFT_ID) return null
+        const done = t.status === 'done', mine = t.assignee.id === meId
+        return <button disabled={!mine} onClick={() => mine && onToggle(t)} title={mine ? (done ? 'Снять отметку' : 'Отметить выполненной') : 'Только исполнитель'}
+          className={cn('mx-auto flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] text-[11px] text-white', done ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)]', !mine && 'opacity-40')}>{done ? '✓' : ''}</button>
+      } },
+  ], [clientOpts, projectOpts, meId, draft]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div style={{ flex: 2, minWidth: 360 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{title}</div>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <DataTable columns={columns} data={rows} hideToolbar getRowId={t => t.id} addRowLabel="Добавить задачу"
+          onAddRow={() => setDraft(draft ?? { client: '', projectId: '', title: '', time: '' })} />
+      </div>
+    </div>
+  )
+}
+
+// ── Цели отдела (read-only срез стратегии в обзоре; вместо прежнего «Мои цели») ──
+function DeptGoalsCard() {
+  const { data: goals = [] } = useQuery<Array<{ id: string; title: string; status: string }>>({ queryKey: ['strategic-goals'], queryFn: () => api.get('/strategic-goals').then(r => r.data), staleTime: 120_000 })
+  const active = goals.filter(g => g.status === 'active')
+  const card: React.CSSProperties = { background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 22px' }
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Стратегические цели отдела</div>
+      {active.length === 0 ? (
+        <div style={{ fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic' }}>На текущий период целей нет.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {active.map(g => (
+            <div key={g.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+              <span style={{ color: ROLE.info, fontWeight: 800, marginTop: 1 }}>◆</span>
+              <span style={{ fontSize: 14, color: 'var(--text-1)', lineHeight: 1.4 }}>{g.title}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
