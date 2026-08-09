@@ -16,7 +16,6 @@ import { Maximize2, GripVertical } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
-import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from '../lib/toast'
 import { LINK_META, linkIcon } from '../lib/linkMeta'
@@ -342,7 +341,8 @@ const TASK_COLS = '22px 26px 150px 160px minmax(0,1fr) 116px 40px'
 
 // Sortable-строка задачи: div-подсетка (subgrid) выровнена по шапке; grip-хендл через render-prop.
 function SortableTaskRow({ id, children }: { id: string; children: (h: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, animateLayoutChanges: () => false })
+  // 1:1 с support/ServersView SortableParam: дефолтный useSortable, стиль только transform/transition/opacity.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style: React.CSSProperties = {
     gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid', alignItems: 'center',
     borderTop: '1px solid var(--border)', background: 'var(--surface)',
@@ -355,8 +355,8 @@ type Draft = { client: string; link: string; title: string; time: string }
 const DRAFT_ID = '__draft__'
 // У стратегической цели нет клиента → подставляем компанию (совпадает с карточкой задачи)
 const COMPANY_NAME = 'Мегаполис Медиа'
-// В светлой теме чипы (выпадашка/время) — белые, как фон таблицы (не серые surface-2)
-const chipWhite = 'w-full !bg-[var(--surface)]'
+// Чипы (выпадашки/время) в таблице задач — на фоне таблицы и БЕЗ обводки (border прозрачный)
+const chipWhite = 'w-full !bg-[var(--surface)] !border-transparent'
 
 function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged, onAdd: _onAdd }: {
   title: string; tasks: Task[]; meId?: string; day: string
@@ -507,14 +507,14 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
             <div />
           </div>
           {/* строки задач (drag) */}
-          <DndContext sensors={dndSensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          <DndContext sensors={dndSensors} collisionDetection={closestCenter}
             onDragStart={(e: DragStartEvent) => setDragId(String(e.active.id))}
             onDragCancel={() => setDragId(null)}
             onDragEnd={(e: DragEndEvent) => { setDragId(null); if (e.over && e.active.id !== e.over.id) onRowReorder(e.active.id, e.over.id) }}>
             <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
               {tasks.map(t => <SortableTaskRow key={t.id} id={t.id}>{(h) => taskCells(t, h)}</SortableTaskRow>)}
             </SortableContext>
-            <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2,0,0,1)' }}>
+            <DragOverlay>
               {activeTask && (
                 <div style={{ display: 'grid', gridTemplateColumns: TASK_COLS, alignItems: 'center', width: gridRef.current?.offsetWidth, background: 'var(--surface)', borderRadius: 10, boxShadow: '0 16px 44px -8px rgba(0,0,0,0.55)' }}>
                   {taskCells(activeTask)}
