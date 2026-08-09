@@ -20,6 +20,7 @@ export function DatePicker({
   defaultMode = 'single',
   placeholder = 'Выбрать дату',
   disabled = false,
+  minDate,
   className,
 }: {
   value?: DateRange
@@ -28,6 +29,7 @@ export function DatePicker({
   defaultMode?: 'single' | 'range'
   placeholder?: string
   disabled?: boolean
+  minDate?: Date
   className?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -99,6 +101,7 @@ export function DatePicker({
               weekStartsOn={1}
               selected={value?.from}
               onSelect={(d) => onChange?.(d ? { from: d, to: undefined } : undefined)}
+              disabled={minDate ? { before: minDate } : undefined}
               showOutsideDays
             />
           ) : (
@@ -109,6 +112,7 @@ export function DatePicker({
               weekStartsOn={1}
               selected={value}
               onSelect={onChange}
+              disabled={minDate ? { before: minDate } : undefined}
               showOutsideDays
             />
           )}

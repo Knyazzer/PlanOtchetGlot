@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../../stores/auth'
 import { api } from '../../lib/api'
 import type { TaskModalProps, TaskLogEntry, TaskUser } from './types'
-import { toDateStr, fmtD, addDays, inputStyle } from './utils'
-import { Field, DatePicker } from './ui'
+import { toDateStr, fmtD, addDays, parseD, inputStyle } from './utils'
+import { Field } from './ui'
 import { Combobox } from '../../ui-kit/components/Combobox'
+import { DatePicker as KitDatePicker } from '../../ui-kit/components/DatePicker'
 import { TimePicker } from '../../ui-kit/components/TimePicker'
 import { toast } from '../../lib/toast'
 import { LINK_META, linkIcon } from '../../lib/linkMeta'
@@ -13,6 +14,18 @@ import { LINK_META, linkIcon } from '../../lib/linkMeta'
 // Конвертация минут ↔ ЧЧ:ММ для регламентированного ввода времени (TimePicker)
 const minToHHMM = (min?: number | null) => min ? `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` : ''
 const hhmmToMin = (hhmm: string) => { if (!hhmm) return ''; const [h, m] = hhmm.split(':').map(Number); return String((h || 0) * 60 + (m || 0)) }
+
+// Кит-DatePicker (портуется, не режется модалкой) со строковым API 'YYYY-MM-DD'
+function DateField({ value, onChange, min }: { value: string; onChange: (v: string) => void; min?: string }) {
+  return (
+    <KitDatePicker
+      value={value ? { from: parseD(value) } : undefined}
+      onChange={(v) => onChange(v?.from ? fmtD(v.from) : '')}
+      minDate={min ? parseD(min) : undefined}
+      className="w-full"
+    />
+  )
+}
 
 // Связь задачи — ровно одна из: проект / стратегическая цель / трек
 const LINK_TYPE_LABEL: Record<string, string> = { project: 'Проект', goal: 'Цель', track: 'Трек' }
@@ -271,7 +284,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             <Field label="Дедлайн" hint="Срок выполнения. Просроченные задачи выделяются красным в ленте.">
               {isReadOnly
                 ? <div style={{ ...inputStyle, color:'var(--text-3)', userSelect:'none' }}>{deadline ? deadline : '—'}</div>
-                : <DatePicker value={deadline} onChange={setDeadline} min={isEdit ? toDateStr(editTask.startDate) : fmtD(new Date())} />
+                : <DateField value={deadline} onChange={setDeadline} min={isEdit ? toDateStr(editTask.startDate) : fmtD(new Date())} />
               }
             </Field>
           </div>
@@ -320,7 +333,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
               </Field>
               {repeatRule && (
                 <Field label="До даты">
-                  <DatePicker value={repeatUntil} onChange={setRepeatUntil} min={fmtD(new Date())} />
+                  <DateField value={repeatUntil} onChange={setRepeatUntil} min={fmtD(new Date())} />
                 </Field>
               )}
             </div>
