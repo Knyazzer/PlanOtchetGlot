@@ -143,28 +143,30 @@ export async function tracksRoutes(app: FastifyInstance) {
     const { title, description, type, clientName, projectName, deadline, memberIds, workItemId } = body.data
 
     const memberOthers = [...new Set(memberIds.filter(mid => mid !== user.id))]
-    const track = await prisma.track.create({
-      data: {
-        id: randomUUID(),
-        title,
-        description,
-        type,
-        clientName:  type === 'external' ? (clientName  ?? null) : null,
-        projectName: type === 'external' ? (projectName ?? null) : null,
-        deadline: deadline ? new Date(deadline) : null,
-        leaderId: user.id,
-        workItemId: workItemId ?? null,
-        members: { create: memberOthers.map(mid => ({ userId: mid, joinedAt: new Date() })) },
-      },
-      select: { id: true },
-    })
-
-    // §9 «трек = чат»: авто-создаём групповой чат трека, участники автоподключаются
-    await prisma.chat.create({
-      data: {
-        id: randomUUID(), type: 'group', name: title, color: '#7B61FF', trackId: track.id,
-        members: { create: [{ userId: user.id, isGroupAdmin: true }, ...memberOthers.map(mid => ({ userId: mid }))] },
-      },
+    // Трек + его групповой чат (§9 «трек=чат») — АТОМАРНО: иначе трек без чата при сбое (docs/DECISION-2026-08-09)
+    const track = await prisma.$transaction(async (tx) => {
+      const t = await tx.track.create({
+        data: {
+          id: randomUUID(),
+          title,
+          description,
+          type,
+          clientName:  type === 'external' ? (clientName  ?? null) : null,
+          projectName: type === 'external' ? (projectName ?? null) : null,
+          deadline: deadline ? new Date(deadline) : null,
+          leaderId: user.id,
+          workItemId: workItemId ?? null,
+          members: { create: memberOthers.map(mid => ({ userId: mid, joinedAt: new Date() })) },
+        },
+        select: { id: true },
+      })
+      await tx.chat.create({
+        data: {
+          id: randomUUID(), type: 'group', name: title, color: '#7B61FF', trackId: t.id,
+          members: { create: [{ userId: user.id, isGroupAdmin: true }, ...memberOthers.map(mid => ({ userId: mid }))] },
+        },
+      })
+      return t
     })
 
     const full = await prisma.track.findUnique({ where: { id: track.id }, select: TRACK_SELECT })

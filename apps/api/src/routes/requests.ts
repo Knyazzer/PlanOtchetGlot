@@ -55,19 +55,23 @@ function eachDay(from: string, to: string): string[] {
   while (d <= end) { days.push(d.toISOString().slice(0, 10)); d = new Date(d.getTime() + 86_400_000) }
   return days
 }
-async function reflectLeave(r: { userId: string; type: string; dateFrom: string; dateTo: string }) {
-  const ud = await prisma.userDivision.findFirst({ where: { userId: r.userId }, select: { divId: true } })
+// Клиент интерактивной транзакции Prisma (без служебных $-методов) — чтобы helper'ы работали внутри $transaction.
+type TxClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>
+// «Проводки» заявки — многошаговые записи по дням диапазона, ОБЯЗАТЕЛЬНО в транзакции (либо всё, либо ничего):
+// частичное проставление статусов дней при сбое = рассинхрон отсутствий (docs/DECISION-2026-08-09, ACID).
+async function reflectLeave(tx: TxClient, r: { userId: string; type: string; dateFrom: string; dateTo: string }) {
+  const ud = await tx.userDivision.findFirst({ where: { userId: r.userId }, select: { divId: true } })
   for (const day of eachDay(r.dateFrom, r.dateTo)) {
-    await prisma.dayEntry.upsert({
+    await tx.dayEntry.upsert({
       where: { userId_date: { userId: r.userId, date: new Date(day) } },
       update: { dayFormat: r.type, place: null, startTime: null, endTime: null, breakMin: 0 },
       create: { userId: r.userId, divisionId: ud?.divId ?? null, date: new Date(day), dayFormat: r.type, breakMin: 0 },
     })
   }
 }
-async function unreflectLeave(r: { userId: string; type: string; dateFrom: string; dateTo: string }) {
+async function unreflectLeave(tx: TxClient, r: { userId: string; type: string; dateFrom: string; dateTo: string }) {
   for (const day of eachDay(r.dateFrom, r.dateTo)) {
-    await prisma.dayEntry.deleteMany({ where: { userId: r.userId, date: new Date(day), dayFormat: r.type } })
+    await tx.dayEntry.deleteMany({ where: { userId: r.userId, date: new Date(day), dayFormat: r.type } })
   }
 }
 
@@ -117,8 +121,12 @@ export async function requestsRoutes(app: FastifyInstance) {
     if (!existing) return reply.code(404).send({ error: 'Request not found' })
     if (existing.approverId !== user.id && !user.isAdmin) return reply.code(403).send({ error: 'Только согласующий или админ' })
     if (existing.status !== 'pending') return reply.code(400).send({ error: 'Заявка уже обработана' })
-    const updated = await prisma.request.update({ where: { id }, data: { status: p.data.decision, decisionNote: p.data.note ?? null, decidedAt: new Date() }, include })
-    if (p.data.decision === 'approved') await reflectLeave(existing) // одобрено → проставить статус дней
+    // Решение + отражение в днях — АТОМАРНО (иначе заявка одобрена, а дни проставлены частично)
+    const updated = await prisma.$transaction(async (tx) => {
+      const upd = await tx.request.update({ where: { id }, data: { status: p.data.decision, decisionNote: p.data.note ?? null, decidedAt: new Date() }, include })
+      if (p.data.decision === 'approved') await reflectLeave(tx, existing)
+      return upd
+    })
     return updated
   })
 
@@ -130,8 +138,11 @@ export async function requestsRoutes(app: FastifyInstance) {
     if (!existing) return reply.code(404).send({ error: 'Request not found' })
     if (existing.approverId !== user.id && !user.isAdmin) return reply.code(403).send({ error: 'Только согласующий или админ' })
     if (existing.status !== 'approved') return reply.code(400).send({ error: 'Отозвать можно только одобренную заявку' })
-    await unreflectLeave(existing) // снять статус дней (вернуть к расписанию)
-    return prisma.request.update({ where: { id }, data: { status: 'revoked', decisionNote: 'Отозвано', decidedAt: new Date() }, include })
+    // Откат дней + смена статуса — АТОМАРНО
+    return prisma.$transaction(async (tx) => {
+      await unreflectLeave(tx, existing)
+      return tx.request.update({ where: { id }, data: { status: 'revoked', decisionNote: 'Отозвано', decidedAt: new Date() }, include })
+    })
   })
 
   // GET /requests/:id/document — заявление docx (для одобренного отпуска; автор или админ)
