@@ -80,7 +80,7 @@ export function DatePicker({ value, onChange, min }: { value: string; onChange: 
       </div>
 
       {open && (
-        <div style={{
+        <div data-datepicker-open style={{
           position:'absolute', top:'calc(100% + 4px)', left:0, zIndex:400,
           background:'var(--surface-1)', border:'1px solid var(--border)',
           borderRadius:12, boxShadow:'0 8px 32px rgba(0,0,0,.4)',
