@@ -13,7 +13,7 @@ import {
 import * as Popover from '@radix-ui/react-popover'
 import { ArrowDown, ArrowUp, Check, ChevronRight, ChevronsUpDown, GripVertical, Plus, Search, SlidersHorizontal } from 'lucide-react'
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { CSS } from '@dnd-kit/utilities'
@@ -26,7 +26,8 @@ function SortableRow({ id, className, onClick, onMouseEnter, children }: {
   children: (handle: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => ReactNode
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1, position: 'relative', zIndex: isDragging ? 20 : undefined }
+  // Источник во время drag полностью прячем — его визуально замещает DragOverlay (без остаточного transform → нет «прыжка» на дропе)
+  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0 : 1, position: 'relative' }
   return (
     <tr ref={setNodeRef} style={style} className={className} onClick={onClick} onMouseEnter={onMouseEnter}>
       {children({ attributes, listeners })}
@@ -76,7 +77,10 @@ interface DataTableProps<T> {
  */
 export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Добавить строку', onAddColumn, addColumnHint = 'Новый столбец', renderSubRow, getRowCanExpand, onRowClick, onRowMouseEnter, activeRowId, getRowId, hideToolbar, fill, initialColumnVisibility, storageKey, reorderable, rowDragEnabled, onRowReorder }: DataTableProps<T>) {
   const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
+  const [dragRowId, setDragRowId] = useState<string | number | null>(null) // активная строка для DragOverlay
+  const tableRef = useRef<HTMLTableElement>(null)
   const handleRowDragEnd = (e: DragEndEvent) => {
+    setDragRowId(null)
     const { active, over } = e
     if (over && active.id !== over.id) onRowReorder?.(active.id, over.id)
   }
@@ -215,7 +219,7 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
       <div ref={scrollerRef} className={cn('overflow-x-auto overscroll-contain', fill && 'min-h-0 flex-1 overflow-y-auto max-lg:pb-[calc(5.5rem+env(safe-area-inset-bottom))]')}>
         {/* border-separate (не collapse): при sticky-заголовке схлопнутые границы «уезжают» при
             скролле и дают шов. С separate границы живут на ячейках и липнут вместе с шапкой. */}
-        <table className="w-full table-fixed border-separate border-spacing-0 text-[14px]" style={{ minWidth }}>
+        <table ref={tableRef} className="w-full table-fixed border-separate border-spacing-0 text-[14px]" style={{ minWidth }}>
           <thead>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
@@ -274,8 +278,7 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
                   {rowDragEnabled && (
                     <td className="border-b border-[var(--border)] pl-1.5 pr-0 align-middle">
                       <span {...(handle?.attributes ?? {})} {...(handle?.listeners ?? {})}
-                        className="flex cursor-grab touch-none items-center justify-center text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--accent)] group-hover:opacity-100 active:cursor-grabbing"
-                        title="Перетащить для порядка">
+                        className="flex cursor-grab touch-none items-center justify-center text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--accent)] group-hover:opacity-100 active:cursor-grabbing">
                         <GripVertical className="h-4 w-4" />
                       </span>
                     </td>
@@ -329,11 +332,31 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
               })
 
               if (rowDragEnabled) {
+                const activeRow = dragRowId != null ? rows.find((r) => (getRowId ? getRowId(r.original) : r.id) === dragRowId) : undefined
                 return (
-                  <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleRowDragEnd} modifiers={[restrictToVerticalAxis, restrictToParentElement]}>
+                  <DndContext sensors={dndSensors} collisionDetection={closestCenter}
+                    onDragStart={(e: DragStartEvent) => setDragRowId(e.active.id)}
+                    onDragCancel={() => setDragRowId(null)} onDragEnd={handleRowDragEnd}
+                    modifiers={[restrictToVerticalAxis, restrictToParentElement]}>
                     <SortableContext items={rows.map((r) => getRowId ? getRowId(r.original) : r.id)} strategy={verticalListSortingStrategy}>
                       {body}
                     </SortableContext>
+                    {/* Копия строки летит за курсором и плавно долетает до нового места — без «прыжка» на дропе */}
+                    <DragOverlay>
+                      {activeRow && (
+                        <table className="w-full table-fixed border-separate border-spacing-0 text-[14px]" style={{ width: tableRef.current?.offsetWidth }}>
+                          <colgroup>
+                            <col style={{ width: 32 }} />
+                            {table.getVisibleLeafColumns().map((c) => <col key={c.id} style={{ width: (c.columnDef.meta as any)?.width }} />)}
+                          </colgroup>
+                          <tbody>
+                            <tr className="group cursor-grabbing rounded-[var(--radius)] bg-[var(--surface)] shadow-[0_16px_44px_-8px_rgba(0,0,0,0.55)]">
+                              {renderCells(activeRow)}
+                            </tr>
+                          </tbody>
+                        </table>
+                      )}
+                    </DragOverlay>
                   </DndContext>
                 )
               }
