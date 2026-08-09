@@ -12,8 +12,12 @@ import { TimePicker } from '../ui-kit/components/TimePicker'
 import { DataTable, EditableCell } from '../ui-kit/components/DataTable'
 import { Tooltip } from '../components/Tooltip'
 import { cn } from '../ui-kit/lib/cn'
-import { Maximize2 } from 'lucide-react'
+import { Maximize2, GripVertical } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
+import { CSS } from '@dnd-kit/utilities'
 import { toast } from '../lib/toast'
 import { LINK_META, linkIcon } from '../lib/linkMeta'
 
@@ -332,7 +336,21 @@ function EventsTable({ title, events, onOpen, onAdd }: {
   )
 }
 
-// ── Задачи на сегодня: канон DataTable (TanStack). Иконка-открыть слева; «Добавить задачу» — inline-строка ──
+// ── Задачи на сегодня: div-grid sortable (паттерн support/ServersView — гладкий drag, не <table>) ──
+// Колонки строки: grip · открыть · Клиент · Связь · Задача · Время · готово
+const TASK_COLS = '22px 26px 150px 160px minmax(0,1fr) 116px 40px'
+
+// Sortable-строка задачи: div-подсетка (subgrid) выровнена по шапке; grip-хендл через render-prop.
+function SortableTaskRow({ id, children }: { id: string; children: (h: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, animateLayoutChanges: () => false })
+  const style: React.CSSProperties = {
+    gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid', alignItems: 'center',
+    borderTop: '1px solid var(--border)', background: 'var(--surface)',
+    transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0 : 1,
+  }
+  return <div ref={setNodeRef} style={style} className="group">{children({ attributes, listeners })}</div>
+}
+
 type Draft = { client: string; link: string; title: string; time: string }
 const DRAFT_ID = '__draft__'
 // У стратегической цели нет клиента → подставляем компанию (совпадает с карточкой задачи)
@@ -422,55 +440,97 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
 
   // Черновик рисуется как обычная строка (Task-образный объект)
   const draftRow = draft ? ({ id: DRAFT_ID, title: draft.title, client: draft.client || null, actualMinutes: toMinutes(draft.time), status: 'backlog', assignee: { id: meId ?? '', name: '' } } as unknown as Task) : null
-  const rows = draftRow ? [...tasks, draftRow] : tasks
 
-  const columns = useMemo<ColumnDef<Task, unknown>[]>(() => [
-    { id: 'open', header: '', enableSorting: false, meta: { width: '34px' },
-      cell: ({ row }) => row.original.id === DRAFT_ID ? null
-        : <Tooltip text="Открыть карточку"><button onClick={() => onOpen(row.original)} className="inline-flex text-[var(--muted)] hover:text-[var(--accent)]"><Maximize2 className="h-3.5 w-3.5" /></button></Tooltip> },
-    { id: 'client', header: 'Клиент', enableSorting: false, meta: { width: '150px' },
-      cell: ({ row }) => { const dr = row.original.id === DRAFT_ID
-        const cb = <Combobox options={clientOpts} value={(dr ? draft?.client : row.original.client) || undefined} placeholder="—" className={chipWhite}
-          onChange={v => dr ? setDraft(d => ({ ...d!, client: v })) : patch.mutate({ id: row.original.id, data: { client: v || null } })} />
-        return dr ? <span data-draft-cell className="block w-full">{cb}</span> : cb } },
-    { id: 'link', header: 'Связь', enableSorting: false, meta: { width: '160px' },
-      cell: ({ row }) => { const dr = row.original.id === DRAFT_ID
-        const cb = <Combobox options={linkOptionsFor(dr ? draft?.client : row.original.client)} value={dr ? (draft?.link || 'none') : linkValueOf(row.original)} placeholder="—" className={chipWhite}
-          onChange={v => {
-            if (dr) setDraft(d => ({ ...d!, link: v, ...(v.startsWith('goal:') ? { client: COMPANY_NAME } : {}) }))
-            else applyLink(row.original.id, v)
-          }} />
-        return dr ? <span data-draft-cell className="block w-full">{cb}</span> : cb } },
-    { id: 'title', header: 'Задача', accessorKey: 'title', enableSorting: false,
-      cell: ({ row }) => {
-        const t = row.original, dr = t.id === DRAFT_ID, done = t.status === 'done'
-        if (dr) return <input data-draft-cell autoFocus value={draft?.title ?? ''} onChange={e => setDraft(d => ({ ...d!, title: e.target.value }))}
-          onKeyDown={e => { if (e.key === 'Enter' && (draft?.title.trim()) && meId) create.mutate(draft!); if (e.key === 'Escape') setDraft(null) }}
-          placeholder="Название задачи" className="h-6 w-full rounded-[6px] border border-[var(--accent)] bg-[var(--surface)] px-1.5 text-[14px] leading-6 text-[var(--text)] outline-none" />
-        return <span className={cn('block min-w-0', done && 'line-through opacity-60')}><EditableCell value={t.title} onChange={v => v.trim() && patch.mutate({ id: t.id, data: { title: v.trim() } })} /></span>
-      } },
-    { id: 'time', header: 'Время', enableSorting: false, meta: { width: '112px', align: 'right' },
-      cell: ({ row }) => { const dr = row.original.id === DRAFT_ID
-        const tp = <TimePicker value={dr ? (draft?.time ?? '') : toHHMM(row.original.actualMinutes)} className={chipWhite}
-          onChange={v => dr ? setDraft(d => ({ ...d!, time: v })) : patch.mutate({ id: row.original.id, data: { actualMinutes: toMinutes(v) } })} />
-        return dr ? <span data-draft-cell className="block w-full">{tp}</span> : tp } },
-    { id: 'done', header: '', enableSorting: false, meta: { width: '44px' },
-      cell: ({ row }) => {
-        const t = row.original
-        if (t.id === DRAFT_ID) return null
-        const done = t.status === 'done', mine = t.assignee.id === meId
-        return <button disabled={!mine} onClick={() => mine && onToggle(t)} title={mine ? (done ? 'Снять отметку' : 'Отметить выполненной') : 'Только исполнитель'}
-          className={cn('mx-auto flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] text-[11px] text-white', done ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)]', !mine && 'opacity-40')}>{done ? '✓' : ''}</button>
-      } },
-  ], [clientOpts, projects, goals, tracks, meId, draft]) // eslint-disable-line react-hooks/exhaustive-deps
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
+  const [dragId, setDragId] = useState<string | null>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
+  const activeTask = dragId ? tasks.find(t => t.id === dragId) : undefined
+
+  // Ячейки строки (7 колонок). handle — drag-хендл (только у sortable-строк); dr — черновик.
+  const cell = (content: React.ReactNode, extra?: React.CSSProperties, dr?: boolean) =>
+    <div data-draft-cell={dr || undefined} style={{ padding: '5px 8px', minWidth: 0, display: 'flex', alignItems: 'center', ...extra }}>{content}</div>
+  const taskCells = (t: Task, handle?: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => {
+    const dr = t.id === DRAFT_ID, done = t.status === 'done', mine = t.assignee.id === meId
+    return (<>
+      {/* grip */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {!dr && (
+          <span {...(handle?.attributes ?? {})} {...(handle?.listeners ?? {})}
+            className={cn('flex touch-none items-center justify-center text-[var(--muted)]', handle ? 'cursor-grab opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--accent)] active:cursor-grabbing' : '')}>
+            <GripVertical className="h-4 w-4" />
+          </span>
+        )}
+      </div>
+      {/* открыть карточку */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {!dr && <Tooltip text="Открыть карточку"><button onClick={() => onOpen(t)} className="inline-flex text-[var(--muted)] hover:text-[var(--accent)]"><Maximize2 className="h-3.5 w-3.5" /></button></Tooltip>}
+      </div>
+      {/* Клиент */}
+      {cell(<Combobox options={clientOpts} value={(dr ? draft?.client : t.client) || undefined} placeholder="—" className={chipWhite}
+        onChange={v => dr ? setDraft(d => ({ ...d!, client: v })) : patch.mutate({ id: t.id, data: { client: v || null } })} />, undefined, dr)}
+      {/* Связь */}
+      {cell(<Combobox options={linkOptionsFor(dr ? draft?.client : t.client)} value={dr ? (draft?.link || 'none') : linkValueOf(t)} placeholder="—" className={chipWhite}
+        onChange={v => { if (dr) setDraft(d => ({ ...d!, link: v, ...(v.startsWith('goal:') ? { client: COMPANY_NAME } : {}) })); else applyLink(t.id, v) }} />, undefined, dr)}
+      {/* Задача */}
+      {cell(dr
+        ? <input data-draft-cell autoFocus value={draft?.title ?? ''} onChange={e => setDraft(d => ({ ...d!, title: e.target.value }))}
+            onKeyDown={e => { if (e.key === 'Enter' && draft?.title.trim() && meId) create.mutate(draft!); if (e.key === 'Escape') setDraft(null) }}
+            placeholder="Название задачи" className="h-6 w-full rounded-[6px] border border-[var(--accent)] bg-[var(--surface)] px-1.5 text-[14px] leading-6 text-[var(--text)] outline-none" />
+        : <span className={cn('block min-w-0 w-full', done && 'line-through opacity-60')}><EditableCell value={t.title} onChange={v => v.trim() && patch.mutate({ id: t.id, data: { title: v.trim() } })} /></span>,
+        undefined, dr)}
+      {/* Время */}
+      {cell(<TimePicker value={dr ? (draft?.time ?? '') : toHHMM(t.actualMinutes)} className={chipWhite}
+        onChange={v => dr ? setDraft(d => ({ ...d!, time: v })) : patch.mutate({ id: t.id, data: { actualMinutes: toMinutes(v) } })} />, { justifyContent: 'flex-end' }, dr)}
+      {/* готово */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {!dr && <button disabled={!mine} onClick={() => mine && onToggle(t)} title={mine ? (done ? 'Снять отметку' : 'Отметить выполненной') : 'Только исполнитель'}
+          className={cn('flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] text-[11px] text-white', done ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)]', !mine && 'opacity-40')}>{done ? '✓' : ''}</button>}
+      </div>
+    </>)
+  }
+
+  const hCell: React.CSSProperties = { padding: '8px 10px', fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center' }
+  const subRow: React.CSSProperties = { gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'subgrid', alignItems: 'center' }
 
   return (
     <div style={{ width: '100%' }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{title}</div>
-      <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-        <DataTable columns={columns} data={rows} hideToolbar getRowId={t => t.id} addRowLabel="Добавить задачу"
-          rowDragEnabled onRowReorder={onRowReorder}
-          onAddRow={() => setDraft(draft ?? { client: '', link: 'none', title: '', time: '' })} />
+      <div ref={gridRef} style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', background: 'var(--surface)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: TASK_COLS }}>
+          {/* шапка */}
+          <div style={{ ...subRow, background: 'var(--surface-2)' }}>
+            <div /><div />
+            <div style={hCell}>Клиент</div>
+            <div style={hCell}>Связь</div>
+            <div style={hCell}>Задача</div>
+            <div style={{ ...hCell, justifyContent: 'flex-end' }}>Время</div>
+            <div />
+          </div>
+          {/* строки задач (drag) */}
+          <DndContext sensors={dndSensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+            onDragStart={(e: DragStartEvent) => setDragId(String(e.active.id))}
+            onDragCancel={() => setDragId(null)}
+            onDragEnd={(e: DragEndEvent) => { setDragId(null); if (e.over && e.active.id !== e.over.id) onRowReorder(e.active.id, e.over.id) }}>
+            <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+              {tasks.map(t => <SortableTaskRow key={t.id} id={t.id}>{(h) => taskCells(t, h)}</SortableTaskRow>)}
+            </SortableContext>
+            <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2,0,0,1)' }}>
+              {activeTask && (
+                <div style={{ display: 'grid', gridTemplateColumns: TASK_COLS, alignItems: 'center', width: gridRef.current?.offsetWidth, background: 'var(--surface)', borderRadius: 10, boxShadow: '0 16px 44px -8px rgba(0,0,0,0.55)' }}>
+                  {taskCells(activeTask)}
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
+          {/* черновик (не sortable) */}
+          {draftRow && <div style={{ ...subRow, borderTop: '1px solid var(--border)' }}>{taskCells(draftRow)}</div>}
+          {/* добавить задачу */}
+          <button onClick={() => setDraft(draft ?? { client: '', link: 'none', title: '', time: '' })}
+            style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', background: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Добавить задачу
+          </button>
+        </div>
       </div>
     </div>
   )
