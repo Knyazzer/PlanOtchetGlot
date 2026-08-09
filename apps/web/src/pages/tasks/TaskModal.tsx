@@ -102,12 +102,8 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
         }),
     onSuccess: () => {
       onDone()
-      if (isEdit) {
-        qc.invalidateQueries({ queryKey: ['taskLog', editTask.id] })
-        setTab('history')
-      } else {
-        onClose()
-      }
+      if (isEdit) qc.invalidateQueries({ queryKey: ['taskLog', editTask.id] })
+      onClose() // сохранение закрывает модал (и при создании, и при редактировании)
     },
   })
 
