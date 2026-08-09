@@ -7,7 +7,12 @@ import { toDateStr, fmtD, addDays, inputStyle } from './utils'
 import { Field, DatePicker } from './ui'
 import { Combobox } from '../../ui-kit/components/Combobox'
 import { Select } from '../../ui-kit/components/Select'
+import { TimePicker } from '../../ui-kit/components/TimePicker'
 import { toast } from '../../lib/toast'
+
+// Конвертация минут ↔ ЧЧ:ММ для регламентированного ввода времени (TimePicker)
+const minToHHMM = (min?: number | null) => min ? `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` : ''
+const hhmmToMin = (hhmm: string) => { if (!hhmm) return ''; const [h, m] = hhmm.split(':').map(Number); return String((h || 0) * 60 + (m || 0)) }
 
 // Связь задачи — ровно одна из: проект / стратегическая цель / трек
 const LINK_TYPE_OPTIONS = [
@@ -237,6 +242,28 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             }
           </Field>
 
+          {/* Клиент + Дедлайн — одна строка (над создателем/исполнителем) */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, alignItems:'flex-start' }}>
+            <Field label="Клиент" hint="Необязательно. Используется в Аналитике и при фильтрации задач по клиенту.">
+              {isReadOnly
+                ? <div style={{ ...inputStyle, color:'var(--text-3)' }}>{client || '—'}</div>
+                : <>
+                    <input value={client} onChange={e => setClient(e.target.value)} list="task-client-options"
+                      placeholder="ММ, Пятёрочка…" style={inputStyle} />
+                    <datalist id="task-client-options">
+                      {clientOptions.map(c => <option key={c.id} value={c.name} />)}
+                    </datalist>
+                  </>
+              }
+            </Field>
+            <Field label="Дедлайн" hint="Срок выполнения. Просроченные задачи выделяются красным в ленте.">
+              {isReadOnly
+                ? <div style={{ ...inputStyle, color:'var(--text-3)', userSelect:'none' }}>{deadline ? deadline : '—'}</div>
+                : <DatePicker value={deadline} onChange={setDeadline} min={isEdit ? toDateStr(editTask.startDate) : fmtD(new Date())} />
+              }
+            </Field>
+          </div>
+
           {/* Создатель + Исполнитель — одна строка */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, alignItems:'flex-start' }}>
             <Field label="Создатель">
@@ -253,19 +280,6 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             </Field>
           </div>
 
-          <Field label="Клиент" hint="Необязательно. Используется в Аналитике и при фильтрации задач по клиенту.">
-            {isReadOnly
-              ? <div style={{ ...inputStyle, color:'var(--text-3)' }}>{client || '—'}</div>
-              : <>
-                  <input value={client} onChange={e => setClient(e.target.value)} list="task-client-options"
-                    placeholder="ММ, Пятёрочка…" style={inputStyle} />
-                  <datalist id="task-client-options">
-                    {clientOptions.map(c => <option key={c.id} value={c.name} />)}
-                  </datalist>
-                </>
-            }
-          </Field>
-
           <Field label="Связь" hint="Задачу можно связать ровно с одним: проектом, стратегической целью или треком. Учитывается в прогрессе цели / карточке проекта / деталях трека.">
             {isReadOnly
               ? <div style={{ ...inputStyle, color:'var(--text-3)' }}>{linkType === 'none' ? '—' : `${LINK_TYPE_LABEL[linkType]}: ${linkReadonlyLabel}`}</div>
@@ -278,11 +292,13 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             }
           </Field>
 
-          <Field label="Факт, мин" hint="Фактически затраченное время на задачу, в минутах.">
+          <Field label="Время" hint="Фактически затраченное время на задачу.">
             {isReadOnly
-              ? <div style={{ ...inputStyle, color:'var(--text-3)' }}>{actualMin || '—'}</div>
-              : <input type="number" min={0} step={15} value={actualMin}
-                  onChange={e => setActualMin(e.target.value)} placeholder="45" style={{ ...inputStyle, maxWidth:160 }} />
+              ? <div style={{ ...inputStyle, color:'var(--text-3)' }}>{actualMin ? minToHHMM(Number(actualMin)) : '—'}</div>
+              : <div style={{ maxWidth:160 }}>
+                  <TimePicker value={minToHHMM(actualMin ? Number(actualMin) : null)} className="w-full"
+                    onChange={v => setActualMin(hhmmToMin(v))} />
+                </div>
             }
           </Field>
 
@@ -307,13 +323,6 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
               ↻ Серия: {editTask.repeatRule === 'daily' ? 'ежедневно' : 'по будням'} до {toDateStr(editTask.repeatUntil)}
             </div>
           )}
-
-          <Field label="Дедлайн" hint="Срок выполнения. Просроченные задачи выделяются красным в ленте.">
-            {isReadOnly
-              ? <div style={{ ...inputStyle, color:'var(--text-3)', userSelect:'none' }}>{deadline ? deadline : '—'}</div>
-              : <DatePicker value={deadline} onChange={setDeadline} min={isEdit ? toDateStr(editTask.startDate) : fmtD(new Date())} />
-            }
-          </Field>
         </>)}
 
         <div style={{ display:'flex', alignItems:'center', justifyContent: (isEdit && !isReadOnly) ? 'space-between' : 'flex-end', marginTop:4 }}>
