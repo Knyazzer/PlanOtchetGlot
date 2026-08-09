@@ -12,8 +12,26 @@ import {
 } from '@tanstack/react-table'
 import * as Popover from '@radix-ui/react-popover'
 import { ArrowDown, ArrowUp, Check, ChevronRight, ChevronsUpDown, GripVertical, Plus, Search, SlidersHorizontal } from 'lucide-react'
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { cn } from '../lib/cn'
+
+// Строка-таблицы с dnd-kit: активная едет за курсором (transform), соседние раздвигаются,
+// оригинал приглушается. Ручку-grip даём через render-prop (handle = attributes+listeners).
+function SortableRow({ id, className, onClick, onMouseEnter, children }: {
+  id: string | number; className?: string; onClick?: () => void; onMouseEnter?: () => void
+  children: (handle: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => ReactNode
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.35 : 1, position: 'relative', zIndex: isDragging ? 20 : undefined }
+  return (
+    <tr ref={setNodeRef} style={style} className={className} onClick={onClick} onMouseEnter={onMouseEnter}>
+      {children({ attributes, listeners })}
+    </tr>
+  )
+}
 
 interface DataTableProps<T> {
   columns: ColumnDef<T, any>[]
@@ -56,7 +74,11 @@ interface DataTableProps<T> {
  * аккуратные hover-«+» для добавления строки и колонки (паттерн Airtable).
  */
 export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Добавить строку', onAddColumn, addColumnHint = 'Новый столбец', renderSubRow, getRowCanExpand, onRowClick, onRowMouseEnter, activeRowId, getRowId, hideToolbar, fill, initialColumnVisibility, storageKey, reorderable, rowDragEnabled, onRowReorder }: DataTableProps<T>) {
-  const dragRow = useRef<string | number | null>(null)
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
+  const handleRowDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e
+    if (over && active.id !== over.id) onRowReorder?.(active.id, over.id)
+  }
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
   // Персист (F5): под storageKey хранится { visibility, order }.
@@ -241,29 +263,18 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row) => {
-              const canExpand = expandable && row.getCanExpand()
-              const isOpen = row.getIsExpanded()
-              const rid = getRowId ? getRowId(row.original) : row.id
-              const active = activeRowId != null && rid === activeRowId
-              return (
-              <Fragment key={row.id}>
-                <tr
-                  className={cn('group transition-colors hover:bg-[var(--surface-2)]/60', (canExpand || onRowClick) && 'cursor-pointer', isOpen && 'bg-[var(--surface-2)]/50', active && 'bg-[var(--accent-soft)]')}
-                  onClick={onRowClick ? () => onRowClick(row.original) : (canExpand ? row.getToggleExpandedHandler() : undefined)}
-                  onMouseEnter={onRowMouseEnter ? () => onRowMouseEnter(row.original) : undefined}
-                  onDragOver={rowDragEnabled ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } : undefined}
-                  onDrop={rowDragEnabled ? (e) => { e.preventDefault(); if (dragRow.current != null && dragRow.current !== rid) onRowReorder?.(dragRow.current, rid); dragRow.current = null } : undefined}
-                >
+            {(() => {
+              const rows = table.getRowModel().rows
+              // Ячейки строки: grip (drag-handle через render-prop) + шеврон + данные
+              const renderCells = (row: typeof rows[number], handle?: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => {
+                const canExpand = expandable && row.getCanExpand()
+                const isOpen = row.getIsExpanded()
+                return (<>
                   {rowDragEnabled && (
                     <td className="border-b border-[var(--border)] pl-1.5 pr-0 align-middle">
-                      <span
-                        draggable
-                        onDragStart={(e) => { dragRow.current = rid; e.dataTransfer.effectAllowed = 'move' }}
-                        onDragEnd={() => { dragRow.current = null }}
-                        className="flex cursor-grab items-center justify-center text-[var(--muted)] hover:text-[var(--text)] active:cursor-grabbing"
-                        title="Перетащить для порядка"
-                      >
+                      <span {...(handle?.attributes ?? {})} {...(handle?.listeners ?? {})}
+                        className="flex cursor-grab touch-none items-center justify-center text-[var(--muted)] opacity-0 transition-opacity hover:text-[var(--accent)] group-hover:opacity-100 active:cursor-grabbing"
+                        title="Перетащить для порядка">
                         <GripVertical className="h-4 w-4" />
                       </span>
                     </td>
@@ -281,23 +292,52 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
                       </td>
                     )
                   })}
-                </tr>
-                {isOpen && renderSubRow && (
-                  <tr>
-                    <td colSpan={row.getVisibleCells().length + (expandable ? 1 : 0) + (rowDragEnabled ? 1 : 0)} className="border-b border-[var(--border)] bg-[var(--surface-2)]/30 p-0">
-                      {/* прижато влево к видимой области + свой гориз. скролл (правый край не режется) */}
-                      <div
-                        className="sticky left-0 overflow-x-auto overscroll-x-contain px-3 py-2.5"
-                        style={{ width: viewW || undefined }}
-                      >
-                        {renderSubRow(row.original)}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </Fragment>
-              )
-            })}
+                </>)
+              }
+
+              const body = rows.map((row) => {
+                const canExpand = expandable && row.getCanExpand()
+                const isOpen = row.getIsExpanded()
+                const rid = getRowId ? getRowId(row.original) : row.id
+                const active = activeRowId != null && rid === activeRowId
+                const rowClass = cn('group transition-colors hover:bg-[var(--surface-2)]/60', (canExpand || onRowClick) && 'cursor-pointer', isOpen && 'bg-[var(--surface-2)]/50', active && 'bg-[var(--accent-soft)]')
+                const onClick = onRowClick ? () => onRowClick(row.original) : (canExpand ? row.getToggleExpandedHandler() : undefined)
+                const onEnter = onRowMouseEnter ? () => onRowMouseEnter(row.original) : undefined
+
+                if (rowDragEnabled) {
+                  return (
+                    <SortableRow key={row.id} id={rid} className={rowClass} onClick={onClick as (() => void) | undefined} onMouseEnter={onEnter}>
+                      {(handle) => renderCells(row, handle)}
+                    </SortableRow>
+                  )
+                }
+                return (
+                  <Fragment key={row.id}>
+                    <tr className={rowClass} onClick={onClick} onMouseEnter={onEnter}>{renderCells(row)}</tr>
+                    {isOpen && renderSubRow && (
+                      <tr>
+                        <td colSpan={row.getVisibleCells().length + (expandable ? 1 : 0)} className="border-b border-[var(--border)] bg-[var(--surface-2)]/30 p-0">
+                          <div className="sticky left-0 overflow-x-auto overscroll-x-contain px-3 py-2.5" style={{ width: viewW || undefined }}>
+                            {renderSubRow(row.original)}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })
+
+              if (rowDragEnabled) {
+                return (
+                  <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
+                    <SortableContext items={rows.map((r) => getRowId ? getRowId(r.original) : r.id)} strategy={verticalListSortingStrategy}>
+                      {body}
+                    </SortableContext>
+                  </DndContext>
+                )
+              }
+              return body
+            })()}
           </tbody>
         </table>
       </div>

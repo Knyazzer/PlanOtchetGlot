@@ -415,16 +415,20 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
     patch.mutate({ id: taskId, data })
   }
 
-  // Ручной порядок: дроп строки fromId на позицию toId → новый порядок id → PATCH /tasks/reorder
-  const reorderMut = useMutation({ mutationFn: (ids: string[]) => api.patch('/tasks/reorder', { ids }), onSuccess: onChanged })
+  // Ручной порядок: дроп строки fromId на позицию toId. Оптимистично проставляем manualOrder
+  // в кэше ['tasks','mine'] (список пересортируется мгновенно, без рефетча), затем персистим.
+  const qc = useQueryClient()
+  const reorderMut = useMutation({ mutationFn: (ids: string[]) => api.patch('/tasks/reorder', { ids }) })
   const onRowReorder = (fromId: string | number, toId: string | number) => {
     const f = String(fromId), t = String(toId)
     if (f === DRAFT_ID || t === DRAFT_ID) return
     const ids = tasks.map(x => x.id)
     const from = ids.indexOf(f), to = ids.indexOf(t)
     if (from < 0 || to < 0 || from === to) return
-    ids.splice(from, 1); ids.splice(to, 0, f)
-    reorderMut.mutate(ids)
+    const next = [...ids]; next.splice(from, 1); next.splice(to, 0, f)
+    const prev = qc.getQueryData<Task[]>(['tasks', 'mine'])
+    qc.setQueryData<Task[]>(['tasks', 'mine'], (old) => old?.map(x => { const i = next.indexOf(x.id); return i >= 0 ? { ...x, manualOrder: i } : x }))
+    reorderMut.mutate(next, { onError: () => { if (prev) qc.setQueryData(['tasks', 'mine'], prev) } })
   }
 
   const create = useMutation({
