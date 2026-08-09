@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { cn } from '../lib/cn'
 
 // SelectOption инлайн (kit-Select тянет @radix-ui/react-select, которого в web нет; Combobox же на radix-popover).
-export interface SelectOption { value: string; label: string; tone?: string }
+export interface SelectOption { value: string; label: string; tone?: string; group?: string }
 
 /**
  * Combobox = выпадающий список с поиском (Radix Popover + фильтруемый список). Copy-in из ui-kit.
@@ -81,22 +81,30 @@ export function Combobox({
             {filtered.length === 0 && (
               <div className="px-2.5 py-6 text-center text-[13px] text-[var(--muted)]">Ничего не найдено</div>
             )}
-            {filtered.map((o, i) => (
-              <button
-                key={o.value}
-                onMouseEnter={() => setActive(i)}
-                onClick={() => pick(o.value)}
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-[var(--radius-sm)] py-1.5 px-2.5 text-left text-[14px] outline-none',
-                  i === active ? 'bg-[var(--surface-2)]' : '',
-                  o.value === value ? 'text-[var(--accent)]' : 'text-[var(--text)]',
-                )}
-              >
-                {o.tone && <span className="h-1.5 w-1.5 rounded-full" style={{ background: o.tone }} />}
-                <span className="truncate">{o.label}</span>
-                {o.value === value && <Check className="ml-auto h-4 w-4" />}
-              </button>
-            ))}
+            {filtered.map((o, i) => {
+              // Заголовок секции — когда группа опции отличается от предыдущей (группы опциональны)
+              const showHeader = !!o.group && (i === 0 || filtered[i - 1].group !== o.group)
+              return (
+                <div key={o.value}>
+                  {showHeader && (
+                    <div className="px-2.5 pt-2 pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted)]">{o.group}</div>
+                  )}
+                  <button
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => pick(o.value)}
+                    className={cn(
+                      'flex w-full items-center gap-2 rounded-[var(--radius-sm)] py-1.5 px-2.5 text-left text-[14px] outline-none',
+                      i === active ? 'bg-[var(--surface-2)]' : '',
+                      o.value === value ? 'text-[var(--accent)]' : 'text-[var(--text)]',
+                    )}
+                  >
+                    {o.tone && <span className="h-1.5 w-1.5 rounded-full" style={{ background: o.tone }} />}
+                    <span className="truncate">{o.label}</span>
+                    {o.value === value && <Check className="ml-auto h-4 w-4" />}
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </Popover.Content>
       </Popover.Portal>

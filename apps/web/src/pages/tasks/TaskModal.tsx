@@ -6,7 +6,6 @@ import type { TaskModalProps, TaskLogEntry, TaskUser } from './types'
 import { toDateStr, fmtD, addDays, inputStyle } from './utils'
 import { Field, DatePicker } from './ui'
 import { Combobox } from '../../ui-kit/components/Combobox'
-import { Select } from '../../ui-kit/components/Select'
 import { TimePicker } from '../../ui-kit/components/TimePicker'
 import { toast } from '../../lib/toast'
 
@@ -15,13 +14,9 @@ const minToHHMM = (min?: number | null) => min ? `${String(Math.floor(min / 60))
 const hhmmToMin = (hhmm: string) => { if (!hhmm) return ''; const [h, m] = hhmm.split(':').map(Number); return String((h || 0) * 60 + (m || 0)) }
 
 // Связь задачи — ровно одна из: проект / стратегическая цель / трек
-const LINK_TYPE_OPTIONS = [
-  { value: 'none',    label: 'Без связи' },
-  { value: 'project', label: 'Проект' },
-  { value: 'goal',    label: 'Стратегическая цель' },
-  { value: 'track',   label: 'Трек' },
-]
 const LINK_TYPE_LABEL: Record<string, string> = { project: 'Проект', goal: 'Цель', track: 'Трек' }
+// У стратегической цели нет клиента → подставляем компанию
+const COMPANY_NAME = 'Мегаполис Медиа'
 import { TaskHistory } from './TaskHistory'
 
 export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, defaultTrackId, defaultStageId, editTask, onOpenChatWith }: TaskModalProps) {
@@ -73,7 +68,7 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
     queryFn: () => api.get('/clients').then(r => r.data),
     staleTime: 1000 * 60 * 5,
   })
-  const { data: projectOptions = [] } = useQuery<Array<{ id: string; title: string }>>({
+  const { data: projectOptions = [] } = useQuery<Array<{ id: string; title: string; client?: { id: string; name: string } | null }>>({
     queryKey: ['projects'],
     queryFn: () => api.get('/projects').then(r => r.data),
     staleTime: 1000 * 60 * 5,
@@ -149,22 +144,36 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
     >💬 Открыть в чате</button>
   ) : null
 
-  // Связь: значение и обработчик выбора конкретного элемента (проект/цель/трек)
-  const linkItemOptions =
-    linkType === 'project' ? projectOptions.map(p => ({ value: p.id, label: p.title }))
-    : linkType === 'goal'  ? goalOptions.map(g => ({ value: g.id, label: g.title }))
-    : linkType === 'track' ? trackOptions.map(t => ({ value: t.id, label: t.title }))
-    : []
-  const linkValue = linkType === 'project' ? projectId : linkType === 'goal' ? goalId : linkType === 'track' ? trackId : null
-  const setLinkValue = (v: string) => {
-    setProjectId(linkType === 'project' ? (v || null) : null)
-    setGoalId(linkType === 'goal' ? (v || null) : null)
-    setTrackId(linkType === 'track' ? (v || null) : null)
-    if (linkType !== 'track') setStageId(null)
+  // Связь — единый сгруппированный список (Треки / Стратегические задачи / Проекты).
+  // Проекты фильтруются по клиенту; выбранный элемент всегда виден, даже если вне фильтра.
+  const clientName = client.trim()
+  let visibleProjects = clientName ? projectOptions.filter(p => (p.client?.name ?? '') === clientName) : projectOptions
+  if (projectId && !visibleProjects.some(p => p.id === projectId)) {
+    const sel = projectOptions.find(p => p.id === projectId)
+    if (sel) visibleProjects = [sel, ...visibleProjects]
   }
-  const changeLinkType = (v: string) => {
-    setLinkType(v as 'none' | 'project' | 'goal' | 'track')
-    setProjectId(null); setGoalId(null); setTrackId(null); setStageId(null)
+  let visibleGoals: Array<{ id: string; title: string }> = goalOptions
+  if (goalId && !visibleGoals.some(g => g.id === goalId)) visibleGoals = [{ id: goalId, title: 'Текущая цель (вне периода)' }, ...visibleGoals]
+
+  const linkOptions = [
+    { value: 'none', label: 'Без связи' },
+    ...trackOptions.map(t => ({ value: `track:${t.id}`, label: t.title, group: 'Треки' })),
+    ...visibleGoals.map(g => ({ value: `goal:${g.id}`, label: g.title, group: 'Стратегические задачи' })),
+    ...visibleProjects.map(p => ({ value: `project:${p.id}`, label: p.title, group: 'Проекты' })),
+  ]
+  const linkValue =
+    linkType === 'project' && projectId ? `project:${projectId}`
+    : linkType === 'goal' && goalId ? `goal:${goalId}`
+    : linkType === 'track' && trackId ? `track:${trackId}`
+    : 'none'
+  const setLink = (v: string) => {
+    const [type, id] = v.split(':')
+    setLinkType((type === 'track' || type === 'goal' || type === 'project') ? type : 'none')
+    setProjectId(type === 'project' ? id : null)
+    setGoalId(type === 'goal' ? id : null)
+    setTrackId(type === 'track' ? id : null)
+    if (type !== 'track') setStageId(null)
+    if (type === 'goal') setClient(COMPANY_NAME) // у стратегической цели клиента нет → компания
   }
   const linkReadonlyLabel =
     linkType === 'project' ? (editTask?.project?.title ?? projectOptions.find(p => p.id === projectId)?.title ?? '—')
@@ -280,15 +289,10 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
             </Field>
           </div>
 
-          <Field label="Связь" hint="Задачу можно связать ровно с одним: проектом, стратегической целью или треком. Учитывается в прогрессе цели / карточке проекта / деталях трека.">
+          <Field label="Связь" hint="Задачу можно связать ровно с одним: треком, стратегической целью или проектом. Список сгруппирован; проекты фильтруются по выбранному клиенту.">
             {isReadOnly
               ? <div style={{ ...inputStyle, color:'var(--text-3)' }}>{linkType === 'none' ? '—' : `${LINK_TYPE_LABEL[linkType]}: ${linkReadonlyLabel}`}</div>
-              : <div style={{ display:'grid', gridTemplateColumns:'190px 1fr', gap:8, alignItems:'center' }}>
-                  <Select options={LINK_TYPE_OPTIONS} value={linkType} onChange={changeLinkType} className="w-full" />
-                  {linkType !== 'none' && (
-                    <Combobox options={linkItemOptions} value={linkValue || undefined} placeholder="Выберите…" className="w-full" onChange={setLinkValue} />
-                  )}
-                </div>
+              : <Combobox options={linkOptions} value={linkValue} placeholder="Без связи" className="w-full" onChange={setLink} />
             }
           </Field>
 

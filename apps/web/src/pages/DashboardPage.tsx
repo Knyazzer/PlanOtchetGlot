@@ -372,8 +372,10 @@ function EditPersonalGoalsModal({ goals, onClose, onSaved }: { goals: PGoal[]; o
 }
 
 // ── Задачи на сегодня: канон DataTable (TanStack). Иконка-открыть слева; «Добавить задачу» — inline-строка ──
-type Draft = { client: string; projectId: string; title: string; time: string }
+type Draft = { client: string; link: string; title: string; time: string }
 const DRAFT_ID = '__draft__'
+// У стратегической цели нет клиента → подставляем компанию (совпадает с карточкой задачи)
+const COMPANY_NAME = 'Мегаполис Медиа'
 // В светлой теме чипы (выпадашка/время) — белые, как фон таблицы (не серые surface-2)
 const chipWhite = 'w-full !bg-[var(--surface)]'
 
@@ -381,17 +383,44 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
   title: string; tasks: Task[]; meId?: string; day: string
   onOpen: (t: Task) => void; onToggle: (t: Task) => void; onChanged: () => void; onAdd: () => void
 }) {
-  const { data: projects = [] } = useQuery<Array<{ id: string; title: string }>>({ queryKey: ['projects'], queryFn: () => api.get('/projects').then(r => r.data), staleTime: 300_000 })
+  const { data: projects = [] } = useQuery<Array<{ id: string; title: string; client?: { id: string; name: string } | null }>>({ queryKey: ['projects'], queryFn: () => api.get('/projects').then(r => r.data), staleTime: 300_000 })
   const { data: clients = [] } = useQuery<Array<{ id: string; name: string }>>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data), staleTime: 300_000 })
+  const { data: goals = [] } = useQuery<Array<{ id: string; title: string }>>({ queryKey: ['strategic-goals'], queryFn: () => api.get('/strategic-goals').then(r => r.data), staleTime: 120_000 })
+  const { data: tracks = [] } = useQuery<Array<{ id: string; title: string }>>({ queryKey: ['tracks'], queryFn: () => api.get('/tracks').then(r => r.data), staleTime: 120_000 })
   const patch = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => api.patch(`/tasks/${id}`, data), onSuccess: onChanged, onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось сохранить') })
   const [draft, setDraft] = useState<Draft | null>(null)
-  const projectOpts = projects.map(p => ({ value: p.id, label: p.title }))
   const clientOpts = clients.map(c => ({ value: c.name, label: c.name }))
   const toMinutes = (hhmm: string) => { if (!hhmm) return null; const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
   const toHHMM = (min?: number | null) => min ? `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` : ''
 
+  // Сгруппированные опции «Связь» (Треки / Стратегические задачи / Проекты); проекты фильтруются по клиенту
+  const linkOptionsFor = (clientVal?: string | null) => {
+    const cv = (clientVal || '').trim()
+    const projs = cv ? projects.filter(p => (p.client?.name ?? '') === cv) : projects
+    return [
+      { value: 'none', label: '—' },
+      ...tracks.map(t => ({ value: `track:${t.id}`, label: t.title, group: 'Треки' })),
+      ...goals.map(g => ({ value: `goal:${g.id}`, label: g.title, group: 'Стратегические задачи' })),
+      ...projs.map(p => ({ value: `project:${p.id}`, label: p.title, group: 'Проекты' })),
+    ]
+  }
+  const linkValueOf = (t: { projectId?: string | null; goalId?: string | null; trackId?: string | null }) =>
+    t.projectId ? `project:${t.projectId}` : t.goalId ? `goal:${t.goalId}` : t.trackId ? `track:${t.trackId}` : 'none'
+  // Применить выбор связи к существующей задаче (выбор цели авто-ставит клиента = компания)
+  const applyLink = (taskId: string, v: string) => {
+    const [type, id] = v.split(':')
+    const data: Record<string, unknown> = { projectId: type === 'project' ? id : null, goalId: type === 'goal' ? id : null, trackId: type === 'track' ? id : null }
+    if (type === 'goal') data.client = COMPANY_NAME
+    patch.mutate({ id: taskId, data })
+  }
+
   const create = useMutation({
-    mutationFn: (d: Draft) => api.post('/tasks', { title: d.title.trim(), assigneeId: meId, status: 'inprogress', startDate: day, client: d.client || null, projectId: d.projectId || null, actualMinutes: toMinutes(d.time) }),
+    mutationFn: (d: Draft) => {
+      const [type, id] = (d.link || 'none').split(':')
+      return api.post('/tasks', { title: d.title.trim(), assigneeId: meId, status: 'inprogress', startDate: day, client: d.client || null,
+        projectId: type === 'project' ? id : null, goalId: type === 'goal' ? id : null, trackId: type === 'track' ? id : null,
+        actualMinutes: toMinutes(d.time) })
+    },
     onSuccess: () => { setDraft(null); onChanged(); toast('Задача добавлена') },
     onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось создать задачу'),
   })
@@ -415,7 +444,7 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
   }, [draftActive, meId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Черновик рисуется как обычная строка (Task-образный объект)
-  const draftRow = draft ? ({ id: DRAFT_ID, title: draft.title, client: draft.client || null, projectId: draft.projectId || null, actualMinutes: toMinutes(draft.time), status: 'backlog', assignee: { id: meId ?? '', name: '' } } as unknown as Task) : null
+  const draftRow = draft ? ({ id: DRAFT_ID, title: draft.title, client: draft.client || null, actualMinutes: toMinutes(draft.time), status: 'backlog', assignee: { id: meId ?? '', name: '' } } as unknown as Task) : null
   const rows = draftRow ? [...tasks, draftRow] : tasks
 
   const columns = useMemo<ColumnDef<Task, unknown>[]>(() => [
@@ -427,10 +456,13 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
         const cb = <Combobox options={clientOpts} value={(dr ? draft?.client : row.original.client) || undefined} placeholder="—" className={chipWhite}
           onChange={v => dr ? setDraft(d => ({ ...d!, client: v })) : patch.mutate({ id: row.original.id, data: { client: v || null } })} />
         return dr ? <span data-draft-cell className="block w-full">{cb}</span> : cb } },
-    { id: 'project', header: 'Проект', enableSorting: false, meta: { width: '150px' },
+    { id: 'link', header: 'Связь', enableSorting: false, meta: { width: '160px' },
       cell: ({ row }) => { const dr = row.original.id === DRAFT_ID
-        const cb = <Combobox options={projectOpts} value={(dr ? draft?.projectId : row.original.projectId) || undefined} placeholder="—" className={chipWhite}
-          onChange={v => dr ? setDraft(d => ({ ...d!, projectId: v })) : patch.mutate({ id: row.original.id, data: { projectId: v || null } })} />
+        const cb = <Combobox options={linkOptionsFor(dr ? draft?.client : row.original.client)} value={dr ? (draft?.link || 'none') : linkValueOf(row.original)} placeholder="—" className={chipWhite}
+          onChange={v => {
+            if (dr) setDraft(d => ({ ...d!, link: v, ...(v.startsWith('goal:') ? { client: COMPANY_NAME } : {}) }))
+            else applyLink(row.original.id, v)
+          }} />
         return dr ? <span data-draft-cell className="block w-full">{cb}</span> : cb } },
     { id: 'title', header: 'Задача', accessorKey: 'title', enableSorting: false,
       cell: ({ row }) => {
@@ -453,14 +485,14 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
         return <button disabled={!mine} onClick={() => mine && onToggle(t)} title={mine ? (done ? 'Снять отметку' : 'Отметить выполненной') : 'Только исполнитель'}
           className={cn('mx-auto flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border-[1.5px] text-[11px] text-white', done ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)]', !mine && 'opacity-40')}>{done ? '✓' : ''}</button>
       } },
-  ], [clientOpts, projectOpts, meId, draft]) // eslint-disable-line react-hooks/exhaustive-deps
+  ], [clientOpts, projects, goals, tracks, meId, draft]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{ flex: 2, minWidth: 360 }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{title}</div>
       <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
         <DataTable columns={columns} data={rows} hideToolbar getRowId={t => t.id} addRowLabel="Добавить задачу"
-          onAddRow={() => setDraft(draft ?? { client: '', projectId: '', title: '', time: '' })} />
+          onAddRow={() => setDraft(draft ?? { client: '', link: 'none', title: '', time: '' })} />
       </div>
     </div>
   )
