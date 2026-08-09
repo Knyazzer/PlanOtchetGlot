@@ -341,8 +341,9 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
                     <SortableContext items={rows.map((r) => getRowId ? getRowId(r.original) : r.id)} strategy={verticalListSortingStrategy}>
                       {body}
                     </SortableContext>
-                    {/* Копия строки летит за курсором и плавно долетает до нового места — без «прыжка» на дропе */}
-                    <DragOverlay>
+                    {/* Копия строки летит за курсором. dropAnimation=null: на отпускании оверлей исчезает
+                        мгновенно (данные уже переставлены оптимистично) — иначе он «долетает» мимо и двоит строку. */}
+                    <DragOverlay dropAnimation={null}>
                       {activeRow && (
                         <table className="w-full table-fixed border-separate border-spacing-0 text-[14px]" style={{ width: tableRef.current?.offsetWidth }}>
                           <colgroup>
