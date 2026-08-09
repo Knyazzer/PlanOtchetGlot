@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useCurrentUser } from '../hooks/useAuth'
-import { DayModal } from '../components/DayModal'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { formatName } from '../lib/utils'
+import { DayModal } from '../components/DayModal'
 
-// Свод (План/Отчёт): месячная сетка день × сотрудник подразделения.
-// Ячейка: цвет формата + минуты задач + индикатор; подвал: часы/баллы/задачи (Q-SVOD-1).
+// Свод (План/Отчёт): месячная сетка день × сотрудник подразделения. ТОЛЬКО ДАННЫЕ (read-only,
+// решение docs/DECISION-2026-08-09): без редактирования дня и без «баллов». Рядовой сотрудник видит
+// только себя; отдел — руководитель/директор/админ. Встраивается в «Аналитику» (общий месяц через props).
 
 type Department = {
   id: string; name: string
@@ -45,18 +46,22 @@ function monthTitle(m: string): string {
   return new Date(y, mo - 1, 1).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
 }
 
-export function SvodPage() {
+export function SvodPage({ month: monthProp, onMonthChange, embedded = false }: { month?: string; onMonthChange?: (m: string) => void; embedded?: boolean } = {}) {
   const user = useCurrentUser()
-  const [month, setMonth] = useState(() => monthStr(new Date()))
+  const [monthState, setMonthState] = useState(() => monthStr(new Date()))
+  const month = monthProp ?? monthState
+  const setMonthBy = (delta: number) => { const nm = shiftMonth(month, delta); onMonthChange ? onMonthChange(nm) : setMonthState(nm) }
   const [divisionId, setDivisionId] = useState('')
-  const [dayModal, setDayModal] = useState<{ userId: string; userName: string; date: string } | null>(null)
+  const [viewDay, setViewDay] = useState<{ userId: string; userName: string; date: string } | null>(null) // просмотр задач дня (read-only)
   const isMobile = useIsMobile()
 
   const isAdmin = !!user?.isAdmin
   const directorDeptIds: string[] = (user?.access as any)?.directorDeptIds ?? []
   const userDivisionIds: string[] = (user?.access as any)?.divisionIds ?? []
-  // Директор видит dropdown с отделами своих департаментов; member/head — только свой отдел (без dropdown)
-  const showDropdown = isAdmin || directorDeptIds.length > 0
+  // Рядовой сотрудник (level=member) видит только СЕБЯ; отдел — руководитель/директор/админ.
+  const selfOnly = !isAdmin && (user?.access?.level ?? 'member') === 'member'
+  // Директор видит dropdown с отделами своих департаментов; head — свой отдел; member — без dropdown (только он сам)
+  const showDropdown = !selfOnly && (isAdmin || directorDeptIds.length > 0)
 
   const { data: structure = [] } = useQuery<Department[]>({
     queryKey: ['structure'],
@@ -93,6 +98,12 @@ export function SvodPage() {
     })
   }, [svod, today])
 
+  // Рядовому — только его строка; руководителю/директору/админу — весь отдел
+  const rows = useMemo(() => {
+    if (!svod) return []
+    return selfOnly ? svod.rows.filter(r => r.user.id === user?.id) : svod.rows
+  }, [svod, selfOnly, user?.id])
+
   const fmtLabel = (key: string | null) =>
     key ? (svod?.formats.find(f => f.key === key)?.label ?? key) : ''
 
@@ -103,29 +114,33 @@ export function SvodPage() {
   }
 
   return (
-    <div style={{ padding: '20px 24px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>Свод · План/Отчёт</h1>
-        {showDropdown ? (
-          <select
-            value={effectiveDivId}
-            onChange={e => setDivisionId(e.target.value)}
-            style={{ background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14 }}
-          >
-            {divisions.map(d => <option key={d.id} value={d.id}>{(d as any).deptName} · {d.name}</option>)}
-          </select>
-        ) : divisions[0] ? (
-          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)', padding: '4px 0' }}>
-            {(divisions[0] as any).deptName} · {divisions[0].name}
-          </span>
-        ) : null}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <button onClick={() => setMonth(m => shiftMonth(m, -1))} style={navBtn}>‹</button>
-          <span style={{ minWidth: 130, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', textTransform: 'capitalize' }}>{monthTitle(month)}</span>
-          <button onClick={() => setMonth(m => shiftMonth(m, 1))} style={navBtn}>›</button>
+    <div style={embedded ? { display: 'flex', flexDirection: 'column' } : { padding: '20px 24px', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Header — во встроенном режиме заголовок и навигацию месяца даёт родитель; тут только выбор отдела (руководителю) */}
+      {(!embedded || showDropdown) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          {!embedded && <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--text-1)' }}>Свод · План/Отчёт</h1>}
+          {showDropdown ? (
+            <select
+              value={effectiveDivId}
+              onChange={e => setDivisionId(e.target.value)}
+              style={{ background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14 }}
+            >
+              {divisions.map(d => <option key={d.id} value={d.id}>{(d as any).deptName} · {d.name}</option>)}
+            </select>
+          ) : !embedded && divisions[0] ? (
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-2)', padding: '4px 0' }}>
+              {(divisions[0] as any).deptName} · {divisions[0].name}
+            </span>
+          ) : null}
+          {!embedded && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => setMonthBy(-1)} style={navBtn}>‹</button>
+              <span style={{ minWidth: 130, textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--text-1)', textTransform: 'capitalize' }}>{monthTitle(month)}</span>
+              <button onClick={() => setMonthBy(1)} style={navBtn}>›</button>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* Legend */}
       {svod && (
@@ -133,7 +148,7 @@ export function SvodPage() {
           {svod.formats.map(f => (
             <span key={f.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text-2)' }}>
               <span style={{ width: 10, height: 10, borderRadius: 3, background: FORMAT_COLORS[f.key] ?? '#888' }} />
-              {f.label}{typeof f.score === 'number' && f.score > 0 ? ` (${f.score})` : ''}
+              {f.label}
             </span>
           ))}
         </div>
@@ -147,28 +162,28 @@ export function SvodPage() {
             : 'Ошибка загрузки свода'}
         </div>
       )}
-      {svod && !svod.rows.length && !isLoading && (
+      {svod && !rows.length && !isLoading && (
         <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>В подразделении нет активных сотрудников</div>
       )}
 
-      {/* Мобайл: сетка непригодна — персональная лента «мои дни» (полная сетка на десктопе) */}
-      {isMobile && svod && svod.rows.length > 0 && (() => {
-        const myRow = svod.rows.find(r => r.user.id === user?.id) ?? svod.rows[0]
+      {/* Мобайл: сетка непригодна — персональная лента «мои дни» (полная сетка на десктопе), read-only */}
+      {isMobile && svod && rows.length > 0 && (() => {
+        const myRow = rows.find(r => r.user.id === user?.id) ?? rows[0]
         return (
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>
-              {myRow.user.id === user?.id ? 'Мои дни' : formatName(myRow.user.name)} · итого {myRow.totals.hours}ч · {myRow.totals.score} баллов · задачи {myRow.totals.tasksDone}/{myRow.totals.tasksTotal}
+              {myRow.user.id === user?.id ? 'Мои дни' : formatName(myRow.user.name)} · итого {myRow.totals.hours}ч · задачи {myRow.totals.tasksDone}/{myRow.totals.tasksTotal}
             </div>
             {days.map(d => {
               const c = myRow.cells[d.key]
               const color = c?.dayFormat ? FORMAT_COLORS[c.dayFormat] ?? '#888' : null
               return (
-                <button key={d.key}
-                  onClick={() => setDayModal({ userId: myRow.user.id, userName: formatName(myRow.user.name), date: d.key })}
+                <div key={d.key}
+                  onClick={() => setViewDay({ userId: myRow.user.id, userName: formatName(myRow.user.name), date: d.key })}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px',
                     borderRadius: 10, border: `1px solid ${d.isToday ? 'var(--accent-s)' : 'var(--border)'}`,
-                    background: 'var(--surface-2)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                    background: 'var(--surface-2)', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer',
                     opacity: d.weekend && !c?.dayFormat ? 0.55 : 1,
                   }}>
                   <span style={{ width: 34, fontFamily: 'monospace', fontSize: 12, fontWeight: d.isToday ? 800 : 500, color: d.isToday ? 'var(--accent-s)' : d.weekend ? '#f43f5e' : 'var(--text-3)', flexShrink: 0 }}>{d.day}</span>
@@ -188,14 +203,14 @@ export function SvodPage() {
                   ) : (
                     <span style={{ flex: 1, fontSize: 12, color: 'var(--text-muted)' }}>{d.weekend ? 'выходной' : 'не заполнено'}</span>
                   )}
-                </button>
+                </div>
               )
             })}
           </div>
         )
       })()}
 
-      {!isMobile && svod && svod.rows.length > 0 && (
+      {!isMobile && svod && rows.length > 0 && (
         <div style={{ flex: 1, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface-2)' }}>
           <table style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
@@ -207,12 +222,11 @@ export function SvodPage() {
                   </th>
                 ))}
                 <th style={{ ...th, minWidth: 56 }}>Часы</th>
-                <th style={{ ...th, minWidth: 50 }}>Баллы</th>
                 <th style={{ ...th, minWidth: 60 }}>Задачи</th>
               </tr>
             </thead>
             <tbody>
-              {svod.rows.map(row => (
+              {rows.map(row => (
                 <tr key={row.user.id} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '7px 10px', fontSize: 14, color: row.user.id === user?.id ? 'var(--accent, #2563eb)' : 'var(--text-1)', fontWeight: row.user.id === user?.id ? 700 : 500, position: 'sticky', left: 0, background: 'var(--surface-2)', zIndex: 1, whiteSpace: 'nowrap' }}>
                     {formatName(row.user.name)}
@@ -224,8 +238,8 @@ export function SvodPage() {
                     return (
                       <td
                         key={d.key}
-                        onClick={() => setDayModal({ userId: row.user.id, userName: formatName(row.user.name), date: d.key })}
-                        title={c?.dayFormat ? `${fmtLabel(c.dayFormat)}${c.workMinutes ? ` · ${Math.round(c.workMinutes / 6) / 10}ч` : ''}${c.taskCount ? ` · задач: ${c.taskCount} (${c.tasksDone} ✓)` : ''}` : 'Открыть день'}
+                        onClick={() => setViewDay({ userId: row.user.id, userName: formatName(row.user.name), date: d.key })}
+                        title={c?.dayFormat ? `${fmtLabel(c.dayFormat)}${c.workMinutes ? ` · ${Math.round(c.workMinutes / 6) / 10}ч` : ''}${c.taskCount ? ` · задач: ${c.taskCount} (${c.tasksDone} ✓)` : ''} — открыть` : 'Открыть день'}
                         style={{
                           padding: 2, textAlign: 'center', height: 34, cursor: 'pointer',
                           background: d.weekend ? 'rgba(244,63,94,0.04)' : undefined,
@@ -246,7 +260,6 @@ export function SvodPage() {
                     )
                   })}
                   <td style={tdTotal}>{row.totals.hours}</td>
-                  <td style={tdTotal}>{row.totals.score}</td>
                   <td style={tdTotal}>{row.totals.tasksDone}/{row.totals.tasksTotal}</td>
                 </tr>
               ))}
@@ -255,13 +268,14 @@ export function SvodPage() {
         </div>
       )}
 
-      {dayModal && (
+      {/* Просмотр дня — задачи и тип дня БЕЗ правки (isOwn=false ⇒ read-only) */}
+      {viewDay && (
         <DayModal
-          userId={dayModal.userId}
-          userName={dayModal.userName}
-          date={dayModal.date}
-          isOwn={dayModal.userId === user?.id}
-          onClose={() => setDayModal(null)}
+          userId={viewDay.userId}
+          userName={viewDay.userName}
+          date={viewDay.date}
+          isOwn={false}
+          onClose={() => setViewDay(null)}
         />
       )}
     </div>

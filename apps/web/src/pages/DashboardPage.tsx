@@ -154,6 +154,7 @@ export function DashboardPage() {
     staleTime: 0, refetchOnMount: 'always',
   })
 
+
   const doneMut = useMutation({
     mutationFn: (id: string) => api.patch(`/tasks/${id}`, { status: 'done' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
@@ -204,6 +205,7 @@ export function DashboardPage() {
     <div style={{ flex: 1, minWidth: 0, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', boxSizing: 'border-box' }}>
       {/* Мой рабочий день (тип дня + отметка времени) на выбранную дату */}
       <DayFillCard date={selDate} />
+      {/* «Мои факты за месяц» переехали в раздел «Аналитика» (решение docs/DECISION-2026-08-09) */}
 
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
 

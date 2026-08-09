@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { fmtMinutes } from '../lib/taskMeta'
@@ -33,6 +33,7 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
   onClose: () => void
 }) {
   const qc = useQueryClient()
+  const downOnOverlay = useRef(false) // железное правило попапов: закрывать только если и mousedown, и mouseup на оверлее
 
   const { data: formats = [] } = useQuery<DayFormat[]>({
     queryKey: ['day-formats'],
@@ -59,7 +60,8 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
 
   return (
     <div
-      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
+      onMouseDown={e => { downOnOverlay.current = e.target === e.currentTarget }}
+      onMouseUp={e => { if (downOnOverlay.current && e.target === e.currentTarget) onClose(); downOnOverlay.current = false }}
       style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
     >
       <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 26px', width: '100%', maxWidth: 520, maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
