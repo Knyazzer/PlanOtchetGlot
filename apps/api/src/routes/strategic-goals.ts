@@ -21,6 +21,26 @@ function currentPeriodKey(horizon: 'quarter' | 'year' = 'quarter', d = new Date(
   return horizon === 'year' ? `${y}` : `${y}-Q${Math.floor(d.getMonth() / 3) + 1}`
 }
 
+// Прошлый период (квартал/год завершился) → цели read-only (неизменяемость истории, §5 спеки)
+function isPastPeriod(pk: string, now = new Date()): boolean {
+  const y = now.getFullYear(), q = Math.floor(now.getMonth() / 3) + 1
+  const m = pk.match(/^(\d{4})(?:-Q([1-4]))?$/)
+  if (!m) return false
+  const py = Number(m[1]), pq = m[2] ? Number(m[2]) : null
+  if (pq === null) return py < y                   // годовой период
+  return py < y || (py === y && pq < q)            // квартальный
+}
+
+// Следующий период (Q4→Q1 след. года; год→след. год)
+function nextPeriodKey(pk: string): string {
+  const m = pk.match(/^(\d{4})(?:-Q([1-4]))?$/)
+  if (!m) return pk
+  const y = Number(m[1])
+  if (!m[2]) return String(y + 1)
+  const q = Number(m[2])
+  return q === 4 ? `${y + 1}-Q1` : `${y}-Q${q + 1}`
+}
+
 // Департаменты в охвате пользователя: членство + директорство + руководство отделом.
 async function myDeptIds(userId: string): Promise<string[]> {
   const [memberships, directed, headed] = await Promise.all([
@@ -42,7 +62,7 @@ async function canManage(userId: string, isAdmin: boolean, deptId: string, divis
   return false
 }
 
-const sel = { id: true, title: true, description: true, deptId: true, divisionId: true, parentGoalId: true, kind: true, horizon: true, periodKey: true, status: true, outcome: true, sortOrder: true, createdById: true, closedAt: true } as const
+const sel = { id: true, title: true, description: true, deptId: true, divisionId: true, parentGoalId: true, kind: true, horizon: true, periodKey: true, status: true, outcome: true, sortOrder: true, createdById: true, closedAt: true, carriedFromId: true } as const
 
 export const GOAL_STATUS_RU: Record<string, string> = { active: 'В работе', done: 'Реализовано', partial: 'Частично', dropped: 'Снято' }
 
@@ -69,6 +89,16 @@ const patchSchema = z.object({
   sortOrder: z.number().int().optional(),
 })
 const closeSchema = z.object({ status: z.enum(['active', 'done', 'partial', 'dropped']), outcome: z.string().max(3000).optional() })
+const closePeriodSchema = z.object({
+  deptId: z.string(),
+  periodKey: z.string().regex(/^\d{4}(-Q[1-4])?$/),
+  decisions: z.array(z.object({
+    goalId: z.string(),
+    status: z.enum(['done', 'partial', 'dropped']),
+    outcome: z.string().max(3000).optional(),
+    carry: z.boolean().optional(),
+  })).min(1).max(200),
+})
 
 export async function strategicGoalsRoutes(app: FastifyInstance) {
   // GET /strategic-goals?periodKey= — цели периода (+ годовые того же года) в охвате пользователя
@@ -164,6 +194,7 @@ export async function strategicGoalsRoutes(app: FastifyInstance) {
     if (!p.success) return reply.code(400).send({ error: 'validation', details: p.error.flatten() })
     const g = await prisma.strategicGoal.findUnique({ where: { id } })
     if (!g) return reply.code(404).send({ error: 'Goal not found' })
+    if (isPastPeriod(g.periodKey)) return reply.code(403).send({ error: 'Период закрыт (read-only) — прошлые кварталы не редактируются' })
     if (g.closedAt) return reply.code(400).send({ error: 'Цель закрыта — правка недоступна' })
     if (!(await canManage(user.id, user.isAdmin, g.deptId, g.divisionId))) return reply.code(403).send({ error: 'Нет прав' })
     const updated = await prisma.strategicGoal.update({ where: { id }, data: p.data, select: sel })
@@ -186,6 +217,7 @@ export async function strategicGoalsRoutes(app: FastifyInstance) {
     if (!p.success) return reply.code(400).send({ error: 'validation', details: p.error.flatten() })
     const g = await prisma.strategicGoal.findUnique({ where: { id } })
     if (!g) return reply.code(404).send({ error: 'Goal not found' })
+    if (isPastPeriod(g.periodKey)) return reply.code(403).send({ error: 'Период закрыт (read-only)' })
     if (!((await canManage(user.id, user.isAdmin, g.deptId, g.divisionId)) || g.createdById === user.id)) return reply.code(403).send({ error: 'Нет прав' })
     if ((p.data.status === 'partial' || p.data.status === 'dropped') && !p.data.outcome?.trim()) return reply.code(400).send({ error: 'Укажите итог/почему' })
     const closing = p.data.status !== 'active'
@@ -205,9 +237,50 @@ export async function strategicGoalsRoutes(app: FastifyInstance) {
     const { id } = request.params as { id: string }
     const g = await prisma.strategicGoal.findUnique({ where: { id } })
     if (!g) return reply.code(404).send({ error: 'Goal not found' })
+    if (isPastPeriod(g.periodKey)) return reply.code(403).send({ error: 'Период закрыт (read-only)' })
     if (g.closedAt) return reply.code(400).send({ error: 'Цель закрыта — удаление недоступно' })
     if (!(await canManage(user.id, user.isAdmin, g.deptId, g.divisionId))) return reply.code(403).send({ error: 'Нет прав' })
     await prisma.strategicGoal.delete({ where: { id } })
     return reply.code(204).send()
+  })
+
+  // POST /strategic-goals/close-period — мастер закрытия периода (director/admin департамента).
+  // Пакет решений по целям: статус + итог (обяз. для не-done) + опц. перенос в следующий период (carriedFromId).
+  app.post('/close-period', { preHandler: authenticate }, async (request, reply) => {
+    const user = (request as any).user as { id: string; isAdmin: boolean }
+    const body = closePeriodSchema.safeParse(request.body)
+    if (!body.success) return reply.code(400).send({ error: 'validation', details: body.error.flatten() })
+    const { deptId, periodKey, decisions } = body.data
+    if (isPastPeriod(periodKey)) return reply.code(400).send({ error: 'Период уже прошёл — закрыть можно только текущий/будущий' })
+    // Право закрывать период — директор департамента или админ (не рук. отдела)
+    if (!user.isAdmin) {
+      const dept = await prisma.department.findUnique({ where: { id: deptId }, select: { directorId: true } })
+      if (dept?.directorId !== user.id) return reply.code(403).send({ error: 'Закрыть период может только директор департамента или админ' })
+    }
+    // Валидация: у каждой не-done цели обязателен итог
+    for (const d of decisions) {
+      if ((d.status === 'partial' || d.status === 'dropped') && !d.outcome?.trim()) return reply.code(400).send({ error: 'Для «частично/снято» нужен итог' })
+    }
+    const goals = await prisma.strategicGoal.findMany({ where: { id: { in: decisions.map(d => d.goalId) }, deptId, periodKey }, select: sel })
+    const byId = new Map(goals.map(g => [g.id, g]))
+    const nextPk = nextPeriodKey(periodKey)
+    const now = new Date()
+    const actorName = (await prisma.user.findUnique({ where: { id: user.id }, select: { name: true } }))?.name ?? '—'
+    let carried = 0
+    await prisma.$transaction(async (tx) => {
+      for (const d of decisions) {
+        const g = byId.get(d.goalId)
+        if (!g) continue
+        await tx.strategicGoal.update({ where: { id: g.id }, data: { status: d.status, outcome: d.outcome ?? null, closedAt: now, closedById: user.id } })
+        await tx.strategicGoalLog.create({ data: { goalId: g.id, userId: user.id, userName: actorName, action: 'status', details: `закрытие периода → «${GOAL_STATUS_RU[d.status] ?? d.status}»${d.outcome?.trim() ? ` · итог: ${d.outcome.trim()}` : ''}`, meta: { from: g.status, to: d.status, closePeriod: true } } })
+        // Перенос в следующий период — копия с carriedFromId (прошлый квартал не переписываем)
+        if (d.carry) {
+          const copy = await tx.strategicGoal.create({ data: { title: g.title, description: g.description, deptId: g.deptId, divisionId: g.divisionId, parentGoalId: null, kind: g.kind, horizon: g.horizon, periodKey: nextPk, carriedFromId: g.id, createdById: user.id }, select: { id: true } })
+          await tx.strategicGoalLog.create({ data: { goalId: copy.id, userId: user.id, userName: actorName, action: 'created', details: `перенесена из периода ${periodKey}`, meta: { carriedFrom: g.id, fromPeriod: periodKey } } })
+          carried++
+        }
+      }
+    })
+    return { closed: decisions.length, carried, nextPeriodKey: nextPk }
   })
 }

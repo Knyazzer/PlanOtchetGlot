@@ -8,7 +8,15 @@ import { useConfirm } from '../components/ConfirmModal'
 
 // Стратегия компании — канбан целей квартала/года, каскад департамент→отдел. См. docs/STRATEGIC-GOALS.md §11.
 
-interface Goal { id: string; title: string; description: string | null; deptId: string; divisionId: string | null; parentGoalId: string | null; kind: string; horizon: string; periodKey: string; status: string; outcome: string | null; sortOrder: number; createdById: string; closedAt: string | null; tasksTotal?: number; tasksDone?: number; trackCount?: number }
+interface Goal { id: string; title: string; description: string | null; deptId: string; divisionId: string | null; parentGoalId: string | null; kind: string; horizon: string; periodKey: string; status: string; outcome: string | null; sortOrder: number; createdById: string; closedAt: string | null; carriedFromId?: string | null; tasksTotal?: number; tasksDone?: number; trackCount?: number }
+
+// Прошлый период (квартал/год завершился) → цели read-only
+function isPastPeriod(pk: string): boolean {
+  const now = new Date(), y = now.getFullYear(), q = Math.floor(now.getMonth() / 3) + 1
+  const m = pk.match(/^(\d{4})(?:-Q([1-4]))?$/); if (!m) return false
+  const py = Number(m[1]), pq = m[2] ? Number(m[2]) : null
+  return pq === null ? py < y : (py < y || (py === y && pq < q))
+}
 interface TrackLite { id: string; title: string; status: string; goalId: string | null; total: number; done: number }
 interface GoalDetailData extends Goal { tracks: TrackLite[]; looseTasks: Array<{ id: string; title: string; status: string }>; progress: { total: number; done: number; trackCount: number } }
 interface Div { id: string; name: string; head?: { id: string; name: string } | null; memberships: Array<{ user: { id: string } }> }
@@ -59,7 +67,9 @@ export function StrategyPage() {
   useEffect(() => { if (!deptId && depts.length) setDeptId(depts[0].id) }, [depts, deptId])
   const dept = depts.find(d => d.id === deptId) ?? null
   const div = divId ? dept?.divisions.find(d => d.id === divId) ?? null : null
-  const editable = canManage(dept, div)
+  const isPast = isPastPeriod(periodKey)                       // прошлый период — read-only
+  const editable = canManage(dept, div) && !isPast
+  const canClosePeriod = !isPast && !!dept && (isAdmin || dept.director?.id === me?.id) // закрыть период — директор/админ
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['strategic-goals'] })
   const setStatus = useMutation({ mutationFn: ({ id, status }: { id: string; status: string }) => api.patch(`/strategic-goals/${id}/close`, { status }), onSuccess: invalidate })
@@ -68,6 +78,7 @@ export function StrategyPage() {
   const [modal, setModal] = useState<{ deptId: string; divisionId: string | null; kind: 'goal' | 'growth'; edit?: Goal } | null>(null)
   const [closing, setClosing] = useState<Goal | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [closePeriod, setClosePeriod] = useState(false)
 
   // цели текущего уровня (департамент или отдел)
   const levelGoals = goals.filter(g => g.deptId === deptId && (g.divisionId ?? null) === divId)
@@ -91,11 +102,23 @@ export function StrategyPage() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
           {depts.map(d => <Chip key={d.id} active={d.id === deptId} onClick={() => { setDeptId(d.id); setDivId(null) }} dot={d.color}>{d.name}</Chip>)}
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
           {quarters.map(q => <Chip key={q.key} active={periodKey === q.key} onClick={() => setPeriodKey(q.key)}>{q.label}</Chip>)}
           <Chip active={periodKey === year} onClick={() => setPeriodKey(year)}>Год</Chip>
+          {canClosePeriod && (
+            <button onClick={() => setClosePeriod(true)}
+              style={{ marginLeft: 6, background: ROLE.primary, color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Закрыть период
+            </button>
+          )}
         </div>
       </div>
+
+      {isPast && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: ROLE.warning + '18', border: '1px solid ' + ROLE.warning + '44', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 13, color: 'var(--text-2)' }}>
+          <span style={{ fontWeight: 700, color: ROLE.warning }}>Период закрыт</span> — прошлый квартал доступен только для просмотра (read-only).
+        </div>
+      )}
 
       {/* Под-вкладки: Департамент (общие) + отделы */}
       {dept && (
@@ -160,6 +183,7 @@ export function StrategyPage() {
       {modal && <GoalModal ctx={modal} periodKey={periodKey} year={year} onClose={() => setModal(null)} onSaved={invalidate} />}
       {closing && <CloseGoalModal goal={closing} onClose={() => setClosing(null)} onSaved={invalidate} />}
       {detailId && <GoalDetail goalId={detailId} canContribute={(() => { const dg = goals.find(g => g.id === detailId); return dg ? canContributeGoal(dg) : false })()} meId={me?.id} onClose={() => setDetailId(null)} onChanged={invalidate} />}
+      {closePeriod && dept && <ClosePeriodModal deptId={dept.id} deptName={dept.name} periodKey={periodKey} goals={goals.filter(g => g.deptId === dept.id && g.status === 'active' && g.kind !== 'growth')} onClose={() => setClosePeriod(false)} onDone={() => { setClosePeriod(false); invalidate() }} />}
       {confirmUI}
     </div>
   )
@@ -177,6 +201,7 @@ function GoalCard({ g, editable, draggable, onOpen, onEdit, onClose, onDelete }:
           <div onClick={onOpen} title="Открыть цель" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', lineHeight: 1.3, cursor: 'pointer' }}>
             {g.title}
             {g.horizon === 'year' && <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: ROLE.primary, background: ROLE.primary + '1c', padding: '1px 6px', borderRadius: 5 }}>ГОД</span>}
+            {g.carriedFromId && <span title="Перенесена из прошлого периода" style={{ marginLeft: 6, fontSize: 10, fontWeight: 800, color: ROLE.warning, background: ROLE.warning + '1c', padding: '1px 6px', borderRadius: 5 }}>↩ ПЕРЕНОС</span>}
           </div>
           {g.description && <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 3 }}>{g.description}</div>}
           {(g.status === 'partial' || g.status === 'dropped') && <span style={{ display: 'inline-block', marginTop: 5, fontSize: 10, fontWeight: 800, padding: '1px 7px', borderRadius: 20, background: st.color + '22', color: st.color }}>{st.label}</span>}
@@ -546,3 +571,79 @@ const iconBtn: React.CSSProperties = { background: 'none', border: 'none', color
 const addDashed: React.CSSProperties = { width: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, border: '1px dashed var(--border)', background: 'none', borderRadius: 8, padding: '7px', color: ROLE.primary, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }
 const btnGhost: React.CSSProperties = { padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }
 const btnPrimary: React.CSSProperties = { padding: '9px 18px', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }
+
+// Мастер закрытия периода: по каждой активной цели департамента — статус + итог + опц. перенос.
+const CLOSE_OPTS: Array<{ v: 'done' | 'partial' | 'dropped'; label: string; color: string }> = [
+  { v: 'done', label: 'Достигнута', color: ROLE.success },
+  { v: 'partial', label: 'Частично', color: ROLE.warning },
+  { v: 'dropped', label: 'Снята', color: ROLE.danger },
+]
+function ClosePeriodModal({ deptId, deptName, periodKey, goals, onClose, onDone }: { deptId: string; deptName: string; periodKey: string; goals: Goal[]; onClose: () => void; onDone: () => void }) {
+  const mdRef = useRef(false)
+  const [dec, setDec] = useState<Record<string, { status: 'done' | 'partial' | 'dropped'; outcome: string; carry: boolean }>>(
+    () => Object.fromEntries(goals.map(g => [g.id, { status: 'done' as const, outcome: '', carry: false }])),
+  )
+  const set = (id: string, patch: Partial<{ status: 'done' | 'partial' | 'dropped'; outcome: string; carry: boolean }>) => setDec(d => ({ ...d, [id]: { ...d[id], ...patch } }))
+  const missing = goals.some(g => { const x = dec[g.id]; return (x.status === 'partial' || x.status === 'dropped') && !x.outcome.trim() })
+
+  const submit = useMutation({
+    mutationFn: () => api.post('/strategic-goals/close-period', {
+      deptId, periodKey,
+      decisions: goals.map(g => ({ goalId: g.id, status: dec[g.id].status, outcome: dec[g.id].outcome.trim() || undefined, carry: dec[g.id].carry })),
+    }),
+    onSuccess: onDone,
+    onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось закрыть период'),
+  })
+
+  return (
+    <div onMouseDown={e => { mdRef.current = e.target === e.currentTarget }} onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose(); mdRef.current = false }}
+      style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ width: 620, maxWidth: '100%', maxHeight: 'calc(100vh - 48px)', background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.4)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-1)' }}>Закрыть период · {periodKey}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{deptName} · итог по целям квартальной встречи</div>
+          </div>
+          <button onClick={onClose} style={{ ...iconBtn, fontSize: 18 }}>✕</button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {goals.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: 20 }}>Активных целей нет — закрывать нечего.</div>}
+          {goals.map(g => {
+            const x = dec[g.id]
+            return (
+              <div key={g.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 12, background: 'var(--surface-2)' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 8 }}>{g.title}</div>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+                  {CLOSE_OPTS.map(o => (
+                    <button key={o.v} onClick={() => set(g.id, { status: o.v })}
+                      style={{ background: x.status === o.v ? o.color : 'var(--surface-1)', color: x.status === o.v ? '#fff' : 'var(--text-2)', border: '1px solid ' + (x.status === o.v ? o.color : 'var(--border)'), borderRadius: 7, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                {(x.status === 'partial' || x.status === 'dropped') && (
+                  <textarea value={x.outcome} onChange={e => set(g.id, { outcome: e.target.value })} placeholder="Итог/почему (обязательно)"
+                    style={{ width: '100%', boxSizing: 'border-box', minHeight: 52, resize: 'vertical', background: 'var(--surface-1)', border: '1px solid ' + (x.outcome.trim() ? 'var(--border)' : ROLE.danger + '88'), borderRadius: 8, padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, outline: 'none', marginBottom: 8 }} />
+                )}
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--text-2)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={x.carry} onChange={e => set(g.id, { carry: e.target.checked })} />
+                  Перенести в следующий период
+                </label>
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ flex: 1, fontSize: 12, color: 'var(--text-muted)' }}>Закрытые цели станут read-only; переносы создадут копии в следующем периоде.</div>
+          <button onClick={onClose} style={btnGhost}>Отмена</button>
+          <button onClick={() => submit.mutate()} disabled={goals.length === 0 || missing || submit.isPending}
+            style={{ ...btnPrimary, opacity: (goals.length === 0 || missing || submit.isPending) ? 0.5 : 1 }}>
+            {submit.isPending ? 'Закрываю…' : 'Закрыть период'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
