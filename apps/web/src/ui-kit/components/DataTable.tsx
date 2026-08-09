@@ -15,6 +15,7 @@ import { ArrowDown, ArrowUp, Check, ChevronRight, ChevronsUpDown, GripVertical, 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '../lib/cn'
 
@@ -329,7 +330,7 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
 
               if (rowDragEnabled) {
                 return (
-                  <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleRowDragEnd}>
+                  <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleRowDragEnd} modifiers={[restrictToVerticalAxis, restrictToParentElement]}>
                     <SortableContext items={rows.map((r) => getRowId ? getRowId(r.original) : r.id)} strategy={verticalListSortingStrategy}>
                       {body}
                     </SortableContext>
