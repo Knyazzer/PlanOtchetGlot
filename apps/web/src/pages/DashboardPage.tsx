@@ -14,6 +14,7 @@ import { Tooltip } from '../components/Tooltip'
 import { cn } from '../ui-kit/lib/cn'
 import { Maximize2 } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { toast } from '../lib/toast'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -391,7 +392,7 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
 
   const create = useMutation({
     mutationFn: (d: Draft) => api.post('/tasks', { title: d.title.trim(), assigneeId: meId, status: 'inprogress', startDate: day, client: d.client || null, projectId: d.projectId || null, actualMinutes: toMinutes(d.time) }),
-    onSuccess: () => { setDraft(null); onChanged() },
+    onSuccess: () => { setDraft(null); onChanged(); toast('Задача добавлена') },
     onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось создать задачу'),
   })
 

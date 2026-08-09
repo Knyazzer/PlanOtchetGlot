@@ -7,6 +7,7 @@ import { toDateStr, fmtD, addDays, inputStyle } from './utils'
 import { Field, DatePicker } from './ui'
 import { Combobox } from '../../ui-kit/components/Combobox'
 import { Select } from '../../ui-kit/components/Select'
+import { toast } from '../../lib/toast'
 
 // Связь задачи — ровно одна из: проект / стратегическая цель / трек
 const LINK_TYPE_OPTIONS = [
@@ -105,14 +106,24 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
         }),
     onSuccess: () => {
       onDone()
-      if (isEdit) qc.invalidateQueries({ queryKey: ['taskLog', editTask.id] })
+      // Тост: объясняем неочевидное (задача ушла другому исполнителю) + подтверждаем сохранение
+      const sentToOther = assigneeId !== currentUser?.id
+      if (isEdit) {
+        qc.invalidateQueries({ queryKey: ['taskLog', editTask.id] })
+        const reassigned = assigneeId !== editTask.assignee.id
+        if (reassigned && sentToOther) toast(`Задача отправлена: ${assigneeName}`, 'sent')
+        else toast('Сохранено')
+      } else {
+        if (sentToOther) toast(`Задача отправлена: ${assigneeName}`, 'sent')
+        else toast('Задача создана')
+      }
       onClose() // сохранение закрывает модал (и при создании, и при редактировании)
     },
   })
 
   const deleteMutation = useMutation({
     mutationFn: () => api.delete(`/tasks/${editTask!.id}`),
-    onSuccess: () => { onDone(); onClose() },
+    onSuccess: () => { onDone(); toast('Задача удалена', 'info'); onClose() },
   })
 
   function submit() {
