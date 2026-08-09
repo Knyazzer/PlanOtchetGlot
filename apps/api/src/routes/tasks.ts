@@ -183,6 +183,7 @@ export async function tasksRoutes(app: FastifyInstance) {
       assigneeId:  z.string().uuid(),
       deadline:    z.string().optional(),
       startDate:   z.string().optional(),
+      status:      z.enum(['backlog', 'inprogress', 'done']).default('backlog'),
       trackId:     z.string().nullable().optional(),
       stageId:     z.string().nullable().optional(),
       goalId:      z.string().nullable().optional(),  // привязка задачи к стратегической цели
@@ -197,7 +198,7 @@ export async function tasksRoutes(app: FastifyInstance) {
     const body = schema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
 
-    const { title, description, assigneeId, deadline, startDate, trackId, stageId, goalId,
+    const { title, description, assigneeId, deadline, startDate, status, trackId, stageId, goalId,
             type, client, projectId, plannedMinutes, actualMinutes, repeatRule, repeatUntil } = body.data
 
     const assigneeExists = await prisma.user.findUnique({ where: { id: assigneeId }, select: { id: true, name: true } })
@@ -218,6 +219,7 @@ export async function tasksRoutes(app: FastifyInstance) {
     const commonData = {
       title,
       description,
+      status: status as any, // строковый литерал → TaskStatus enum
       assignedById: user.id,
       assigneeId,
       deadline: deadline ? new Date(deadline) : null,
@@ -351,6 +353,10 @@ export async function tasksRoutes(app: FastifyInstance) {
     // автокопия «план → факт» при завершении (паттерн донора: один ввод закрывает оба в 80% случаев)
     const becomesDone = d.status === 'done' && task.status !== 'done'
     const leavesDone = d.status !== undefined && d.status !== 'done' && task.status === 'done'
+    // «взял задачу в работу» → она падает в сегодняшний рабочий набор (если день не задан явно).
+    // Централизует связь Обзор⇄канбан⇄Свод: единый источник дня — startDate.
+    const becomesInProgress = d.status === 'inprogress' && task.status !== 'inprogress'
+    const autoStartToday = becomesInProgress && d.startDate === undefined
     const autoActual =
       becomesDone && d.actualMinutes === undefined && task.actualMinutes == null && task.plannedMinutes != null
         ? task.plannedMinutes
@@ -363,6 +369,7 @@ export async function tasksRoutes(app: FastifyInstance) {
         ...(d.status      !== undefined && { status: d.status as any }),
         ...(becomesDone && { doneAt: new Date() }),
         ...(leavesDone && { doneAt: null }),
+        ...(autoStartToday && { startDate: new Date() }),
         ...(autoActual !== undefined && { actualMinutes: autoActual }),
         ...(d.assigneeId  !== undefined && {
           assigneeId: d.assigneeId,
