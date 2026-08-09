@@ -13,7 +13,7 @@ export const LINK_META: Record<LinkType, { label: string; group: string; color: 
 /** Иконка типа связи (по ней видно тип, не читая текст). */
 export function linkIcon(type: LinkType): ReactNode {
   const style = { color: LINK_META[type].color }
-  const cls = 'h-3.5 w-3.5 shrink-0'
+  const cls = 'mt-0.5 h-3.5 w-3.5 shrink-0'
   if (type === 'track') return <Route className={cls} style={style} />
   if (type === 'goal') return <Target className={cls} style={style} />
   return <Briefcase className={cls} style={style} />
