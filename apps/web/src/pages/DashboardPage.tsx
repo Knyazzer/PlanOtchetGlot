@@ -128,12 +128,6 @@ function DeadlineBadge({ days }: { days: number }) {
 // «Мой статус»-заглушка убрана: дублировала «Тип дня» из DayFillCard. Единый статус
 // (присутствие + формат дня + связь со Сводом) собираем на этапе HR-графика (план A).
 
-// ── Row styles ─────────────────────────────────────────────────────────────────
-const rowStyle: React.CSSProperties = {
-  display:'flex', alignItems:'flex-start', gap:10, padding:'10px 0',
-  borderBottom:'1px solid var(--border)', cursor:'pointer',
-}
-
 // ── Main ───────────────────────────────────────────────────────────────────────
 export function DashboardPage() {
   const currentUser = useAuthStore(s => s.user)
@@ -184,94 +178,35 @@ export function DashboardPage() {
 
   const sortedEvents = [...dayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
-  const card: React.CSSProperties = {
-    background: 'var(--surface-1)', border: '1px solid var(--border)',
-    borderRadius: 14, padding: '20px 24px', flex: 1, minWidth: 260,
-    display: 'flex', flexDirection: 'column',
-  }
-  const colTitle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
-    textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14,
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    flexShrink: 0,
-  }
-  const addBtn: React.CSSProperties = {
-    background: 'none', border: 'none', color: 'var(--text-muted)',
-    cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px',
-    borderRadius: 4, fontFamily: 'Inter,sans-serif',
-  }
-  const emptyText: React.CSSProperties = {
-    fontSize: 14, color: 'var(--text-muted)', fontStyle: 'italic', padding: '8px 0',
-  }
-
   return (
     <div style={{ display: 'flex', height: '100%', boxSizing: 'border-box' }}>
     <div style={{ flex: 1, minWidth: 0, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', boxSizing: 'border-box' }}>
-      {/* Мой рабочий день (тип дня + отметка времени) на выбранную дату */}
-      <DayFillCard date={selDate} />
-      {/* «Мои факты за месяц» переехали в раздел «Аналитика» (решение docs/DECISION-2026-08-09) */}
-
-      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-
-        {/* ── Задачи на сегодня — таблица с быстрым созданием (клик по строке → полная карточка) ── */}
-        <TodayTasksTable
-          title={`Задачи на ${isToday ? 'сегодня' : dayShort}`}
-          tasks={dayTasks}
-          meId={currentUser?.id}
-          day={selDate}
-          onOpen={t => setEditTask(t)}
-          onToggle={t => doneMut.mutate(t)}
-          onChanged={() => qc.invalidateQueries({ queryKey: ['tasks'] })}
-          onAdd={() => setShowCreateTask(true)}
-        />
-
-        {/* ── События сегодня ── */}
-        <div style={card}>
-          <div style={colTitle}>
-            <span>События {isToday ? 'сегодня' : dayShort}</span>
-            <button style={addBtn} title="Новое событие" onClick={() => setShowCreateEvent(true)}>+</button>
-          </div>
-          {sortedEvents.length === 0
-            ? <div style={emptyText}>Нет событий на {isToday ? 'сегодня' : 'этот день'}</div>
-            : sortedEvents.map(ev => {
-                const color  = TYPE_COLOR[ev.type] ?? '#8B5CF6'
-                const nowMin = now.getHours() * 60 + now.getMinutes()
-                const [sh, sm] = ev.startTime.split(':').map(Number)
-                const [eh, em] = ev.endTime.split(':').map(Number)
-                const isNow  = isToday && nowMin >= sh * 60 + sm && nowMin < eh * 60 + em
-                const isPast = isToday && nowMin >= eh * 60 + em
-                return (
-                  <div
-                    key={ev.id}
-                    style={{ ...rowStyle, opacity: isPast ? 0.5 : 1 }}
-                    onClick={() => setViewEventId(ev.id)}
-                  >
-                    <div style={{ width:3, borderRadius:4, background: color, flexShrink:0, alignSelf:'stretch', minHeight:36 }} />
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-                        <span style={{ fontSize:12, fontWeight:700, color }}>
-                          {fmtTime(ev.startTime)}–{fmtTime(ev.endTime)}
-                        </span>
-                        {isNow && (
-                          <span style={{ fontSize:12, fontWeight:700, padding:'1px 6px', borderRadius:20, background: color+'33', color }}>СЕЙЧАС</span>
-                        )}
-                      </div>
-                      <div style={{ fontSize:14, fontWeight:600, color:'var(--text-1)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{ev.title}</div>
-                      {ev.location.length > 0 && (
-                        <div style={{ fontSize:12, color:'var(--text-muted)', marginTop:2 }}>{ev.location[0]}</div>
-                      )}
-                    </div>
-                    <span style={{ fontSize:12, padding:'2px 8px', borderRadius:20, background: color+'18', color, fontWeight:600, flexShrink:0, alignSelf:'flex-start', marginTop:2 }}>
-                      {TYPE_LABEL[ev.type] ?? ev.type}
-                    </span>
-                  </div>
-                )
-              })
-          }
+      {/* Две колонки: слева «Мой рабочий день» + «Задачи на сегодня» (одна ширина);
+          справа «Стратегические цели отдела» + «События» таблицей (одна ширина). */}
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div style={{ flex: 2, minWidth: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <DayFillCard date={selDate} />
+          <TodayTasksTable
+            title={`Задачи на ${isToday ? 'сегодня' : dayShort}`}
+            tasks={dayTasks}
+            meId={currentUser?.id}
+            day={selDate}
+            onOpen={t => setEditTask(t)}
+            onToggle={t => doneMut.mutate(t)}
+            onChanged={() => qc.invalidateQueries({ queryKey: ['tasks'] })}
+            onAdd={() => setShowCreateTask(true)}
+          />
+        </div>
+        <div style={{ flex: 1, minWidth: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <DeptGoalsCard />
+          <EventsTable
+            title={`События ${isToday ? 'сегодня' : dayShort}`}
+            events={sortedEvents}
+            onOpen={ev => setViewEventId(ev.id)}
+            onAdd={() => setShowCreateEvent(true)}
+          />
         </div>
       </div>
-
-      <DeptGoalsCard />
 
       {/* Modals */}
       {showCreateTask && (
@@ -367,6 +302,31 @@ function EditPersonalGoalsModal({ goals, onClose, onSaved }: { goals: PGoal[]; o
           <button onClick={onClose} style={{ padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>Отмена</button>
           <button onClick={() => put.mutate()} disabled={put.isPending} style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>{put.isPending ? '…' : 'Сохранить'}</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── События дня — таблица (Время / Название / Тип); клик по строке → карточка; снизу «Добавить событие» ──
+function EventsTable({ title, events, onOpen, onAdd }: {
+  title: string; events: ApiEvent[]; onOpen: (ev: ApiEvent) => void; onAdd: () => void
+}) {
+  const columns = useMemo<ColumnDef<ApiEvent, unknown>[]>(() => [
+    { id: 'time', header: 'Время', enableSorting: false, meta: { width: '116px' },
+      cell: ({ row }) => { const ev = row.original; const c = TYPE_COLOR[ev.type] ?? '#8B5CF6'
+        return <span style={{ fontSize: 13, fontWeight: 700, color: c, whiteSpace: 'nowrap' }}>{fmtTime(ev.startTime)}–{fmtTime(ev.endTime)}</span> } },
+    { id: 'title', header: 'Название', accessorKey: 'title', enableSorting: false,
+      cell: ({ row }) => <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.original.title}</span> },
+    { id: 'type', header: 'Тип', enableSorting: false, meta: { width: '104px' },
+      cell: ({ row }) => { const ev = row.original; const c = TYPE_COLOR[ev.type] ?? '#8B5CF6'
+        return <span style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: c + '18', color: c, fontWeight: 600, whiteSpace: 'nowrap' }}>{TYPE_LABEL[ev.type] ?? ev.type}</span> } },
+  ], [])
+  return (
+    <div style={{ width: '100%' }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{title}</div>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <DataTable columns={columns} data={events} hideToolbar getRowId={ev => ev.id}
+          onRowClick={onOpen} addRowLabel="Добавить событие" onAddRow={onAdd} />
       </div>
     </div>
   )
@@ -505,7 +465,7 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
   ], [clientOpts, projects, goals, tracks, meId, draft]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ flex: 2, minWidth: 360 }}>
+    <div style={{ width: '100%' }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{title}</div>
       <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
         <DataTable columns={columns} data={rows} hideToolbar getRowId={t => t.id} addRowLabel="Добавить задачу"
