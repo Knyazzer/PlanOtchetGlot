@@ -25,7 +25,9 @@ function SortableRow({ id, className, onClick, onMouseEnter, children }: {
   id: string | number; className?: string; onClick?: () => void; onMouseEnter?: () => void
   children: (handle: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => ReactNode
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  // animateLayoutChanges:false — на дропе НЕ анимируем сброс transform'ов (данные уже переставлены);
+  // иначе идёт вторая волна перетасовки поверх нового порядка. Reflow во время drag остаётся плавным.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, animateLayoutChanges: () => false })
   // Источник во время drag полностью прячем — его визуально замещает DragOverlay (без остаточного transform → нет «прыжка» на дропе)
   const style: React.CSSProperties = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0 : 1, position: 'relative' }
   return (
