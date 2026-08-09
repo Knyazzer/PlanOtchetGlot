@@ -7,10 +7,12 @@ import { tasksRoutes } from './tasks'
 
 // Кусок №1: POST принимает status; PATCH при переходе в inprogress ставит startDate=сегодня.
 const AUTH_ID = 'test-tasks-core-auth'
+const RECIPIENT_AUTH_ID = 'test-tasks-core-recipient'
 
 let app: FastifyInstance
 let token: string
 let userId: string
+let recipientId: string
 
 const isToday = (d: string | Date) => {
   const x = new Date(d); const n = new Date()
@@ -34,11 +36,18 @@ beforeAll(async () => {
   })
   userId = user.id
   token = app.jwt.sign({ sub: AUTH_ID })
+
+  const recipient = await prisma.user.upsert({
+    where: { authId: RECIPIENT_AUTH_ID },
+    update: { isActive: true },
+    create: { name: 'Test Tasks Recipient', authId: RECIPIENT_AUTH_ID },
+  })
+  recipientId = recipient.id
 })
 
 afterAll(async () => {
-  await prisma.task.deleteMany({ where: { assigneeId: userId } })
-  await prisma.user.deleteMany({ where: { authId: AUTH_ID } })
+  await prisma.task.deleteMany({ where: { assigneeId: { in: [userId, recipientId] } } })
+  await prisma.user.deleteMany({ where: { authId: { in: [AUTH_ID, RECIPIENT_AUTH_ID] } } })
   await app.close()
 })
 
@@ -88,5 +97,25 @@ describe('PATCH /tasks/:id — переход в inprogress ставит startDa
     expect(res.statusCode).toBe(200)
     expect(res.json().doneAt).toBeNull()
     expect(isToday(res.json().startDate)).toBe(true)
+  })
+})
+
+describe('PATCH /tasks/:id — переназначение на другого сбрасывает в Бэклог', () => {
+  it('inprogress-задача, переназначенная на другого, становится backlog (падает в его пул)', async () => {
+    const t = await prisma.task.create({
+      data: {
+        title: 'tc-reassign', assignedById: userId, assigneeId: userId,
+        status: 'inprogress', startDate: new Date(),
+      },
+      select: { id: true },
+    })
+    const res = await app.inject({
+      method: 'PATCH', url: `/tasks/${t.id}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { assigneeId: recipientId },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().status).toBe('backlog')
+    expect(res.json().assignee.id).toBe(recipientId)
   })
 })

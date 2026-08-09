@@ -357,6 +357,9 @@ export async function tasksRoutes(app: FastifyInstance) {
     // Централизует связь Обзор⇄канбан⇄Свод: единый источник дня — startDate.
     const becomesInProgress = d.status === 'inprogress' && task.status !== 'inprogress'
     const autoStartToday = becomesInProgress && d.startDate === undefined
+    // Переназначил задачу на ДРУГОГО человека → она уходит в его Бэклог (пул), а не в «В работе».
+    // Модель: назначенное падает в пул, человек берёт его в работу сам.
+    const reassignedToOther = d.assigneeId !== undefined && d.assigneeId !== task.assigneeId
     const autoActual =
       becomesDone && d.actualMinutes === undefined && task.actualMinutes == null && task.plannedMinutes != null
         ? task.plannedMinutes
@@ -376,6 +379,8 @@ export async function tasksRoutes(app: FastifyInstance) {
           divisionId: await resolveDivisionId(d.assigneeId), // отдел следует за исполнителем
           seenAt: null, // new assignee must open the task to clear the notification
         }),
+        // сброс в Бэклог перекрывает status/doneAt/startDate выше — получатель берёт задачу в работу сам
+        ...(reassignedToOther && { status: 'backlog' as any, doneAt: null }),
         ...(d.startDate   !== undefined && { startDate: new Date(d.startDate) }),
         ...(d.deadline    !== undefined && { deadline: d.deadline ? new Date(d.deadline) : null }),
         ...(d.trackId     !== undefined && { trackId: d.trackId }),
