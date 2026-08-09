@@ -179,8 +179,8 @@ export function DashboardPage() {
       (t.status === 'inprogress' || t.status === 'done') &&
       toDay(t.startDate) === selDate,
     )
-    // Порядок = порядок создания: последняя добавленная снизу (ручной порядок — кусок №2)
-    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
+    // Ручной порядок (drag за grip) → manualOrder; при равенстве/отсутствии — по дате создания
+    .sort((a, b) => (a.manualOrder ?? 1e9) - (b.manualOrder ?? 1e9) || String(a.createdAt).localeCompare(String(b.createdAt)))
 
   const sortedEvents = [...dayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
@@ -415,6 +415,18 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
     patch.mutate({ id: taskId, data })
   }
 
+  // Ручной порядок: дроп строки fromId на позицию toId → новый порядок id → PATCH /tasks/reorder
+  const reorderMut = useMutation({ mutationFn: (ids: string[]) => api.patch('/tasks/reorder', { ids }), onSuccess: onChanged })
+  const onRowReorder = (fromId: string | number, toId: string | number) => {
+    const f = String(fromId), t = String(toId)
+    if (f === DRAFT_ID || t === DRAFT_ID) return
+    const ids = tasks.map(x => x.id)
+    const from = ids.indexOf(f), to = ids.indexOf(t)
+    if (from < 0 || to < 0 || from === to) return
+    ids.splice(from, 1); ids.splice(to, 0, f)
+    reorderMut.mutate(ids)
+  }
+
   const create = useMutation({
     mutationFn: (d: Draft) => {
       const [type, id] = (d.link || 'none').split(':')
@@ -493,6 +505,7 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 10 }}>{title}</div>
       <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
         <DataTable columns={columns} data={rows} hideToolbar getRowId={t => t.id} addRowLabel="Добавить задачу"
+          rowDragEnabled onRowReorder={onRowReorder}
           onAddRow={() => setDraft(draft ?? { client: '', link: 'none', title: '', time: '' })} />
       </div>
     </div>

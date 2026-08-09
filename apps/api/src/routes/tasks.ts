@@ -120,6 +120,23 @@ export async function tasksRoutes(app: FastifyInstance) {
     return tasks.map(applyAutoStatus)
   })
 
+  // PATCH /tasks/reorder — ручной порядок задач (drag за grip): manualOrder = индекс в массиве.
+  // Обновляем только СВОИ задачи (или любые — админ), атомарно в транзакции.
+  app.patch('/reorder', { preHandler: authenticate }, async (request, reply) => {
+    const user = (request as any).user as { id: string; isAdmin: boolean }
+    const schema = z.object({ ids: z.array(z.string()).max(500) })
+    const body = schema.safeParse(request.body)
+    if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
+    const { ids } = body.data
+    await prisma.$transaction(
+      ids.map((id, i) => prisma.task.updateMany({
+        where: { id, ...(user.isAdmin ? {} : { assigneeId: user.id }) },
+        data: { manualOrder: i },
+      })),
+    )
+    return reply.code(204).send()
+  })
+
   // GET /tasks/unseen-count — tasks assigned to me that I haven't opened yet
   app.get('/unseen-count', { preHandler: authenticate }, async (request) => {
     const user = (request as any).user as { id: string }

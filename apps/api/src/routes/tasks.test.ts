@@ -100,6 +100,23 @@ describe('PATCH /tasks/:id — переход в inprogress ставит startDa
   })
 })
 
+describe('PATCH /tasks/reorder — ручной порядок', () => {
+  it('ставит manualOrder = индексу в переданном массиве (только своих)', async () => {
+    const a = await prisma.task.create({ data: { title: 'ord-a', assignedById: userId, assigneeId: userId, status: 'inprogress', startDate: new Date() }, select: { id: true } })
+    const b = await prisma.task.create({ data: { title: 'ord-b', assignedById: userId, assigneeId: userId, status: 'inprogress', startDate: new Date() }, select: { id: true } })
+    const res = await app.inject({
+      method: 'PATCH', url: '/tasks/reorder',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { ids: [b.id, a.id] },
+    })
+    expect(res.statusCode).toBe(204)
+    const ra = await prisma.task.findUnique({ where: { id: a.id }, select: { manualOrder: true } })
+    const rb = await prisma.task.findUnique({ where: { id: b.id }, select: { manualOrder: true } })
+    expect(rb!.manualOrder).toBe(0)
+    expect(ra!.manualOrder).toBe(1)
+  })
+})
+
 describe('PATCH /tasks/:id — переназначение на другого сбрасывает в Бэклог', () => {
   it('inprogress-задача, переназначенная на другого, становится backlog (падает в его пул)', async () => {
     const t = await prisma.task.create({
