@@ -15,6 +15,7 @@ import { cn } from '../ui-kit/lib/cn'
 import { Maximize2 } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { toast } from '../lib/toast'
+import { LINK_META, linkIcon } from '../lib/linkMeta'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -399,9 +400,9 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
     const projs = cv ? projects.filter(p => (p.client?.name ?? '') === cv) : projects
     return [
       { value: 'none', label: '—' },
-      ...tracks.map(t => ({ value: `track:${t.id}`, label: t.title, group: 'Треки' })),
-      ...goals.map(g => ({ value: `goal:${g.id}`, label: g.title, group: 'Стратегические задачи' })),
-      ...projs.map(p => ({ value: `project:${p.id}`, label: p.title, group: 'Проекты' })),
+      ...tracks.map(t => ({ value: `track:${t.id}`, label: t.title, group: LINK_META.track.group, icon: linkIcon('track') })),
+      ...goals.map(g => ({ value: `goal:${g.id}`, label: g.title, group: LINK_META.goal.group, icon: linkIcon('goal') })),
+      ...projs.map(p => ({ value: `project:${p.id}`, label: p.title, group: LINK_META.project.group, icon: linkIcon('project') })),
     ]
   }
   const linkValueOf = (t: { projectId?: string | null; goalId?: string | null; trackId?: string | null }) =>

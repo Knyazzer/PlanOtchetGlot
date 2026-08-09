@@ -1,10 +1,10 @@
 import * as Popover from '@radix-ui/react-popover'
 import { Check, ChevronsUpDown, Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { cn } from '../lib/cn'
 
 // SelectOption инлайн (kit-Select тянет @radix-ui/react-select, которого в web нет; Combobox же на radix-popover).
-export interface SelectOption { value: string; label: string; tone?: string; group?: string }
+export interface SelectOption { value: string; label: string; tone?: string; group?: string; icon?: ReactNode }
 
 /**
  * Combobox = выпадающий список с поиском (Radix Popover + фильтруемый список). Copy-in из ui-kit.
@@ -51,7 +51,7 @@ export function Combobox({
           className,
         )}
       >
-        <span className="truncate">{selected ? selected.label : placeholder}</span>
+        <span className="flex min-w-0 items-center gap-1.5 truncate">{selected?.icon}<span className="truncate">{selected ? selected.label : placeholder}</span></span>
         <ChevronsUpDown className="h-4 w-4 shrink-0 text-[var(--muted)]" />
       </Popover.Trigger>
 
@@ -99,6 +99,7 @@ export function Combobox({
                     )}
                   >
                     {o.tone && <span className="h-1.5 w-1.5 rounded-full" style={{ background: o.tone }} />}
+                    {o.icon}
                     <span className="truncate">{o.label}</span>
                     {o.value === value && <Check className="ml-auto h-4 w-4" />}
                   </button>

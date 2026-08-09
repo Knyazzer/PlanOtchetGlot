@@ -8,6 +8,7 @@ import { Field, DatePicker } from './ui'
 import { Combobox } from '../../ui-kit/components/Combobox'
 import { TimePicker } from '../../ui-kit/components/TimePicker'
 import { toast } from '../../lib/toast'
+import { LINK_META, linkIcon } from '../../lib/linkMeta'
 
 // Конвертация минут ↔ ЧЧ:ММ для регламентированного ввода времени (TimePicker)
 const minToHHMM = (min?: number | null) => min ? `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` : ''
@@ -157,9 +158,9 @@ export function TaskModal({ onClose, onDone, defaultDeadline, defaultStartDate, 
 
   const linkOptions = [
     { value: 'none', label: 'Без связи' },
-    ...trackOptions.map(t => ({ value: `track:${t.id}`, label: t.title, group: 'Треки' })),
-    ...visibleGoals.map(g => ({ value: `goal:${g.id}`, label: g.title, group: 'Стратегические задачи' })),
-    ...visibleProjects.map(p => ({ value: `project:${p.id}`, label: p.title, group: 'Проекты' })),
+    ...trackOptions.map(t => ({ value: `track:${t.id}`, label: t.title, group: LINK_META.track.group, icon: linkIcon('track') })),
+    ...visibleGoals.map(g => ({ value: `goal:${g.id}`, label: g.title, group: LINK_META.goal.group, icon: linkIcon('goal') })),
+    ...visibleProjects.map(p => ({ value: `project:${p.id}`, label: p.title, group: LINK_META.project.group, icon: linkIcon('project') })),
   ]
   const linkValue =
     linkType === 'project' && projectId ? `project:${projectId}`
