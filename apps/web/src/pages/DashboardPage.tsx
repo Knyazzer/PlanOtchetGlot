@@ -390,7 +390,7 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
   const toHHMM = (min?: number | null) => min ? `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` : ''
 
   const create = useMutation({
-    mutationFn: (d: Draft) => api.post('/tasks', { title: d.title.trim(), assigneeId: meId, status: 'inprogress', startDate: day, client: d.client || null, projectId: d.projectId || null, plannedMinutes: toMinutes(d.time) }),
+    mutationFn: (d: Draft) => api.post('/tasks', { title: d.title.trim(), assigneeId: meId, status: 'inprogress', startDate: day, client: d.client || null, projectId: d.projectId || null, actualMinutes: toMinutes(d.time) }),
     onSuccess: () => { setDraft(null); onChanged() },
     onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось создать задачу'),
   })
@@ -414,7 +414,7 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
   }, [draftActive, meId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Черновик рисуется как обычная строка (Task-образный объект)
-  const draftRow = draft ? ({ id: DRAFT_ID, title: draft.title, client: draft.client || null, projectId: draft.projectId || null, plannedMinutes: toMinutes(draft.time), status: 'backlog', assignee: { id: meId ?? '', name: '' } } as unknown as Task) : null
+  const draftRow = draft ? ({ id: DRAFT_ID, title: draft.title, client: draft.client || null, projectId: draft.projectId || null, actualMinutes: toMinutes(draft.time), status: 'backlog', assignee: { id: meId ?? '', name: '' } } as unknown as Task) : null
   const rows = draftRow ? [...tasks, draftRow] : tasks
 
   const columns = useMemo<ColumnDef<Task, unknown>[]>(() => [
@@ -441,8 +441,8 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
       } },
     { id: 'time', header: 'Время', enableSorting: false, meta: { width: '112px', align: 'right' },
       cell: ({ row }) => { const dr = row.original.id === DRAFT_ID
-        const tp = <TimePicker value={dr ? (draft?.time ?? '') : toHHMM(row.original.plannedMinutes)} className={chipWhite}
-          onChange={v => dr ? setDraft(d => ({ ...d!, time: v })) : patch.mutate({ id: row.original.id, data: { plannedMinutes: toMinutes(v) } })} />
+        const tp = <TimePicker value={dr ? (draft?.time ?? '') : toHHMM(row.original.actualMinutes)} className={chipWhite}
+          onChange={v => dr ? setDraft(d => ({ ...d!, time: v })) : patch.mutate({ id: row.original.id, data: { actualMinutes: toMinutes(v) } })} />
         return dr ? <span data-draft-cell className="block w-full">{tp}</span> : tp } },
     { id: 'done', header: '', enableSorting: false, meta: { width: '44px' },
       cell: ({ row }) => {
