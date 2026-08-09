@@ -343,9 +343,10 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
                     <SortableContext items={rows.map((r) => getRowId ? getRowId(r.original) : r.id)} strategy={verticalListSortingStrategy}>
                       {body}
                     </SortableContext>
-                    {/* Копия строки летит за курсором. dropAnimation=null: на отпускании оверлей исчезает
-                        мгновенно (данные уже переставлены оптимистично) — иначе он «долетает» мимо и двоит строку. */}
-                    <DragOverlay dropAnimation={null}>
+                    {/* Копия строки летит за курсором и плавно оседает на финальное место (dropAnimation).
+                        Соседи не перетасовываются повторно (animateLayoutChanges:false), источник встаёт мгновенно —
+                        оверлей долетает ровно на него. */}
+                    <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2,0,0,1)' }}>
                       {activeRow && (
                         <table className="w-full table-fixed border-separate border-spacing-0 text-[14px]" style={{ width: tableRef.current?.offsetWidth }}>
                           <colgroup>
