@@ -115,6 +115,13 @@ export function AppShell() {
     if (t === 'tracks') localStorage.setItem('nexus:tracks-seen-at', new Date().toISOString())
   }
 
+  // Инфопанель дедлайнов (Обзор) → вкладка «Задачи» кабинета в режиме Гант, опц. с открытой карточкой.
+  const [tasksDeepLink, setTasksDeepLink] = useState<{ taskId?: string } | null>(null)
+  function openGanttTask(taskId?: string) {
+    setTasksDeepLink({ taskId })
+    pickCabinet('tasks')
+  }
+
   // Системному аккаунту: вместо «Настроек» — её разделы прямо в Администрировании.
   const adminNav: NavItem[] = isSystem
     ? [
@@ -294,7 +301,16 @@ export function AppShell() {
             pageLabel из nav → в сообщении видно, какая страница упала (диагностика прода). */}
         <ErrorBoundary key={page} pageLabel={[...USER_NAV, ...adminNav].find((n) => n.id === page)?.label ?? page}>
           {page === 'home'      && <HomePage onOpenChat={openDirectChat} />}
-          {page === 'dashboard' && <CabinetPage tab={cabinetTab} onOpenChatWith={openChatWith} onOpenTrackChat={openChatById} />}
+          {page === 'dashboard' && (
+            <CabinetPage
+              tab={cabinetTab}
+              onOpenChatWith={openChatWith}
+              onOpenTrackChat={openChatById}
+              onOpenGanttTask={openGanttTask}
+              tasksDeepLink={tasksDeepLink}
+              onTasksDeepLinkConsumed={() => setTasksDeepLink(null)}
+            />
+          )}
           {page === 'analytics' && <AnalyticsPage />}
           {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
           {page === 'strategy'  && <StrategyPage />}

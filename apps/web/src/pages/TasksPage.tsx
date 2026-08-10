@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
@@ -24,9 +24,12 @@ interface TasksPageProps {
   /** внешнее управление вкладкой (из контейнера «Мой кабинет»): при заданном значении
    *  свой переключатель Задачи/Треки не рисуется — вкладками рулит кабинет. */
   externalTab?: 'tasks' | 'tracks'
+  /** deep-link из «Обзора» (инфопанель дедлайнов): переключить на Гант, опц. открыть карточку задачи. */
+  deepLink?: { taskId?: string } | null
+  onDeepLinkConsumed?: () => void
 }
 
-export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab }: TasksPageProps = {}) {
+export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab, deepLink, onDeepLinkConsumed }: TasksPageProps = {}) {
   const currentUser = useAuthStore(s => s.user)
   const [internalTab, setTab] = useState<'tasks' | 'tracks'>('tasks')
   const tab = externalTab ?? internalTab
@@ -78,6 +81,17 @@ export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab }: Task
     setCreateStartDate(opts.startDate)
     setShowCreate(true)
   }
+
+  // Deep-link из «Обзора» (клик по инфопанели дедлайнов): переключиться на Гант и, если указана
+  // задача, открыть её карточку, как только она подгрузится. Потребили — сбрасываем через колбэк,
+  // иначе эффект не должен снова срабатывать (deepLink обнуляется владельцем состояния — AppShell).
+  useEffect(() => {
+    if (!deepLink) return
+    setView('gantt')
+    if (!deepLink.taskId) { onDeepLinkConsumed?.(); return }
+    const t = tasks.find(x => x.id === deepLink.taskId)
+    if (t) { openEdit(t); onDeepLinkConsumed?.() }
+  }, [deepLink, tasks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateMutation = useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Record<string, unknown> }) =>

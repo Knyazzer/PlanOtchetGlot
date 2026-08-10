@@ -6,7 +6,7 @@ import { TaskModal, CalendarEventModal } from './TasksPage'
 import type { Task } from './TasksPage'
 import { DayFillCard } from '../components/DayFillCard'
 import { MonthStrip } from '../components/MonthStrip'
-import { ROLE } from '../lib/roleColors'
+import { ROLE, chip } from '../lib/roleColors'
 import { Combobox } from '../ui-kit/components/Combobox'
 import { TimePicker } from '../ui-kit/components/TimePicker'
 import { DataTable, EditableCell } from '../ui-kit/components/DataTable'
@@ -132,8 +132,36 @@ function DeadlineBadge({ days }: { days: number }) {
 // «Мой статус»-заглушка убрана: дублировала «Тип дня» из DayFillCard. Единый статус
 // (присутствие + формат дня + связь со Сводом) собираем на этапе HR-графика (план A).
 
+// ── Инфопанель дедлайнов — сводка «N с дедлайнами / M просрочено» по МОИМ незакрытым задачам.
+// Клик по «N с дедлайнами» — переход в Гант; клик по «M просрочено» — переход в Гант с открытой
+// самой просроченной задачей (наименьший дедлайн). Красный — тот же hex, что и у остальных мест
+// просрочки в приложении (TaskTable/Gantt), НЕ роль Danger (та — только для деструктива, DESIGN.md).
+const OVERDUE_COLOR = '#F43F5E'
+function DeadlinesInfoCard({ tasks, meId, onOpenGantt }: { tasks: Task[]; meId?: string; onOpenGantt?: (taskId?: string) => void }) {
+  const withDeadline = tasks.filter(t => t.assignee.id === meId && t.status !== 'done' && !!t.deadline)
+  const overdue = [...withDeadline].filter(t => daysDiff(t.deadline!) < 0).sort((a, b) => a.deadline!.localeCompare(b.deadline!))
+  const card: React.CSSProperties = { background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 22px' }
+  if (withDeadline.length === 0) return null
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Дедлайны</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={() => onOpenGantt?.()} title="Открыть в Ганте" style={{ ...chip('warning'), border: 'none', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+          {withDeadline.length} с дедлайнами
+        </button>
+        {overdue.length > 0 && (
+          <button onClick={() => onOpenGantt?.(overdue[0].id)} title="Открыть самую просроченную задачу в Ганте"
+            style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: OVERDUE_COLOR + '22', color: OVERDUE_COLOR, border: 'none', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+            {overdue.length} просрочено
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
-export function DashboardPage() {
+export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?: string) => void } = {}) {
   const currentUser = useAuthStore(s => s.user)
   const qc          = useQueryClient()
   const now         = new Date()
@@ -266,6 +294,7 @@ export function DashboardPage() {
           />
         </div>
         <div style={{ flex: 1, minWidth: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <DeadlinesInfoCard tasks={regularTasks} meId={currentUser?.id} onOpenGantt={onOpenGanttTask} />
           <DeptGoalsCard />
           <EventsTable
             title={`События ${isToday ? 'сегодня' : dayShort}`}
