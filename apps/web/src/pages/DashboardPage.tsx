@@ -355,8 +355,9 @@ type Draft = { client: string; link: string; title: string; time: string }
 const DRAFT_ID = '__draft__'
 // У стратегической цели нет клиента → подставляем компанию (совпадает с карточкой задачи)
 const COMPANY_NAME = 'Мегаполис Медиа'
-// Чипы (выпадашки/время) в таблице задач — на фоне таблицы и БЕЗ обводки (border прозрачный)
-const chipWhite = 'w-full !bg-[var(--surface)] !border-transparent'
+// Чипы (выпадашки/время) в таблице задач — на фоне таблицы, без обводки в покое;
+// при ОТКРЫТИИ (data-state=open у Radix-триггера) — устойчивая скруглённая обводка + ring, как у «Время».
+const chipWhite = 'w-full !bg-[var(--surface)] !border-transparent data-[state=open]:!border-[var(--accent)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--accent-soft)]'
 
 function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged, onAdd: _onAdd }: {
   title: string; tasks: Task[]; meId?: string; day: string
@@ -446,6 +447,8 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
   const gridRef = useRef<HTMLDivElement>(null)
   const activeTask = dragId ? tasks.find(t => t.id === dragId) : undefined
 
+  // Тонкий разделитель между колонками (в пределах строки, не сквозной)
+  const sep: React.CSSProperties = { borderRight: '1px solid var(--border)' }
   // Ячейки строки (7 колонок). handle — drag-хендл (только у sortable-строк); dr — черновик.
   const cell = (content: React.ReactNode, extra?: React.CSSProperties, dr?: boolean) =>
     <div data-draft-cell={dr || undefined} style={{ padding: '5px 8px', minWidth: 0, display: 'flex', alignItems: 'center', ...extra }}>{content}</div>
@@ -467,19 +470,19 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
       </div>
       {/* Клиент */}
       {cell(<Combobox options={clientOpts} value={(dr ? draft?.client : t.client) || undefined} placeholder="—" className={chipWhite}
-        onChange={v => dr ? setDraft(d => ({ ...d!, client: v })) : patch.mutate({ id: t.id, data: { client: v || null } })} />, undefined, dr)}
+        onChange={v => dr ? setDraft(d => ({ ...d!, client: v })) : patch.mutate({ id: t.id, data: { client: v || null } })} />, sep, dr)}
       {/* Связь */}
       {cell(<Combobox options={linkOptionsFor(dr ? draft?.client : t.client)} value={dr ? (draft?.link || 'none') : linkValueOf(t)} placeholder="—" className={chipWhite}
-        onChange={v => { if (dr) setDraft(d => ({ ...d!, link: v, ...(v.startsWith('goal:') ? { client: COMPANY_NAME } : {}) })); else applyLink(t.id, v) }} />, undefined, dr)}
+        onChange={v => { if (dr) setDraft(d => ({ ...d!, link: v, ...(v.startsWith('goal:') ? { client: COMPANY_NAME } : {}) })); else applyLink(t.id, v) }} />, sep, dr)}
       {/* Задача */}
       {cell(dr
         ? <input data-draft-cell autoFocus value={draft?.title ?? ''} onChange={e => setDraft(d => ({ ...d!, title: e.target.value }))}
             onKeyDown={e => { if (e.key === 'Enter' && draft?.title.trim() && meId) create.mutate(draft!); if (e.key === 'Escape') setDraft(null) }}
             placeholder="Название задачи" className="h-6 w-full rounded-[6px] border border-[var(--accent)] bg-[var(--surface)] px-1.5 text-[14px] leading-6 text-[var(--text)] outline-none" />
         : <span className={cn('block min-w-0 w-full', done && 'line-through opacity-60')}><EditableCell value={t.title} onChange={v => v.trim() && patch.mutate({ id: t.id, data: { title: v.trim() } })} /></span>,
-        undefined, dr)}
+        sep, dr)}
       {/* Время */}
-      {cell(<TimePicker value={dr ? (draft?.time ?? '') : toHHMM(t.actualMinutes)} className={chipWhite}
+      {cell(<TimePicker value={dr ? (draft?.time ?? '') : toHHMM(t.actualMinutes)} placeholder="00:00" className={chipWhite}
         onChange={v => dr ? setDraft(d => ({ ...d!, time: v })) : patch.mutate({ id: t.id, data: { actualMinutes: toMinutes(v) } })} />, { justifyContent: 'flex-end' }, dr)}
       {/* готово */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -500,9 +503,9 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
           {/* шапка */}
           <div style={{ ...subRow, background: 'var(--surface-2)' }}>
             <div /><div />
-            <div style={hCell}>Клиент</div>
-            <div style={hCell}>Связь</div>
-            <div style={hCell}>Задача</div>
+            <div style={{ ...hCell, ...sep }}>Клиент</div>
+            <div style={{ ...hCell, ...sep }}>Связь</div>
+            <div style={{ ...hCell, ...sep }}>Задача</div>
             <div style={{ ...hCell, justifyContent: 'flex-end' }}>Время</div>
             <div />
           </div>
