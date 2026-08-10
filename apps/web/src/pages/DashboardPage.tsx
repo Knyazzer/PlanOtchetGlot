@@ -541,7 +541,8 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
 
 // ── Цели отдела (read-only срез стратегии в обзоре; вместо прежнего «Мои цели») ──
 function DeptGoalsCard() {
-  const { data: goals = [] } = useQuery<Array<{ id: string; title: string; status: string }>>({ queryKey: ['strategic-goals'], queryFn: () => api.get('/strategic-goals').then(r => r.data), staleTime: 120_000 })
+  // scope=cabinet — только своя область (даже у дир/рук); отдельный ключ, чтобы не смешивать с общим списком целей
+  const { data: goals = [] } = useQuery<Array<{ id: string; title: string; status: string }>>({ queryKey: ['strategic-goals', 'cabinet'], queryFn: () => api.get('/strategic-goals?scope=cabinet').then(r => r.data), staleTime: 120_000 })
   const active = goals.filter(g => g.status === 'active')
   const card: React.CSSProperties = { background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 22px' }
   return (

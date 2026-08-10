@@ -104,13 +104,25 @@ export async function strategicGoalsRoutes(app: FastifyInstance) {
   // GET /strategic-goals?periodKey= — цели периода (+ годовые того же года) в охвате пользователя
   app.get('/', { preHandler: authenticate }, async (request) => {
     const user = (request as any).user as { id: string; isAdmin: boolean }
-    const { periodKey } = request.query as { periodKey?: string }
+    const { periodKey, scope } = request.query as { periodKey?: string; scope?: string }
     const pk = periodKey ?? currentPeriodKey()
     const where: Record<string, unknown> = { periodKey: { in: [pk, pk.slice(0, 4)] } }
-    // Директор любого департамента видит ВСЕ департаменты (ведёт стратегию); остальные — свой охват.
+    // Разграничение видимости (docs/superpowers/notes-2026-08-09-...§B):
+    //  • scope=cabinet (Обзор/кабинет) — только СВОЯ область даже у дир/рук:
+    //      цели уровня департамента (divisionId=null) своих департаментов + цели своих отделов;
+    //  • по умолчанию (страница «Стратегия») — сотрудник видит свой департамент, рук/дир — всю компанию.
     if (!user.isAdmin) {
-      const isDirector = (await prisma.department.count({ where: { directorId: user.id } })) > 0
-      if (!isDirector) { const depts = await myDeptIds(user.id); where.deptId = { in: depts.length ? depts : ['__none__'] } }
+      if (scope === 'cabinet') {
+        const [depts, org] = await Promise.all([myDeptIds(user.id), getOrgScope(user.id)])
+        where.OR = [
+          { deptId: { in: depts.length ? depts : ['__none__'] }, divisionId: null },
+          { divisionId: { in: org.divisionIds.length ? org.divisionIds : ['__none__'] } },
+        ]
+      } else {
+        const org = await getOrgScope(user.id)
+        const isHeadOrDirector = org.level === 'head' || org.level === 'director'
+        if (!isHeadOrDirector) { const depts = await myDeptIds(user.id); where.deptId = { in: depts.length ? depts : ['__none__'] } }
+      }
     }
     const goals = await prisma.strategicGoal.findMany({ where, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }], select: sel })
     if (!goals.length) return goals
@@ -141,8 +153,9 @@ export async function strategicGoalsRoutes(app: FastifyInstance) {
     const goal = await prisma.strategicGoal.findUnique({ where: { id }, select: sel })
     if (!goal) return reply.code(404).send({ error: 'Goal not found' })
     if (!user.isAdmin) {
-      const isDirector = (await prisma.department.count({ where: { directorId: user.id } })) > 0
-      if (!isDirector && !(await myDeptIds(user.id)).includes(goal.deptId)) return reply.code(403).send({ error: 'Нет доступа' })
+      const org = await getOrgScope(user.id)
+      const canSeeAll = org.level === 'head' || org.level === 'director'
+      if (!canSeeAll && !(await myDeptIds(user.id)).includes(goal.deptId)) return reply.code(403).send({ error: 'Нет доступа' })
     }
     const childIds = goal.divisionId === null
       ? (await prisma.strategicGoal.findMany({ where: { parentGoalId: id }, select: { id: true } })).map(c => c.id)
@@ -165,8 +178,9 @@ export async function strategicGoalsRoutes(app: FastifyInstance) {
     const goal = await prisma.strategicGoal.findUnique({ where: { id }, select: { deptId: true } })
     if (!goal) return reply.code(404).send({ error: 'Goal not found' })
     if (!user.isAdmin) {
-      const isDirector = (await prisma.department.count({ where: { directorId: user.id } })) > 0
-      if (!isDirector && !(await myDeptIds(user.id)).includes(goal.deptId)) return reply.code(403).send({ error: 'Нет доступа' })
+      const org = await getOrgScope(user.id)
+      const canSeeAll = org.level === 'head' || org.level === 'director'
+      if (!canSeeAll && !(await myDeptIds(user.id)).includes(goal.deptId)) return reply.code(403).send({ error: 'Нет доступа' })
     }
     return prisma.strategicGoalLog.findMany({ where: { goalId: id }, orderBy: { createdAt: 'desc' }, take: 100, select: { id: true, action: true, details: true, meta: true, userName: true, createdAt: true } })
   })
