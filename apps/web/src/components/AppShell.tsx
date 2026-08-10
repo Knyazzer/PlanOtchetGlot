@@ -108,11 +108,21 @@ export function AppShell() {
     const s = localStorage.getItem('nexus:cabinet-tab')
     return s === 'tasks' || s === 'tracks' ? s : 'overview'
   })
+  // История навигации в браузере (кнопки назад/вперёд). URL не меняем (state-only), чтобы не задеть SSO-хеш.
+  const lastNav = useRef<string>('')
+  function pushNav(p: Page, tab: 'overview' | 'tasks' | 'tracks' | 'requests') {
+    const key = p === 'dashboard' ? `dashboard:${tab}` : p
+    if (key === lastNav.current) return // не плодим одинаковые записи (повторный клик по текущему пункту)
+    lastNav.current = key
+    history.pushState({ page: p, cabinetTab: tab }, '')
+  }
+
   function pickCabinet(t: 'overview' | 'tasks' | 'tracks' | 'requests') {
     setCabinetTab(t); localStorage.setItem('nexus:cabinet-tab', t)
     setPage('dashboard'); localStorage.setItem('nexus:page', 'dashboard')
     // Открыли «Треки» → сбрасываем метку «новых треков» (бейдж гаснет)
     if (t === 'tracks') localStorage.setItem('nexus:tracks-seen-at', new Date().toISOString())
+    pushNav('dashboard', t)
   }
 
   // Инфопанель дедлайнов (Обзор) → вкладка «Задачи» кабинета в режиме Гант, опц. с открытой карточкой.
@@ -134,10 +144,28 @@ export function AppShell() {
 
   function navigateTo(p: Page) {
     // «Задачи» переехали внутрь «Мой кабинет» вкладкой — редиректим старые ссылки/уведомления
-    if (p === 'tasks') { setCabinetTab('tasks'); localStorage.setItem('nexus:cabinet-tab', 'tasks'); p = 'dashboard' }
+    let tab = cabinetTab
+    if (p === 'tasks') { tab = 'tasks'; setCabinetTab('tasks'); localStorage.setItem('nexus:cabinet-tab', 'tasks'); p = 'dashboard' }
     setPage(p)
     localStorage.setItem('nexus:page', p)
+    pushNav(p, tab)
   }
+
+  // Кнопки «назад/вперёд» браузера: восстанавливаем страницу + вкладку кабинета из истории.
+  useEffect(() => {
+    lastNav.current = page === 'dashboard' ? `dashboard:${cabinetTab}` : page
+    history.replaceState({ page, cabinetTab }, '') // первая запись получает state текущей навигации
+    const onPop = (e: PopStateEvent) => {
+      const s = e.state as { page?: Page; cabinetTab?: 'overview' | 'tasks' | 'tracks' | 'requests' } | null
+      if (!s?.page) return
+      lastNav.current = s.page === 'dashboard' ? `dashboard:${s.cabinetTab ?? 'overview'}` : s.page
+      setPage(s.page); localStorage.setItem('nexus:page', s.page)
+      const t = s.cabinetTab ?? 'overview'
+      setCabinetTab(t); localStorage.setItem('nexus:cabinet-tab', t)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const [projectsSubPage, setProjectsSubPage] = useState<ProjectsSubPage>('registry')
   const [chatsProps,  setChatsProps]  = useState<ChatsOpenProps>({})
   const [chatKey,     setChatKey]     = useState(0)
