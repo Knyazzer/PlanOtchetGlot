@@ -355,7 +355,7 @@ function MoveDeadlineConfirm({ task, day, onCancel, onConfirm, pending }: {
         </div>
       </div>
       {/* Яркая карточка переносимой задачи — прямо под попапом (её нет в списке дня, пока идёт подтверждение) */}
-      <div onMouseDown={e => e.stopPropagation()} style={{ background: 'var(--surface-1)', border: '2px solid var(--accent)', borderRadius: 12, padding: '14px 18px', width: 380, maxWidth: '100%', boxShadow: '0 16px 44px -8px rgba(123,97,255,0.55)' }}>
+      <div onMouseDown={e => e.stopPropagation()} style={{ background: 'var(--surface-1)', border: '2px solid var(--accent)', borderRadius: 12, padding: '14px 18px', width: 380, maxWidth: '100%', boxShadow: '0 16px 44px -8px rgba(0,0,0,0.45)' }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title || 'Без названия'}</div>
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Дедлайн {curDeadline} → <b style={{ color: 'var(--accent)' }}>{fmtDay}</b></div>
       </div>
