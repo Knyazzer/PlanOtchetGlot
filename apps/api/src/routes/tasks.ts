@@ -21,7 +21,6 @@ const TASK_SELECT = {
   actualMinutes: true,
   doneAt: true,
   archived: true,
-  manualOrder: true,
   repeatRule: true,
   repeatUntil: true,
   recurringParentId: true,
@@ -120,21 +119,40 @@ export async function tasksRoutes(app: FastifyInstance) {
     return tasks.map(applyAutoStatus)
   })
 
-  // PATCH /tasks/reorder — ручной порядок задач (drag за grip): manualOrder = индекс в массиве.
-  // Обновляем только СВОИ задачи (или любые — админ), атомарно в транзакции.
+  // PATCH /tasks/reorder — ручной порядок задач ВНУТРИ ОДНОГО ДНЯ (drag за grip).
+  // Модель «окно» [startDate, deadline]: задача видна в нескольких днях, порядок в каждом свой
+  // (TaskDayOrder(taskId, day) вместо прежнего глобального Task.manualOrder) — реордер в дне 5
+  // не трогает день 6. Обновляем только СВОИ задачи (или любые — админ), атомарно в транзакции.
   app.patch('/reorder', { preHandler: authenticate }, async (request, reply) => {
     const user = (request as any).user as { id: string; isAdmin: boolean }
-    const schema = z.object({ ids: z.array(z.string()).max(500) })
+    const schema = z.object({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), ids: z.array(z.string()).max(500) })
     const body = schema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
-    const { ids } = body.data
+    const { day, ids } = body.data
+    if (!user.isAdmin) {
+      const owned = await prisma.task.count({ where: { id: { in: ids }, assigneeId: user.id } })
+      if (owned !== ids.length) return reply.code(403).send({ error: 'Forbidden' })
+    }
     await prisma.$transaction(
-      ids.map((id, i) => prisma.task.updateMany({
-        where: { id, ...(user.isAdmin ? {} : { assigneeId: user.id }) },
-        data: { manualOrder: i },
+      ids.map((id, i) => prisma.taskDayOrder.upsert({
+        where: { taskId_day: { taskId: id, day } },
+        create: { taskId: id, day, order: i },
+        update: { order: i },
       })),
     )
     return reply.code(204).send()
+  })
+
+  // GET /tasks/day-order?day= — порядок МОИХ задач в конкретном дне (для сортировки списка дня).
+  app.get('/day-order', { preHandler: authenticate }, async (request, reply) => {
+    const user = (request as any).user as { id: string }
+    const { day } = request.query as { day?: string }
+    if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return reply.code(400).send({ error: 'day required' })
+    const rows = await prisma.taskDayOrder.findMany({
+      where: { day, task: { assigneeId: user.id } },
+      select: { taskId: true, order: true },
+    })
+    return Object.fromEntries(rows.map(r => [r.taskId, r.order]))
   })
 
   // GET /tasks/unseen-count — tasks assigned to me that I haven't opened yet
@@ -320,7 +338,6 @@ export async function tasksRoutes(app: FastifyInstance) {
       projectId:      z.string().nullable().optional(),
       plannedMinutes: z.number().int().min(0).max(24 * 60).nullable().optional(),
       actualMinutes:  z.number().int().min(0).max(24 * 60).nullable().optional(),
-      manualOrder:    z.number().optional(),
       archived:       z.boolean().optional(),
     })
     const body = schema.safeParse(request.body)
@@ -408,7 +425,6 @@ export async function tasksRoutes(app: FastifyInstance) {
         ...(d.projectId   !== undefined && { projectId: d.projectId }),
         ...(d.plannedMinutes !== undefined && { plannedMinutes: d.plannedMinutes }),
         ...(d.actualMinutes  !== undefined && { actualMinutes: d.actualMinutes }),
-        ...(d.manualOrder !== undefined && { manualOrder: d.manualOrder }),
         ...(d.archived    !== undefined && { archived: d.archived }),
       },
       select: TASK_SELECT,

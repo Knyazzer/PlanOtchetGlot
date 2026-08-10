@@ -356,7 +356,6 @@ model Task {
   source         String?                          // nexus|kanban|support|… (null = внутренняя Nexus)
   externalId     String?    @map("external_id")   // id задачи в продукте-источнике
   externalUrl    String?    @map("external_url")  // deep-link в продукт-источник
-  manualOrder    Float?     @map("manual_order")    // дробный порядок на доске
   legacyId       String?    @unique @map("legacy_id")
   // — повторы: «генерация экземпляров» (В-2) — правило материализует задачу на каждый день серии —
   repeatRule     String?    @map("repeat_rule")     // daily|weekdays
@@ -376,12 +375,28 @@ model Task {
   logs           TaskLog[]
   messages       Message[]
   placements     TaskPlacement[]
+  dayOrders      TaskDayOrder[]
 
   @@index([assigneeId, startDate])
   @@index([divisionId, startDate])
   @@index([projectId])
   @@index([recurringParentId])
   @@map("tasks")
+  @@schema("nexus")
+}
+
+// Ручной порядок задачи внутри конкретного дня «окна» (модель [startDate, deadline] —
+// задача видна на нескольких днях, порядок в каждом свой, drag в дне 5 не трогает день 6).
+// Заменяет прежний глобальный Task.manualOrder.
+model TaskDayOrder {
+  taskId String @map("task_id")
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  day    String // YYYY-MM-DD
+  order  Float
+
+  @@id([taskId, day])
+  @@index([day])
+  @@map("task_day_order")
   @@schema("nexus")
 }
 

@@ -29,7 +29,6 @@ export interface Task {
   actualMinutes:    number | null
   doneAt:           string | null
   archived:         boolean
-  manualOrder:      number | null
   repeatRule:       string | null
   repeatUntil:      string | null
   recurringParentId: string | null

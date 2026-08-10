@@ -19,6 +19,7 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from '../lib/toast'
 import { LINK_META, linkIcon } from '../lib/linkMeta'
+import { taskWindow, inTaskWindow } from '../lib/taskWindow'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -165,23 +166,78 @@ export function DashboardPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
   })
 
+  // Задача переезжает на другой день / у неё двигается дедлайн (drag на MonthStrip) — единая мутация.
+  const moveMut = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => api.patch(`/tasks/${id}`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Не удалось передвинуть задачу', 'info'),
+  })
+
+  // Порядок задач ВНУТРИ выбранного дня (модель «окно»: задача живёт в нескольких днях — TaskDayOrder).
+  const { data: dayOrder = {} } = useQuery<Record<string, number>>({
+    queryKey: ['tasks', 'day-order', selDate],
+    queryFn:  () => api.get('/tasks/day-order', { params: { day: selDate } }).then(r => r.data),
+    staleTime: 0,
+  })
+  const reorderMut = useMutation({ mutationFn: (ids: string[]) => api.patch('/tasks/reorder', { day: selDate, ids }) })
+
   // Only regular (non-calendar) tasks
   const regularTasks = allTasks.filter(t => !t.calendarEventId)
 
-  // Рабочий набор дня: мои задачи, взятые в работу на этот день (inprogress) + выполненные в этот день.
-  // Единый источник дня — startDate; авто-переноса нет (переключил день → показываются только его задачи).
+  // Рабочий набор дня — модель «окно» [startDate, deadline]: задача видна КАЖДЫЙ день внутри окна;
+  // закрытая — зачёркнута до дня закрытия (doneAt), дальше не показывается (просрочку без переноса
+  // подсвечивает инфопанель дедлайнов, не список дня). Порядок — свой в каждом дне (dayOrder).
   const dayTasks = regularTasks
-    .filter(t =>
-      t.assignee.id === currentUser?.id &&
-      (t.status === 'inprogress' || t.status === 'done') &&
-      toDay(t.startDate) === selDate,
-    )
-    // Ручной порядок (drag за grip) → manualOrder; при равенстве/отсутствии — по дате создания
-    .sort((a, b) => (a.manualOrder ?? 1e9) - (b.manualOrder ?? 1e9) || String(a.createdAt).localeCompare(String(b.createdAt)))
+    .filter(t => t.assignee.id === currentUser?.id && (t.status === 'inprogress' || t.status === 'done') && inTaskWindow(t, selDate))
+    .sort((a, b) => (dayOrder[a.id] ?? 1e9) - (dayOrder[b.id] ?? 1e9) || String(a.createdAt).localeCompare(String(b.createdAt)))
 
   const sortedEvents = [...dayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
+  // ── DnD: общий контекст на список задач дня (реордер внутри дня) + MonthStrip (перенос на другой день) ──
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
+  const [dragId, setDragId] = useState<string | null>(null)
+  const [confirmMove, setConfirmMove] = useState<{ task: Task; day: string } | null>(null)
+
+  const onRowReorder = (fromId: string, toId: string) => {
+    const ids = dayTasks.map(t => t.id)
+    const from = ids.indexOf(fromId), to = ids.indexOf(toId)
+    if (from < 0 || to < 0 || from === to) return
+    const next = [...ids]; next.splice(from, 1); next.splice(to, 0, fromId)
+    const prev = qc.getQueryData<Record<string, number>>(['tasks', 'day-order', selDate])
+    qc.setQueryData(['tasks', 'day-order', selDate], Object.fromEntries(next.map((id, i) => [id, i])))
+    reorderMut.mutate(next, { onError: () => qc.setQueryData(['tasks', 'day-order', selDate], prev) })
+  }
+
+  // Правила drag-на-день (решения по «окну»): день внутри окна → нельзя (уже видна); за дедлайн вперёд →
+  // попап «передвинуть дедлайн?» (только автор задачи); на более раннее число → окно расширяется назад.
+  const onDropOnDay = (taskId: string, targetDay: string) => {
+    const t = dayTasks.find(x => x.id === taskId)
+    if (!t) return
+    if (t.status === 'done') { toast('Закрытую задачу нельзя перенести', 'info'); return }
+    const { start, end } = taskWindow(t)
+    if (targetDay >= start && targetDay <= end) { toast('Нельзя, уже в пределах дедлайна', 'info'); return }
+    if (targetDay > end) {
+      if (t.assignedBy.id !== currentUser?.id) { toast('Дедлайн меняет только создатель', 'info'); return }
+      setConfirmMove({ task: t, day: targetDay })
+      return
+    }
+    moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast('Дата начала перенесена — окно расширено') })
+  }
+
+  const handleDragEnd = (e: DragEndEvent) => {
+    setDragId(null)
+    if (!e.over) return
+    const activeId = String(e.active.id), overId = String(e.over.id)
+    if (activeId === DRAFT_ID) return
+    if (overId.startsWith('day:')) onDropOnDay(activeId, overId.slice(4))
+    else if (activeId !== overId) onRowReorder(activeId, overId)
+  }
+
   return (
+    <DndContext sensors={dndSensors} collisionDetection={closestCenter}
+      onDragStart={(e: DragStartEvent) => setDragId(String(e.active.id))}
+      onDragCancel={() => setDragId(null)}
+      onDragEnd={handleDragEnd}>
     <div style={{ display: 'flex', height: '100%', boxSizing: 'border-box' }}>
     <div style={{ flex: 1, minWidth: 0, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', boxSizing: 'border-box' }}>
       {/* Две колонки: слева «Мой рабочий день» + «Задачи на сегодня» (одна ширина);
@@ -194,6 +250,7 @@ export function DashboardPage() {
             tasks={dayTasks}
             meId={currentUser?.id}
             day={selDate}
+            dragId={dragId}
             onOpen={t => setEditTask(t)}
             onToggle={t => doneMut.mutate(t)}
             onChanged={() => qc.invalidateQueries({ queryKey: ['tasks'] })}
@@ -240,8 +297,46 @@ export function DashboardPage() {
           onSaved={() => { qc.invalidateQueries({ queryKey: ['dashboard:events'] }) }}
         />
       )}
+      {confirmMove && (
+        <MoveDeadlineConfirm
+          task={confirmMove.task}
+          day={confirmMove.day}
+          pending={moveMut.isPending}
+          onCancel={() => setConfirmMove(null)}
+          onConfirm={() => moveMut.mutate({ id: confirmMove.task.id, data: { deadline: confirmMove.day } }, { onSuccess: () => setConfirmMove(null) })}
+        />
+      )}
     </div>
       <MonthStrip selected={selDate} today={todayStr} onSelect={setSelDate} />
+    </div>
+    </DndContext>
+  )
+}
+
+// ── Попап подтверждения переноса дедлайна (drag задачи за окно вперёд) — канон mousedown/mouseup ──
+function MoveDeadlineConfirm({ task, day, onCancel, onConfirm, pending }: {
+  task: Task; day: string; onCancel: () => void; onConfirm: () => void; pending: boolean
+}) {
+  const mdRef = useRef(false)
+  const fmtDay = new Date(day + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+  return (
+    <div
+      onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
+      onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onCancel() }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+    >
+      <div onMouseDown={e => e.stopPropagation()} style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 24, width: 380, maxWidth: '100%', fontFamily: 'Inter,sans-serif', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 10 }}>Передвинуть дедлайн?</div>
+        <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 20, lineHeight: 1.5 }}>
+          «{task.title}» — перенести дедлайн на <b style={{ color: 'var(--text-1)' }}>{fmtDay}</b>?
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ flex: 1, fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'var(--text-3)', borderRadius: 8, padding: '9px 0', cursor: 'pointer' }}>Отмена</button>
+          <button onClick={onConfirm} disabled={pending} style={{ flex: 1, fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, background: '#7B61FF', border: 'none', color: '#fff', borderRadius: 8, padding: '9px 0', cursor: 'pointer', opacity: pending ? 0.6 : 1 }}>
+            {pending ? '...' : 'Передвинуть'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -359,8 +454,8 @@ const COMPANY_NAME = 'Мегаполис Медиа'
 // при ОТКРЫТИИ (data-state=open у Radix-триггера) — устойчивая скруглённая обводка + ring, как у «Время».
 const chipWhite = 'w-full !bg-[var(--surface)] !border-transparent data-[state=open]:!border-[var(--accent)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--accent-soft)]'
 
-function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged, onAdd: _onAdd }: {
-  title: string; tasks: Task[]; meId?: string; day: string
+function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, onChanged, onAdd: _onAdd }: {
+  title: string; tasks: Task[]; meId?: string; day: string; dragId: string | null
   onOpen: (t: Task) => void; onToggle: (t: Task) => void; onChanged: () => void; onAdd: () => void
 }) {
   const { data: projects = [] } = useQuery<Array<{ id: string; title: string; client?: { id: string; name: string } | null }>>({ queryKey: ['projects'], queryFn: () => api.get('/projects').then(r => r.data), staleTime: 300_000 })
@@ -392,22 +487,6 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
     const data: Record<string, unknown> = { projectId: type === 'project' ? id : null, goalId: type === 'goal' ? id : null, trackId: type === 'track' ? id : null }
     if (type === 'goal') data.client = COMPANY_NAME
     patch.mutate({ id: taskId, data })
-  }
-
-  // Ручной порядок: дроп строки fromId на позицию toId. Оптимистично проставляем manualOrder
-  // в кэше ['tasks','mine'] (список пересортируется мгновенно, без рефетча), затем персистим.
-  const qc = useQueryClient()
-  const reorderMut = useMutation({ mutationFn: (ids: string[]) => api.patch('/tasks/reorder', { ids }) })
-  const onRowReorder = (fromId: string | number, toId: string | number) => {
-    const f = String(fromId), t = String(toId)
-    if (f === DRAFT_ID || t === DRAFT_ID) return
-    const ids = tasks.map(x => x.id)
-    const from = ids.indexOf(f), to = ids.indexOf(t)
-    if (from < 0 || to < 0 || from === to) return
-    const next = [...ids]; next.splice(from, 1); next.splice(to, 0, f)
-    const prev = qc.getQueryData<Task[]>(['tasks', 'mine'])
-    qc.setQueryData<Task[]>(['tasks', 'mine'], (old) => old?.map(x => { const i = next.indexOf(x.id); return i >= 0 ? { ...x, manualOrder: i } : x }))
-    reorderMut.mutate(next, { onError: () => { if (prev) qc.setQueryData(['tasks', 'mine'], prev) } })
   }
 
   const create = useMutation({
@@ -442,8 +521,6 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
   // Черновик рисуется как обычная строка (Task-образный объект)
   const draftRow = draft ? ({ id: DRAFT_ID, title: draft.title, client: draft.client || null, actualMinutes: toMinutes(draft.time), status: 'backlog', assignee: { id: meId ?? '', name: '' } } as unknown as Task) : null
 
-  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
-  const [dragId, setDragId] = useState<string | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
   const activeTask = dragId ? tasks.find(t => t.id === dragId) : undefined
 
@@ -509,22 +586,17 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
             <div style={{ ...hCell, justifyContent: 'flex-end' }}>Время</div>
             <div />
           </div>
-          {/* строки задач (drag) */}
-          <DndContext sensors={dndSensors} collisionDetection={closestCenter}
-            onDragStart={(e: DragStartEvent) => setDragId(String(e.active.id))}
-            onDragCancel={() => setDragId(null)}
-            onDragEnd={(e: DragEndEvent) => { setDragId(null); if (e.over && e.active.id !== e.over.id) onRowReorder(e.active.id, e.over.id) }}>
-            <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-              {tasks.map(t => <SortableTaskRow key={t.id} id={t.id}>{(h) => taskCells(t, h)}</SortableTaskRow>)}
-            </SortableContext>
-            <DragOverlay>
-              {activeTask && (
-                <div style={{ display: 'grid', gridTemplateColumns: TASK_COLS, alignItems: 'center', width: gridRef.current?.offsetWidth, background: 'var(--surface)', borderRadius: 10, boxShadow: '0 16px 44px -8px rgba(0,0,0,0.55)' }}>
-                  {taskCells(activeTask)}
-                </div>
-              )}
-            </DragOverlay>
-          </DndContext>
+          {/* строки задач (drag — контекст общий с DashboardPage: реордер внутри дня + перенос на MonthStrip) */}
+          <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
+            {tasks.map(t => <SortableTaskRow key={t.id} id={t.id}>{(h) => taskCells(t, h)}</SortableTaskRow>)}
+          </SortableContext>
+          <DragOverlay>
+            {activeTask && (
+              <div style={{ display: 'grid', gridTemplateColumns: TASK_COLS, alignItems: 'center', width: gridRef.current?.offsetWidth, background: 'var(--surface)', borderRadius: 10, boxShadow: '0 16px 44px -8px rgba(0,0,0,0.55)' }}>
+                {taskCells(activeTask)}
+              </div>
+            )}
+          </DragOverlay>
           {/* черновик (не sortable) */}
           {draftRow && <div style={{ ...subRow, borderTop: '1px solid var(--border)' }}>{taskCells(draftRow)}</div>}
           {/* добавить задачу */}

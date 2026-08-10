@@ -158,7 +158,7 @@ describe('GET /svod', () => {
     await prisma.task.create({
       data: {
         title: `${P}-task`, assignedById: headId, assigneeId: empId,
-        startDate: new Date('2026-06-10'), status: 'done',
+        startDate: new Date('2026-06-10'), status: 'done', doneAt: new Date('2026-06-10'),
         plannedMinutes: 45, actualMinutes: 45, divisionId: divId,
       },
     })
@@ -188,6 +188,38 @@ describe('GET /svod', () => {
       headers: { authorization: `Bearer ${outsiderToken}` },
     })
     expect(forbidden.statusCode).toBe(403)
+  })
+
+  it('модель «окно»: факт считается один раз в день закрытия (doneAt), не startDate; незакрытая задача в факт не попадает', async () => {
+    // взята в работу 15-го, закрыта только 20-го — факт должен лечь в 20-е, не в 15-е
+    await prisma.task.create({
+      data: {
+        title: `${P}-window-closed`, assignedById: headId, assigneeId: empId,
+        startDate: new Date('2026-06-15'), deadline: new Date('2026-06-22'),
+        status: 'done', doneAt: new Date('2026-06-20'),
+        plannedMinutes: 30, actualMinutes: 30, divisionId: divId,
+      },
+    })
+    // не закрыта — нигде в факте не считается
+    await prisma.task.create({
+      data: {
+        title: `${P}-window-open`, assignedById: headId, assigneeId: empId,
+        startDate: new Date('2026-06-16'), deadline: new Date('2026-06-25'),
+        status: 'inprogress', plannedMinutes: 30, divisionId: divId,
+      },
+    })
+
+    const res = await app.inject({
+      method: 'GET', url: `/svod?divisionId=${divId}&month=2026-06`,
+      headers: { authorization: `Bearer ${headToken}` },
+    })
+    expect(res.statusCode).toBe(200)
+    const empRow = res.json().rows.find((r: any) => r.user.id === empId)
+    expect(empRow.cells['2026-06-15'].taskCount).toBe(0)
+    expect(empRow.cells['2026-06-16'].taskCount).toBe(0)
+    expect(empRow.cells['2026-06-20'].taskCount).toBe(1)
+    expect(empRow.cells['2026-06-20'].tasksDone).toBe(1)
+    expect(empRow.cells['2026-06-20'].taskMinutes).toBe(30)
   })
 })
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useDroppable } from '@dnd-kit/core'
 import { api } from '../lib/api'
 import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
 
@@ -23,6 +24,17 @@ const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', '�
 const pad = (n: number) => String(n).padStart(2, '0')
 const parseMin = (t?: string | null): number | null => (t && /^\d{2}:\d{2}$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null)
 const fmtHM = (mins: number) => { const h = Math.floor(Math.abs(mins) / 60), m = Math.abs(mins) % 60; return m ? `${h}ч ${m}м` : `${h}ч` }
+
+// Droppable-обёртка дня: цель drag'а задачи (grip в «Задачах на сегодня») на другой день —
+// перенос/расширение окна дедлайна (правила — DashboardPage.onDropOnDay). Подсветка при наведении.
+function DroppableDayButton({ id, style, children, ...rest }: { id: string; style: React.CSSProperties; children: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const { setNodeRef, isOver } = useDroppable({ id })
+  return (
+    <button ref={setNodeRef} {...rest} style={{ ...style, ...(isOver ? { border: '1px solid var(--accent-s)', background: 'rgba(123,97,255,0.18)' } : {}) }}>
+      {children}
+    </button>
+  )
+}
 
 const navBtn: React.CSSProperties = {
   width: 26, height: 26, borderRadius: 7, border: '1px solid var(--border)',
@@ -98,8 +110,9 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
           const isToday = ds === today
           const view = e ? dayView(e.dayFormat, e.place) : null
           return (
-            <button
+            <DroppableDayButton
               key={ds}
+              id={`day:${ds}`}
               onClick={() => onSelect(ds)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
@@ -131,7 +144,7 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
                 return <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend || exp?.format === 'weekend' ? 'выходной' : 'не заполнен'}</span>
               })()}
               {isToday && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-s)', flexShrink: 0 }} title="Сегодня" />}
-            </button>
+            </DroppableDayButton>
           )
         })}
       </div>

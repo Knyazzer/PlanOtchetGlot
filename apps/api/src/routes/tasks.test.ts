@@ -100,20 +100,47 @@ describe('PATCH /tasks/:id — переход в inprogress ставит startDa
   })
 })
 
-describe('PATCH /tasks/reorder — ручной порядок', () => {
-  it('ставит manualOrder = индексу в переданном массиве (только своих)', async () => {
+describe('PATCH /tasks/reorder — порядок задач внутри дня (модель «окно»)', () => {
+  it('ставит порядок в TaskDayOrder для указанного дня (только своих)', async () => {
     const a = await prisma.task.create({ data: { title: 'ord-a', assignedById: userId, assigneeId: userId, status: 'inprogress', startDate: new Date() }, select: { id: true } })
     const b = await prisma.task.create({ data: { title: 'ord-b', assignedById: userId, assigneeId: userId, status: 'inprogress', startDate: new Date() }, select: { id: true } })
     const res = await app.inject({
       method: 'PATCH', url: '/tasks/reorder',
       headers: { authorization: `Bearer ${token}` },
-      payload: { ids: [b.id, a.id] },
+      payload: { day: '2026-08-10', ids: [b.id, a.id] },
     })
     expect(res.statusCode).toBe(204)
-    const ra = await prisma.task.findUnique({ where: { id: a.id }, select: { manualOrder: true } })
-    const rb = await prisma.task.findUnique({ where: { id: b.id }, select: { manualOrder: true } })
-    expect(rb!.manualOrder).toBe(0)
-    expect(ra!.manualOrder).toBe(1)
+    const ra = await prisma.taskDayOrder.findUnique({ where: { taskId_day: { taskId: a.id, day: '2026-08-10' } } })
+    const rb = await prisma.taskDayOrder.findUnique({ where: { taskId_day: { taskId: b.id, day: '2026-08-10' } } })
+    expect(rb!.order).toBe(0)
+    expect(ra!.order).toBe(1)
+  })
+
+  it('чужую задачу переставить нельзя (403)', async () => {
+    const foreign = await prisma.task.create({ data: { title: 'ord-foreign', assignedById: recipientId, assigneeId: recipientId, status: 'inprogress', startDate: new Date() }, select: { id: true } })
+    const res = await app.inject({
+      method: 'PATCH', url: '/tasks/reorder',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { day: '2026-08-10', ids: [foreign.id] },
+    })
+    expect(res.statusCode).toBe(403)
+  })
+})
+
+describe('GET /tasks/day-order — порядок моих задач в дне', () => {
+  it('отдаёт только записи текущего пользователя для запрошенного дня', async () => {
+    const a = await prisma.task.create({ data: { title: 'go-a', assignedById: userId, assigneeId: userId, status: 'inprogress', startDate: new Date() }, select: { id: true } })
+    await app.inject({
+      method: 'PATCH', url: '/tasks/reorder',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { day: '2026-08-11', ids: [a.id] },
+    })
+    const res = await app.inject({
+      method: 'GET', url: '/tasks/day-order?day=2026-08-11',
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json()[a.id]).toBe(0)
   })
 })
 
