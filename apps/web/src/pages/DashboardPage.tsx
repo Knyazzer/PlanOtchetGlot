@@ -447,8 +447,8 @@ function TodayTasksTable({ title, tasks, meId, day, onOpen, onToggle, onChanged,
   const gridRef = useRef<HTMLDivElement>(null)
   const activeTask = dragId ? tasks.find(t => t.id === dragId) : undefined
 
-  // Тонкий разделитель между колонками (в пределах строки, не сквозной)
-  const sep: React.CSSProperties = { borderRight: '1px solid var(--border)' }
+  // Короткий разделитель между колонками: 1px-линия 60% высоты, по центру у правого края (не во всю строку)
+  const sep: React.CSSProperties = { backgroundImage: 'linear-gradient(var(--border), var(--border))', backgroundRepeat: 'no-repeat', backgroundPosition: 'right center', backgroundSize: '1px 55%' }
   // Ячейки строки (7 колонок). handle — drag-хендл (только у sortable-строк); dr — черновик.
   const cell = (content: React.ReactNode, extra?: React.CSSProperties, dr?: boolean) =>
     <div data-draft-cell={dr || undefined} style={{ padding: '5px 8px', minWidth: 0, display: 'flex', alignItems: 'center', ...extra }}>{content}</div>
