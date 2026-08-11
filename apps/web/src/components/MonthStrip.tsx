@@ -3,10 +3,17 @@ import { useQuery } from '@tanstack/react-query'
 import { useDroppable } from '@dnd-kit/core'
 import { api } from '../lib/api'
 import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
+import { dayTaskStats, type DayScopedTask } from '../lib/taskWindow'
 
 // Вертикальная месячная сводка справа в «Мой кабинет»: строка на день, кубик = тип дня.
 // Клик по дню делает кабинет дате-зависимым (задачи/план/события на выбранную дату,
 // в т.ч. планирование на будущее). Навигация по месяцам — независимая от выбора.
+//
+// Критерий «закрытого дня» (день ≤ сегодня): нет незакрытых (inprogress) задач в окне дня И,
+// если день рабочий (dayFormat === 'working'), рабочий день завершён (проставлен endTime кнопкой
+// «Закончить рабочий день» — см. DayFillCard, который блокирует эту кнопку при незакрытых задачах,
+// правило «нельзя закрыть с незакрытыми — перенести»). Нерабочие дни (выходной/отпуск/больничный/
+// отгул) закрываются сами — закрывать в них нечего, если на них не висят незакрытые задачи.
 
 type DayFormat = { key: string; label: string; isWork: boolean; score: number | null }
 type DayEntry = { id: string; date: string; dayFormat: string; place: string | null; startTime: string | null; endTime: string | null; breakMin: number }
@@ -43,7 +50,10 @@ const navBtn: React.CSSProperties = {
   fontFamily: 'Inter,sans-serif',
 }
 
-export function MonthStrip({ selected, today, onSelect }: { selected: string; today: string; onSelect: (d: string) => void }) {
+export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
+  selected: string; today: string; onSelect: (d: string) => void
+  tasks: DayScopedTask[]; meId: string | undefined
+}) {
   const [cursor, setCursor] = useState(() => { const [y, m] = selected.split('-').map(Number); return { y, m: m - 1 } })
   // при внешней смене месяца выбранной даты (например «Сегодня») — синхронизируем окно
   const monthKey = selected.slice(0, 7)
@@ -109,6 +119,14 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
           const isSel = ds === selected
           const isToday = ds === today
           const view = e ? dayView(e.dayFormat, e.place) : null
+          const exp = expectedForDate(ds, schedule)
+
+          // Поставлено/выполнено на день + критерий «закрытого дня» (см. комментарий над компонентом)
+          const stats = dayTaskStats(tasks, meId, ds)
+          const effWorking = e ? e.dayFormat === 'working' : !!exp && isPlace(exp.format)
+          const closed = stats.open === 0 && (!effWorking || !!e?.endTime)
+          const showDayStatus = ds <= today && (effWorking || stats.total > 0)
+
           return (
             <DroppableDayButton
               key={ds}
@@ -131,7 +149,6 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
                 </>
               ) : (() => {
                 // пустой день: ожидаемое из графика (полый кубик, бледно) либо «выходной/не заполнен»
-                const exp = expectedForDate(ds, schedule)
                 if (exp && exp.format !== 'weekend') {
                   const v = dayView(isPlace(exp.format) ? 'working' : exp.format, isPlace(exp.format) ? exp.format : null)
                   return (
@@ -143,6 +160,20 @@ export function MonthStrip({ selected, today, onSelect }: { selected: string; to
                 }
                 return <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend || exp?.format === 'weekend' ? 'выходной' : 'не заполнен'}</span>
               })()}
+              {stats.total > 0 && (
+                <span title={`Задачи дня: поставлено ${stats.total}, выполнено ${stats.done}`}
+                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: stats.open === 0 ? 'var(--text-muted)' : 'var(--text-2)', background: 'var(--surface-3)', borderRadius: 8, padding: '1px 6px' }}>
+                  {stats.done}/{stats.total}
+                </span>
+              )}
+              {showDayStatus && (
+                closed
+                  ? <span title="День закрыт" style={{ flexShrink: 0, fontSize: 11, lineHeight: 1, color: '#22C55E' }}>✓</span>
+                  : <span
+                      title={`День не закрыт${stats.open > 0 ? `: ${stats.open} незакрытых задач — заверните их или перенесите на другой день` : effWorking && !e?.endTime ? ': рабочий день не завершён' : ''}`}
+                      style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }}
+                    />
+              )}
               {isToday && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-s)', flexShrink: 0 }} title="Сегодня" />}
             </DroppableDayButton>
           )

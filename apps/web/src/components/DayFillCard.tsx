@@ -28,8 +28,17 @@ function fmtHM(mins: number): string {
   const h = Math.floor(Math.abs(mins) / 60), m = Math.abs(mins) % 60
   return m ? `${h}ч ${m}м` : `${h}ч`
 }
+function taskWord(n: number): string {
+  const mod10 = n % 10, mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'незавершённая задача'
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'незавершённые задачи'
+  return 'незавершённых задач'
+}
 
-export function DayFillCard({ date = todayStr() }: { date?: string } = {}) {
+// openTasksCount — сколько МОИХ задач сегодняшнего дня всё ещё inprogress (см. DashboardPage,
+// модель «окно» в lib/taskWindow). Правило «нельзя закрыть с незакрытыми — перенести»: пока их
+// больше нуля, кнопка «Закончить рабочий день» заблокирована (перенос — drag на MonthStrip справа).
+export function DayFillCard({ date = todayStr(), openTasksCount = 0 }: { date?: string; openTasksCount?: number } = {}) {
   const { data: formats = [] } = useQuery<DayFormat[]>({
     queryKey: ['day-formats'],
     queryFn: () => api.get('/day-entries/formats').then(r => r.data),
@@ -42,12 +51,13 @@ export function DayFillCard({ date = todayStr() }: { date?: string } = {}) {
   })
   const entry = entries?.[0] ?? null
   if (isLoading) return null
-  return <WorkDayCard key={entry ? `${entry.id}:${entry.updatedAt}` : `empty:${date}`} date={date} entry={entry} formats={formats} schedule={schedule ?? null} />
+  return <WorkDayCard key={entry ? `${entry.id}:${entry.updatedAt}` : `empty:${date}`} date={date} entry={entry} formats={formats} schedule={schedule ?? null} openTasksCount={openTasksCount} />
 }
 
-function WorkDayCard({ date, entry, formats, schedule }: {
+function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
   date: string; entry: DayEntry | null; formats: DayFormat[]
   schedule: import('../lib/workSchedule').WorkSchedule | null
+  openTasksCount: number
 }) {
   const qc = useQueryClient()
   const isToday = date === todayStr()
@@ -164,10 +174,18 @@ function WorkDayCard({ date, entry, formats, schedule }: {
               <button disabled={!interactive || !place} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
                 title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !place ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !interactive || !place)}>Начать рабочий день</button>
             ) : (
-              <button disabled={!interactive} onClick={() => save.mutate({ endTime: nowHHMM() })}
-                title={!canEdit ? 'Завершить можно только в текущий день' : ''} style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
+              <button disabled={!interactive || openTasksCount > 0} onClick={() => save.mutate({ endTime: nowHHMM() })}
+                title={!canEdit ? 'Завершить можно только в текущий день' : openTasksCount > 0 ? `Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните их или перенесите на другой день (перетащите в календаре справа)` : ''}
+                style={bigBtn(ROLE.primary, !interactive || openTasksCount > 0)}>Закончить рабочий день</button>
             )}
           </div>
+
+          {/* Правило «нельзя закрыть с незакрытыми — перенести»: подсказка держится на виду, не тултипом */}
+          {interactive && started && !finished && openTasksCount > 0 && (
+            <div style={{ marginTop: 10, fontSize: 12, color: '#F59E0B' }}>
+              Нельзя закрыть день: {openTasksCount} {taskWord(openTasksCount)}. Заверните их или перенесите на другой день (перетащите в календаре справа).
+            </div>
+          )}
       </>
     </div>
   )
