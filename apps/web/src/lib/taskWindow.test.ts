@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { taskWindow, inTaskWindow, type WindowTask } from './taskWindow'
+import { taskWindow, inTaskWindow, tasksForDay, dayTaskStats, type WindowTask, type DayScopedTask } from './taskWindow'
 
 const base: WindowTask = { status: 'inprogress', startDate: '2026-08-10T00:00:00.000Z', deadline: null, doneAt: null }
 
@@ -35,5 +35,34 @@ describe('taskWindow / inTaskWindow — модель «окно» [startDate, de
     const t: WindowTask = { ...base, status: 'backlog' }
     // taskWindow не различает backlog от inprogress по границам — это ответственность фильтра статуса
     expect(taskWindow(t)).toEqual({ start: '2026-08-10', end: '2026-08-10' })
+  })
+})
+
+describe('tasksForDay / dayTaskStats — «поставлено/выполнено» на день (MonthStrip)', () => {
+  const me = 'u1'
+  const mk = (over: Partial<DayScopedTask>): DayScopedTask => ({ ...base, assignee: { id: me }, ...over })
+
+  it('считает только свои задачи в окне дня со статусом inprogress/done', () => {
+    const tasks: DayScopedTask[] = [
+      mk({ status: 'inprogress' }),                                    // моя, в работе — считается
+      mk({ status: 'done', doneAt: '2026-08-10T00:00:00.000Z' }),      // моя, готова — считается
+      mk({ status: 'backlog' }),                                       // бэклог — не считается (нет в окне-фильтре)
+      { ...base, assignee: { id: 'u2' }, status: 'inprogress' },       // чужая — не считается
+    ]
+    const stats = dayTaskStats(tasks, me, '2026-08-10')
+    expect(stats).toEqual({ total: 2, done: 1, open: 1 })
+    expect(tasksForDay(tasks, me, '2026-08-10')).toHaveLength(2)
+  })
+
+  it('день без задач — total/done/open = 0 (день можно считать закрытым)', () => {
+    expect(dayTaskStats([], me, '2026-08-10')).toEqual({ total: 0, done: 0, open: 0 })
+  })
+
+  it('все задачи дня выполнены — open = 0 (критерий «закрытого дня» по задачам выполнен)', () => {
+    const tasks: DayScopedTask[] = [
+      mk({ status: 'done', doneAt: '2026-08-10T00:00:00.000Z' }),
+      mk({ status: 'done', doneAt: '2026-08-10T00:00:00.000Z' }),
+    ]
+    expect(dayTaskStats(tasks, me, '2026-08-10').open).toBe(0)
   })
 })

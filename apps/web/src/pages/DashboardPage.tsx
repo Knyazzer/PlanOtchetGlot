@@ -280,7 +280,7 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
           справа «Стратегические цели отдела» + «События» таблицей (одна ширина). */}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{ flex: 2, minWidth: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <DayFillCard date={selDate} />
+          <DayFillCard date={selDate} openTasksCount={isToday ? dayTasks.filter(t => t.status === 'inprogress').length : 0} />
           <TodayTasksTable
             title={`Задачи на ${isToday ? 'сегодня' : dayShort}`}
             tasks={dayTasks}
@@ -344,7 +344,7 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
         />
       )}
     </div>
-      <MonthStrip selected={selDate} today={todayStr} onSelect={setSelDate} />
+      <MonthStrip selected={selDate} today={todayStr} onSelect={setSelDate} tasks={regularTasks} meId={currentUser?.id} />
     </div>
     </DndContext>
   )
