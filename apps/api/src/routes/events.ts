@@ -15,6 +15,7 @@ const EVENT_SELECT = {
   location: true,
   status: true,
   authorId: true,
+  trackId: true,
   author: { select: { id: true, name: true } },
   participants: { select: { userId: true, user: { select: { id: true, name: true } } } },
   createdAt: true,
@@ -30,6 +31,7 @@ const bodySchema = z.object({
   endTime:        z.string().regex(/^\d{2}:\d{2}$/),
   location:       z.array(z.string()).default([]),
   participantIds: z.array(z.string().uuid()).default([]),
+  trackId:        z.string().nullish(),   // §9: привязка события к треку
 })
 
 export async function eventsRoutes(app: FastifyInstance) {
@@ -77,7 +79,7 @@ export async function eventsRoutes(app: FastifyInstance) {
     const body = bodySchema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
 
-    const { type, title, description, date, startTime, endTime, location, participantIds } = body.data
+    const { type, title, description, date, startTime, endTime, location, participantIds, trackId } = body.data
 
     const ev = await prisma.event.create({
       data: {
@@ -85,6 +87,7 @@ export async function eventsRoutes(app: FastifyInstance) {
         date: new Date(date),
         startTime, endTime, location,
         authorId: user.id,
+        trackId: trackId ?? null,
         participants: {
           create: participantIds
             .filter(uid => uid !== user.id)
@@ -145,7 +148,7 @@ export async function eventsRoutes(app: FastifyInstance) {
 
     const ev = await prisma.event.findUnique({
       where: { id },
-      select: { authorId: true, date: true, startTime: true, endTime: true },
+      select: { authorId: true, date: true, startTime: true, endTime: true, title: true, description: true },
     })
     if (!ev) return reply.code(404).send({ error: 'Not found' })
     if (ev.authorId !== user.id) return reply.code(403).send({ error: 'Forbidden' })
@@ -190,6 +193,41 @@ export async function eventsRoutes(app: FastifyInstance) {
       where: { calendarEventId: id },
       data: taskPatch,
     })
+
+    // Синк задач-спутников при изменении состава участников:
+    // добавленному участнику создать задачу, у удалённого — убрать (updateMany выше
+    // правит только время/название существующих, но не сам набор задач).
+    if (participantIds !== undefined) {
+      const desired = new Set([ev.authorId, ...participantIds.filter(uid => uid !== ev.authorId)])
+      const existingTasks = await prisma.task.findMany({
+        where: { calendarEventId: id },
+        select: { id: true, assigneeId: true },
+      })
+      const existingAssignees = new Set(existingTasks.map(t => t.assigneeId))
+      const toDelete = existingTasks.filter(t => !desired.has(t.assigneeId)).map(t => t.id)
+      const toCreate = [...desired].filter(uid => !existingAssignees.has(uid))
+      if (toDelete.length) await prisma.task.deleteMany({ where: { id: { in: toDelete } } })
+      if (toCreate.length) {
+        const title = body.data.title ?? ev.title
+        const description = body.data.description ?? ev.description ?? undefined
+        await Promise.all(toCreate.map(assigneeId =>
+          prisma.task.create({
+            data: {
+              id: randomUUID(),
+              title,
+              description,
+              assignedById: ev.authorId,
+              assigneeId,
+              startDate: newStart,
+              deadline: newDate,
+              calendarEventId: id,
+              calendarEventEnd: newEnd,
+              seenAt: assigneeId === ev.authorId ? new Date() : null,
+            },
+          })
+        ))
+      }
+    }
 
     return updated
   })

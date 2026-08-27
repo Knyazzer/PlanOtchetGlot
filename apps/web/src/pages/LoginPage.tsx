@@ -73,7 +73,7 @@ export function LoginPage() {
             <span style={{ fontSize: 22, fontWeight: 800, color: '#111', letterSpacing: '-0.3px', lineHeight: 1.1 }}>
               Нексус
             </span>
-            <span style={{ fontSize: 10, fontWeight: 500, color: '#9090A8', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: 12, fontWeight: 500, color: '#9090A8', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
               Мегаполис
             </span>
           </div>
@@ -81,7 +81,7 @@ export function LoginPage() {
 
         {import.meta.env.DEV && (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: '#9090A8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#9090A8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
               Быстрый вход (dev)
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -95,7 +95,7 @@ export function LoginPage() {
                   background: '#eff6ff',
                   border: '1px solid #bfdbfe',
                   borderRadius: 8,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: '#1d4ed8',
                   cursor: loading ? 'not-allowed' : 'pointer',
@@ -114,7 +114,7 @@ export function LoginPage() {
                   background: '#f0fdf4',
                   border: '1px solid #bbf7d0',
                   borderRadius: 8,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: '#15803d',
                   cursor: loading ? 'not-allowed' : 'pointer',
@@ -126,7 +126,7 @@ export function LoginPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '20px 0 4px' }}>
               <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
-              <span style={{ fontSize: 11, color: '#9ca3af' }}>или вручную</span>
+              <span style={{ fontSize: 12, color: '#9ca3af' }}>или вручную</span>
               <div style={{ flex: 1, height: 1, background: '#e5e7eb' }} />
             </div>
           </div>
@@ -202,7 +202,7 @@ export function LoginPage() {
 const labelStyle: React.CSSProperties = {
   display: 'block',
   marginBottom: 6,
-  fontSize: 13,
+  fontSize: 14,
   fontWeight: 500,
   color: '#374151',
 }

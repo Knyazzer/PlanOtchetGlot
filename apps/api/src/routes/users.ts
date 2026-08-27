@@ -1,18 +1,10 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { randomBytes } from 'node:crypto'
 import { prisma } from '@nexus/db'
 import { authenticate, requireRole } from '../plugins/auth'
+import { hasModule } from '../services/access'
 import { getSheetConfig } from '../services/databaseService'
-
-// Временный пароль: 10 читаемых символов (без двусмысленных 0/O/o/l/1/I)
-const PW_CHARS = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-function genTempPassword(): string {
-  const b = randomBytes(10)
-  let s = ''
-  for (let i = 0; i < b.length; i++) s += PW_CHARS[b[i] % PW_CHARS.length]
-  return s
-}
+import { genTempPassword } from '../services/password'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,6 +51,31 @@ const USER_SELECT = {
   mustChangePassword: true, tempPassword: true,
 } as const
 
+// Орг-роль сотрудника для таблицы персонала: ТИП (Директор/Руководитель/специализация) + департамент + отдел,
+// вычисленные из реальных связей по СТАРШЕЙ роли. У директора отдела нет. Плоские поля не используем — дрейфуют.
+type OrgRels = {
+  id: string
+  deptDirectorOf: { name: string }[]
+  divHeadOf: { name: string; department: { name: string } }[]
+  divMemberships: { position: string; division: { name: string; headId: string | null; department: { name: string } } }[]
+}
+function orgRole(u: OrgRels): { position: string | null; department: string | null; subDept: string | null } {
+  if (u.deptDirectorOf.length) return { position: 'Директор', department: u.deptDirectorOf[0].name, subDept: null }
+  if (u.divHeadOf.length) { const d = u.divHeadOf[0]; return { position: 'Руководитель', department: d.department.name, subDept: d.name } }
+  const mem = u.divMemberships.find(m => m.division.headId !== u.id) ?? u.divMemberships[0]
+  if (mem) {
+    const spec = mem.position?.trim()
+    const pos = spec && spec !== 'Руководитель отдела' ? spec : 'Сотрудник'
+    return { position: pos, department: mem.division.department.name, subDept: mem.division.name }
+  }
+  return { position: null, department: null, subDept: null }
+}
+const ORG_RELS_SELECT = {
+  deptDirectorOf: { select: { name: true } },
+  divHeadOf: { select: { name: true, department: { select: { name: true } } } },
+  divMemberships: { select: { position: true, division: { select: { name: true, headId: true, department: { select: { name: true } } } } } },
+} as const
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 export async function usersRoutes(app: FastifyInstance) {
@@ -88,10 +105,16 @@ export async function usersRoutes(app: FastifyInstance) {
 
   app.get('/staff', { preHandler: requireRole('admin') }, async (request) => {
     const { includeInactive } = request.query as { includeInactive?: string }
-    return prisma.user.findMany({
+    const users = await prisma.user.findMany({
       where: { ...(includeInactive ? {} : { isActive: true }), userType: 'staff', isSystemAccount: false },  // системные аккаунты скрыты
-      select: USER_SELECT,
+      select: { ...USER_SELECT, ...ORG_RELS_SELECT },
       orderBy: { name: 'asc' },
+    })
+    // Должность/деп/отдел — из орг-связей (снимок плоских полей мог устареть). Нет связей → плоские поля.
+    return users.map(({ deptDirectorOf, divHeadOf, divMemberships, ...rest }) => {
+      if (!deptDirectorOf.length && !divHeadOf.length && !divMemberships.length) return rest
+      const r = orgRole({ id: rest.id, deptDirectorOf, divHeadOf, divMemberships })
+      return { ...rest, position: r.position, department: r.department, subDept: r.subDept }
     })
   })
 
@@ -108,7 +131,10 @@ export async function usersRoutes(app: FastifyInstance) {
 
     const { name, position, department, subDept } = body.data
     const tabNumber = body.data.tabNumber?.trim() || await nextTabNumber('staff')  // автоген, если не задан
-    const email = generateEmail(name)
+    // Суффикс табельного — дизамбигуация тёзок (как у фрилансеров): иначе два «Иван Иванов»
+    // дают одинаковый placeholder-email и второй тихо отваливается по unique(email).
+    const baseEmail = generateEmail(name)
+    const email     = baseEmail.replace('@nexus.local', `.${tabNumber.toLowerCase()}@nexus.local`)
 
     const existing = await prisma.user.findFirst({
       where: { OR: [{ email }, { tabNumber }] },
@@ -127,6 +153,156 @@ export async function usersRoutes(app: FastifyInstance) {
       select: USER_SELECT,
     })
     return reply.code(201).send({ user })
+  })
+
+  // ── GET /users/:id/assignments — текущие назначения (префилл формы) ──────────
+  app.get('/:id/assignments', { preHandler: authenticate }, async (request, reply) => {
+    const { id } = request.params as { id: string }
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        divMemberships: { select: { position: true, division: { select: { id: true, name: true, headId: true, department: { select: { id: true, name: true } } } } } },
+        deptDirectorOf: { select: { id: true, name: true } },
+      },
+    })
+    if (!user) return reply.code(404).send({ error: 'User not found' })
+    const assignments: Array<Record<string, unknown>> = []
+    for (const d of user.deptDirectorOf) {
+      assignments.push({ type: 'director', deptId: d.id, deptName: d.name })
+    }
+    for (const m of user.divMemberships) {
+      const div = m.division
+      const isHead = div.headId === id
+      assignments.push({
+        type: isHead ? 'head' : 'member',
+        deptId: div.department.id, deptName: div.department.name,
+        divId: div.id, divName: div.name,
+        ...(isHead ? {} : { specialization: m.position || '' }),
+      })
+    }
+    return { assignments }
+  })
+
+  // ── PUT /users/:id/assignments — назначение роли/места в оргструктуре ─────────
+  // Каскад из карточки «Персонала»: тип → департамент → отдел → уточнение.
+  // Декларативно: фронт шлёт желаемый набор назначений, сервер реконсилит связи
+  // (UserDivision / Division.headId / Department.directorId) в транзакции.
+  // Спека: docs/superpowers/specs/2026-07-11-personnel-role-form-design.md
+  app.put('/:id/assignments', { preHandler: authenticate }, async (request, reply) => {
+    const actor = (request as any).user as { id: string; isAdmin: boolean }
+    if (!(actor.isAdmin || await hasModule(actor.id, false, 'hr.orgstructure', 'edit'))) {
+      return reply.code(403).send({ error: 'Forbidden', module: 'hr.orgstructure' })
+    }
+    const { id } = request.params as { id: string }
+
+    const schema = z.object({
+      assignments: z.array(z.object({
+        type:           z.enum(['member', 'head', 'director']),
+        deptId:         z.string().min(1),
+        divId:          z.string().optional(),
+        specialization: z.string().optional(),
+      })).min(1).max(2),
+      replace: z.boolean().optional(),
+    })
+    const body = schema.safeParse(request.body)
+    if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
+
+    const target = await prisma.user.findUnique({ where: { id }, select: { id: true } })
+    if (!target) return reply.code(404).send({ error: 'User not found' })
+
+    const { assignments, replace } = body.data
+
+    // Структурная валидация: у директора нет отдела, у member/head — обязателен
+    for (const a of assignments) {
+      if (a.type === 'director' && a.divId) return reply.code(400).send({ error: 'У директора не может быть отдела' })
+      if (a.type !== 'director' && !a.divId) return reply.code(400).send({ error: 'Для сотрудника/руководителя нужен отдел' })
+    }
+
+    // Существование + принадлежность отдела департаменту
+    const divIds = assignments.filter(a => a.divId).map(a => a.divId!)
+    const divisions = divIds.length
+      ? await prisma.division.findMany({ where: { id: { in: divIds } }, select: { id: true, deptId: true, name: true, headId: true } })
+      : []
+    const divMap = new Map(divisions.map(d => [d.id, d]))
+    const deptIds = [...new Set(assignments.map(a => a.deptId))]
+    const depts = await prisma.department.findMany({ where: { id: { in: deptIds } }, select: { id: true, name: true, directorId: true } })
+    const deptMap = new Map(depts.map(d => [d.id, d]))
+    for (const a of assignments) {
+      if (!deptMap.has(a.deptId)) return reply.code(400).send({ error: 'Департамент не найден' })
+      if (a.divId) {
+        const d = divMap.get(a.divId)
+        if (!d) return reply.code(400).send({ error: 'Отдел не найден' })
+        if (d.deptId !== a.deptId) return reply.code(400).send({ error: 'Отдел не принадлежит департаменту' })
+      }
+    }
+
+    // Конфликт слота head/director (занят другим) — без replace → 409
+    for (const a of assignments) {
+      if (a.type === 'head') {
+        const d = divMap.get(a.divId!)!
+        if (d.headId && d.headId !== id && !replace) {
+          const cur = await prisma.user.findUnique({ where: { id: d.headId }, select: { id: true, name: true } })
+          return reply.code(409).send({ error: 'slot_taken', slot: 'head', currentUserId: cur?.id, currentUserName: cur?.name, name: d.name })
+        }
+      }
+      if (a.type === 'director') {
+        const d = deptMap.get(a.deptId)!
+        if (d.directorId && d.directorId !== id && !replace) {
+          const cur = await prisma.user.findUnique({ where: { id: d.directorId }, select: { id: true, name: true } })
+          return reply.code(409).send({ error: 'slot_taken', slot: 'director', currentUserId: cur?.id, currentUserName: cur?.name, name: d.name })
+        }
+      }
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. UserDivision: member + head → членство (head тоже член отдела, решение C)
+      const desiredMemberships = assignments
+        .filter(a => a.type === 'member' || a.type === 'head')
+        .map(a => ({ divId: a.divId!, position: a.type === 'head' ? 'Руководитель отдела' : (a.specialization ?? '') }))
+      const desiredDivIds = new Set(desiredMemberships.map(m => m.divId))
+      const current = await tx.userDivision.findMany({ where: { userId: id }, select: { divId: true } })
+      const toRemove = current.filter(m => !desiredDivIds.has(m.divId)).map(m => m.divId)
+      if (toRemove.length) await tx.userDivision.deleteMany({ where: { userId: id, divId: { in: toRemove } } })
+      for (const m of desiredMemberships) {
+        await tx.userDivision.upsert({
+          where: { userId_divId: { userId: id, divId: m.divId } },
+          update: { position: m.position },
+          create: { userId: id, divId: m.divId, position: m.position },
+        })
+      }
+
+      // 2. Division.headId — выставить desired, снять устаревшие
+      const desiredHeadDivIds = new Set(assignments.filter(a => a.type === 'head').map(a => a.divId!))
+      const wasHeadOf = await tx.division.findMany({ where: { headId: id }, select: { id: true } })
+      for (const d of wasHeadOf) if (!desiredHeadDivIds.has(d.id)) await tx.division.update({ where: { id: d.id }, data: { headId: null } })
+      for (const divId of desiredHeadDivIds) await tx.division.update({ where: { id: divId }, data: { headId: id } })
+
+      // 3. Department.directorId — аналогично
+      const desiredDirDeptIds = new Set(assignments.filter(a => a.type === 'director').map(a => a.deptId))
+      const wasDirOf = await tx.department.findMany({ where: { directorId: id }, select: { id: true } })
+      for (const d of wasDirOf) if (!desiredDirDeptIds.has(d.id)) await tx.department.update({ where: { id: d.id }, data: { directorId: null } })
+      for (const deptId of desiredDirDeptIds) await tx.department.update({ where: { id: deptId }, data: { directorId: id } })
+
+      // 4. Денормализация плоских полей из СТАРШЕГО по иерархии назначения (директор > рук. > сотрудник).
+      // position — только ТИП роли (без «департамента/отдела»); у члена — его специализация. Отдел (subDept)
+      // у директора отсутствует. Плоские поля — снимок для быстрых списков; таблица персонала считает из связей.
+      const rank: Record<string, number> = { director: 3, head: 2, member: 1 }
+      const primary = [...assignments].sort((a, b) => rank[b.type] - rank[a.type])[0]
+      const flatPosition = primary.type === 'director' ? 'Директор'
+        : primary.type === 'head' ? 'Руководитель'
+        : (primary.specialization?.trim() || 'Сотрудник')
+      await tx.user.update({
+        where: { id },
+        data: {
+          department: deptMap.get(primary.deptId)!.name,
+          subDept: primary.type === 'director' ? null : (primary.divId ? (divMap.get(primary.divId)?.name ?? null) : null),
+          position: flatPosition,
+        },
+      })
+    })
+
+    return prisma.user.findUnique({ where: { id }, select: USER_SELECT })
   })
 
   // ── Freelancers ────────────────────────────────────────────────────────────
@@ -181,7 +357,10 @@ export async function usersRoutes(app: FastifyInstance) {
       department:          z.string().nullable().optional(),
       subDept:             z.string().nullable().optional(),
       role:                z.string().optional(),
-      isActive:            z.boolean().optional(),
+      // isActive НАМЕРЕННО не принимается: смена активности — только через
+      // POST /users/:id/deactivate|reactivate (бан/разбан в Supabase GoTrue, снятие
+      // табельного, status=archived, синк public.users). Голый PATCH обошёл бы это —
+      // пользователь остался бы с рабочей сессией/доступом в другие приложения.
       canAccessInventory:  z.boolean().optional(),
       canAccessPlatform:   z.boolean().optional(),
     })
@@ -211,7 +390,6 @@ export async function usersRoutes(app: FastifyInstance) {
           ...(d.department         !== undefined && { department:         d.department }),
           ...(d.subDept            !== undefined && { subDept:            d.subDept }),
           ...(d.role               !== undefined && { role:               d.role }),
-          ...(d.isActive           !== undefined && { isActive:           d.isActive }),
           ...(d.canAccessInventory !== undefined && { canAccessInventory: d.canAccessInventory }),
           ...(d.canAccessPlatform  !== undefined && { canAccessPlatform:  d.canAccessPlatform }),
         },
@@ -396,10 +574,6 @@ export async function usersRoutes(app: FastifyInstance) {
     }
 
     return { created, skipped }
-  })
-
-  app.post('/bulk-register', { preHandler: requireRole('admin') }, async (request, reply) => {
-    return reply.redirect(307, '/users/bulk-import-staff')
   })
 
   // POST /users/bulk-onboard — массовый онбординг всех с реальной корп-почтой без аккаунта.

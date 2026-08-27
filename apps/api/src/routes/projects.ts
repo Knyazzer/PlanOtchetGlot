@@ -1,6 +1,7 @@
-﻿import { FastifyInstance } from 'fastify'
+import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { authenticate, requireRole } from '../plugins/auth'
+import { authenticate } from '../plugins/auth'
+import { hasModule } from '../services/access'
 import { prisma } from '@nexus/db'
 
 const USER_SELECT = { select: { id: true, name: true } }
@@ -63,6 +64,59 @@ const createWorkItemSchema = z.object({
 
 const updateWorkItemSchema = createWorkItemSchema.partial()
 
+// ── Access-guards (docs/RBAC-MODEL.md §4.6) ───────────────────────────────────
+// Плагин authenticate кладёт в request.user обогащённого юзера { id, isAdmin, … }.
+type ReqUser = { id: string; isAdmin: boolean }
+const reqUser = (req: unknown): ReqUser => (req as { user: ReqUser }).user
+const forbid = (reply: { code: (n: number) => { send: (b: unknown) => unknown } }, module: string, need = 'edit') =>
+  reply.code(403).send({ error: 'Forbidden', module, need })
+
+type WIRoles = { execProducerId?: string | null; lineProducerId?: string | null; accountManagerId?: string | null }
+
+/** Управление проектом: admin ∨ продюсер проекта ∨ com.projects:edit. */
+async function canEditProject(u: ReqUser, producerId: string | null): Promise<boolean> {
+  return u.isAdmin || producerId === u.id || hasModule(u.id, false, 'com.projects', 'edit')
+}
+/** Удаление проекта — ЕДИНАЯ точка политики (изолировано намеренно). Пока: только админ
+ *  (удаление проекта сносит каскадом все WI/треки/расходы). Когда будем детально прорабатывать
+ *  права и доступы — менять ТОЛЬКО здесь, поведение изменится во всей системе. */
+async function canDeleteProject(u: ReqUser): Promise<boolean> {
+  return u.isAdmin
+}
+/** Правка WI: admin ∨ одна из трёх ролей WI ∨ com.projects:edit ∨ prod.workitems:edit. */
+async function canEditWorkItem(u: ReqUser, wi: WIRoles): Promise<boolean> {
+  if (u.isAdmin) return true
+  if (wi.execProducerId === u.id || wi.lineProducerId === u.id || wi.accountManagerId === u.id) return true
+  return (await hasModule(u.id, false, 'com.projects', 'edit')) || hasModule(u.id, false, 'prod.workitems', 'edit')
+}
+/** Создание WI (ролей ещё нет): admin ∨ com.projects:edit ∨ prod.workitems:edit. */
+async function canCreateWorkItem(u: ReqUser): Promise<boolean> {
+  return u.isAdmin || (await hasModule(u.id, false, 'com.projects', 'edit')) || hasModule(u.id, false, 'prod.workitems', 'edit')
+}
+/** Бюджет WI — отдельный модуль: admin ∨ fin.budgets:edit. */
+async function canEditBudget(u: ReqUser): Promise<boolean> {
+  return u.isAdmin || hasModule(u.id, false, 'fin.budgets', 'edit')
+}
+/** Расходы WI: admin ∨ lineProducer этого WI ∨ fin.expenses:edit. */
+async function canEditExpense(u: ReqUser, wi: WIRoles): Promise<boolean> {
+  return u.isAdmin || wi.lineProducerId === u.id || hasModule(u.id, false, 'fin.expenses', 'edit')
+}
+/** Видимость финансовых полей (budget/expenses) в выдачах: admin ∨ любой fin.*. */
+async function canSeeFinance(u: ReqUser): Promise<boolean> {
+  if (u.isAdmin) return true
+  return (await hasModule(u.id, false, 'fin.company-finance', 'view'))
+      || (await hasModule(u.id, false, 'fin.budgets', 'view'))
+      || (await hasModule(u.id, false, 'fin.expenses', 'view'))
+}
+/** Срез финансовых полей (budget, expenses[]) у пользователя без fin.*. */
+function stripFinanceWI<T extends Record<string, unknown>>(wi: T, show: boolean): T {
+  if (show || wi == null) return wi
+  const clone: Record<string, unknown> = { ...wi }
+  delete clone.budget
+  delete clone.expenses
+  return clone as T
+}
+
 export async function projectsRoutes(app: FastifyInstance) {
 
   // ── Projects ──────────────────────────────────────────────────────────────
@@ -89,11 +143,14 @@ export async function projectsRoutes(app: FastifyInstance) {
       select: { ...PROJECT_SELECT, workItems: { select: WORK_ITEM_SELECT, orderBy: { createdAt: 'asc' } } },
     })
     if (!project) return reply.code(404).send({ error: 'Проект не найден' })
-    return project
+    const show = await canSeeFinance(reqUser(req))
+    return { ...project, workItems: (project.workItems as any[]).map(w => stripFinanceWI(w, show)) }
   })
 
   // POST /projects
   app.post('/', { preHandler: authenticate }, async (req, reply) => {
+    const u = reqUser(req)
+    if (!(await canEditProject(u, null))) return forbid(reply, 'com.projects')
     const parsed = createProjectSchema.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: 'validation', details: parsed.error.flatten() })
     return prisma.project.create({ data: parsed.data, select: PROJECT_SELECT })
@@ -106,14 +163,16 @@ export async function projectsRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: 'validation', details: parsed.error.flatten() })
     const project = await prisma.project.findUnique({ where: { id } })
     if (!project) return reply.code(404).send({ error: 'Проект не найден' })
+    if (!(await canEditProject(reqUser(req), project.producerId))) return forbid(reply, 'com.projects')
     return prisma.project.update({ where: { id }, data: parsed.data, select: PROJECT_SELECT })
   })
 
-  // DELETE /projects/:id
-  app.delete('/:id', { preHandler: requireRole('admin') }, async (req, reply) => {
+  // DELETE /projects/:id — политика в canDeleteProject (единая точка изменения)
+  app.delete('/:id', { preHandler: authenticate }, async (req, reply) => {
     const { id } = req.params as { id: string }
     const project = await prisma.project.findUnique({ where: { id } })
     if (!project) return reply.code(404).send({ error: 'Проект не найден' })
+    if (!(await canDeleteProject(reqUser(req)))) return reply.code(403).send({ error: 'Недостаточно прав для удаления проекта' })
     await prisma.project.delete({ where: { id } })
     return { ok: true }
   })
@@ -125,20 +184,25 @@ export async function projectsRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string }
     const project = await prisma.project.findUnique({ where: { id } })
     if (!project) return reply.code(404).send({ error: 'Проект не найден' })
-    return prisma.workItem.findMany({
+    const items = await prisma.workItem.findMany({
       where: { projectId: id },
       select: WORK_ITEM_SELECT,
       orderBy: { createdAt: 'asc' },
     })
+    const show = await canSeeFinance(reqUser(req))
+    return items.map(w => stripFinanceWI(w as any, show))
   })
 
   // POST /projects/:id/work-items
   app.post('/:id/work-items', { preHandler: authenticate }, async (req, reply) => {
     const { id } = req.params as { id: string }
+    const u = reqUser(req)
+    if (!(await canCreateWorkItem(u))) return forbid(reply, 'prod.workitems')
     const project = await prisma.project.findUnique({ where: { id } })
     if (!project) return reply.code(404).send({ error: 'Проект не найден' })
     const parsed = createWorkItemSchema.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: 'validation', details: parsed.error.flatten() })
+    if (parsed.data.budget != null && !(await canEditBudget(u))) return forbid(reply, 'fin.budgets')
     return prisma.workItem.create({
       data: { ...parsed.data, projectId: id },
       select: WORK_ITEM_SELECT,
@@ -151,7 +215,7 @@ export async function workItemsRoutes(app: FastifyInstance) {
   // GET /work-items — all work items across all projects (workflow view)
   app.get('/', { preHandler: authenticate }, async (req) => {
     const { status, projectId, producerId, search } = req.query as Record<string, string>
-    return prisma.workItem.findMany({
+    const items = await prisma.workItem.findMany({
       where: {
         ...(status    ? { status: status as any } : {}),
         ...(projectId ? { projectId } : {}),
@@ -170,6 +234,8 @@ export async function workItemsRoutes(app: FastifyInstance) {
       },
       orderBy: [{ status: 'asc' }, { date: 'asc' }, { createdAt: 'desc' }],
     })
+    const show = await canSeeFinance(reqUser(req))
+    return items.map(w => stripFinanceWI(w as any, show))
   })
 
   // GET /work-items/:id
@@ -195,16 +261,21 @@ export async function workItemsRoutes(app: FastifyInstance) {
       },
     })
     if (!item) return reply.code(404).send({ error: 'Work Item не найден' })
-    return item
+    const show = await canSeeFinance(reqUser(req))
+    return stripFinanceWI(item as any, show)
   })
 
   // PATCH /work-items/:id
   app.patch('/:id', { preHandler: authenticate }, async (req, reply) => {
     const { id } = req.params as { id: string }
+    const u = reqUser(req)
     const parsed = updateWorkItemSchema.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send({ error: 'validation', details: parsed.error.flatten() })
     const item = await prisma.workItem.findUnique({ where: { id } })
     if (!item) return reply.code(404).send({ error: 'Work Item не найден' })
+    if (!(await canEditWorkItem(u, item))) return forbid(reply, 'prod.workitems')
+    // Бюджет — отдельный модуль fin.budgets
+    if (parsed.data.budget !== undefined && !(await canEditBudget(u))) return forbid(reply, 'fin.budgets')
     return prisma.workItem.update({ where: { id }, data: parsed.data, select: WORK_ITEM_SELECT })
   })
 
@@ -213,6 +284,7 @@ export async function workItemsRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string }
     const item = await prisma.workItem.findUnique({ where: { id } })
     if (!item) return reply.code(404).send({ error: 'Work Item не найден' })
+    if (!(await canEditWorkItem(reqUser(req), item))) return forbid(reply, 'prod.workitems')
     await prisma.workItem.delete({ where: { id } })
     return { ok: true }
   })
@@ -226,6 +298,7 @@ export async function workItemsRoutes(app: FastifyInstance) {
 
     const item = await prisma.workItem.findUnique({ where: { id } })
     if (!item) return reply.code(404).send({ error: 'Work Item не найден' })
+    if (!(await canEditWorkItem(reqUser(req), item))) return forbid(reply, 'prod.workitems')
 
     await prisma.$transaction([
       prisma.workItemDivision.deleteMany({ where: { workItemId: id } }),
@@ -241,6 +314,7 @@ export async function workItemsRoutes(app: FastifyInstance) {
   // GET /work-items/:id/expenses
   app.get('/:id/expenses', { preHandler: authenticate }, async (req, reply) => {
     const { id } = req.params as { id: string }
+    if (!(await canSeeFinance(reqUser(req)))) return forbid(reply, 'fin.expenses', 'view')
     const item = await prisma.workItem.findUnique({ where: { id } })
     if (!item) return reply.code(404).send({ error: 'Work Item не найден' })
     return prisma.expense.findMany({
@@ -252,7 +326,7 @@ export async function workItemsRoutes(app: FastifyInstance) {
 
   // POST /work-items/:id/expenses
   app.post('/:id/expenses', { preHandler: authenticate }, async (req, reply) => {
-    const user = (req as any).user as { id: string }
+    const u = reqUser(req)
     const { id } = req.params as { id: string }
 
     const schema = z.object({
@@ -266,10 +340,11 @@ export async function workItemsRoutes(app: FastifyInstance) {
 
     const item = await prisma.workItem.findUnique({ where: { id } })
     if (!item) return reply.code(404).send({ error: 'Work Item не найден' })
+    if (!(await canEditExpense(u, item))) return forbid(reply, 'fin.expenses')
 
     return reply.code(201).send(
       await prisma.expense.create({
-        data: { ...body.data, workItemId: id, createdById: user.id },
+        data: { ...body.data, workItemId: id, createdById: u.id },
         select: EXPENSE_SELECT,
       })
     )
@@ -277,7 +352,7 @@ export async function workItemsRoutes(app: FastifyInstance) {
 
   // PATCH /work-items/:id/expenses/:expId
   app.patch('/:id/expenses/:expId', { preHandler: authenticate }, async (req, reply) => {
-    const { expId } = req.params as { id: string; expId: string }
+    const { id, expId } = req.params as { id: string; expId: string }
 
     const schema = z.object({
       amount:      z.number().positive().optional(),
@@ -289,7 +364,10 @@ export async function workItemsRoutes(app: FastifyInstance) {
     if (!body.success) return reply.code(400).send({ error: body.error.issues[0]?.message })
 
     const exp = await prisma.expense.findUnique({ where: { id: expId } })
-    if (!exp) return reply.code(404).send({ error: 'Расход не найден' })
+    if (!exp || exp.workItemId !== id) return reply.code(404).send({ error: 'Расход не найден' })
+    const item = await prisma.workItem.findUnique({ where: { id } })
+    if (!item) return reply.code(404).send({ error: 'Work Item не найден' })
+    if (!(await canEditExpense(reqUser(req), item))) return forbid(reply, 'fin.expenses')
 
     return prisma.expense.update({
       where: { id: expId },
@@ -300,9 +378,12 @@ export async function workItemsRoutes(app: FastifyInstance) {
 
   // DELETE /work-items/:id/expenses/:expId
   app.delete('/:id/expenses/:expId', { preHandler: authenticate }, async (req, reply) => {
-    const { expId } = req.params as { id: string; expId: string }
+    const { id, expId } = req.params as { id: string; expId: string }
     const exp = await prisma.expense.findUnique({ where: { id: expId } })
-    if (!exp) return reply.code(404).send({ error: 'Расход не найден' })
+    if (!exp || exp.workItemId !== id) return reply.code(404).send({ error: 'Расход не найден' })
+    const item = await prisma.workItem.findUnique({ where: { id } })
+    if (!item) return reply.code(404).send({ error: 'Work Item не найден' })
+    if (!(await canEditExpense(reqUser(req), item))) return forbid(reply, 'fin.expenses')
     await prisma.expense.delete({ where: { id: expId } })
     return reply.code(204).send()
   })

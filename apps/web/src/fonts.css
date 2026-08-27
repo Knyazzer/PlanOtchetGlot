@@ -1,0 +1,11 @@
+/* Steppe — фирменный шрифт экосистемы Megapolis (канон-веб-файлы, копия из brand/fonts/steppe).
+   Файлы шрифта в публичные репо за пределами приложений экосистемы не выкладывать (EULA у Влада). */
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-Thin.woff2') format('woff2');       font-weight: 100; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-ExtraLight.woff2') format('woff2'); font-weight: 200; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-Light.woff2') format('woff2');      font-weight: 300; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-Regular.woff2') format('woff2');    font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-Medium.woff2') format('woff2');     font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-SemiBold.woff2') format('woff2');   font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-Bold.woff2') format('woff2');       font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-ExtraBold.woff2') format('woff2');  font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Steppe'; src: url('/fonts/steppe/Steppe-Black.woff2') format('woff2');      font-weight: 900; font-style: normal; font-display: swap; }

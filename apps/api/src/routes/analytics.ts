@@ -66,6 +66,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
         select: {
           assigneeId: true, status: true, deadline: true,
           plannedMinutes: true, actualMinutes: true,
+          calendarEventId: true, // разделяем: задачи (null) vs события календаря (not null)
           client: true, project: { select: { title: true } },
         },
       }),
@@ -76,7 +77,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
     type Row = {
       userId: string; name: string; divName: string; deptName: string
       workDays: number; filledDays: number; planMins: number; taskMins: number
-      totalTasks: number; doneTasks: number; overdue: number; score: number
+      totalTasks: number; doneTasks: number; overdue: number; events: number; score: number
     }
     const rows = new Map<string, Row>()
     for (const u of users) {
@@ -85,7 +86,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
         userId: u.id, name: u.name,
         divName: div?.name ?? '—', deptName: div?.department?.name ?? '—',
         workDays: 0, filledDays: 0, planMins: 0, taskMins: 0,
-        totalTasks: 0, doneTasks: 0, overdue: 0, score: 0,
+        totalTasks: 0, doneTasks: 0, overdue: 0, events: 0, score: 0,
       })
     }
     for (const e of entries) {
@@ -102,15 +103,17 @@ export async function analyticsRoutes(app: FastifyInstance) {
     for (const t of tasks) {
       const r = rows.get(t.assigneeId)
       if (!r) continue
+      if (t.calendarEventId) { r.events++; continue } // календарное событие — отдельный счётчик, не задача
       r.totalTasks++
       r.taskMins += t.actualMinutes ?? t.plannedMinutes ?? 0
       if (t.status === 'done') r.doneTasks++
       else if (t.deadline && t.deadline < today) r.overdue++
     }
 
-    // проекты периода (ключ: проект, иначе клиент — паттерн донора)
+    // проекты периода (ключ: проект, иначе клиент — паттерн донора); события в проекты не считаем
     const projAgg = new Map<string, { name: string; count: number; done: number; mins: number; employees: Set<string> }>()
     for (const t of tasks) {
+      if (t.calendarEventId) continue
       const key = t.project?.title ?? t.client ?? '—'
       let p = projAgg.get(key)
       if (!p) { p = { name: key, count: 0, done: 0, mins: 0, employees: new Set() }; projAgg.set(key, p) }
@@ -138,9 +141,10 @@ export async function analyticsRoutes(app: FastifyInstance) {
         totalTasks: a.totalTasks + r.totalTasks,
         doneTasks: a.doneTasks + r.doneTasks,
         overdue: a.overdue + r.overdue,
+        events: a.events + r.events,
         score: a.score + r.score,
       }),
-      { planMins: 0, taskMins: 0, workDays: 0, totalTasks: 0, doneTasks: 0, overdue: 0, score: 0 },
+      { planMins: 0, taskMins: 0, workDays: 0, totalTasks: 0, doneTasks: 0, overdue: 0, events: 0, score: 0 },
     )
     const expectedTotal = users.length * expected
 
@@ -155,6 +159,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
         tasksDone: totals.doneTasks,
         tasksTotal: totals.totalTasks,
         overdue: totals.overdue,
+        events: totals.events,
       },
       employees: employeeRows,
       projects: [...projAgg.values()]

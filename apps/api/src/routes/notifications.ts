@@ -24,7 +24,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
     const user = (req as any).user as { id: string }
     const since = new Date(Date.now() - 7 * 86_400_000) // лента за 7 дней
 
-    const [logs, events] = await Promise.all([
+    const [logs, events, reqInbox, reqAnswers, trackAdds] = await Promise.all([
       // действия других людей над задачами, где я исполнитель или автор
       prisma.taskLog.findMany({
         where: {
@@ -50,6 +50,24 @@ export async function notificationsRoutes(app: FastifyInstance) {
         take: 10,
         select: { id: true, title: true, type: true, date: true, startTime: true, endTime: true },
       }),
+      // заявки на моё согласование (pending) — для руководителя
+      prisma.request.findMany({
+        where: { approverId: user.id, status: 'pending' },
+        orderBy: { createdAt: 'desc' }, take: 20,
+        select: { id: true, type: true, createdAt: true, user: { select: { name: true } } },
+      }),
+      // ответы по моим заявкам за 7 дней
+      prisma.request.findMany({
+        where: { userId: user.id, status: { in: ['approved', 'rejected', 'revoked'] }, decidedAt: { gte: since } },
+        orderBy: { decidedAt: 'desc' }, take: 20,
+        select: { id: true, type: true, status: true, decidedAt: true },
+      }),
+      // меня подключили к чужому треку за 7 дней (я — участник, но не лидер)
+      prisma.trackMember.findMany({
+        where: { userId: user.id, joinedAt: { gte: since }, track: { leaderId: { not: user.id } } },
+        orderBy: { joinedAt: 'desc' }, take: 20,
+        select: { joinedAt: true, track: { select: { id: true, title: true, leader: { select: { name: true } } } } },
+      }),
     ])
 
     const taskItems = logs.map(l => {
@@ -73,7 +91,29 @@ export async function notificationsRoutes(app: FastifyInstance) {
       eventId: e.id,
     }))
 
-    return { tasks: taskItems, events: eventItems }
+    const REQ_LABEL: Record<string, string> = { vacation: 'отпуск', sick: 'больничный', dayoff: 'отгул' }
+    const requestItems = [
+      ...reqInbox.map(r => ({
+        id: `req-in:${r.id}`, kind: 'request' as const,
+        text: `${r.user.name}: заявка на ${REQ_LABEL[r.type] ?? r.type} — нужно согласовать`,
+        at: r.createdAt, requestId: r.id,
+      })),
+      ...reqAnswers.map(r => ({
+        id: `req-ans:${r.id}`, kind: 'request' as const,
+        text: `Ваша заявка (${REQ_LABEL[r.type] ?? r.type}) ${r.status === 'approved' ? 'одобрена' : r.status === 'revoked' ? 'отозвана' : 'отклонена'}`,
+        at: r.decidedAt!, requestId: r.id,
+      })),
+    ].sort((a, b) => (a.at < b.at ? 1 : -1))
+
+    const trackItems = trackAdds.map(m => ({
+      id: `track:${m.track.id}`,
+      kind: 'track' as const,
+      text: `${m.track.leader.name} подключил(а) вас к треку «${m.track.title}»`,
+      at: m.joinedAt,
+      trackId: m.track.id,
+    }))
+
+    return { tasks: taskItems, events: eventItems, requests: requestItems, tracks: trackItems }
   })
 }
 

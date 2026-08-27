@@ -1,18 +1,9 @@
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { randomBytes } from 'node:crypto'
 import { prisma } from '@nexus/db'
 import { authenticate, requireRole } from '../plugins/auth'
 import { getUserAccess } from '../services/access'
-
-// Временный пароль: 10 читаемых символов (без двусмысленных 0/O/o/l/1/I)
-const PW_CHARS = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-function genTempPassword(): string {
-  const b = randomBytes(10)
-  let s = ''
-  for (let i = 0; i < b.length; i++) s += PW_CHARS[b[i] % PW_CHARS.length]
-  return s
-}
+import { genTempPassword } from '../services/password'
 
 export async function authRoutes(app: FastifyInstance) {
   // POST /auth/logout — clear any legacy cookies
@@ -26,7 +17,7 @@ export async function authRoutes(app: FastifyInstance) {
   // секретом JWT_SECRET — плагин authenticate резолвит юзера по authId (raw.sub),
   // что (в отличие от impersonate) не блокирует админов.
   if (process.env.NODE_ENV !== 'production') {
-    app.post('/dev-login', async (request, reply) => {
+    app.post('/dev-login', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
       const body = z.object({ email: z.string().email() }).safeParse(request.body)
       if (!body.success) return reply.code(400).send({ error: 'Invalid input' })
 
@@ -53,7 +44,7 @@ export async function authRoutes(app: FastifyInstance) {
     const user = await prisma.user.findUnique({
       where: { id },
       select: {
-        id: true, email: true, name: true, isAdmin: true, isActive: true,
+        id: true, email: true, name: true, isAdmin: true, isSystemAccount: true, isActive: true,
         canAccessInventory: true, canAccessPlatform: true, mustChangePassword: true, theme: true, status: true, tabNumber: true,
         divMemberships: {
           select: {
@@ -66,7 +57,21 @@ export async function authRoutes(app: FastifyInstance) {
     if (!user || !user.isActive) return reply.code(404).send({ error: 'User not found' })
     // КИТ 1+2: департаменты с уровнем + модули с режимом view/edit (спека docs/RBAC-MODEL.md §4.5)
     const access = await getUserAccess(user.id, user.isAdmin)
-    return { ...user, access }
+    // Должности сотрудника — строго из оргструктуры (тип роли, НЕ из свободного текста position).
+    // Директор — только у департамента (отдела нет); руководитель/сотрудник — у отдела.
+    const [directed, headed, memberships] = await Promise.all([
+      prisma.department.findMany({ where: { directorId: id }, select: { name: true } }),
+      prisma.division.findMany({ where: { headId: id }, select: { name: true, department: { select: { name: true } } } }),
+      prisma.userDivision.findMany({ where: { userId: id }, select: { position: true, division: { select: { name: true, headId: true, department: { select: { name: true } } } } } }),
+    ])
+    // spec — «уточнение (специализация)» из назначения-члена (UserDivision.position); только у member, иначе null.
+    const positions = [
+      ...directed.map(d => ({ role: 'director' as const, dept: d.name, division: null as string | null, spec: null as string | null })),
+      ...headed.map(h => ({ role: 'head' as const, dept: h.department.name, division: h.name, spec: null as string | null })),
+      // членство как «Сотрудник»; если он же глава этого отдела — уже учтён строкой head, не дублируем
+      ...memberships.filter(m => m.division.headId !== id).map(m => ({ role: 'member' as const, dept: m.division.department.name, division: m.division.name, spec: m.position?.trim() || null })),
+    ]
+    return { ...user, access, positions }
   })
 
   // PATCH /auth/me/profile
@@ -97,7 +102,7 @@ export async function authRoutes(app: FastifyInstance) {
 
   // POST /auth/impersonate/consume — exchange impersonation JWT for a session
   // The frontend stores the returned token and sends it as Authorization: Bearer
-  app.post('/impersonate/consume', async (request, reply) => {
+  app.post('/impersonate/consume', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (request, reply) => {
     const { token } = request.body as { token?: string }
     if (!token) return reply.code(400).send({ error: 'Token required' })
     try {

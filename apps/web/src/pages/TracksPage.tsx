@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
 import { TaskModal } from './TasksPage'
 import { Hint } from '../components/Hint'
+import { ROLE, filled, tonal, outline } from '../lib/roleColors'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -22,6 +23,9 @@ interface Track {
   clientName: string | null; projectName: string | null
   deadline: string | null; leaderId: string
   workItemId: string | null
+  goalId?: string | null
+  goal?: { id: string; title: string; description: string | null } | null
+  chat?: { id: string } | null
   leader: TrackUser; members: TrackMember[]
   tasks:  TrackSummaryTask[]
   stages: TrackSummaryStage[]
@@ -38,6 +42,7 @@ interface StageTask {
 
 interface DetailStage { id: string; title: string; order: number; tasks: StageTask[] }
 
+interface TrackEvent { id: string; type: string; title: string; date: string; startTime: string; endTime: string; status: string }
 interface TrackDetail extends Track {
   tasks: Array<StageTask & {
     description: string; startDate: string; seenAt: string | null
@@ -45,6 +50,7 @@ interface TrackDetail extends Track {
     createdAt: string; updatedAt: string
   }>
   stages: DetailStage[]
+  events?: TrackEvent[]
 }
 
 // ── Layout constants ───────────────────────────────────────────────────────────
@@ -71,17 +77,17 @@ function fmtToday() {
 }
 
 const STATUS_LABEL: Record<TrackStatus, string> = { active: 'Активный', done: 'Завершён', archived: 'Архив' }
-const STATUS_COLOR: Record<TrackStatus, string> = { active: '#29BF12',  done: '#0EA5E9', archived: '#464658' }
-const TASK_STATUS_COLOR: Record<string, string> = { backlog: '#464658', inprogress: '#0EA5E9', done: '#29BF12' }
+const STATUS_COLOR: Record<TrackStatus, string> = { active: '#22C55E',  done: '#0EA5E9', archived: '#464658' }
+const TASK_STATUS_COLOR: Record<string, string> = { backlog: '#464658', inprogress: '#0EA5E9', done: '#22C55E' }
 const TASK_STATUS_LABEL: Record<string, string> = { backlog: 'Бэклог', inprogress: 'В работе', done: 'Готово' }
 
 const lbl: React.CSSProperties = {
-  fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
+  fontSize: 12, fontWeight: 700, color: 'var(--text-muted)',
   textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 5, display: 'block',
 }
 const inp: React.CSSProperties = {
   background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8,
-  color: 'var(--text-1)', fontSize: 13, padding: '8px 10px', outline: 'none',
+  color: 'var(--text-1)', fontSize: 14, padding: '8px 10px', outline: 'none',
   width: '100%', boxSizing: 'border-box', fontFamily: 'Inter,sans-serif',
 }
 
@@ -112,7 +118,7 @@ function DonutChart({ done, total, label, color = '#FF6B35' }: { done: number; t
           {done}/{total}
         </text>
       </svg>
-      <span style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</span>
+      <span style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</span>
     </div>
   )
 }
@@ -185,7 +191,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
           const done    = stage.tasks.filter(t => t.status === 'done').length
           const total   = stage.tasks.length
           const allDone = stageIsDone(stage)
-          const textColor = isSel ? '#FF6B35' : allDone ? '#29BF12' : 'rgba(255,255,255,0.28)'
+          const textColor = isSel ? '#FF6B35' : allDone ? '#22C55E' : 'rgba(255,255,255,0.28)'
 
           return (
             <div key={stage.id} style={{ width: STAGE_COL_W, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -195,7 +201,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
                 <svg width={CIRCLE_D} height={CIRCLE_D} style={{ cursor: 'pointer', display: 'block' }} onClick={() => setSelectedIdx(i)}>
                   {isSel && <circle cx={CRAD} cy={CRAD} r={CRAD - 1} fill="none" stroke="#FF6B35" strokeWidth={2} />}
                   <circle cx={CRAD} cy={CRAD} r={CRAD - 5}
-                    fill={isSel ? 'rgba(255,107,53,0.12)' : allDone ? 'rgba(41,191,18,0.08)' : 'var(--bg,#0e0e14)'}
+                    fill={isSel ? 'rgba(123,97,255,0.12)' : allDone ? 'rgba(41,191,18,0.08)' : 'var(--bg,#0e0e14)'}
                     stroke={isSel ? 'none' : allDone ? 'rgba(41,191,18,0.5)' : 'rgba(255,255,255,0.12)'}
                     strokeWidth={1.5}
                   />
@@ -210,13 +216,13 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
                   <button
                     onClick={() => { if (confirm(`Удалить Этап ${i + 1}? Задачи открепятся.`)) deleteStageMut.mutate(stage.id) }}
                     title="Удалить этап"
-                    style={{ position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'rgba(232,25,75,0.85)', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}
+                    style={{ position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'rgba(232,25,75,0.85)', color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}
                   >×</button>
                 )}
               </div>
 
               {/* Label */}
-              <span style={{ fontSize: 10, fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', color: textColor, fontWeight: isSel ? 700 : 400 }}>
+              <span style={{ fontSize: 12, fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', color: textColor, fontWeight: isSel ? 700 : 400 }}>
                 {allDone ? '✓ Готово' : `Этап ${i + 1}`}
               </span>
 
@@ -224,11 +230,11 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
               <div style={{ width: '100%', padding: '0 8px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {stage.tasks.map(t => <TaskCard key={t.id} t={t} onOpen={() => onOpenTask(t.id)} />)}
                 {stage.tasks.length === 0 && (
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.12)', textAlign: 'center', padding: '6px 0', fontFamily: 'Inter,sans-serif' }}>—</div>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.12)', textAlign: 'center', padding: '6px 0', fontFamily: 'Inter,sans-serif' }}>—</div>
                 )}
                 {isInvolved && isSel && (
                   <button onClick={() => setCreatingTask(true)}
-                    style={{ fontSize: 11, color: 'rgba(255,107,53,0.65)', background: 'none', border: '1px dashed rgba(255,107,53,0.25)', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', textAlign: 'center', marginTop: 2 }}>
+                    style={{ fontSize: 12, color: 'rgba(123,97,255,0.65)', background: 'none', border: '1px dashed rgba(123,97,255,0.25)', borderRadius: 6, padding: '5px 8px', cursor: 'pointer', fontFamily: 'Inter,sans-serif', textAlign: 'center', marginTop: 2 }}>
                     + задача
                   </button>
                 )}
@@ -242,9 +248,9 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
           <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, zIndex: 1, width: CIRCLE_D }}>
             <button
               onClick={() => !addStageMut.isPending && addStageMut.mutate()}
-              style={{ width: CIRCLE_D, height: CIRCLE_D, borderRadius: '50%', border: '2px dashed rgba(255,107,53,0.35)', background: 'var(--bg,#0e0e14)', color: 'rgba(255,107,53,0.55)', fontSize: 22, cursor: addStageMut.isPending ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: addStageMut.isPending ? 0.4 : 1, fontFamily: 'Inter,sans-serif', lineHeight: 1 }}
+              style={{ width: CIRCLE_D, height: CIRCLE_D, borderRadius: '50%', border: '2px dashed rgba(123,97,255,0.35)', background: 'var(--bg,#0e0e14)', color: 'rgba(123,97,255,0.55)', fontSize: 22, cursor: addStageMut.isPending ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: addStageMut.isPending ? 0.4 : 1, fontFamily: 'Inter,sans-serif', lineHeight: 1 }}
             >+</button>
-            <span style={{ fontSize: 10, color: 'rgba(255,107,53,0.35)', fontFamily: 'Inter,sans-serif' }}>Этап</span>
+            <span style={{ fontSize: 12, color: 'rgba(123,97,255,0.35)', fontFamily: 'Inter,sans-serif' }}>Этап</span>
           </div>
         )}
       </div>
@@ -274,16 +280,16 @@ function TaskCard({ t, onOpen }: { t: StageTask; onOpen?: () => void }) {
   return (
     <div
       onClick={onOpen}
-      onMouseEnter={e => onOpen && (e.currentTarget.style.borderColor = 'rgba(255,107,53,0.35)')}
+      onMouseEnter={e => onOpen && (e.currentTarget.style.borderColor = 'rgba(123,97,255,0.35)')}
       onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
       style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)', cursor: onOpen ? 'pointer' : 'default' }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: sc, flexShrink: 0 }} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{TASK_STATUS_LABEL[t.status]} · {t.assignee.name}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{TASK_STATUS_LABEL[t.status]} · {t.assignee.name}</div>
       </div>
       {t.deadline && (
-        <span style={{ fontSize: 11, color: daysDiff(t.deadline) <= 1 ? '#E8194B' : 'var(--text-muted)', flexShrink: 0 }}>{fmtDate(t.deadline)}</span>
+        <span style={{ fontSize: 12, color: daysDiff(t.deadline) <= 1 ? '#F43F5E' : 'var(--text-muted)', flexShrink: 0 }}>{fmtDate(t.deadline)}</span>
       )}
     </div>
   )
@@ -294,9 +300,9 @@ function UnstageBlock({ tasks, onOpenTask }: { tasks: StageTask[]; onOpenTask?: 
   return (
     <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px dashed rgba(255,255,255,0.08)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: collapsed ? 0 : 10, cursor: 'pointer' }} onClick={() => setCollapsed(v => !v)}>
-        <span style={{ fontSize: 9, color: 'var(--text-muted)' }}>{collapsed ? '▶' : '▼'}</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Без этапа</span>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>({tasks.length})</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{collapsed ? '▶' : '▼'}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Без этапа</span>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({tasks.length})</span>
       </div>
       {!collapsed && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxWidth: STAGE_COL_W }}>
@@ -334,7 +340,7 @@ function UserPicker({ selected, onChange, label, hint }: { selected: string[]; o
         {selectedUsers.length === 0
           ? <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Не выбрано</span>
           : selectedUsers.map(u => (
-              <span key={u.id} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,107,53,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
+              <span key={u.id} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: 'rgba(123,97,255,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
             ))
         }
       </div>
@@ -346,8 +352,8 @@ function UserPicker({ selected, onChange, label, hint }: { selected: string[]; o
           <div style={{ overflowY: 'auto', flex: 1 }}>
             {filtered.map(u => (
               <div key={u.id} onClick={() => toggle(u.id)}
-                style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: selected.includes(u.id) ? 'var(--accent-s)' : 'var(--text-2)' }}>
-                <span style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${selected.includes(u.id) ? 'var(--accent-s)' : 'var(--border)'}`, background: selected.includes(u.id) ? 'rgba(255,107,53,0.2)' : 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>
+                style={{ padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: selected.includes(u.id) ? 'var(--accent-s)' : 'var(--text-2)' }}>
+                <span style={{ width: 14, height: 14, borderRadius: 3, border: `1.5px solid ${selected.includes(u.id) ? 'var(--accent-s)' : 'var(--border)'}`, background: selected.includes(u.id) ? 'rgba(123,97,255,0.2)' : 'none', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
                   {selected.includes(u.id) ? '✓' : ''}
                 </span>
                 {u.name}
@@ -437,7 +443,7 @@ export function TrackFormModal({
     <div
       onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
       onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
     >
       <div onMouseDown={e => e.stopPropagation()}
         style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, width: 460, maxWidth: '100%', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.5)', fontFamily: 'Inter,sans-serif' }}>
@@ -474,9 +480,9 @@ export function TrackFormModal({
           )}
         </div>
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, flexShrink: 0 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
           <button onClick={() => isEdit ? editMut.mutate() : createMut.mutate()} disabled={!title.trim() || pending}
-            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !pending ? 1 : 0.5 }}>
+            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !pending ? 1 : 0.5 }}>
             {pending ? '...' : isEdit ? 'Сохранить' : 'Создать трек'}
           </button>
         </div>
@@ -511,8 +517,9 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
       startTime, endTime,
       location: [],
       participantIds: allParticipantIds,
+      trackId: track.id,   // §9: событие видно внутри трека
     }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['events'] }); onClose() },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['events'] }); qc.invalidateQueries({ queryKey: ['track', track.id] }); onClose() },
     onError: (e: any) => alert(e?.response?.data?.error ?? 'Ошибка'),
   })
 
@@ -520,7 +527,7 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
     <div
       onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
       onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
     >
       <div onMouseDown={e => e.stopPropagation()}
         style={{ background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, width: 440, maxWidth: '100%', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(0,0,0,0.5)', fontFamily: 'Inter,sans-serif' }}>
@@ -540,15 +547,15 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
             <span style={lbl}>Участники (автоматически)</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px', background: 'var(--surface-3)', borderRadius: 8, border: '1px solid var(--border)' }}>
               {[track.leader, ...track.members.map(m => m.user)].map(u => (
-                <span key={u.id} style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: 'rgba(255,107,53,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
+                <span key={u.id} style={{ fontSize: 12, padding: '2px 8px', borderRadius: 20, background: 'rgba(123,97,255,0.15)', color: 'var(--accent-s)' }}>{u.name}</span>
               ))}
             </div>
           </div>
         </div>
         <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
+          <button onClick={onClose} style={{ flex: 1, padding: '9px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Отмена</button>
           <button onClick={() => createMut.mutate()} disabled={!title.trim() || createMut.isPending}
-            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !createMut.isPending ? 1 : 0.5 }}>
+            style={{ flex: 2, padding: '9px 0', borderRadius: 8, border: 'none', background: ROLE.primary, color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: title.trim() && !createMut.isPending ? 1 : 0.5 }}>
             {createMut.isPending ? '...' : 'Создать событие'}
           </button>
         </div>
@@ -562,8 +569,8 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
 function MetaItem({ icon, label, value, highlight }: { icon: string; label: string; value: string; highlight?: string }) {
   return (
     <div>
-      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{icon} {label}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: highlight ?? 'var(--text-1)' }}>{value}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 3 }}>{icon} {label}</div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: highlight ?? 'var(--text-1)' }}>{value}</div>
     </div>
   )
 }
@@ -582,12 +589,13 @@ function OpenTask({ taskId, onClose, onDone, onOpenChatWith }: { taskId: string;
 
 // ── TrackDetail ────────────────────────────────────────────────────────────────
 
-function TrackDetail({ trackId, onClose, onOpenChatWith }: { trackId: string; onClose: () => void; onOpenChatWith?: OpenChatFn }) {
+function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { trackId: string; onClose: () => void; onOpenChatWith?: OpenChatFn; onOpenTrackChat?: (chatId: string) => void }) {
   const currentUser = useAuthStore(s => s.user)
   const qc = useQueryClient()
   const [editing,      setEditing]      = useState(false)
   const [creatingEvent, setCreatingEvent] = useState(false)
   const [openTaskId,   setOpenTaskId]   = useState<string | null>(null)
+  const [goalOpen,     setGoalOpen]     = useState(false)
 
   const { data: track, isLoading, error } = useQuery<TrackDetail>({
     queryKey: ['track', trackId],
@@ -607,7 +615,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith }: { trackId: string; on
   if (isLoading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>
   if (error || !track) return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 }}>
-      <div style={{ fontSize: 13, color: 'var(--danger)' }}>Трек не найден</div>
+      <div style={{ fontSize: 14, color: 'var(--danger)' }}>Трек не найден</div>
       <button onClick={onClose} style={{ padding: '7px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>Назад</button>
     </div>
   )
@@ -620,30 +628,63 @@ function TrackDetail({ trackId, onClose, onOpenChatWith }: { trackId: string; on
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, padding: 0, lineHeight: 1, marginTop: 3, flexShrink: 0 }}>←</button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
             </div>
             <div style={{ fontSize: 19, fontWeight: 800, color: 'var(--text-1)', lineHeight: 1.2 }}>{track.title}</div>
-            {track.description && <div style={{ fontSize: 13, color: 'var(--text-3)', marginTop: 5, lineHeight: 1.5 }}>{track.description}</div>}
+            {track.description && <div style={{ fontSize: 14, color: 'var(--text-3)', marginTop: 5, lineHeight: 1.5 }}>{track.description}</div>}
+            {/* Привязка к стратегической цели — клик раскрывает её описание */}
+            {track.goal && (
+              <div style={{ marginTop: 8 }}>
+                <button onClick={() => setGoalOpen(o => !o)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: ROLE.info + '18', border: '1px solid ' + ROLE.info + '44', borderRadius: 8, color: ROLE.info, fontSize: 12, fontWeight: 600, padding: '5px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                  🎯 Квартальная цель: {track.goal.title}
+                  <span style={{ fontSize: 9, transform: goalOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+                </button>
+                {goalOpen && (
+                  <div style={{ marginTop: 6, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--text-2)', lineHeight: 1.5, maxWidth: 560 }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>{track.goal.title}</div>
+                    {track.goal.description || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Без описания</span>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button onClick={() => setCreatingEvent(true)}
-              style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(14,165,233,0.35)', background: 'rgba(14,165,233,0.08)', color: '#0EA5E9', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              📅 Событие
-            </button>
+            {isMember && track.chat && onOpenTrackChat && (
+              <button onClick={() => onOpenTrackChat(track.chat!.id)} style={{ ...tonal('primary'), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>💬 Чат трека</button>
+            )}
+            <button onClick={() => setCreatingEvent(true)} style={{ ...tonal('info'), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>📅 Событие</button>
             {canEdit && (
               <>
-                <button onClick={() => setEditing(true)} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-2)', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer' }}>Редактировать</button>
-                <button onClick={() => { if (confirm('Удалить трек?')) deleteMut.mutate() }} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(232,25,75,0.3)', background: 'rgba(232,25,75,0.08)', color: '#E8194B', fontFamily: 'Inter,sans-serif', fontSize: 12, cursor: 'pointer' }}>Удалить</button>
+                <button onClick={() => setEditing(true)} style={{ ...outline(), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>Редактировать</button>
+                <button onClick={() => { if (confirm('Удалить трек?')) deleteMut.mutate() }} style={{ ...tonal('danger'), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>Удалить</button>
               </>
             )}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <MetaItem icon="👤" label="Лидер" value={track.leader.name} />
-          {track.deadline && <MetaItem icon="📅" label="Дедлайн" value={fmtDate(track.deadline) ?? ''} highlight={daysDiff(track.deadline) <= 3 ? '#E8194B' : undefined} />}
+          {track.deadline && <MetaItem icon="📅" label="Дедлайн" value={fmtDate(track.deadline) ?? ''} highlight={daysDiff(track.deadline) <= 3 ? '#F43F5E' : undefined} />}
           <MetaItem icon="👥" label="Участники" value={track.members.length === 0 ? 'Нет' : track.members.map(m => m.user.name).join(', ')} />
         </div>
       </div>
+
+      {/* §9: встречи, привязанные к треку (видны прямо здесь, не только в календаре) */}
+      {track.events && track.events.length > 0 && (
+        <div style={{ padding: '12px 32px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>Встречи трека ({track.events.length})</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {track.events.map(ev => (
+              <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', fontSize: 12, opacity: ev.status === 'done' ? 0.6 : 1 }}>
+                <span style={{ color: '#8B5CF6', fontWeight: 700 }}>{new Date(ev.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{ev.startTime.slice(0, 5)}–{ev.endTime.slice(0, 5)}</span>
+                <span style={{ color: 'var(--text-1)' }}>{ev.title}</span>
+                {ev.status === 'done' && <span style={{ color: '#22C55E', fontSize: 11 }}>✓</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <StageTimeline track={track} isInvolved={isMember} canDeleteStage={canEdit} onOpenTask={id => setOpenTaskId(id)} onOpenChatWith={onOpenChatWith} />
 
@@ -671,12 +712,12 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
   return (
     <div onClick={onClick}
       style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 10, transition: 'border-color 0.12s', fontFamily: 'Inter,sans-serif' }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,107,53,0.35)')}
+      onMouseEnter={e => (e.currentTarget.style.borderColor = ROLE.primary + '59')}
       onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1.3, marginBottom: 2 }}>{track.title}</div>
-          {track.description && <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.description}</div>}
+          {track.description && <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.description}</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <DonutChart done={doneTasks}  total={totalTasks}       label="Задачи" color="#0EA5E9" />
@@ -684,12 +725,18 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
-          <span style={{ fontSize: 11, color: 'var(--text-3)' }}>👥 {memberCount}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: STATUS_COLOR[track.status] + '22', color: STATUS_COLOR[track.status] }}>{STATUS_LABEL[track.status]}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>👥 {memberCount}</span>
+          {/* Микрочип «к чему привязан» — квартальная цель или проект */}
+          {track.goal
+            ? <span title={track.goal.title} style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: ROLE.info + '1f', color: ROLE.info, maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🎯 {track.goal.title}</span>
+            : track.workItemId
+              ? <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: ROLE.primary + '1f', color: ROLE.primary }}>📁 Проект</span>
+              : null}
         </div>
         {daysLeft !== null && (
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (daysLeft < 0 ? '#E8194B' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)') + '22', color: daysLeft < 0 ? '#E8194B' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 8px', borderRadius: 20, background: (daysLeft < 0 ? '#F43F5E' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)') + '22', color: daysLeft < 0 ? '#F43F5E' : daysLeft <= 3 ? '#F59E0B' : 'var(--text-muted)' }}>
             {daysLeft < 0 ? `просрочено ${Math.abs(daysLeft)} д.` : daysLeft === 0 ? 'сегодня' : `${daysLeft} дн.`}
           </span>
         )}
@@ -700,7 +747,7 @@ function TrackCard({ track, onClick }: { track: Track; onClick: () => void }) {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-export function TracksPage({ onOpenChatWith }: { onOpenChatWith?: OpenChatFn } = {}) {
+export function TracksPage({ onOpenChatWith, onOpenTrackChat }: { onOpenChatWith?: OpenChatFn; onOpenTrackChat?: (chatId: string) => void } = {}) {
   const [creating, setCreating] = useState(false)
   const [detailId, setDetailId] = useState<string | null>(null)
 
@@ -714,27 +761,26 @@ export function TracksPage({ onOpenChatWith }: { onOpenChatWith?: OpenChatFn } =
   const inactive = tracks.filter(t => t.status !== 'active')
 
   if (detailId) {
-    return <TrackDetail trackId={detailId} onClose={() => setDetailId(null)} onOpenChatWith={onOpenChatWith} />
+    return <TrackDetail trackId={detailId} onClose={() => setDetailId(null)} onOpenChatWith={onOpenChatWith} onOpenTrackChat={onOpenTrackChat} />
   }
 
   return (
     <div style={{ padding: '28px 32px', fontFamily: 'Inter,sans-serif', height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-1)' }}>Треки</div>
-        <button onClick={() => setCreating(true)}
-          style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: 'linear-gradient(135deg,#FF6B35,#E8194B)', color: '#fff', fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+        <button onClick={() => setCreating(true)} style={filled('primary')}>
           + Новый трек
         </button>
       </div>
 
-      {isLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>}
+      {isLoading && <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</div>}
       {!isLoading && active.length === 0 && inactive.length === 0 && (
         <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)', fontSize: 14 }}>Нет треков. Создайте первый.</div>
       )}
 
       {active.length > 0 && (
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Активные ({active.length})</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Активные ({active.length})</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
             {active.map(t => <TrackCard key={t.id} track={t} onClick={() => setDetailId(t.id)} />)}
           </div>
@@ -743,7 +789,7 @@ export function TracksPage({ onOpenChatWith }: { onOpenChatWith?: OpenChatFn } =
 
       {inactive.length > 0 && (
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Завершённые / Архив ({inactive.length})</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Завершённые / Архив ({inactive.length})</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 12 }}>
             {inactive.map(t => <TrackCard key={t.id} track={t} onClick={() => setDetailId(t.id)} />)}
           </div>

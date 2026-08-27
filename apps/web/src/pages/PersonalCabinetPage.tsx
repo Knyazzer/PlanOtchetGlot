@@ -93,7 +93,7 @@ export function PersonalCabinetPage({ user }: Props) {
           </p>
         )}
         {user.divMemberships?.[0]?.division.department.name && (
-          <p style={{ margin: '0 0 32px', fontSize: 13, color: 'var(--text-3, #9ca3af)' }}>
+          <p style={{ margin: '0 0 32px', fontSize: 14, color: 'var(--text-3, #9ca3af)' }}>
             {user.divMemberships[0].division.department.name}
           </p>
         )}
@@ -139,7 +139,7 @@ export function PersonalCabinetPage({ user }: Props) {
       <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
         {!pwOpen ? (
           <button onClick={() => { setPwOpen(true); setPwMsg(null) }} style={{
-            background: 'none', border: 'none', color: 'var(--accent, #2563eb)', fontSize: 13, cursor: 'pointer',
+            background: 'none', border: 'none', color: 'var(--accent, #2563eb)', fontSize: 14, cursor: 'pointer',
           }}>Сменить пароль</button>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 280 }}>
@@ -153,15 +153,15 @@ export function PersonalCabinetPage({ user }: Props) {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={changePassword} disabled={pwBusy} style={{
-                flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: 'var(--accent, #2563eb)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: pwBusy ? 'default' : 'pointer',
+                flex: 1, padding: '9px 0', borderRadius: 8, border: 'none', background: 'var(--accent, #2563eb)', color: '#fff', fontSize: 14, fontWeight: 600, cursor: pwBusy ? 'default' : 'pointer',
               }}>{pwBusy ? 'Сохраняю...' : 'Сохранить'}</button>
               <button onClick={() => { setPwOpen(false); setPw(''); setPwMsg(null) }} style={{
-                padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)', background: 'none', color: 'var(--text-3, #9ca3af)', fontSize: 13, cursor: 'pointer',
+                padding: '9px 16px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)', background: 'none', color: 'var(--text-3, #9ca3af)', fontSize: 14, cursor: 'pointer',
               }}>Отмена</button>
             </div>
           </div>
         )}
-        {pwMsg && <span style={{ fontSize: 12, color: pwMsg.startsWith('✓') ? 'var(--success, #29BF12)' : '#dc2626' }}>{pwMsg}</span>}
+        {pwMsg && <span style={{ fontSize: 12, color: pwMsg.startsWith('✓') ? 'var(--success, #22C55E)' : '#dc2626' }}>{pwMsg}</span>}
       </div>
 
       <button

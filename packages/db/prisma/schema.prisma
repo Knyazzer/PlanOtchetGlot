@@ -39,7 +39,7 @@ model User {
   status             String?
   userType           String   @default("staff")
   role               String   @default("user")
-  tabNumber          String?
+  tabNumber          String?  @unique
   position           String?
   department         String?
   subDept            String?
@@ -60,6 +60,7 @@ model User {
   eventParticipations EventParticipant[] @relation("EventParticipants")
   calEntriesCreated   CalendarEntry[] @relation("CalEntryCreator")
   calEntriesTargeted  CalendarEntry[] @relation("CalEntryTarget")
+  posts               Post[]          @relation("PostsAuthor")
   tracksLed           Track[]         @relation("TrackLeader")
   trackMemberships    TrackMember[]   @relation("TrackMembers")
   producedProjects         Project[]  @relation("ProjectProducer")
@@ -68,10 +69,126 @@ model User {
   accountManagedWorkItems  WorkItem[] @relation("WorkItemAccountManager")
   expensesCreated          Expense[]  @relation("ExpenseCreator")
   dayEntries               DayEntry[]      @relation("UserDayEntries")
+  workSchedule             WorkSchedule?   @relation("UserSchedule")
   boardColumns             BoardColumn[]   @relation("UserBoardColumns")
   taskPlacements           TaskPlacement[] @relation("UserTaskPlacements")
+  requestsAuthored         Request[]       @relation("RequestAuthor")
+  requestsToApprove        Request[]       @relation("RequestApprover")
+  personalGoals            PersonalGoal[]  @relation("PersonalGoals")
 
   @@map("users")
+  @@schema("nexus")
+}
+
+// Заявки сотрудника (отпуск/больничный/отгул) → согласование руководителем. См. docs/REQUESTS-MODULE.md
+model Request {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  user         User      @relation("RequestAuthor", fields: [userId], references: [id])
+  type         String    // vacation | sick | dayoff
+  status       String    @default("pending") // pending | approved | rejected | canceled
+  dateFrom     String    @map("date_from")   // YYYY-MM-DD
+  dateTo       String    @map("date_to")     // YYYY-MM-DD (== dateFrom для одного дня)
+  comment      String?
+  approverId   String?   @map("approver_id")
+  approver     User?     @relation("RequestApprover", fields: [approverId], references: [id])
+  decidedAt    DateTime? @map("decided_at")
+  decisionNote String?   @map("decision_note")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([approverId, status])
+  @@map("requests")
+  @@schema("nexus")
+}
+
+// Личные цели сотрудника (Обзор кабинета) — к ним подвязываются задачи (Task-линк — отдельным заходом).
+model PersonalGoal {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation("PersonalGoals", fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  order     Int      @default(0)
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@index([userId])
+  @@map("personal_goals")
+  @@schema("nexus")
+}
+
+// Цели компании — тезисы для микро-блока на Пульсе (видят все, правит админ). Простой список.
+model CompanyGoal {
+  id        String   @id @default(uuid())
+  text      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("company_goals")
+  @@schema("nexus")
+}
+
+// Стратегическая цель (квартал/год) — каскад департамент→отдел. См. docs/STRATEGIC-GOALS.md.
+// deptId/divisionId/createdById — снапшот-строки (без FK, как у DayEntry.divisionId): реорг не переписывает прошлое.
+model StrategicGoal {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  deptId        String    @map("dept_id")        // департамент-владелец (снапшот)
+  divisionId    String?   @map("division_id")    // null = уровень департамента
+  parentGoalId  String?   @map("parent_goal_id") // цель отдела → цель департамента
+  kind          String    @default("goal")       // goal | growth (зона роста — в блоке снизу, не в канбане)
+  horizon       String    @default("quarter")    // quarter | year
+  periodKey     String    @map("period_key")     // 2026-Q3 | 2026
+  status        String    @default("active")     // active | done | partial | dropped
+  outcome       String?                          // «итог/почему» — обязателен при закрытии не-done
+  carriedFromId String?   @map("carried_from_id") // перенос из прошлого периода (Фаза 2)
+  sortOrder     Int       @default(0) @map("sort_order")
+  createdById   String    @map("created_by_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  closedAt      DateTime? @map("closed_at")
+  closedById    String?   @map("closed_by_id")
+
+  logs          StrategicGoalLog[]
+
+  @@index([deptId, periodKey])
+  @@index([divisionId, periodKey])
+  @@map("strategic_goals")
+  @@schema("nexus")
+}
+
+// История изменений стратегической цели (неизменяемая лента, как TaskLog).
+// userName — снапшот имени на момент действия; связи на User нет (стиль снапшотов StrategicGoal).
+model StrategicGoalLog {
+  id        String        @id @default(uuid())
+  goalId    String        @map("goal_id")
+  goal      StrategicGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  userId    String        @map("user_id")
+  userName  String        @map("user_name")
+  action    String                          // created | edited | status | reopened | track_attached | track_detached
+  details   String?                         // готовый человекочитаемый текст изменения
+  meta      Json?
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@index([goalId, createdAt])
+  @@map("strategic_goal_logs")
+  @@schema("nexus")
+}
+
+// Доработки к собранию — заметки к квартальной встрече, уровень департамента (один блок на деп+период).
+model MeetingNote {
+  id        String   @id @default(uuid())
+  deptId    String   @map("dept_id")
+  periodKey String   @map("period_key")
+  text      String   @default("")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([deptId, periodKey])
+  @@map("meeting_notes")
   @@schema("nexus")
 }
 
@@ -168,7 +285,10 @@ model Track {
   members     TrackMember[]
   tasks       Task[]
   stages      Stage[]
+  chat        Chat?       @relation("TrackChat")
+  events      Event[]     @relation("TrackEvents")
   workItemId  String?     @map("work_item_id")
+  goalId      String?     @map("goal_id")        // привязка трека к стратегической цели (StrategicGoal)
   workItem    WorkItem?   @relation(fields: [workItemId], references: [id], onDelete: SetNull)
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt      @map("updated_at")
@@ -223,13 +343,19 @@ model Task {
   client         String?                       // строкой, как у донора; FK на Client — v2
   projectId      String?    @map("project_id")
   project        Project?   @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: SetNull)
+  goalId         String?    @map("goal_id")       // привязка задачи к стратегической цели (StrategicGoal)
   divisionId     String?    @map("division_id") // денормализация из assignee — для свода/аналитики
   division       Division?  @relation("DivisionTasks", fields: [divisionId], references: [id], onDelete: SetNull)
   plannedMinutes Int?       @map("planned_minutes") // медиана донора 45, шаг ввода 15
   actualMinutes  Int?       @map("actual_minutes")  // автокопия из plan при done
   doneAt         DateTime?  @map("done_at")
   archived       Boolean    @default(false)
-  manualOrder    Float?     @map("manual_order")    // дробный порядок на доске
+  // §9 ECOSYSTEM-AGGREGATION — аддитивные «розетки» под будущее зеркалирование внешних задач
+  // (kanban/support). Пустые сегодня (nullable), ничего не ломают; источник правды остаётся
+  // в продукте, Nexus лишь зеркалит. НЕ строим агрегацию — только закладываем поля.
+  source         String?                          // nexus|kanban|support|… (null = внутренняя Nexus)
+  externalId     String?    @map("external_id")   // id задачи в продукте-источнике
+  externalUrl    String?    @map("external_url")  // deep-link в продукт-источник
   legacyId       String?    @unique @map("legacy_id")
   // — повторы: «генерация экземпляров» (В-2) — правило материализует задачу на каждый день серии —
   repeatRule     String?    @map("repeat_rule")     // daily|weekdays
@@ -249,12 +375,28 @@ model Task {
   logs           TaskLog[]
   messages       Message[]
   placements     TaskPlacement[]
+  dayOrders      TaskDayOrder[]
 
   @@index([assigneeId, startDate])
   @@index([divisionId, startDate])
   @@index([projectId])
   @@index([recurringParentId])
   @@map("tasks")
+  @@schema("nexus")
+}
+
+// Ручной порядок задачи внутри конкретного дня «окна» (модель [startDate, deadline] —
+// задача видна на нескольких днях, порядок в каждом свой, drag в дне 5 не трогает день 6).
+// Заменяет прежний глобальный Task.manualOrder.
+model TaskDayOrder {
+  taskId String @map("task_id")
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  day    String // YYYY-MM-DD
+  order  Float
+
+  @@id([taskId, day])
+  @@index([day])
+  @@map("task_day_order")
   @@schema("nexus")
 }
 
@@ -293,6 +435,9 @@ model Chat {
   inviteToken  String?     @unique  // токен для инвайт-ссылки (заготовка)
   // для project-чатов: привязка к клиенту/проекту (заготовка)
   projectId    String?
+  // чат трека (§9): один чат на трек, авто-создаётся с треком
+  trackId      String?     @unique @map("track_id")
+  track        Track?      @relation("TrackChat", fields: [trackId], references: [id], onDelete: Cascade)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt   // обновляется при новом сообщении — для сортировки
 
@@ -412,11 +557,15 @@ model Event {
   authorId     String   @map("author_id")
   author       User     @relation("EventsAuthor", fields: [authorId], references: [id])
   participants EventParticipant[]
+  // событие по треку (§9): видно в самом треке; удаление трека не удаляет событие
+  trackId      String?  @map("track_id")
+  track        Track?   @relation("TrackEvents", fields: [trackId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt      @map("updated_at")
 
   @@index([authorId])
   @@index([date])
+  @@index([trackId])
   @@map("events")
   @@schema("nexus")
 }
@@ -452,6 +601,22 @@ model CalendarEntry {
   @@index([date])
   @@index([type])
   @@map("calendar_entries")
+  @@schema("nexus")
+}
+
+// ── Пульс: новостная лента компании (посты; публикуют по праву adm.news, читают все) ─────────────
+model Post {
+  id        String   @id @default(uuid())
+  title     String   @default("")
+  body      String
+  pinned    Boolean  @default(false)
+  authorId  String   @map("author_id")
+  author    User     @relation("PostsAuthor", fields: [authorId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@index([pinned, createdAt])
+  @@map("posts")
   @@schema("nexus")
 }
 
@@ -599,7 +764,8 @@ model DayEntry {
   divisionId  String?   @map("division_id")
   division    Division? @relation("DivisionDayEntries", fields: [divisionId], references: [id], onDelete: SetNull)
   date        DateTime  @db.Date
-  dayFormat   String    @map("day_format") // ключ из DayFormatVersion (office|remote|shift_air|...)
+  dayFormat   String    @map("day_format") // СТАТУС дня: working|weekend|vacation|sick|dayoff (см. docs/DAY-STATUS-MODEL.md)
+  place       String?   @map("place")      // где работал: office|remote|project|trip (null — не работал)
   startTime   String?   @map("start_time") // "HH:MM"
   endTime     String?   @map("end_time")
   breakMin    Int       @default(0) @map("break_min")
@@ -616,6 +782,30 @@ model DayEntry {
   @@schema("nexus")
 }
 
+// График работы (HR): недельный паттерн типов дня + рабочие часы. Прогнозная
+// КОНФИГУРАЦИЯ (правится, не версионируется) — даёт «тип дня по умолчанию» как
+// подсказку; факты живут в DayEntry, Свод/аналитика считают только их.
+model WorkSchedule {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  user      User     @relation("UserSchedule", fields: [userId], references: [id], onDelete: Cascade)
+  // ключ DayFormatVersion (office|remote|shift_*|...) или 'dayoff' — по дням недели
+  mon       String   @default("office")
+  tue       String   @default("office")
+  wed       String   @default("office")
+  thu       String   @default("office")
+  fri       String   @default("office")
+  sat       String   @default("weekend")
+  sun       String   @default("weekend")
+  workStart String   @default("10:00") @map("work_start")
+  workEnd   String   @default("18:30") @map("work_end")
+  breakMin  Int      @default(0)       @map("break_min")
+  updatedAt DateTime @updatedAt        @map("updated_at")
+
+  @@map("work_schedules")
+  @@schema("nexus")
+}
+
 // Версионируемый справочник форматов дня: изменения действуют с effectiveFrom,
 // прошлые периоды считаются по старым правилам. score=null — формат вне баллов (выходной).
 model DayFormatVersion {
@@ -624,12 +814,41 @@ model DayFormatVersion {
   label         String
   isWork        Boolean  @map("is_work")
   score         Float?
+  active        Boolean  @default(true) // false = формат снят с использования с этой версии (история считается по активным версиям прошлого)
   effectiveFrom DateTime @db.Date @map("effective_from")
   createdAt     DateTime @default(now()) @map("created_at")
 
   @@unique([key, effectiveFrom])
   @@index([key, effectiveFrom])
   @@map("day_format_versions")
+  @@schema("nexus")
+}
+
+// Общие справочники (единые для всех): админ настраивает значения в разделе «Списки»,
+// сотрудники выбирают из них в формах. Набор списков фиксирован (сидируется миграцией),
+// через UI редактируются только значения (RefItem).
+model RefList {
+  id        String    @id @default(uuid())
+  key       String    @unique
+  label     String
+  sortOrder Int       @default(0) @map("sort_order")
+  items     RefItem[]
+
+  @@map("ref_lists")
+  @@schema("nexus")
+}
+
+model RefItem {
+  id        String   @id @default(uuid())
+  listId    String   @map("list_id")
+  list      RefList  @relation(fields: [listId], references: [id], onDelete: Cascade)
+  value     String
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([listId, value])
+  @@index([listId])
+  @@map("ref_items")
   @@schema("nexus")
 }
 

@@ -1,197 +1,240 @@
-import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
+import { ROLE } from '../lib/roleColors'
+import { TimePicker } from '../ui-kit/components/TimePicker'
+import { Tooltip } from './Tooltip'
 
-// Инлайн-карточка «Заполнить сегодня» (ядро донора: формат + время + итог).
-// Attention-подсветка незаполненного; конец дня подсвечивается после 18:00 МСК (golden 11 §1).
+// «Мой рабочий день»: одна кнопка Начать/Закончить (без живого таймера). Поля появляются по стадии —
+// начали → «Начало» + «Перерыв»; закончили → добавляется «Конец» + итог «Отработано». Время правится
+// китовым TimePicker, перерыв — степпером. Автосейв. Факт живёт в DayEntry.
 
 type DayFormat = { key: string; label: string; isWork: boolean; score: number | null }
 type DayEntry = {
-  id: string; date: string; dayFormat: string
+  id: string; date: string; dayFormat: string; place: string | null
   startTime: string | null; endTime: string | null; breakMin: number
   updatedAt: string
 }
+const PLACE_KEYS = ['office', 'remote', 'project', 'trip']
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
-function moscowHour(): number {
-  const f = new Intl.DateTimeFormat('ru-RU', { hour: 'numeric', hour12: false, timeZone: 'Europe/Moscow' })
-  return Number(f.format(new Date()))
-}
+function todayStr() { return new Date().toISOString().slice(0, 10) }
+function pad(n: number) { return String(n).padStart(2, '0') }
+function nowHHMM() { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
 function parseMin(t?: string | null): number | null {
   if (!t || !/^\d{2}:\d{2}$/.test(t)) return null
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
+  const [h, m] = t.split(':').map(Number); return h * 60 + m
 }
-function fmtHours(mins: number): string {
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
+function fmtHM(mins: number): string {
+  const h = Math.floor(Math.abs(mins) / 60), m = Math.abs(mins) % 60
   return m ? `${h}ч ${m}м` : `${h}ч`
 }
+function taskWord(n: number): string {
+  const mod10 = n % 10, mod100 = n % 100
+  if (mod10 === 1 && mod100 !== 11) return 'незавершённая задача'
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return 'незавершённые задачи'
+  return 'незавершённых задач'
+}
 
-const NON_WORK_PERIOD_FORMATS = new Set(['vacation', 'sick', 'trip', 'unpaid'])
-
-export function DayFillCard() {
-  const date = todayStr()
-
+// openTasksCount — сколько МОИХ задач сегодняшнего дня всё ещё inprogress (см. DashboardPage,
+// модель «окно» в lib/taskWindow). Правило «нельзя закрыть с незакрытыми — перенести»: пока их
+// больше нуля, кнопка «Закончить рабочий день» заблокирована (перенос — drag на MonthStrip справа).
+export function DayFillCard({ date = todayStr(), openTasksCount = 0 }: { date?: string; openTasksCount?: number } = {}) {
   const { data: formats = [] } = useQuery<DayFormat[]>({
     queryKey: ['day-formats'],
     queryFn: () => api.get('/day-entries/formats').then(r => r.data),
     staleTime: 1000 * 60 * 60,
   })
+  const { data: schedule } = useMyWorkSchedule()
   const { data: entries, isLoading } = useQuery<DayEntry[]>({
     queryKey: ['day-entries', date],
     queryFn: () => api.get(`/day-entries?from=${date}&to=${date}`).then(r => r.data),
   })
   const entry = entries?.[0] ?? null
-
   if (isLoading) return null
-  // key-remount: при изменении записи форма пересоздаётся со свежими значениями
-  return <DayFillForm key={entry ? `${entry.id}:${entry.updatedAt}` : 'empty'} date={date} entry={entry} formats={formats} />
+  return <WorkDayCard key={entry ? `${entry.id}:${entry.updatedAt}` : `empty:${date}`} date={date} entry={entry} formats={formats} schedule={schedule ?? null} openTasksCount={openTasksCount} />
 }
 
-function DayFillForm({ date, entry, formats }: { date: string; entry: DayEntry | null; formats: DayFormat[] }) {
+function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
+  date: string; entry: DayEntry | null; formats: DayFormat[]
+  schedule: import('../lib/workSchedule').WorkSchedule | null
+  openTasksCount: number
+}) {
   const qc = useQueryClient()
-  const [dayFormat, setDayFormat] = useState(entry?.dayFormat ?? '')
-  const [startTime, setStartTime] = useState(entry?.startTime ?? '')
-  const [endTime, setEndTime] = useState(entry?.endTime ?? '')
-  const [breakMin, setBreakMin] = useState(entry?.breakMin ?? 0)
-  const [dirty, setDirty] = useState(false)
-  // период для нерабочих форматов (отпуск/командировка/больничный)
-  const [periodTo, setPeriodTo] = useState('')
-  const [keepFilled, setKeepFilled] = useState(true)
+  const isToday = date === todayStr()
+  const expected = expectedForDate(date, schedule)
+  const expectedFormat = expected?.format ?? 'office'                        // план: место (office/remote) или 'weekend'
+  const expectedStatus = PLACE_KEYS.includes(expectedFormat) ? 'working' : expectedFormat
+  const expectedPlace = PLACE_KEYS.includes(expectedFormat) ? expectedFormat : null
+  const dayType = entry?.dayFormat ?? expectedStatus                         // СТАТУС дня
+  const place = entry?.place ?? expectedPlace                               // где работает
+  const fmt = formats.find(f => f.key === dayType)
+  const isWork = fmt?.isWork ?? true
+  const start = entry?.startTime ?? null
+  const end = entry?.endTime ?? null
+  const breakMin = entry?.breakMin ?? schedule?.breakMin ?? 0
 
   const save = useMutation({
-    mutationFn: async () => {
-      if (periodTo && NON_WORK_PERIOD_FORMATS.has(dayFormat)) {
-        return api.post('/day-entries/apply-period', { from: date, to: periodTo, dayFormat, keepFilled })
-      }
-      return api.put('/day-entries', {
-        date, dayFormat,
-        startTime: startTime || null,
-        endTime: endTime || null,
-        breakMin: Number(breakMin) || 0,
-      })
-    },
+    mutationFn: (patch: Partial<{ dayFormat: string; place: string | null; startTime: string | null; endTime: string | null; breakMin: number }>) =>
+      api.put('/day-entries', {
+        date,
+        dayFormat: patch.dayFormat ?? dayType,
+        place: patch.place !== undefined ? patch.place : place,
+        startTime: patch.startTime !== undefined ? patch.startTime : start,
+        endTime: patch.endTime !== undefined ? patch.endTime : end,
+        breakMin: patch.breakMin ?? breakMin,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['day-entries'] })
       qc.invalidateQueries({ queryKey: ['svod'] })
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { error?: string } } }
-      alert(e?.response?.data?.error ?? 'Ошибка сервера')
+      alert(e?.response?.data?.error ?? 'Ошибка сохранения')
     },
   })
+  // Сброс к расписанию: удалить override-запись дня (вернуться к плану из графика)
+  const deleteDay = useMutation({
+    mutationFn: () => api.delete(`/day-entries/${date}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['day-entries'] }); qc.invalidateQueries({ queryKey: ['svod'] }) },
+  })
 
-  const fmt = formats.find(f => f.key === dayFormat)
-  const isWork = fmt?.isWork ?? false
-  const s = parseMin(startTime)
-  const e = parseMin(endTime)
-  const total = s != null && e != null ? Math.max(0, e - s - (Number(breakMin) || 0)) : 0
+  // отработано (мин): закрытый день — end−start−break; идёт — сейчас−start−break
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes()
+  const s0 = parseMin(start)
+  const e0 = parseMin(end)
+  const worked = s0 == null ? 0
+    : e0 != null ? Math.max(0, (e0 < s0 ? e0 + 24 * 60 : e0) - s0 - breakMin) // ночная смена: конец < начала → +сутки
+    : isToday ? Math.max(0, nowMin - s0 - breakMin)
+    : 0
 
-  // attention-подсветка (механика донора): формат пуст; для рабочих — пустое начало;
-  // пустой конец подсвечиваем только после 18:00 МСК
-  const lateNow = moscowHour() >= 18
-  const needFormat = !dayFormat
-  const needStart = isWork && !startTime
-  const needEnd = isWork && !!startTime && !endTime && lateNow
+  const started = !!start
+  const finished = !!start && !!end
+  const canEdit = isToday                        // править факт можно только в текущий день
+  // Календарный выходной (weekend) — рабочий (можно начать). Отпуск/больничный/отгул — статус-метка.
+  // TODO: «работать во время отпуска/больничного» без потери статуса требует отдельного поля места (схема).
+  const isAbsence = ['vacation', 'sick', 'dayoff'].includes(dayType)
+  // Контролы дня отображаются ВСЕГДА (вёрстка не скачет), но на отпуске/больничном/отгуле неактивны.
+  // (Работа во время отпуска/больничного — отдельная фича, TODO ниже.)
+  const interactive = canEdit && !isAbsence
+  // План (расписание) vs факт (override). Статус/место можно вернуть к расписанию.
+  const placeOverridden = dayType !== expectedStatus || place !== expectedPlace
+  const resetToSchedule = () => { if (started) save.mutate({ dayFormat: expectedStatus, place: expectedPlace }); else deleteDay.mutate() }
+  // Начинаем/заканчиваем только кнопками: до старта Начало недоступно, Конец — до нажатия «Закончить».
+  const startHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Начните рабочий день кнопкой' : ''
+  const endHint = !canEdit ? 'Отметить время можно только в текущий день' : !finished ? 'Завершите рабочий день кнопкой' : ''
+  const breakHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Сначала начните рабочий день' : ''
 
-  const attention: React.CSSProperties = { border: '1px solid #f59e0b', boxShadow: '0 0 0 3px rgba(245,158,11,0.15)' }
-  const inp: React.CSSProperties = {
-    background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8,
-    padding: '8px 10px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13,
-    outline: 'none', boxSizing: 'border-box',
-  }
-  const lbl: React.CSSProperties = {
-    fontSize: 10, fontWeight: 700, color: 'var(--text-muted)',
-    textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6, display: 'block',
-  }
+  const wrap: React.CSSProperties = { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', width: '100%', boxSizing: 'border-box' }
 
   return (
-    <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
-          Заполнить сегодня
-          <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>
-            {new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </span>
-        </div>
-        {entry && !dirty && (
-          <span style={{ fontSize: 12, color: '#29BF12', fontWeight: 600 }}>✓ Заполнено</span>
-        )}
-        {dirty && (
-          <span style={{ fontSize: 12, color: '#f59e0b', fontWeight: 600 }}>Не забудь сохранить</span>
-        )}
-      </div>
+    <div style={wrap}>
+      <Header date={date} isToday={isToday} type={fmt?.label ?? dayType} typeColor={isWork ? 'var(--accent-s)' : 'var(--text-muted)'} />
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-        <div style={{ minWidth: 180 }}>
-          <label style={lbl}>Статус</label>
-          <select
-            value={dayFormat}
-            onChange={ev => { setDayFormat(ev.target.value); setDirty(true) }}
-            style={{ ...inp, width: '100%', ...(needFormat ? attention : {}) }}
-          >
-            <option value="">— выбрать —</option>
-            {formats.map(f => <option key={f.key} value={f.key}>{f.label}</option>)}
-          </select>
-        </div>
+      {/* Контролы всегда на месте (вёрстка не скачет); на отпуске/больничном/отгуле — неактивны */}
+      <>
+          {/* Место работы — где сотрудник работает (базово из графика; можно сменить). Детализация офисов — позже. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 2 }}>Место:</span>
+            {PLACES.map(p => {
+              const sel = place === p.key
+              // Выбор места = где работает. В календарный выходной выбор места делает день рабочим (статус working).
+              return (
+                <button key={p.key} disabled={!interactive} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                  title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !canEdit ? 'Сменить место можно только в текущий день' : ''}
+                  style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: interactive ? 'pointer' : 'not-allowed', opacity: interactive ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
+              )
+            })}
+            {interactive && placeOverridden
+              ? <button onClick={resetToSchedule} title="Вернуть к расписанию (план)"
+                  style={{ marginLeft: 4, padding: '4px 10px', borderRadius: 20, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>↺ По расписанию</button>
+              : !placeOverridden && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>по расписанию</span>}
+          </div>
 
-        {isWork && (
-          <>
-            <div>
-              <label style={lbl}>Начало</label>
-              <input type="time" value={startTime} onChange={ev => { setStartTime(ev.target.value); setDirty(true) }}
-                style={{ ...inp, ...(needStart ? attention : {}) }} />
+          {/* Фиксированная сетка — поля всегда на своих местах; активность по стадии/дате (подсказка при наведении). */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '96px 96px 118px 96px', gap: 18, alignItems: 'end' }}>
+              <Field label="Начало" hint={startHint}>
+                <TimePicker className="w-full" value={start ?? ''} disabled={!interactive || !started} onChange={v => save.mutate({ startTime: v || null })} />
+              </Field>
+              <Field label="Конец" hint={endHint}>
+                <TimePicker className="w-full" value={end ?? ''} disabled={!interactive || !finished} onChange={v => save.mutate({ endTime: v || null })} />
+              </Field>
+              <Field label="Перерыв, мин" hint={breakHint}>
+                <BreakStepper value={breakMin} disabled={!interactive || !started} onChange={v => save.mutate({ breakMin: v })} />
+              </Field>
+              <Field label="Отработано">
+                <div style={{ fontSize: 20, fontWeight: 800, color: worked > 0 ? 'var(--text-1)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: '38px' }}>{worked > 0 ? fmtHM(worked) : '—'}</div>
+              </Field>
             </div>
-            <div>
-              <label style={lbl}>Конец</label>
-              <input type="time" value={endTime} onChange={ev => { setEndTime(ev.target.value); setDirty(true) }}
-                style={{ ...inp, ...(needEnd ? attention : {}) }} />
-            </div>
-            <div>
-              <label style={lbl}>Перерыв, мин</label>
-              <input type="number" min={0} step={15} value={breakMin}
-                onChange={ev => { setBreakMin(Number(ev.target.value)); setDirty(true) }}
-                style={{ ...inp, width: 90 }} />
-            </div>
-            <div style={{ paddingBottom: 8, fontSize: 13, color: 'var(--text-2)' }}>
-              Итого: <b style={{ color: 'var(--text-1)', fontFamily: 'monospace' }}>{total ? fmtHours(total) : '—'}</b>
-            </div>
-          </>
-        )}
 
-        {!isWork && dayFormat && NON_WORK_PERIOD_FORMATS.has(dayFormat) && (
-          <>
-            <div>
-              <label style={lbl}>По дату (период)</label>
-              <input type="date" value={periodTo} min={date}
-                onChange={ev => { setPeriodTo(ev.target.value); setDirty(true) }} style={inp} />
-            </div>
-            {periodTo && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 8, fontSize: 12, color: 'var(--text-2)', cursor: 'pointer' }}>
-                <input type="checkbox" checked={keepFilled} onChange={ev => setKeepFilled(ev.target.checked)} />
-                Не трогать заполненные
-              </label>
+            {/* Кнопка действия — одинаковый размер во всех стадиях */}
+            {finished ? (
+              <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
+            ) : !started ? (
+              <button disabled={!interactive || !place} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !place ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !interactive || !place)}>Начать рабочий день</button>
+            ) : (
+              <button disabled={!interactive || openTasksCount > 0} onClick={() => save.mutate({ endTime: nowHHMM() })}
+                title={!canEdit ? 'Завершить можно только в текущий день' : openTasksCount > 0 ? `Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните их или перенесите на другой день (перетащите в календаре справа)` : ''}
+                style={bigBtn(ROLE.primary, !interactive || openTasksCount > 0)}>Закончить рабочий день</button>
             )}
-          </>
-        )}
+          </div>
 
-        <button
-          onClick={() => save.mutate()}
-          disabled={save.isPending || !dayFormat}
-          style={{
-            background: dayFormat ? 'var(--accent, #2563eb)' : 'var(--surface-3)',
-            color: dayFormat ? '#fff' : 'var(--text-muted)',
-            border: 'none', borderRadius: 8, padding: '9px 18px',
-            fontFamily: 'Inter,sans-serif', fontSize: 13, fontWeight: 700,
-            cursor: dayFormat ? 'pointer' : 'default',
-          }}
-        >
-          {save.isPending ? 'Сохранение…' : 'Сохранить'}
-        </button>
-      </div>
+          {/* Правило «нельзя закрыть с незакрытыми — перенести»: подсказка держится на виду, не тултипом */}
+          {interactive && started && !finished && openTasksCount > 0 && (
+            <div style={{ marginTop: 10, fontSize: 12, color: '#F59E0B' }}>
+              Нельзя закрыть день: {openTasksCount} {taskWord(openTasksCount)}. Заверните их или перенесите на другой день (перетащите в календаре справа).
+            </div>
+          )}
+      </>
     </div>
   )
+}
+
+// Места работы (базовые). Детализация офисов (3 шт.) и «на проекте» из назначения — отдельным заходом.
+const PLACES = [{ key: 'office', label: 'Офис' }, { key: 'remote', label: 'Удалёнка' }, { key: 'project', label: 'Проект' }]
+
+function Header({ date, isToday, type, typeColor }: { date: string; isToday: boolean; type: string; typeColor: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)' }}>
+        {isToday ? 'Мой рабочий день' : 'Рабочий день'}
+        <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, color: 'var(--text-muted)' }}>
+          {new Date(date + 'T00:00:00').toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </span>
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: typeColor + '22', color: typeColor }}>{type}</span>
+    </div>
+  )
+}
+
+const lbl: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 6, display: 'block' }
+
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+  // Подпись поля с нашим Tooltip (не нативный title) — объясняет, почему поле неактивно
+  const lab = <label style={{ ...lbl, cursor: hint ? 'help' : 'default' }}>{label}</label>
+  return <div>{hint ? <Tooltip text={hint}>{lab}</Tooltip> : lab}{children}</div>
+}
+
+// Перерыв — степпер в дизайн-системе (не нативный number-spinner)
+function BreakStepper({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled?: boolean }) {
+  const stepBtn: React.CSSProperties = { width: 34, height: 36, border: 'none', background: 'none', color: disabled ? 'var(--text-muted)' : 'var(--text-2)', fontSize: 20, lineHeight: 1, cursor: disabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+  const set = (n: number) => { if (!disabled) onChange(Math.max(0, n)) }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', height: 36, background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', opacity: disabled ? 0.5 : 1 }}>
+      <button onClick={() => set(value - 5)} disabled={disabled} title="−5 мин" style={stepBtn}>−</button>
+      <span style={{ minWidth: 40, textAlign: 'center', fontSize: 14, fontWeight: 600, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+      <button onClick={() => set(value + 5)} disabled={disabled} title="+5 мин" style={stepBtn}>+</button>
+    </div>
+  )
+}
+
+function bigBtn(color: string, disabled?: boolean): React.CSSProperties {
+  return {
+    background: disabled ? 'var(--surface-3)' : color, color: disabled ? 'var(--text-muted)' : '#fff',
+    border: disabled ? '1px solid var(--border)' : 'none', borderRadius: 10, padding: '11px 22px',
+    fontFamily: 'Inter,sans-serif', fontSize: 15, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer',
+    boxShadow: disabled ? 'none' : `0 6px 18px ${color}44`, opacity: disabled ? 0.7 : 1, whiteSpace: 'nowrap',
+    minWidth: 230, textAlign: 'center',
+  }
 }

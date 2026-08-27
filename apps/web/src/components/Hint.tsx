@@ -43,7 +43,7 @@ export function Hint({ text, width = 220 }: HintProps) {
           width: 14, height: 14, borderRadius: '50%',
           border: '1px solid var(--text-muted)',
           color: 'var(--text-muted)',
-          fontSize: 9, fontWeight: 700, lineHeight: 1,
+          fontSize: 12, fontWeight: 700, lineHeight: 1,
           cursor: 'default', userSelect: 'none',
           marginLeft: 4,
           opacity: 0.65,

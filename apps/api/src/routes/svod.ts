@@ -8,7 +8,9 @@ import { workMinutes, dayFormatsAt } from './day-entries'
 // Свод (План/Отчёт): месячная сетка день × сотрудник по подразделению.
 // Видимость (Q-SVOD-2): head — свой отдел, director — отделы департамента, admin — все.
 // Ячейка: формат дня + workMinutes + задачи (кол-во/минуты). Подвал: часы/баллы/задачи.
-// Задача попадает в день по Task.startDate = день (В-1: диапазонов нет).
+// Модель «окно» [startDate, deadline] (решения по «окну», 2026-08): задача — только визуал в
+// нескольких днях; в «факт» Свода попадает РОВНО ОДИН РАЗ — в день закрытия (Task.doneAt), а не
+// startDate, иначе двойной счёт при переносе дедлайна. Незакрытая задача в факт не попадает.
 
 const querySchema = z.object({
   divisionId: z.string().min(1),
@@ -56,10 +58,11 @@ export async function svodRoutes(app: FastifyInstance) {
       prisma.task.findMany({
         where: {
           assigneeId: { in: userIds },
-          startDate: { gte: monthStart, lte: new Date(monthEnd.getTime() + 86_399_000) },
+          status: 'done',
+          doneAt: { gte: monthStart, lte: new Date(monthEnd.getTime() + 86_399_000) },
           archived: false,
         },
-        select: { assigneeId: true, startDate: true, status: true, plannedMinutes: true, actualMinutes: true },
+        select: { assigneeId: true, doneAt: true, plannedMinutes: true, actualMinutes: true },
       }),
       dayFormatsAt(monthEnd),
     ])
@@ -88,12 +91,12 @@ export async function svodRoutes(app: FastifyInstance) {
           cells[key].workMinutes = workMinutes(e)
         }
         for (const t of tasks.filter(t => t.assigneeId === m.user.id)) {
-          const key = dateKey(t.startDate)
+          const key = dateKey(t.doneAt!)
           if (!cells[key]) continue
           cells[key].taskCount++
           // минуты дня: факт, иначе план (автокопия план→факт при done — на стороне tasks)
           cells[key].taskMinutes += t.actualMinutes ?? t.plannedMinutes ?? 0
-          if (t.status === 'done') cells[key].tasksDone++
+          cells[key].tasksDone++
         }
 
         // Подвал по сотруднику: часы / баллы / задачи (Q-SVOD-1)

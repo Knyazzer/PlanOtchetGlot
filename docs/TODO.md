@@ -19,12 +19,14 @@ _(по аудиту 2026-06-11 критичных багов не найдено
 - [x] 🟠 ~~databaseService: seedSheetConfigsFromEnv перезаписывала настройки~~ — функция удалена вместе с Google-модулем (`7be9de9`).
 - [x] 🟠 ~~Убрать захардкоженный Google API-ключ из databaseService.ts~~ — Google-модуль удалён (`7be9de9`), файл чист.
 - [ ] 🟠 **events.ts: синхронизировать задачи-спутники при PATCH участников** — добавленному участнику создавать задачу, у удалённого убирать. Сейчас синкается только время/название.
+- [x] 🟠 ~~**Порядок миграций: `sso_multischema` применяется позже зависящих от неё**~~ — сделано 2026-07-11 (прод-безопасно, без ручного шага). Проблема: `20260609213923_password_management` (правит `nexus.users`) лексикографически шёл **раньше** `20260609_sso_multischema` (переносит `users` из `public` в `nexus`), из-за чего накат с нуля падал (`relation "nexus.users" does not exist`). Прод жив только потому, что миграции уже применены; но `apps/api/Dockerfile` гоняет `migrate deploy` при **каждом старте контейнера** → свежий контейнер/DR/CI против пустой БД не поднялся бы. **Фикс:** (1) миграция переименована `20260609_sso_multischema` → `20260609100000_sso_multischema` (идёт до password_management); (2) всё её тело обёрнуто в идемпотентный guard `IF to_regclass('nexus.users') IS NULL` — на проде (уже перенесено) повторный прогон = тихий no-op. Проверено на чистой тест-БД: накат с нуля ✓, повтор на мигрированной ✓, симуляция прода (старое имя в `_prisma_migrations`, новое на диске) → `migrate deploy` успешен ✓. `migrate resolve` НЕ требуется. **При деплое:** ничего вручную делать не нужно — контейнер сам применит как no-op. (В `_prisma_migrations` останется орфан-запись старого имени — безвредна.)
 
 ## 🟠 Важно — функциональность и интеграция
 
 - [ ] 🟠 **Этап 2 интеграции (сторона inventory)**: `inventory.profiles` → VIEW над `public.users` + `inventory.user_roles` — миграция в `INTEGRATION.md` §A. Со стороны Nexus предусловия выполнены.
 - [ ] 🟠 **API увольнения Nexus↔inventory** (Этап 2 жизненного цикла): запрос «можно ли освободить сотрудника» (незданное оборудование) + ручной аппрув. Контракт — в `megapolis-platform/api/`.
 - [x] 🟠 ~~Снятие visibility gate~~ — сделано в rebuild-v4 (`ad955a4`): AppShell всем, дефолт «Главная»; блокеры закрыты: structure-гарды (`dec4ad3`), RBAC-охват scope=team через getOrgScope (`d30cffe`), polling Projects/Calendar.
+- [ ] 🟠 **Форма роли/должности в «Персонале»** (в работе, 2026-07-11) — каскад тип (сотрудник/руководитель/директор) → департамент → отдел → уточнение; пишет оргструктуру (`UserDivision`/`Division.headId`/`Department.directorId`), драйвит RBAC; совмещение (2 назначения). Дизайн: [superpowers/specs/2026-07-11-personnel-role-form-design.md](superpowers/specs/2026-07-11-personnel-role-form-design.md).
 - [ ] 🟠 **Перенос ПланОтчета** — по `docs/IMPLEMENTATION-PLAN.md` (Этап 0: схема, дом-кит, стенд донора, ETL-скелет). Ветка `design` уже содержит дом-кит (Tailwind v4 + shadcn-токены).
 
 ## 🟠 Важно — тесты (восстановление покрытия)
@@ -41,8 +43,8 @@ _(по аудиту 2026-06-11 критичных багов не найдено
 
 ## Мёртвый код / рудименты — к удалению
 
-- [ ] 🟡 `POST /users/bulk-register` (users.ts:400) — легаси-редирект, вызовов нет
-- [ ] 🟡 `isOnline()` (wsHub.ts:29), `useIsAdmin()` (hooks/useAuth.ts:21), поле `NavItem.adminOnly` (AppShell.tsx:31)
+- [x] 🟡 ~~`POST /users/bulk-register` — легаси-редирект, вызовов нет~~ — удалён 2026-07-11
+- [x] 🟡 ~~`isOnline()` (wsHub.ts), `useIsAdmin()` (hooks/useAuth.ts)~~ — удалены 2026-07-11. Осталось: поле `NavItem.adminOnly` (AppShell.tsx) — отложено (используется в nav-определениях, удаление требует правки всех пунктов; низкий приоритет).
 - [ ] 🟡 Зависимости без импортов: api — `bcryptjs`+`@types/bcryptjs`, `node-cron`+types, `prom-client`, `@fastify/rate-limit`; web — `@fullcalendar/*` (5 пакетов). (`lucide-react`, `class-variance-authority`, `tslib` оставить — под дом-кит.)
 - [ ] 🟡 `Track.clientName/projectName/type` — убрать из Zod-схем и SELECT (vestigial; UI уже не показывает). Миграцию полей можно отложить.
 - [ ] 🟡 `isActive` из схемы PATCH /users/:id — обход deactivate/reactivate (не банит auth, не синкает public.users)
@@ -56,9 +58,9 @@ _(по аудиту 2026-06-11 критичных багов не найдено
 - [ ] 🟡 `deactivate`: не глотать ошибку бана GoTrue (`.catch(() => {})`) — проверять `res.ok`, возвращать предупреждение «вход не заблокирован» в ответе
 - [ ] 🟡 `tabNumber`: unique-констрейнт в схеме (`@@unique([tabNumber])` или `[userType, tabNumber]`) — закрыть гонку `nextTabNumber`
 - [ ] 🟡 `generateEmail`: коллизия тёзок в штате блокирует создание (409) — добавить суффикс или поле email в POST /staff
-- [ ] 🟡 `GET /chats/unread`: N+1 count-запросов каждые 15s с клиента → один groupBy
+- [~] 🟡 `GET /chats/unread`: уже распараллелен (`Promise.all`, один round-trip по времени, не последовательный N+1) — 2026-07-11 уточнён комментарий. Истинный single-query невозможен через Prisma groupBy (у каждого чата свой `lastReadAt`); при росте числа чатов на юзера → raw-SQL с `JOIN VALUES(chatId,lastReadAt)`. Пока достаточно.
 - [ ] 🟡 Polling по RULES §2: ProjectsPage (work-items), CalendarPage (events + calendar-entries)
-- [ ] 🟡 Advisory locks: `$executeRawUnsafe` с интерполяцией → параметризованный `$queryRaw` (chats.ts:150,187,207)
+- [x] 🟡 ~~Advisory locks: `$executeRawUnsafe` с интерполяцией → параметризованный~~ — сделано 2026-07-11: три `$executeRawUnsafe` (direct/self/support) → `$executeRaw` (tagged-template, значение уходит параметром в `hashtext($1)`)
 - [ ] 🟡 Права: DELETE /work-items/:id — выровнять с DELETE /projects (admin only?); PATCH/DELETE expenses/stages — проверять принадлежность родителю из URL
 - [ ] 🟡 Дубли: `genTempPassword`/`PW_CHARS` (auth.ts+users.ts) → общий модуль; `goToInventory` (PersonalCabinetPage) → `redirectWithSession` из sso.ts
 - [ ] 🟡 `requireRole`: честная проверка ролей или throw на неизвестной роли (сейчас не-admin роли молча пропускают всех) — обязательно до ввода producer/freelancer-гардов

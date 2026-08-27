@@ -52,7 +52,7 @@ export function ChangePasswordPage() {
         <div style={{ marginBottom: 16 }}>
           <NexusIcon size={48} />
         </div>
-        <h1 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: '#111' }}>Смените пароль</h1>
+        <h1 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: '#111' }}>Смените пароль</h1>
         <p style={{ margin: '0 0 24px', color: '#666', fontSize: 14 }}>
           Это первый вход — задайте свой постоянный пароль.
         </p>
@@ -74,7 +74,7 @@ export function ChangePasswordPage() {
           </button>
 
           {error && (
-            <div style={{ marginTop: 16, padding: '10px 14px', background: '#fff0f0', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: 13 }}>{error}</div>
+            <div style={{ marginTop: 16, padding: '10px 14px', background: '#fff0f0', border: '1px solid #fca5a5', borderRadius: 8, color: '#dc2626', fontSize: 14 }}>{error}</div>
           )}
 
           <button type="submit" disabled={loading} style={{ marginTop: 24, width: '100%', padding: '12px 0', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', fontSize: 15, fontWeight: 600, cursor: loading ? 'default' : 'pointer' }}>
@@ -86,6 +86,6 @@ export function ChangePasswordPage() {
   )
 }
 
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 6 }
 const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, boxSizing: 'border-box', outline: 'none' }
 const eyeStyle: React.CSSProperties = { position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, padding: 4, lineHeight: 1 }

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Unit tests for useAuthInit hook.
  *
  * Behaviour:
@@ -19,7 +19,9 @@ import { server } from '../test/msw-server'
 import { useAuthInit } from './useAuth'
 import { useAuthStore } from '../stores/auth'
 
-const BASE = 'http://localhost:4000'
+// baseURL в dev/тесте = '/api' (Vite-прокси, см. lib/api.ts) → запрос идёт на <origin>/api/auth/me.
+// Мокаем по wildcard-пути, чтобы тест не зависел от конкретного origin/префикса.
+const ME = '*/auth/me'
 
 // Mock the store module so useAuthStore() returns plain functions (no React hooks inside)
 vi.mock('../stores/auth', () => ({
@@ -48,7 +50,7 @@ describe('useAuthInit', () => {
     }
 
     server.use(
-      http.get(`${BASE}/auth/me`, () => HttpResponse.json(mockUser)),
+      http.get(ME, () => HttpResponse.json(mockUser)),
     )
 
     renderHook(() => useAuthInit())
@@ -61,7 +63,7 @@ describe('useAuthInit', () => {
 
   it('/auth/me 401 → setUser(null) called, setLoading(false)', async () => {
     server.use(
-      http.get(`${BASE}/auth/me`, () => new HttpResponse(null, { status: 401 })),
+      http.get(ME, () => new HttpResponse(null, { status: 401 })),
     )
 
     renderHook(() => useAuthInit())
@@ -73,7 +75,7 @@ describe('useAuthInit', () => {
 
   it('/auth/me 500 → setUser(null) called, setLoading(false)', async () => {
     server.use(
-      http.get(`${BASE}/auth/me`, () => new HttpResponse(null, { status: 500 })),
+      http.get(ME, () => new HttpResponse(null, { status: 500 })),
     )
 
     renderHook(() => useAuthInit())
@@ -85,7 +87,7 @@ describe('useAuthInit', () => {
 
   it('network error → setUser(null) called, setLoading(false)', async () => {
     server.use(
-      http.get(`${BASE}/auth/me`, () => HttpResponse.error()),
+      http.get(ME, () => HttpResponse.error()),
     )
 
     renderHook(() => useAuthInit())

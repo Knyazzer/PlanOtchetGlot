@@ -21,7 +21,6 @@ const TASK_SELECT = {
   actualMinutes: true,
   doneAt: true,
   archived: true,
-  manualOrder: true,
   repeatRule: true,
   repeatUntil: true,
   recurringParentId: true,
@@ -32,6 +31,7 @@ const TASK_SELECT = {
   track:            { select: { id: true, title: true, type: true } },
   stageId: true,
   stage:            { select: { id: true, title: true } },
+  goalId: true,     // привязка к стратегической цели (скаляр — Prisma-связи нет; заголовок берём из /strategic-goals)
   createdAt: true,
   updatedAt: true,
   assignedBy: { select: { id: true, name: true } },
@@ -119,6 +119,42 @@ export async function tasksRoutes(app: FastifyInstance) {
     return tasks.map(applyAutoStatus)
   })
 
+  // PATCH /tasks/reorder — ручной порядок задач ВНУТРИ ОДНОГО ДНЯ (drag за grip).
+  // Модель «окно» [startDate, deadline]: задача видна в нескольких днях, порядок в каждом свой
+  // (TaskDayOrder(taskId, day) вместо прежнего глобального Task.manualOrder) — реордер в дне 5
+  // не трогает день 6. Обновляем только СВОИ задачи (или любые — админ), атомарно в транзакции.
+  app.patch('/reorder', { preHandler: authenticate }, async (request, reply) => {
+    const user = (request as any).user as { id: string; isAdmin: boolean }
+    const schema = z.object({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), ids: z.array(z.string()).max(500) })
+    const body = schema.safeParse(request.body)
+    if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
+    const { day, ids } = body.data
+    if (!user.isAdmin) {
+      const owned = await prisma.task.count({ where: { id: { in: ids }, assigneeId: user.id } })
+      if (owned !== ids.length) return reply.code(403).send({ error: 'Forbidden' })
+    }
+    await prisma.$transaction(
+      ids.map((id, i) => prisma.taskDayOrder.upsert({
+        where: { taskId_day: { taskId: id, day } },
+        create: { taskId: id, day, order: i },
+        update: { order: i },
+      })),
+    )
+    return reply.code(204).send()
+  })
+
+  // GET /tasks/day-order?day= — порядок МОИХ задач в конкретном дне (для сортировки списка дня).
+  app.get('/day-order', { preHandler: authenticate }, async (request, reply) => {
+    const user = (request as any).user as { id: string }
+    const { day } = request.query as { day?: string }
+    if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return reply.code(400).send({ error: 'day required' })
+    const rows = await prisma.taskDayOrder.findMany({
+      where: { day, task: { assigneeId: user.id } },
+      select: { taskId: true, order: true },
+    })
+    return Object.fromEntries(rows.map(r => [r.taskId, r.order]))
+  })
+
   // GET /tasks/unseen-count — tasks assigned to me that I haven't opened yet
   app.get('/unseen-count', { preHandler: authenticate }, async (request) => {
     const user = (request as any).user as { id: string }
@@ -182,8 +218,10 @@ export async function tasksRoutes(app: FastifyInstance) {
       assigneeId:  z.string().uuid(),
       deadline:    z.string().optional(),
       startDate:   z.string().optional(),
+      status:      z.enum(['backlog', 'inprogress', 'done']).default('backlog'),
       trackId:     z.string().nullable().optional(),
       stageId:     z.string().nullable().optional(),
+      goalId:      z.string().nullable().optional(),  // привязка задачи к стратегической цели
       type:           z.enum(TASK_TYPES).optional(),
       client:         z.string().max(200).nullable().optional(),
       projectId:      z.string().nullable().optional(),
@@ -195,7 +233,7 @@ export async function tasksRoutes(app: FastifyInstance) {
     const body = schema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: 'Invalid input', details: body.error.flatten() })
 
-    const { title, description, assigneeId, deadline, startDate, trackId, stageId,
+    const { title, description, assigneeId, deadline, startDate, status, trackId, stageId, goalId,
             type, client, projectId, plannedMinutes, actualMinutes, repeatRule, repeatUntil } = body.data
 
     const assigneeExists = await prisma.user.findUnique({ where: { id: assigneeId }, select: { id: true, name: true } })
@@ -216,11 +254,13 @@ export async function tasksRoutes(app: FastifyInstance) {
     const commonData = {
       title,
       description,
+      status: status as any, // строковый литерал → TaskStatus enum
       assignedById: user.id,
       assigneeId,
       deadline: deadline ? new Date(deadline) : null,
       trackId: trackId ?? null,
       stageId: stageId ?? null,
+      goalId: goalId ?? null,
       type: type ?? 'task',
       client: client ?? null,
       projectId: projectId ?? null,
@@ -292,12 +332,12 @@ export async function tasksRoutes(app: FastifyInstance) {
       deadline:    z.string().nullable().optional(),
       trackId:     z.string().nullable().optional(),
       stageId:     z.string().nullable().optional(),
+      goalId:      z.string().nullable().optional(),  // привязка задачи к стратегической цели
       type:           z.enum(TASK_TYPES).optional(),
       client:         z.string().max(200).nullable().optional(),
       projectId:      z.string().nullable().optional(),
       plannedMinutes: z.number().int().min(0).max(24 * 60).nullable().optional(),
       actualMinutes:  z.number().int().min(0).max(24 * 60).nullable().optional(),
-      manualOrder:    z.number().optional(),
       archived:       z.boolean().optional(),
     })
     const body = schema.safeParse(request.body)
@@ -347,6 +387,13 @@ export async function tasksRoutes(app: FastifyInstance) {
     // автокопия «план → факт» при завершении (паттерн донора: один ввод закрывает оба в 80% случаев)
     const becomesDone = d.status === 'done' && task.status !== 'done'
     const leavesDone = d.status !== undefined && d.status !== 'done' && task.status === 'done'
+    // «взял задачу в работу» → она падает в сегодняшний рабочий набор (если день не задан явно).
+    // Централизует связь Обзор⇄канбан⇄Свод: единый источник дня — startDate.
+    const becomesInProgress = d.status === 'inprogress' && task.status !== 'inprogress'
+    const autoStartToday = becomesInProgress && d.startDate === undefined
+    // Переназначил задачу на ДРУГОГО человека → она уходит в его Бэклог (пул), а не в «В работе».
+    // Модель: назначенное падает в пул, человек берёт его в работу сам.
+    const reassignedToOther = d.assigneeId !== undefined && d.assigneeId !== task.assigneeId
     const autoActual =
       becomesDone && d.actualMinutes === undefined && task.actualMinutes == null && task.plannedMinutes != null
         ? task.plannedMinutes
@@ -359,22 +406,25 @@ export async function tasksRoutes(app: FastifyInstance) {
         ...(d.status      !== undefined && { status: d.status as any }),
         ...(becomesDone && { doneAt: new Date() }),
         ...(leavesDone && { doneAt: null }),
+        ...(autoStartToday && { startDate: new Date() }),
         ...(autoActual !== undefined && { actualMinutes: autoActual }),
         ...(d.assigneeId  !== undefined && {
           assigneeId: d.assigneeId,
           divisionId: await resolveDivisionId(d.assigneeId), // отдел следует за исполнителем
           seenAt: null, // new assignee must open the task to clear the notification
         }),
+        // сброс в Бэклог перекрывает status/doneAt/startDate выше — получатель берёт задачу в работу сам
+        ...(reassignedToOther && { status: 'backlog' as any, doneAt: null }),
         ...(d.startDate   !== undefined && { startDate: new Date(d.startDate) }),
         ...(d.deadline    !== undefined && { deadline: d.deadline ? new Date(d.deadline) : null }),
         ...(d.trackId     !== undefined && { trackId: d.trackId }),
         ...(d.stageId     !== undefined && { stageId: d.stageId }),
+        ...(d.goalId      !== undefined && { goalId: d.goalId }),
         ...(d.type        !== undefined && { type: d.type }),
         ...(d.client      !== undefined && { client: d.client }),
         ...(d.projectId   !== undefined && { projectId: d.projectId }),
         ...(d.plannedMinutes !== undefined && { plannedMinutes: d.plannedMinutes }),
         ...(d.actualMinutes  !== undefined && { actualMinutes: d.actualMinutes }),
-        ...(d.manualOrder !== undefined && { manualOrder: d.manualOrder }),
         ...(d.archived    !== undefined && { archived: d.archived }),
       },
       select: TASK_SELECT,

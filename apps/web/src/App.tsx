@@ -9,6 +9,7 @@ import { AppShell } from './components/AppShell'
 import { api } from './lib/api'
 import { supabase } from './lib/supabase'
 import { getValidatedRedirect, redirectWithSession, isSsoRedirectLoop } from './lib/sso'
+import { ToastHost } from './components/ToastHost'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,6 +141,7 @@ export default function App() {
       {impersonateToken ? <ImpersonateConsumer token={impersonateToken} />
         : logoutFlag ? <LogoutConsumer />
         : <AppContent />}
+      <ToastHost />
     </QueryClientProvider>
   )
 }

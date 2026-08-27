@@ -4,6 +4,8 @@ config({ path: resolve(__dirname, '../../../.env'), override: true })
 
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
+import rateLimit from '@fastify/rate-limit'
 import cookie from '@fastify/cookie'
 import jwt from '@fastify/jwt'
 import websocket from '@fastify/websocket'
@@ -21,11 +23,19 @@ import { tracksRoutes } from './routes/tracks'
 import { clientsRoutes } from './routes/clients'
 import { projectsRoutes, workItemsRoutes } from './routes/projects'
 import { dayEntriesRoutes } from './routes/day-entries'
+import { workScheduleRoutes } from './routes/work-schedule'
 import { svodRoutes } from './routes/svod'
 import { boardRoutes } from './routes/board'
 import { analyticsRoutes } from './routes/analytics'
 import { accessRoutes } from './routes/access'
 import { notificationsRoutes } from './routes/notifications'
+import { refsRoutes } from './routes/refs'
+import { postsRoutes } from './routes/posts'
+import { requestsRoutes } from './routes/requests'
+import { companyGoalsRoutes } from './routes/company-goals'
+import { personalGoalsRoutes } from './routes/personal-goals'
+import { strategicGoalsRoutes } from './routes/strategic-goals'
+import { meetingNotesRoutes } from './routes/meeting-notes'
 
 const app = Fastify({ logger: true })
 
@@ -54,18 +64,38 @@ async function main() {
         'http://localhost:5173',
         'http://localhost:4173',
       ]
+      // dev: любой localhost-порт (Vite дрейфует 5173→5174→… при занятом порте)
+      const isDevLocalhost = process.env.NODE_ENV !== 'production'
+        && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
       // allow any LAN origin on port 5173 or 4173
-      const isLAN = /^http:\/\/192\.168\.\d+\.\d+:(5173|4173)$/.test(origin)
-      cb(null, allowed.includes(origin) || isLAN)
+      // LAN-доступ — только для локальной разработки (в проде не открываем сеть офиса)
+      const isLAN = process.env.NODE_ENV !== 'production'
+        && /^http:\/\/192\.168\.\d+\.\d+:(5173|4173)$/.test(origin)
+      cb(null, allowed.includes(origin) || isDevLocalhost || isLAN)
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 
+  // Security-заголовки. CSP выключен — API отдаёт JSON под CORS, не HTML;
+  // CORP=cross-origin, чтобы не блокировать кросс-доменные fetch фронта (dev :5173 → api :4000).
+  await app.register(helmet, {
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+
+  // Rate-limit — глобально выключен, включается точечно на чувствительных
+  // (неаутентифицированных) auth-эндпоинтах через config.rateLimit на роуте.
+  await app.register(rateLimit, { global: false })
+
   await app.register(cookie)
   await app.register(websocket)
 
+  // Fail-fast: в проде JWT_SECRET обязателен (иначе токены подписываются dev-заглушкой).
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET обязателен в production (общий с Supabase)')
+  }
   await app.register(jwt, {
     secret: process.env.JWT_SECRET ?? 'dev-secret-change-in-production',
     cookie: { cookieName: 'access_token', signed: false },
@@ -86,11 +116,19 @@ async function main() {
   await app.register(projectsRoutes,        { prefix: '/projects' })
   await app.register(workItemsRoutes,       { prefix: '/work-items' })
   await app.register(dayEntriesRoutes,      { prefix: '/day-entries' })
+  await app.register(workScheduleRoutes,    { prefix: '/work-schedule' })
   await app.register(svodRoutes,            { prefix: '/svod' })
   await app.register(boardRoutes,           { prefix: '/board' })
   await app.register(analyticsRoutes,       { prefix: '/analytics' })
   await app.register(accessRoutes,          { prefix: '/access' })
   await app.register(notificationsRoutes,   { prefix: '/notifications' })
+  await app.register(refsRoutes,            { prefix: '/refs' })
+  await app.register(postsRoutes,           { prefix: '/posts' })
+  await app.register(requestsRoutes,        { prefix: '/requests' })
+  await app.register(companyGoalsRoutes,    { prefix: '/company-goals' })
+  await app.register(personalGoalsRoutes,   { prefix: '/personal-goals' })
+  await app.register(strategicGoalsRoutes,  { prefix: '/strategic-goals' })
+  await app.register(meetingNotesRoutes,    { prefix: '/meeting-notes' })
 
   const port = Number(process.env.PORT ?? 4000)
   await app.listen({ port, host: '0.0.0.0' })

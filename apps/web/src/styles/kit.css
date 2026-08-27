@@ -13,72 +13,82 @@
 @source '../**/*.{ts,tsx}';
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Токены из Figma-макета v2 (.figma/ux-ui prototype v2/src/styles/theme.css).
-   Сайдбар-группа едина для обеих тем — сайдбар всегда тёмный. */
+/* ── Типографика: единая шкала (rem), канон dense-enterprise (IBM Carbon-like).
+   Тело 14, caption/label 12 (пол читаемости), заголовки 24/20/18/16.
+   Инлайновые px постепенно переводим на эти токены — меняется в одном месте. */
 :root {
-  --background: #f4f5f7;
-  --foreground: #0d0f14;
-  --card: #ffffff;
-  --card-foreground: #0d0f14;
-  --popover: #ffffff;
-  --popover-foreground: #0d0f14;
-  --primary: #4f46e5;
-  --primary-foreground: #ffffff;
-  --secondary: #e8eaef;
-  --secondary-foreground: #0d0f14;
-  --muted: #eceef3;
-  --muted-foreground: #6b7080;
-  --accent: #eff0f8;
-  --accent-foreground: #0d0f14;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --input: transparent;
-  --input-background: #f0f1f5;
-  --switch-background: #c5c9d6;
-  --ring: #4f46e5;
-
-  --sidebar: #1a1b26;
-  --sidebar-foreground: #c8cadc;
-  --sidebar-primary: #6366f1;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(255,255,255,0.06);
-  --sidebar-accent-foreground: #e2e4f0;
-  --sidebar-border: rgba(255,255,255,0.07);
-  --sidebar-muted: #8b8fa8;
-  /* легаси-алиасы (использовались до v2) */
-  --sidebar-bg: var(--sidebar);
-  --sidebar-text: var(--sidebar-foreground);
-  --sidebar-text-active: var(--sidebar-accent-foreground);
-
-  --chart-1: #6366f1;
-  --chart-2: #22d3ee;
-  --chart-3: #f59e0b;
-  --chart-4: #10b981;
-  --chart-5: #f43f5e;
-  --radius: 0.75rem;
+  --fs-caption: 0.75rem;    /* 12px — мета, подписи, бейджи (нижний порог) */
+  --fs-body-sm: 0.8125rem;  /* 13px — плотный вторичный текст */
+  --fs-body:    0.875rem;   /* 14px — основной текст */
+  --fs-h4:      1rem;       /* 16px — заголовок карточки/аккцентный */
+  --fs-h3:      1.125rem;   /* 18px — подраздел */
+  --fs-h2:      1.25rem;    /* 20px — раздел */
+  --fs-h1:      1.5rem;     /* 24px — заголовок страницы */
+  --lh-body: 1.5;
+  --lh-heading: 1.25;
 }
 
-/* Тёмная тема контента (сайдбар не меняется) */
-[data-theme="dark"] {
-  --background: #0e0e12;
-  --foreground: #e2e4f0;
-  --card: #16161c;
-  --card-foreground: #e2e4f0;
-  --popover: #1e1e28;
-  --popover-foreground: #e2e4f0;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: #1e1e28;
-  --secondary-foreground: #e2e4f0;
-  --muted: #1c1c24;
-  --muted-foreground: #8b8fa8;
-  --accent: #1e1e2c;
-  --accent-foreground: #e2e4f0;
-  --destructive: #dc2626;
+/* Мобильные: поля ввода ≥16px — иначе iOS Safari зумит страницу при фокусе.
+   !important нужен, чтобы перекрыть инлайновые fontSize у инпутов. */
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px !important; }
+}
+
+/* ── Семантические роли цвета (канон DESIGN.md §Семантические роли, вариант A).
+   Цвет = функция действия, не экран. Держать в синхроне с lib/roleColors.ts. */
+:root {
+  --role-primary:   #7B61FF;  /* главная CTA / активная вкладка */
+  --role-success:   #22C55E;  /* добавить / начать / положительное */
+  --role-danger:    #F43F5E;  /* только деструктив */
+  --role-info:      #0EA5E9;  /* события / инфо-акцент (текст #38BDF8) */
+  --role-warning:   #F59E0B;  /* дедлайны / предупреждения */
+  --role-highlight: #F97316;  /* «сейчас/сегодня» / выделение */
+}
+
+/* Токены из Figma-макета v2 (.figma/ux-ui prototype v2/src/styles/theme.css).
+   Сайдбар-группа едина для обеих тем — сайдбар всегда тёмный. */
+/* shadcn-токены выведены из единого ui-kit (ui-kit/tokens.css) — контент-компоненты shadcn/Radix
+   наследуют кит-палитру. --muted/--accent НА БАЗЕ не переопределяем (их смысл в ките: текст-серый /
+   бренд-акцент); shadcn-фон muted/accent смаплен на поверхности в @theme ниже. Тема dark/light,
+   --radius, --accent(фиолетовый Nexus) — из tokens.css/index.css. */
+:root, [data-theme="dark"], [data-theme="light"] {
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--text);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-contrast);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text);
+  --muted-foreground: var(--muted);
+  --accent-foreground: var(--text);
+  --destructive: var(--danger);
   --destructive-foreground: #ffffff;
-  --input-background: #1e1e28;
-  --switch-background: #3a3a50;
-  --ring: #6366f1;
+  --input: transparent;
+  --input-background: var(--surface-2);
+  --switch-background: var(--surface-3);
+  --ring: var(--accent);
+
+  /* сайдбар — тёмный канон (кит): */
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--accent);
+  --sidebar-primary-foreground: var(--accent-contrast);
+  --sidebar-accent: var(--surface-3);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-muted: var(--muted);
+  --sidebar-bg: var(--surface);
+  --sidebar-text: var(--text);
+  --sidebar-text-active: var(--accent);
+
+  --chart-1: var(--accent);
+  --chart-2: #22d3ee;
+  --chart-3: var(--new);
+  --chart-4: var(--closed);
+  --chart-5: #f43f5e;
 }
 
 @theme inline {
@@ -92,9 +102,9 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
+  --color-muted: var(--surface-2);        /* shadcn «muted» — это ФОН → поверхность кита */
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
+  --color-accent: var(--surface-3);       /* shadcn «accent» — hover-ФОН → поверхность кита */
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
@@ -113,10 +123,62 @@
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-muted: var(--sidebar-muted);
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-mono);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Nexus намеренно НЕ подключает Tailwind preflight (чтобы не сбросить старые inline-страницы),
+   поэтому button получает дефолтную браузерную рамку и фон. Сбрасываем это в @layer base —
+   Tailwind-утилиты (bg, border, px…) и inline-стили остаются поверх. Без сброса китовые
+   nav-кнопки рисуются светлыми боксами с обводкой. */
+@layer base {
+  /* Полный сброс button как в Tailwind preflight (Nexus preflight не подключает) — иначе
+     китовые nav-кнопки «плывут» относительно кит-плейграунда: браузерные margin/line-height/
+     letter-spacing/appearance ломают точную раскладку. Утилиты/inline-стили остаются поверх. */
+  button {
+    margin: 0; padding: 0;
+    background: none; border: none;
+    font: inherit; line-height: inherit; letter-spacing: inherit; color: inherit;
+    -webkit-appearance: none; appearance: none;
+    cursor: pointer;
+  }
+}
+
+/* ── Parity с кит-плейграундом ──────────────────────────────────────────────
+   Кит спроектирован под Tailwind preflight (глобальный сброс элементов), а Nexus его
+   НАМЕРЕННО не подключает — чтобы не сбросить дефолты ~20 старых inline-страниц. Из-за этого
+   у элементов остаются браузерные margin/padding/line-height/border-style/svg-inline, и китовый
+   сайдбар «плывёт» относительно кита/support. Реплицируем нужный срез preflight ТОЛЬКО внутри
+   тёмного сайдбара: класс `.sidebar-dark` вешают И левое меню (<aside>), И выезжающая панель
+   профиля (Drawer dark) — контент-страницы под этот scope НЕ попадают, поэтому старьё цело.
+   Утилиты кита (px, py, mt, border-…) лежат в слое utilities и перекрывают этот сброс. */
+@layer base {
+  .sidebar-dark, .sidebar-dark *, .sidebar-dark ::before, .sidebar-dark ::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;   /* без style:solid китовые border-разделители (логотип/подвал/сабпункты) не рисуются */
+  }
+  .sidebar-dark { line-height: 1.5; }               /* как html в preflight — иначе строки меню по высоте не совпадают */
+  .sidebar-dark svg,
+  .sidebar-dark img { display: block; vertical-align: middle; }  /* иконки/лого — block, как в preflight (без inline-сдвига) */
+}
+
+/* ── Radix-порталы (Select/Combobox/Popover, position="popper") портируют контент в <body>,
+   ВНЕ `.sidebar-dark` → без среза preflight выпадашки рисуются с браузерной «чёрной окантовкой»
+   и кривым box-model. Реплицируем тот же сброс на popper-wrapper (токены темы приходят с <html>). */
+@layer base {
+  [data-radix-popper-content-wrapper], [data-radix-popper-content-wrapper] *,
+  [data-radix-popper-content-wrapper] ::before, [data-radix-popper-content-wrapper] ::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0 solid;   /* иначе Tailwind-класс `border` (border-width) без style:solid не рисуется, и вылезает дефолт */
+  }
+  [data-radix-popper-content-wrapper] svg,
+  [data-radix-popper-content-wrapper] img { display: block; vertical-align: middle; }
 }

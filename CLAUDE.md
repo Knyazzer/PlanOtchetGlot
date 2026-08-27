@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🔄 ТЕКУЩЕЕ СОСТОЯНИЕ
 
-**Ветки:** `master` (прод; push в master = автодеплой через CD), `rebuild-v4` (бывш. `design`; дом-кит + перенос ПланОтчета: схема ядра, день/свод, RBAC-охват, гейт снят).
+**Ветки:** разработка в `knyazzer` / `daewoo-matiz` → мердж в `dev` → PR в `master` (аппрув только Влада; push в master = автодеплой через CD). Полная стратегия и история squash-чистки — [docs/BRANCHING.md](docs/BRANCHING.md).
 
 **Что реализовано:**
 - Auth: **Supabase Auth** (self-hosted) — вход через `signInWithPassword` на фронте; `dev-login` для локалки; онбординг с временными паролями + форс-смена; SSO-портал для inventory; жизненный цикл (увольнение = бан + архив)
@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Visibility gate снят (rebuild-v4):** AppShell доступен всем сотрудникам; admin-страницы (Персонал, База данных) — только админам. Дефолтная страница — «Главная» для всех.
 
-**Планы и журнал:** `docs/TODO.md` (приоритизированный план), `docs/DONE.md` (история), `docs/AUDIT-2026-06-11.md` (полный аудит), `docs/IMPLEMENTATION-PLAN.md` (перенос ПланОтчета, со статус-таблицей), `docs/RBAC-MODEL.md` (ролевая/функциональная модель: база + модули 10 департаментов + визуал — канон).
+**Планы и журнал:** `docs/TODO.md` (приоритизированный план), `docs/DONE.md` (история), `docs/AUDIT-2026-06-11.md` (полный аудит), `docs/IMPLEMENTATION-PLAN.md` (перенос ПланОтчета, со статус-таблицей), `docs/RBAC-MODEL.md` (ролевая/функциональная модель: база + модули 10 департаментов + визуал — канон), `docs/STRATEGIC-GOALS.md` (спека механики стратегических целей квартал/год: каскад департамент→отдел, вклады из план-отчёта, закрытие периода — черновик, ждёт ревью). **`docs/ECOSYSTEM-AGGREGATION.md`** — архитектурный фундамент «Nexus как слой сведения экосистемы» (агрегация задач/уведомлений из внешних продуктов, канон рабочей единицы, **раздел §9 «что заложить сейчас / чего не хардкодить при закрытии техдолга»** — читать перед правкой модели задач/уведомлений/отчёта). **`docs/REQUESTS-MODULE.md`** — спека модуля «Заявки» (отпуск/больничный/отгул → согласование руководителем → статус + заявление docx; под-вкладка в «Мой кабинет»; MVP по этапам). **`docs/DAY-STATUS-MODEL.md`** — спека разделения «место»(place: office/remote/project/trip) и «статус»(status: working/weekend/vacation/sick/dayoff) дня; основа консистентности статусов во всех экранах; 8 слоёв рефактора. **`docs/DECISION-2026-08-09-metrics-and-backend.md`** — решения: (1) метрики сотрудников = только сухие факты без формул (убрать вычисляемую «эффективность/нагрузку» из AnalyticsPage, сырые данные сохранить для будущей BI); (2) бэкенд = профессиональные паттерны (ACID-транзакции/аудит-лог/outbox/ledger), НЕ переписывание — стек уже Fastify+TS+Prisma, не Express. **`docs/superpowers/specs/2026-08-09-today-tasks-working-set-design.md`** — «Задачи на сегодня» как рабочий набор дня: `startDate`=день задачи, список = день+статус{inprogress,done}, чекбокс `done↔inprogress`, связь Обзор⇄канбан⇄Свод через `startDate`; декомпозиция на 5 кусков (ядро → порядок → drag на др. день → история → шаблоны), строим по очереди. **`docs/POSTMORTEM-2026-08-10-vacation-orphan-day.md`** — дебаг-кейс «отпуск-сирота» в дне (симптом→отладка→причина→решение): осиротевший `day_entries.day_format='vacation'` без активной заявки (`unreflectLeave` не отработал, вероятно залипший tsx-watch API); методология поиска + чек-лист. **`docs/superpowers/notes-2026-08-09-obzor-polish-and-visibility.md`** — отложенное: полировка таблицы «Задачи на сегодня» (drag ещё не гладкий — известная проблема; обводка выпадашки при клике как у чипа «Время»; чип времени показывать `00:00`; короткие разделители столбцов внутри строки) + **спека разделения видимости Стратегии** (кабинет = только своя область даже у дир/рук; страница «Стратегия»: сотрудник — свой департамент, рук/дир — вся компания).
 
 ---
 
@@ -123,8 +123,11 @@ pnpm test                                       # зелёные (нужна з�
 - **TanStack Query** — серверное состояние; `queryClient` создаётся в `main.tsx`
 - **Zustand** — auth store (`stores/auth.ts`), содержит `user` и `setUser`
 - **UI-кит** — Tailwind + shadcn/ui (Radix) для компонентов, **recharts** для графиков аналитики, **lucide** для иконок. Тема через `data-theme` на `<html>` (`document.documentElement`). Визуальный эталон — Figma-макеты в `.figma/` (`ux-ui prototype v1/`, `v2/`). База кита подключена на ветке `design` (`styles/kit.css`, Tailwind v4 + shadcn-токены). *(Прежнее правило «только inline styles, без UI-библиотек» отменено 2026-06-09 — признано рудиментом.)*
+- **Единый ui-kit экосистемы** (`megapolis-platform/ui-kit`, copy-in в `src/ui-kit/`, конфиг `apps/web/ui-kit.config.json`, синк `sync.mjs`/сверка `check.mjs`): **AppShell** (меню/профиль/шапка, бренд «Нексус» кириллицей, акцент #7B61FF), `DatePicker`/`TimePicker`/`ClockDial` (выбор даты/времени в календаре). Правило `.sidebar-dark`-scoped preflight в `styles/kit.css` (Nexus без глобального preflight). Идёт поэтапная адаптация — роадмап `docs/superpowers/plans/2026-08-02-calendar-and-visual-roadmap.md`.
+- **`HeaderPortal`** (`components/HeaderPortal.tsx`) — страницы телепортируют свои контролы (вкладки/поиск/фильтры) в правый слот китовой шапки AppShell (`toolbar`); заголовок раздела даёт сам AppShell. Так сделаны Команда/Задачи/Аналитика/Календарь (внутристраничные шапки убраны).
 - **Навигация** — `useState<Page>` в `AppShell.tsx`, выбранная страница сохраняется в `localStorage('nexus:page')`; React Router нет
 - **Дата-утилиты** — `date-fns`
+- **PWA (установленное приложение)** — справочник возможностей/механик: [docs/PWA-DESKTOP-APP.md](docs/PWA-DESKTOP-APP.md) (кастом-окно/титлбар, детект режима standalone, Web Push + Badging, камера-микрофон/WebRTC/скриншеринг, Serial/USB/HID, диплинки, офлайн-очередь, привязка к профилю Chrome ≠ Google, локальный тест). Приоритет применения — **Nexus**.
 
 ### WebSocket
 `apps/api/src/plugins/wsHub.ts` — хаб для fan-out WS-сообщений по chatId. Клиент получает ws-token (одноразовый JWT, 60s) через `GET /chats/ws-token` чтобы обойти `SameSite=lax`.
@@ -206,21 +209,27 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | `/auth` | `routes/auth.ts` | logout, dev-login (не-prod), me, me/profile, me/theme, change-password, impersonate/consume, onboard/:userId (admin) |
 | `/users` | `routes/users.ts` | members; staff + freelancers (GET ?includeInactive / POST с автогеном табельного); PATCH /:id; lifecycle: /:id/deactivate, /:id/reactivate; /:id/reset-password; impersonate/:id; bulk-onboard; импорт из Sheets: staff-import(+/refresh), freelancers-import, bulk-import-staff, bulk-import-freelancers — всё admin |
 | `/chats` | `routes/chats.ts` | ws-token, WebSocket, list, unread, direct, self, support, **group** (создание, PATCH name/color, members add/remove, DELETE), messages CRUD, read, member patch |
-| `/tasks` | `routes/tasks.ts` | задачи: CRUD (+?scope=team), unseen-count, /:id/seen, /:id/log |
-| `/events` | `routes/events.ts` | личные события (meeting/task/personal) — CRUD + авто-задачи участникам |
+| `/tasks` | `routes/tasks.ts` | задачи: CRUD (+?scope=team), unseen-count, /:id/seen, /:id/log. Привязки задачи (независимые, nullable): `trackId`, `projectId`, **`goalId`** (стратегическая цель — учитывается в прогрессе цели); все три в POST/PATCH + task-select |
+| `/events` | `routes/events.ts` | личные события (meeting/task/personal) — CRUD + авто-задачи участникам; **опц. `trackId`** (§9 «событие по треку» → видно в деталях трека) |
 | `/calendar-entries` | `routes/calendar-entries.ts` | общие записи (Знаменки/HR) — чтение всем, write admin |
 | `/database` | `routes/database.ts` | Google Sheets: config, refresh/:key, preview/:key — admin |
 | `/structure` | `routes/structure.ts` | дерево департаментов/отделов (GET — всем аутентифицированным), мутации + migrate-from-sheets — admin, Zod-валидация |
-| `/tracks` | `routes/tracks.ts` | треки: CRUD, PUT members, stages CRUD, PATCH tasks/:taskId/track |
+| `/tracks` | `routes/tracks.ts` | треки: CRUD, PUT members, stages CRUD, PATCH tasks/:taskId/track. PATCH /:id принимает **`goalId`** (привязка/отвязка трека к стратегической цели, Фаза 3; лидер/админ, проверка существования цели). **§9 трек=чат:** POST авто-создаёт групповой чат (`Chat.trackId`, лидер=админ, участники автоподключаются), PUT members синкает состав чата; detail/список отдают `chat.id` |
 | `/clients` | `routes/clients.ts` | клиенты: CRUD (write admin), bulk-import из КФПД col A |
 | `/projects` | `routes/projects.ts` | проекты CRUD (DELETE admin) + вложенные work-items (GET/POST) |
 | `/day-entries` | `routes/day-entries.ts` | день сотрудника: GET ?from&to[&userId — по орг-охвату], PUT upsert своего дня, POST /apply-period (≤370 дн, keepFilled), DELETE /:date, GET /formats; admin: GET /formats/versions, POST /formats (новая версия с 1-го числа месяца) |
+| `/work-schedule` | `routes/work-schedule.ts` | график работы (HR): GET /me, **GET /presence** (присутствие штата на сегодня из DayEntry+графика — Пульс «кто работает»), GET /:userId (орг-охват), PUT /:userId (admin/HR-модуль). Недельный паттерн типов дня + часы → «тип дня по умолчанию» (подсказка; НЕ факт, отчёт считает только DayEntry) |
 | `/svod` | `routes/svod.ts` | Свод: GET ?divisionId&month — сетка день×сотрудник (формат+минуты+задачи по startDate), подвал (часы/баллы/задачи); RBAC: member свой отдел, head/director/admin |
 | `/board` | `routes/board.ts` | личная доска: GET (колонки+размещения), POST/PATCH/DELETE /columns, PUT /placements (columnId null → убрать) |
-| `/notifications` | `routes/notifications.ts` | derived-агрегатор: лента TaskLog чужих действий над моими задачами (7 дн) + события сегодня/завтра; прочитанность — на клиенте |
+| `/notifications` | `routes/notifications.ts` | derived-агрегатор: лента TaskLog чужих действий над моими задачами (7 дн) + события сегодня/завтра + заявки + **подключения к чужим трекам** (`tracks`: TrackMember.joinedAt, leaderId≠me, 7 дн); прочитанность — на клиенте (localStorage-метки, у треков `nexus:tracks-seen-at`) |
 | `/access` | `routes/access.ts` | admin: registry (реестр модулей из кода), grants GET/PUT (выдача/уровень/отзыв модуля департаменту) |
 | `/analytics` | `routes/analytics.ts` | GET ?from&to&scope=self\|team\|company — KPI/сотрудники/проекты по формулам донора; businessDays по производственному календарю РФ (`services/calendarRf.ts`); company — admin или модуль adm.analytics-company |
 | `/work-items` | `routes/projects.ts` | сводный GET (фильтры status/projectId/producerId/search), GET/:id (+треки с прогрессом, расходы), PATCH, DELETE, PUT /:id/departments, расходы /:id/expenses CRUD |
+| `/company-goals` | `routes/company-goals.ts` | цели компании (тезисы для микро-блока на Пульсе): GET — всем; PUT (замена всего списка) — admin |
+| `/personal-goals` | `routes/personal-goals.ts` | личные цели сотрудника (блок «Мои цели» в Обзоре кабинета): GET/PUT — свои (замена списка, с флагом done) |
+| `/strategic-goals` | `routes/strategic-goals.ts` | стратегические цели (квартал/год), каскад департамент→отдел, `kind` goal\|growth (зоны роста): GET ?periodKey&scope — **видимость разграничена**: `scope=cabinet` (Обзор/кабинет) = только СВОЯ область даже у дир/рук (цели уровня своих департаментов `divisionId=null` + цели своих отделов); по умолчанию (страница «Стратегия») = сотрудник видит свой департамент, **рук/дир — всю компанию**; admin — все. Плюс прогресс `tasksTotal/tasksDone/trackCount` на каждой цели, **GET /:id** (детали: привязанные треки с прогрессом + прямые задачи + roll-up дочерних для департамента), **GET /:id/log** (история изменений — StrategicGoalLog), POST/PATCH/DELETE (director/head/admin), PATCH /:id/close (статус+итог, закрытие вручную). Все мутации пишут историю (`logGoal`, экспортируется — треки тоже логируют привязку). Канбан + панель деталей с вкладками Обзор/История и привязкой/созданием трека — StrategyPage. **Прогресс цели = задачи её треков (Track.goalId) + прямые Task.goalId; у департамента — roll-up по целям отделов**. RBAC привязки: `canContributeToGoal` (админ/директор департамента/рук/сотрудник отдела цели) — вклад ≠ правка |
+| `/meeting-notes` | `routes/meeting-notes.ts` | «Доработки к собранию» (заметки уровня департамента на период): GET ?deptId&periodKey, PUT (upsert, director/admin) |
+| `/requests` | `routes/requests.ts` | заявки (отпуск/больничный/отгул): GET /types, /unseen-count, GET ?scope=mine\|inbox, POST, PATCH /:id/decision (одобрение → **отражение в DayEntry.status** на дни диапазона), /:id/cancel (автор), /:id/revoke (отзыв одобренной → откат статуса дней), GET /:id/document (docx). Согласующий = рук. отдела→директор→админ. Спеки — docs/REQUESTS-MODULE.md, docs/DAY-STATUS-MODEL.md |
 
 **Новый роут — чеклист:** файл в `routes/`, зарегистрировать в `server.ts`, **добавить префикс в `apps/web/nginx.conf`** (allow-list прокси — иначе путь уйдёт в SPA-fallback и фронт получит `index.html` вместо JSON → краш `X.find is not a function`, см. `docs/POSTMORTEM-2026-06-15-proxy-allowlist.md`), `preHandler` auth, Zod-валидация через `.safeParse`, тест `*.test.ts` рядом, обновить таблицу выше.
 
@@ -273,9 +282,10 @@ SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uu
 | Dashboard | `DashboardPage.tsx` | ✅ задачи на сегодня, дедлайны (1/3/7д), события сегодня | admin (до снятия гейта) |
 | Calendar | `CalendarPage.tsx` | ✅ месяц/неделя/день, API данные, sidebar категорий | admin (до снятия гейта) |
 | Tasks | `TasksPage.tsx` | ✅ Kanban + Gantt, вкладки «Задачи» / «Треки» | admin (до снятия гейта) |
-| Svod | `SvodPage.tsx` | ✅ rebuild-v4: месячная сетка день×сотрудник, легенда, подвал; клик по ячейке → DayModal (свой день — правка) | все |
-| Analytics | `AnalyticsPage.tsx` | ✅ rebuild-v4: KPI + recharts-чарт + вкладки Сотрудники/Эффективность/Проекты + CSV (формат донора) | все (company-скоуп по модулю) |
+| Svod | `SvodPage.tsx` | ✅ rebuild-v4: месячная сетка день×сотрудник, легенда, подвал; клик по ячейке → DayModal (свой день — правка). **Больше НЕ отдельный пункт меню** — вложен внутренней вкладкой в Analytics (persist `nexus:analytics-tab`; миграция старого `page='svod'`→`analytics`) | все (вкладка в Аналитике) |
+| Analytics | `AnalyticsPage.tsx` | ✅ rebuild-v4: KPI + recharts-чарт + вкладки Сотрудники/Эффективность/Проекты + CSV; **внутренние вкладки `[Аналитика \| Свод]`** — переключатель в китовой шапке (HeaderPortal) | все (company-скоуп по модулю) |
 | Team | `TeamPage.tsx` | ✅ rebuild-v4: оргдерево департамент→отдел→сотрудники, поиск, директор/руководитель | все |
+| Strategy | `StrategyPage.tsx` | ✅ Фаза 1: цели квартала/года по департаментам→отделам, статусы, создание/правка/закрытие (итог); видимость своего департамента; спека docs/STRATEGIC-GOALS.md | все (свой департамент) |
 | Settings | `SettingsPage.tsx` | ✅ rebuild-v4: 6 вкладок (скелет v2); живые — Форматы дня (версионирование Q-DAY-5), Роли и доступы (гранты модулей) | все; админ-вкладки — admin |
 | Tracks | `TracksPage.tsx` | ✅ вкладка внутри Tasks; модал формы переиспользуют Projects | admin (до снятия гейта) |
 | Projects | `ProjectsPage.tsx` | ✅ подстраницы «Реестр» / «Workflow» (sidebar), детальная панель WI | admin (до снятия гейта) |
@@ -320,6 +330,8 @@ docker compose -f docker-compose.prod.yml up -d
 ```
 
 Деплой идёт через CD (push в `master` → GitHub Actions → GHCR → SSH на VDS). Подробнее: `docs/DEPLOY-RUNBOOK.md` (пошаговый ранбук) и `docs/INTEGRATION.md`. SSL — автоматически через Nginx Proxy Manager.
+
+> ⚠️ **Перед крупным деплоем (много миграций) — обязательно [docs/DEPLOY-DB-PRECHECK-2026-08-27.md](docs/DEPLOY-DB-PRECHECK-2026-08-27.md):** миграции катятся автоматически (`Dockerfile` CMD `prisma migrate deploy && node server.js`), бэкапа в пайплайне нет. Ранбук проверки БД: бэкап → read-only проверки прода (дубли tabNumber, FK на public.users, история миграций) → генеральная репетиция `migrate deploy` на клоне прод-БД. GO только после зелёной репетиции на клоне.
 
 Мониторинг: Grafana Alloy (`config.alloy`) + Postgres Exporter (`postgres-exporter/queries.yaml`).
 
@@ -374,7 +386,7 @@ Calendar, Kanban, Gantt — это **базовые компоненты** с к
 ## ⚠️ Важное
 
 - **ID по схемам**: `nexus.*` — `TEXT` (без `::uuid`); `public.users` / `auth.users` — `uuid` (каст `::uuid` обязателен). См. раздел «Raw SQL».
-- **Prisma models (24)** — `PublicUser` (схема public), `User`, `Department`, `Division`, `UserDivision`, `SheetConfig`, `Track`, `Stage`, `TrackMember`, `Task`, `TaskLog`, `Chat`, `ChatMember`, `Message`, `MessageReaction`, `MessageMention`, `Event`, `EventParticipant`, `CalendarEntry`, `Client`, `Project`, `WorkItem`, `WorkItemDivision`, `Expense`
+- **Prisma models** — `PublicUser` (схема public), `User`, `Department`, `Division`, `UserDivision`, `SheetConfig`, `Track`, `Stage`, `TrackMember`, `Task`, `TaskLog`, `Chat`, `ChatMember`, `Message`, `MessageReaction`, `MessageMention`, `Event`, `EventParticipant`, `CalendarEntry`, `Client`, `Project`, `WorkItem`, `WorkItemDivision`, `Expense`, `DayEntry`, `DayFormatVersion`, `WorkSchedule`, `Post`, `BoardColumn`, `TaskPlacement`, `RefList`, `RefItem`, `DepartmentModule`, `StrategicGoal`, `StrategicGoalLog`, `MeetingNote`, `Request`, `CompanyGoal`, `PersonalGoal`
 - **Мультисхема**: `public` (тонкая идентичность, пишет только Nexus) + `nexus` (всё остальное). `nexus.users.authId` = `auth.users.id` = `public.users.id`
 - **User model**: поля `name` (не `fullName`) и `department` (не `dept`) — переименованы для совместимости с `public.users`
 - **Заготовки в схеме чатов** (без эндпоинтов, осознанно): reply/forward, `scheduledAt`, реакции, упоминания, `inviteToken`, `Chat.projectId`

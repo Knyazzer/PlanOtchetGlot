@@ -25,7 +25,3 @@ export function sendToUser(userId: string, payload: object) {
     if (conn.socket.readyState === conn.socket.OPEN) conn.socket.send(data)
   }
 }
-
-export function isOnline(userId: string) {
-  return (connections.get(userId)?.size ?? 0) > 0
-}

@@ -2,6 +2,7 @@
 import { z } from 'zod'
 import { prisma } from '@nexus/db'
 import { authenticate } from '../plugins/auth'
+import { canContributeToGoal, logGoal } from './strategic-goals'
 import { randomUUID } from 'crypto'
 
 const MEMBER_SELECT = { id: true, name: true } as const
@@ -33,6 +34,7 @@ const TRACK_SELECT = {
   projectName: true,
   deadline: true,
   leaderId: true,
+  goalId: true,
   workItemId: true,
   createdAt: true,
   updatedAt: true,
@@ -40,7 +42,16 @@ const TRACK_SELECT = {
   members:  { select: { user: { select: MEMBER_SELECT }, joinedAt: true } },
   tasks:    { select: { status: true } },
   stages:   { select: STAGE_SUMMARY_SELECT, orderBy: { order: 'asc' as const } },
+  chat:     { select: { id: true } },   // §9: чат трека
 } as const
+
+// Подмешать данные цели (Track.goalId — скаляр-заготовка без Prisma-связи): { ...track, goal }.
+async function attachGoals<T extends { goalId?: string | null }>(tracks: T[]): Promise<Array<T & { goal: { id: string; title: string; description: string | null } | null }>> {
+  const ids = [...new Set(tracks.map(t => t.goalId).filter(Boolean) as string[])]
+  const goals = ids.length ? await prisma.strategicGoal.findMany({ where: { id: { in: ids } }, select: { id: true, title: true, description: true } }) : []
+  const byId = new Map(goals.map(g => [g.id, g]))
+  return tracks.map(t => ({ ...t, goal: t.goalId ? (byId.get(t.goalId) ?? null) : null }))
+}
 
 export async function tracksRoutes(app: FastifyInstance) {
 
@@ -55,11 +66,12 @@ export async function tracksRoutes(app: FastifyInstance) {
       ],
     }
 
-    return prisma.track.findMany({
+    const tracks = await prisma.track.findMany({
       where,
       select: TRACK_SELECT,
       orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
     })
+    return attachGoals(tracks)
   })
 
   // GET /tracks/:id
@@ -83,9 +95,12 @@ export async function tracksRoutes(app: FastifyInstance) {
       select: {
         id: true, title: true, description: true, type: true, status: true,
         clientName: true, projectName: true, deadline: true, leaderId: true,
+        goalId: true, workItemId: true,
         createdAt: true, updatedAt: true,
         leader:  { select: MEMBER_SELECT },
         members: { select: { user: { select: MEMBER_SELECT }, joinedAt: true } },
+        chat:    { select: { id: true } },
+        events:  { select: { id: true, type: true, title: true, date: true, startTime: true, endTime: true, status: true }, orderBy: [{ date: 'asc' as const }, { startTime: 'asc' as const }] },
         tasks: {
           select: {
             id: true, title: true, description: true, status: true,
@@ -103,8 +118,8 @@ export async function tracksRoutes(app: FastifyInstance) {
         },
       },
     })
-
-    return track
+    if (!track) return track
+    return (await attachGoals([track]))[0]
   })
 
   // POST /tracks
@@ -127,27 +142,35 @@ export async function tracksRoutes(app: FastifyInstance) {
 
     const { title, description, type, clientName, projectName, deadline, memberIds, workItemId } = body.data
 
-    const track = await prisma.track.create({
-      data: {
-        id: randomUUID(),
-        title,
-        description,
-        type,
-        clientName:  type === 'external' ? (clientName  ?? null) : null,
-        projectName: type === 'external' ? (projectName ?? null) : null,
-        deadline: deadline ? new Date(deadline) : null,
-        leaderId: user.id,
-        workItemId: workItemId ?? null,
-        members: {
-          create: memberIds
-            .filter(mid => mid !== user.id)
-            .map(mid => ({ userId: mid, joinedAt: new Date() })),
+    const memberOthers = [...new Set(memberIds.filter(mid => mid !== user.id))]
+    // Трек + его групповой чат (§9 «трек=чат») — АТОМАРНО: иначе трек без чата при сбое (docs/DECISION-2026-08-09)
+    const track = await prisma.$transaction(async (tx) => {
+      const t = await tx.track.create({
+        data: {
+          id: randomUUID(),
+          title,
+          description,
+          type,
+          clientName:  type === 'external' ? (clientName  ?? null) : null,
+          projectName: type === 'external' ? (projectName ?? null) : null,
+          deadline: deadline ? new Date(deadline) : null,
+          leaderId: user.id,
+          workItemId: workItemId ?? null,
+          members: { create: memberOthers.map(mid => ({ userId: mid, joinedAt: new Date() })) },
         },
-      },
-      select: TRACK_SELECT,
+        select: { id: true },
+      })
+      await tx.chat.create({
+        data: {
+          id: randomUUID(), type: 'group', name: title, color: '#7B61FF', trackId: t.id,
+          members: { create: [{ userId: user.id, isGroupAdmin: true }, ...memberOthers.map(mid => ({ userId: mid }))] },
+        },
+      })
+      return t
     })
 
-    return reply.code(201).send(track)
+    const full = await prisma.track.findUnique({ where: { id: track.id }, select: TRACK_SELECT })
+    return reply.code(201).send(full)
   })
 
   // PATCH /tracks/:id
@@ -155,7 +178,7 @@ export async function tracksRoutes(app: FastifyInstance) {
     const user = (request as any).user as { id: string; isAdmin: boolean }
     const { id } = request.params as { id: string }
 
-    const track = await prisma.track.findUnique({ where: { id }, select: { leaderId: true } })
+    const track = await prisma.track.findUnique({ where: { id }, select: { leaderId: true, title: true, goalId: true } })
     if (!track) return reply.code(404).send({ error: 'Трек не найден' })
     if (!user.isAdmin && track.leaderId !== user.id) return reply.code(403).send({ error: 'Только лидер может редактировать трек' })
 
@@ -169,12 +192,21 @@ export async function tracksRoutes(app: FastifyInstance) {
       deadline:    z.string().datetime({ offset: true }).nullable().optional(),
       leaderId:    z.string().optional(),
       workItemId:  z.string().nullable().optional(),
+      goalId:      z.string().nullable().optional(),  // привязка трека к стратегической цели (Фаза 3)
     })
 
     const body = schema.safeParse(request.body)
     if (!body.success) return reply.code(400).send({ error: body.error.issues[0]?.message })
 
-    const { deadline, type, clientName, projectName, workItemId, ...rest } = body.data
+    const { deadline, type, clientName, projectName, workItemId, goalId, ...rest } = body.data
+
+    // Привязка к цели: трек может привязать только его лидер (проверено выше) И тот, кто имеет доступ к цели
+    // (директор департамента цели ИЛИ рук/сотрудник отдела цели). Отвязка (goalId=null) — лидеру достаточно.
+    if (goalId) {
+      const goal = await prisma.strategicGoal.findUnique({ where: { id: goalId }, select: { id: true, deptId: true, divisionId: true } })
+      if (!goal) return reply.code(400).send({ error: 'Цель не найдена' })
+      if (!(await canContributeToGoal(user.id, user.isAdmin, goal))) return reply.code(403).send({ error: 'Нет доступа к этой цели (не ваш отдел/департамент)' })
+    }
 
     const updated = await prisma.track.update({
       where: { id },
@@ -188,9 +220,16 @@ export async function tracksRoutes(app: FastifyInstance) {
         } : {}),
         ...(deadline    !== undefined ? { deadline:    deadline    ? new Date(deadline) : null } : {}),
         ...(workItemId  !== undefined ? { workItemId:  workItemId  ?? null               } : {}),
+        ...(goalId      !== undefined ? { goalId:      goalId      ?? null               } : {}),
       },
       select: TRACK_SELECT,
     })
+
+    // История цели: привязали/отвязали трек
+    if (goalId !== undefined && goalId !== track.goalId) {
+      if (goalId) await logGoal(goalId, user.id, 'track_attached', `привязан трек «${track.title}»`)
+      else if (track.goalId) await logGoal(track.goalId, user.id, 'track_detached', `отвязан трек «${track.title}»`)
+    }
 
     return updated
   })
@@ -248,6 +287,18 @@ export async function tracksRoutes(app: FastifyInstance) {
         skipDuplicates: true,
       }),
     ])
+
+    // §9: синхронизируем участников чата трека с новым составом (лидер остаётся всегда)
+    const chat = await prisma.chat.findFirst({ where: { trackId: id }, select: { id: true } })
+    if (chat) {
+      const desired = new Set([track.leaderId, ...ids])
+      const chatMembers = await prisma.chatMember.findMany({ where: { chatId: chat.id }, select: { userId: true } })
+      const have = new Set(chatMembers.map(m => m.userId))
+      const toAdd = [...desired].filter(uid => !have.has(uid))
+      const toRemove = [...have].filter(uid => !desired.has(uid) && uid !== track.leaderId)
+      if (toAdd.length) await prisma.chatMember.createMany({ data: toAdd.map(userId => ({ chatId: chat.id, userId })), skipDuplicates: true })
+      if (toRemove.length) await prisma.chatMember.deleteMany({ where: { chatId: chat.id, userId: { in: toRemove } } })
+    }
 
     const updated = await prisma.track.findUnique({ where: { id }, select: TRACK_SELECT })
     return updated

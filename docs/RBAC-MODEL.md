@@ -143,9 +143,7 @@
 | | `com.projects` — реестр проектов: создание/ведение/статусы Client→Project→WI (`ProjectsPage.tsx`) | **v1** | member |
 | | `com.workitems` — сквозной workflow заявок компании: WorkflowTab без фильтра по департаменту | **v1** | head |
 | | sales-CRM (воронки, сделки) | **вне скоупа** — решение зафиксировано | — |
-| **Технический** | `tech.platform` — страницы админки платформы: Персонал, Справочники, Роли и доступы. Опасные операции (увольнение `users.ts:215`, impersonate `users.ts:269`, bulk-onboard `users.ts:407-463`, выдача доступа) — **только `isAdmin`** независимо от модуля | **v1** | director |
-| | `tech.sheets` — интеграции Google Sheets: конфиги/синк (`DatabasePage.tsx`, `routes/database.ts`) | **v1** | member |
-| | `tech.support` — техподдержка: support-чаты (`chats.ts:206-229`) + диагностика | **v1** | member |
+| **Технический** | ~~`tech.platform` / `tech.sheets` / `tech.support`~~ — **удалены 2026-07-11** из `MODULE_REGISTRY` (мёртвые/дублирующие). `tech.sheets` — Google Sheets вырезан (нет `DatabasePage`/`routes/database.ts`); `tech.platform` дублировал `hr.orgstructure` (обе вели на Персонал), а опасные операции (увольнение/impersonate/bulk-onboard) и так только у `isAdmin`; `tech.support` — без страницы. Управление людьми/структурой — через `hr.orgstructure` → Персонал (каскад назначений). Орфан-гранты в БД игнорируются. | — | — |
 | | `tech.monitoring` — мониторинг: статусы сервисов, ссылки Grafana/Alloy (`config.alloy`) | **потом** | member |
 | **Администрация** (юр.отдел — 222, АХО — 201) | `adm.svod-company` — Свод всей компании (read-only) | **v1** (вместе с доменом Свода) | — (read-only) |
 | | `adm.analytics-company` — аналитика компании: 5 вкладок донора (golden 12 §А-1) по всем департаментам | **v1** | — (read-only) |

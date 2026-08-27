@@ -119,7 +119,10 @@ export async function chatsRoutes(app: FastifyInstance) {
 
     if (members.length === 0) return {}
 
-    // Один запрос на все чаты: groupBy + filter по lastReadAt каждого участника
+    // Параллельные counts (по одному на чат): единый groupBy невозможен —
+    // у каждого чата свой порог lastReadAt, фильтр createdAt > lastReadAt индивидуален.
+    // Promise.all даёт один round-trip по времени; при росте числа чатов на юзера
+    // → переписать на raw-SQL с JOIN VALUES(chatId,lastReadAt).
     const counts = await Promise.all(
       members.map(m => prisma.message.count({
         where: {
@@ -147,7 +150,7 @@ export async function chatsRoutes(app: FastifyInstance) {
     // Advisory lock по отсортированной паре ID — предотвращает гонку и дублирование
     const lockKey = [me.id, otherId].sort().join(':')
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext('direct:${lockKey}'))`)
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'direct:' + lockKey}))`
 
       const existing = await tx.chat.findFirst({
         where: {
@@ -184,7 +187,7 @@ export async function chatsRoutes(app: FastifyInstance) {
 
     // транзакция с advisory lock предотвращает гонку при параллельных запросах
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext('self:${me.id}'))`)
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'self:' + me.id}))`
       const existing = await tx.chat.findFirst({
         where: { type: 'self', members: { some: { userId: me.id } } },
         select: { id: true },
@@ -204,7 +207,7 @@ export async function chatsRoutes(app: FastifyInstance) {
     const me = (request as any).user as { id: string }
 
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext('support:${me.id}'))`)
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'support:' + me.id}))`
       const existing = await tx.chat.findFirst({
         where: { type: 'support', members: { some: { userId: me.id } } },
         select: { id: true },

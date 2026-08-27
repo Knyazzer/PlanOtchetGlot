@@ -17,7 +17,3 @@ export function useAuthInit() {
 export function useCurrentUser() {
   return useAuthStore((s) => s.user)
 }
-
-export function useIsAdmin() {
-  return useAuthStore((s) => s.user?.isAdmin ?? false)
-}

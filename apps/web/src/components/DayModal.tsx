@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { fmtMinutes } from '../lib/taskMeta'
@@ -33,6 +33,7 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
   onClose: () => void
 }) {
   const qc = useQueryClient()
+  const downOnOverlay = useRef(false) // железное правило попапов: закрывать только если и mousedown, и mouseup на оверлее
 
   const { data: formats = [] } = useQuery<DayFormat[]>({
     queryKey: ['day-formats'],
@@ -59,8 +60,9 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
 
   return (
     <div
-      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      onMouseDown={e => { downOnOverlay.current = e.target === e.currentTarget }}
+      onMouseUp={e => { if (downOnOverlay.current && e.target === e.currentTarget) onClose(); downOnOverlay.current = false }}
+      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
     >
       <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 16, padding: '24px 26px', width: '100%', maxWidth: 520, maxHeight: 'calc(100vh - 48px)', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
@@ -72,7 +74,7 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
         </div>
 
         {entryLoading ? (
-          <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка…</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Загрузка…</div>
         ) : (
           <DayEntryBlock key={entry ? `${entry.id}:${entry.updatedAt}` : 'empty'} entry={entry} formats={formats} date={date} isOwn={isOwn} qcInvalidate={() => {
             qc.invalidateQueries({ queryKey: ['day-entries'] })
@@ -82,13 +84,13 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
 
         {isOwn && events.length > 0 && (
           <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>
               Встречи дня · {events.length}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {events.map(ev => (
                 <div key={ev.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-3)', flexShrink: 0 }}>{ev.startTime}–{ev.endTime}</span>
+                  <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text-3)', flexShrink: 0 }}>{ev.startTime}–{ev.endTime}</span>
                   <span style={{ flex: 1, fontSize: 12, color: 'var(--text-1)' }}>{ev.title}</span>
                 </div>
               ))}
@@ -97,7 +99,7 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
         )}
 
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8 }}>
             Задачи дня {tasks.length > 0 && `· ${tasks.length}`}
           </div>
           {tasksLoading && <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>Загрузка…</div>}
@@ -105,17 +107,17 @@ export function DayModal({ userId, userName, date, isOwn, onClose }: {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {tasks.map(t => (
               <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: t.status === 'done' ? '#29BF12' : t.status === 'inprogress' ? '#0EA5E9' : '#64748b' }} />
+                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: t.status === 'done' ? '#22C55E' : t.status === 'inprogress' ? '#0EA5E9' : '#64748b' }} />
                 <span style={{ flex: 1, fontSize: 12, color: 'var(--text-1)', textDecoration: t.status === 'done' ? 'line-through' : 'none', opacity: t.status === 'done' ? 0.65 : 1 }}>
                   {t.title}
                   {(t.client || t.project) && (
-                    <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 11 }}>
+                    <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 12 }}>
                       {t.client}{t.client && t.project ? ' · ' : ''}{t.project?.title ?? ''}
                     </span>
                   )}
                 </span>
                 {(t.actualMinutes ?? t.plannedMinutes) != null && (
-                  <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--text-3)', flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'var(--text-3)', flexShrink: 0 }}>
                     {fmtMinutes((t.actualMinutes ?? t.plannedMinutes)!)}
                   </span>
                 )}
@@ -161,17 +163,17 @@ function DayEntryBlock({ entry, formats, date, isOwn, qcInvalidate }: {
 
   const inp: React.CSSProperties = {
     background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8,
-    padding: '7px 9px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+    padding: '7px 9px', color: 'var(--text-1)', fontFamily: 'Inter,sans-serif', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   }
   const lbl: React.CSSProperties = {
-    fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 5, display: 'block',
+    fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 5, display: 'block',
   }
 
   if (!isOwn) {
     // чужой день — просмотр
     const label = entry ? (formats.find(f => f.key === entry.dayFormat)?.label ?? entry.dayFormat) : null
     return (
-      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', fontSize: 13, color: 'var(--text-1)' }}>
+      <div style={{ padding: '10px 12px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border)', fontSize: 14, color: 'var(--text-1)' }}>
         {entry ? (
           <>
             <b>{label}</b>
