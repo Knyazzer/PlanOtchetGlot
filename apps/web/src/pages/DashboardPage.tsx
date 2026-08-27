@@ -485,8 +485,12 @@ function EventsTable({ title, events, onOpen, onAdd }: {
 // Колонки строки: grip · открыть · Клиент · Связь · Задача · Время · готово
 const TASK_COLS = '22px 26px 150px 160px minmax(0,1fr) 116px 40px'
 
+// Хендл drag-строки — ровно то, что отдаёт useSortable (DraggableAttributes + listeners),
+// а не «ручной» Record: у DraggableAttributes нет индексной сигнатуры, tsc -b это ловит.
+type DragHandle = Pick<ReturnType<typeof useSortable>, 'attributes' | 'listeners'>
+
 // Sortable-строка задачи: div-подсетка (subgrid) выровнена по шапке; grip-хендл через render-prop.
-function SortableTaskRow({ id, children }: { id: string; children: (h: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => React.ReactNode }) {
+function SortableTaskRow({ id, children }: { id: string; children: (h: DragHandle) => React.ReactNode }) {
   // 1:1 с support/ServersView SortableParam: дефолтный useSortable, стиль только transform/transition/opacity.
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style: React.CSSProperties = {
@@ -580,7 +584,7 @@ function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, on
   // Ячейки строки (7 колонок). handle — drag-хендл (только у sortable-строк); dr — черновик.
   const cell = (content: React.ReactNode, extra?: React.CSSProperties, dr?: boolean) =>
     <div data-draft-cell={dr || undefined} style={{ padding: '5px 8px', minWidth: 0, display: 'flex', alignItems: 'center', ...extra }}>{content}</div>
-  const taskCells = (t: Task, handle?: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => {
+  const taskCells = (t: Task, handle?: DragHandle) => {
     const dr = t.id === DRAFT_ID, done = t.status === 'done', mine = t.assignee.id === meId
     return (<>
       {/* grip */}

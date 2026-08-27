@@ -21,9 +21,11 @@ import { cn } from '../lib/cn'
 
 // Строка-таблицы с dnd-kit: активная едет за курсором (transform), соседние раздвигаются,
 // оригинал приглушается. Ручку-grip даём через render-prop (handle = attributes+listeners).
+// Тип хендла — ровно из useSortable (DraggableAttributes без индексной сигнатуры), не «ручной» Record.
+type DragHandle = Pick<ReturnType<typeof useSortable>, 'attributes' | 'listeners'>
 function SortableRow({ id, className, onClick, onMouseEnter, children }: {
   id: string | number; className?: string; onClick?: () => void; onMouseEnter?: () => void
-  children: (handle: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => ReactNode
+  children: (handle: DragHandle) => ReactNode
 }) {
   // animateLayoutChanges:false — на дропе НЕ анимируем сброс transform'ов (данные уже переставлены);
   // иначе идёт вторая волна перетасовки поверх нового порядка. Reflow во время drag остаётся плавным.
@@ -273,7 +275,7 @@ export function DataTable<T>({ columns, data, onAddRow, addRowLabel = 'Доба�
             {(() => {
               const rows = table.getRowModel().rows
               // Ячейки строки: grip (drag-handle через render-prop) + шеврон + данные
-              const renderCells = (row: typeof rows[number], handle?: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) => {
+              const renderCells = (row: typeof rows[number], handle?: DragHandle) => {
                 const canExpand = expandable && row.getCanExpand()
                 const isOpen = row.getIsExpanded()
                 return (<>
