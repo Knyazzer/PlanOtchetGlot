@@ -331,6 +331,8 @@ docker compose -f docker-compose.prod.yml up -d
 
 Деплой идёт через CD (push в `master` → GitHub Actions → GHCR → SSH на VDS). Подробнее: `docs/DEPLOY-RUNBOOK.md` (пошаговый ранбук) и `docs/INTEGRATION.md`. SSL — автоматически через Nginx Proxy Manager.
 
+> ⚠️ **Перед крупным деплоем (много миграций) — обязательно [docs/DEPLOY-DB-PRECHECK-2026-08-27.md](docs/DEPLOY-DB-PRECHECK-2026-08-27.md):** миграции катятся автоматически (`Dockerfile` CMD `prisma migrate deploy && node server.js`), бэкапа в пайплайне нет. Ранбук проверки БД: бэкап → read-only проверки прода (дубли tabNumber, FK на public.users, история миграций) → генеральная репетиция `migrate deploy` на клоне прод-БД. GO только после зелёной репетиции на клоне.
+
 Мониторинг: Grafana Alloy (`config.alloy`) + Postgres Exporter (`postgres-exporter/queries.yaml`).
 
 ---
