@@ -1,5 +1,7 @@
 FROM node:20-alpine AS base
-RUN npm install -g pnpm
+# pnpm запиннен: latest (pnpm 11) больше не читает pnpm.onlyBuiltDependencies из package.json
+# → ERR_PNPM_IGNORED_BUILDS на prisma/esbuild. 10.33.x читает поле (совпадает с локальной сборкой).
+RUN npm install -g pnpm@10.33.0
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
