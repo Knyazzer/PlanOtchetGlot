@@ -180,7 +180,7 @@ GET → 200 | POST → 201 | PATCH → 200 | DELETE → 204
 ❌ React Router — навигация через useState<Page>, это осознанное решение
 ❌ Случайный зоопарк UI-библиотек — единый дом-кит: Tailwind + shadcn/ui (Radix) + recharts + lucide
 ❌ Цвета не из docs/DESIGN.md
-❌ ::uuid на ID nexus-схемы в raw SQL (там все ID — TEXT); public.users.id — uuid, ему каст НУЖЕН
+❌ ::uuid на ID nexus-схемы И public.users в raw SQL (там ID — TEXT); только auth.users.id — uuid, ему каст НУЖЕН
 ❌ useMutation без invalidateQueries
 ❌ Роут без preHandler authenticate / requireRole
 ❌ any без комментария почему иначе нельзя
@@ -194,8 +194,9 @@ GET → 200 | POST → 201 | PATCH → 200 | DELETE → 204
 WHERE id = $1              // ✅ без каста
 WHERE id = ANY($1::text[]) // ✅ для массивов
 
-// public.users и auth.users — id тип uuid, каст обязателен:
-UPDATE public.users SET is_active = false WHERE id = ${authId}::uuid   // ✅
+// public.users.id — ТЕПЕРЬ TEXT (миграция add_posts_pulse) — БЕЗ ::uuid:
+UPDATE public.users SET is_active = false WHERE id = ${authId}         // ✅ text = text
+// auth.users.id — uuid, каст нужен при сравнении/вставке в SQL:
 SELECT id::text AS id FROM auth.users WHERE email = ${email}           // ✅ uuid → text на выходе
 ```
 
@@ -385,7 +386,7 @@ Calendar, Kanban, Gantt — это **базовые компоненты** с к
 
 ## ⚠️ Важное
 
-- **ID по схемам**: `nexus.*` — `TEXT` (без `::uuid`); `public.users` / `auth.users` — `uuid` (каст `::uuid` обязателен). См. раздел «Raw SQL».
+- **ID по схемам**: `nexus.*` и `public.users` — `TEXT` (без `::uuid`; `public.users.id` стал TEXT миграцией add_posts_pulse); только `auth.users.id` — `uuid` (каст `::uuid` в SQL). См. раздел «Raw SQL».
 - **Prisma models** — `PublicUser` (схема public), `User`, `Department`, `Division`, `UserDivision`, `SheetConfig`, `Track`, `Stage`, `TrackMember`, `Task`, `TaskLog`, `Chat`, `ChatMember`, `Message`, `MessageReaction`, `MessageMention`, `Event`, `EventParticipant`, `CalendarEntry`, `Client`, `Project`, `WorkItem`, `WorkItemDivision`, `Expense`, `DayEntry`, `DayFormatVersion`, `WorkSchedule`, `Post`, `BoardColumn`, `TaskPlacement`, `RefList`, `RefItem`, `DepartmentModule`, `StrategicGoal`, `StrategicGoalLog`, `MeetingNote`, `Request`, `CompanyGoal`, `PersonalGoal`
 - **Мультисхема**: `public` (тонкая идентичность, пишет только Nexus) + `nexus` (всё остальное). `nexus.users.authId` = `auth.users.id` = `public.users.id`
 - **User model**: поля `name` (не `fullName`) и `department` (не `dept`) — переименованы для совместимости с `public.users`

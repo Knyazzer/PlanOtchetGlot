@@ -193,7 +193,7 @@ export async function authRoutes(app: FastifyInstance) {
     // Insert into public.users (shared identity table)
     await prisma.$executeRaw`
       INSERT INTO public.users (id, email, name, position, department, is_active, created_at)
-      VALUES (${authId}::uuid, ${body.data.email}, ${nexusUser.name},
+      VALUES (${authId}, ${body.data.email}, ${nexusUser.name},
               ${nexusUser.position ?? null}, ${nexusUser.department ?? null},
               true, NOW())
       ON CONFLICT (id) DO NOTHING
