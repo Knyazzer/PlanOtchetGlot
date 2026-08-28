@@ -199,9 +199,14 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: 'validation', details: parsed.error.flatten() })
     const { date, dayFormat, place, startTime, endTime, breakMin } = parsed.data
 
+    // Модель «место+статус» (DAY-STATUS-MODEL): dayFormat = статус дня. Канонические
+    // статусы (после миграции dayentry_place_split) принимаем всегда; прочие значения
+    // валидируем против настраиваемых форматов дня.
+    const DAY_STATUSES = new Set(['working', 'weekend', 'vacation', 'sick', 'dayoff'])
     const formats = await dayFormatsAt(new Date(date))
     const fmt = formats.get(dayFormat)
-    if (!fmt || !fmt.active) return reply.code(400).send({ error: `Неизвестный статус дня: ${dayFormat}` })
+    if (!DAY_STATUSES.has(dayFormat) && (!fmt || !fmt.active))
+      return reply.code(400).send({ error: `Неизвестный статус дня: ${dayFormat}` })
 
     const divisionId = await resolveDivisionId(user.id) // снапшот отдела на момент записи
     const entry = await prisma.dayEntry.upsert({
