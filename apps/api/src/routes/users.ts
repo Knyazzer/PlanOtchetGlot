@@ -419,7 +419,7 @@ export async function usersRoutes(app: FastifyInstance) {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
           body: JSON.stringify({ ban_duration: '876000h' }),
         }).catch(() => {})
-        await prisma.$executeRaw`UPDATE public.users SET is_active = false WHERE id = ${user.authId}::uuid`
+        await prisma.$executeRaw`UPDATE public.users SET is_active = false WHERE id = ${user.authId}`
       }
     }
     const updated = await prisma.user.update({
@@ -445,7 +445,7 @@ export async function usersRoutes(app: FastifyInstance) {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${serviceKey}`, apikey: serviceKey },
           body: JSON.stringify({ ban_duration: 'none' }),
         }).catch(() => {})
-        await prisma.$executeRaw`UPDATE public.users SET is_active = true WHERE id = ${user.authId}::uuid`
+        await prisma.$executeRaw`UPDATE public.users SET is_active = true WHERE id = ${user.authId}`
       }
     }
     const updated = await prisma.user.update({
@@ -620,7 +620,7 @@ export async function usersRoutes(app: FastifyInstance) {
         }
         await prisma.$executeRaw`
           INSERT INTO public.users (id, email, name, position, department, is_active, created_at)
-          VALUES (${authId}::uuid, ${email}, ${u.name}, ${u.position ?? null}, ${u.department ?? null}, true, NOW())
+          VALUES (${authId}, ${email}, ${u.name}, ${u.position ?? null}, ${u.department ?? null}, true, NOW())
           ON CONFLICT (id) DO NOTHING
         `
         await prisma.user.update({
