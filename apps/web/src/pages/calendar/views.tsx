@@ -46,7 +46,7 @@ export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDay
           const extra = allDay.length + dayEvts.length - shown.length
           return (
             <div key={i} onClick={() => onDayClick(ymd)}
-              style={{ borderRight:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)', padding:6, cursor:'pointer', opacity: isThisMonth ? 1 : 0.35, overflow:'hidden' }}>
+              style={{ borderRight:'1px solid var(--border)', borderBottom:'1px solid var(--border)', padding:6, cursor:'pointer', opacity: isThisMonth ? 1 : 0.35, overflow:'hidden' }}>
               <div style={{ width:24, height:24, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:500, marginBottom:4,
                 background: isToday ? '#F97316' : isSel ? 'rgba(123,97,255,0.15)' : 'transparent',
                 color: isToday ? '#fff' : isSel ? 'var(--accent-s)' : 'var(--text-3)',
@@ -131,7 +131,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
         {days.map((d,i) => {
           const isToday = toYMD(d) === today
           return (
-            <div key={i} style={{ padding:'8px 8px', textAlign:'center', borderRight: i<6 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
+            <div key={i} style={{ padding:'8px 8px', textAlign:'center', borderRight: i<6 ? '1px solid var(--border)' : 'none' }}>
               <div style={{ fontSize:12, fontWeight:600, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.8px' }}>{WEEKDAYS_S[i]}</div>
               <div style={{ fontSize:18, fontWeight:700, width:34, height:34, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', margin:'2px auto 0', background: isToday ? '#F97316' : 'transparent', color: isToday ? '#fff' : 'var(--text-3)' }}>{d.getDate()}</div>
             </div>
@@ -148,7 +148,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
           {days.map((d,i) => {
             const entries = allDayFor(toYMD(d))
             return (
-              <div key={i} style={{ padding:'3px 4px', borderRight: i<6 ? '1px solid rgba(255,255,255,0.04)' : 'none', minHeight:24 }}>
+              <div key={i} style={{ padding:'3px 4px', borderRight: i<6 ? '1px solid var(--border)' : 'none', minHeight:24 }}>
                 {entries.map(e => (
                   <div key={e.id} onClick={() => onEventClick(e)}
                     style={{ padding:'1px 6px', borderRadius:3, fontSize:12, fontWeight:500, marginBottom:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', background:e.color+'22', color:e.color, cursor:'pointer' }}>
@@ -179,7 +179,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
               <DayColumn key={i} ymd={ymd} isToday={ymd === today} events={dayEvts} layout={layout}
                 bodyRef={bodyRef} onEventClick={onEventClick} onDragCreate={onDragCreate}
                 draft={draft} onDraftResize={onDraftResize} onEventDown={beginMove}
-                style={{ borderRight: i<6 ? '1px solid rgba(255,255,255,0.04)' : 'none' }} />
+                style={{ borderRight: i<6 ? '1px solid var(--border)' : 'none' }} />
             )
           })}
           {/* §6: подсветка целевого слота при переносе */}
@@ -291,11 +291,11 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
 
   return (
     <div ref={colRef} onMouseDown={onMouseDown}
-      style={{ position:'relative', minHeight:1440, background: isToday ? 'rgba(123,97,255,0.015)' : 'transparent', ...style }}>
-      <div style={{ position:'absolute', left:0, right:0, top:600, height:510, background:'rgba(255,255,255,0.025)', pointerEvents:'none', zIndex:0 }} />
+      style={{ position:'relative', minHeight:1440, background: isToday ? 'color-mix(in srgb, var(--accent) 9%, transparent)' : 'transparent', ...style }}>
+      <div style={{ position:'absolute', left:0, right:0, top:600, height:510, background:'color-mix(in srgb, var(--text-1) 5%, transparent)', pointerEvents:'none', zIndex:0 }} />
       {Array.from({length:24},(_,h) => (
         <div key={h}>
-          <div style={{ position:'absolute', left:0, right:0, top:h*60, borderTop:`1px solid ${h>=10&&h<=18 ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.04)'}`, pointerEvents:'none' }} />
+          <div style={{ position:'absolute', left:0, right:0, top:h*60, borderTop:`1px solid var(--border)`, pointerEvents:'none' }} />
           <div style={{ position:'absolute', left:0, right:0, top:h*60+30, borderTop:'1px dashed rgba(255,255,255,0.03)', pointerEvents:'none' }} />
         </div>
       ))}
