@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
@@ -16,6 +17,8 @@ type DayEntry = {
   updatedAt: string
 }
 const PLACE_KEYS = ['office', 'remote', 'project', 'trip']
+// Русские метки статусов дня — фолбэк, если статуса нет в настраиваемых форматах (напр. новый 'working')
+const STATUS_LABEL: Record<string, string> = { working: 'Рабочий', weekend: 'Выходной', vacation: 'Отпуск', sick: 'Больничный', dayoff: 'Отгул' }
 
 function todayStr() { return new Date().toISOString().slice(0, 10) }
 function pad(n: number) { return String(n).padStart(2, '0') }
@@ -60,6 +63,7 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
   openTasksCount: number
 }) {
   const qc = useQueryClient()
+  const [blocked, setBlocked] = useState(false)   // показать «нельзя закрыть день» только после попытки закрыть
   const isToday = date === todayStr()
   const expected = expectedForDate(date, schedule)
   const expectedFormat = expected?.format ?? 'office'                        // план: место (office/remote) или 'weekend'
@@ -128,7 +132,7 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
 
   return (
     <div style={wrap}>
-      <Header date={date} isToday={isToday} type={fmt?.label ?? dayType} typeColor={isWork ? 'var(--accent-s)' : 'var(--text-muted)'} />
+      <Header date={date} isToday={isToday} type={fmt?.label ?? STATUS_LABEL[dayType] ?? dayType} typeColor={isWork ? 'var(--accent-s)' : 'var(--text-muted)'} />
 
       {/* Контролы всегда на месте (вёрстка не скачет); на отпуске/больничном/отгуле — неактивны */}
       <>
@@ -174,14 +178,14 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
               <button disabled={!interactive || !place} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
                 title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !place ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !interactive || !place)}>Начать рабочий день</button>
             ) : (
-              <button disabled={!interactive || openTasksCount > 0} onClick={() => save.mutate({ endTime: nowHHMM() })}
-                title={!canEdit ? 'Завершить можно только в текущий день' : openTasksCount > 0 ? `Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните их или перенесите на другой день (перетащите в календаре справа)` : ''}
-                style={bigBtn(ROLE.primary, !interactive || openTasksCount > 0)}>Закончить рабочий день</button>
+              <button disabled={!interactive} onClick={() => { if (openTasksCount > 0) { setBlocked(true); return } save.mutate({ endTime: nowHHMM() }) }}
+                title={!canEdit ? 'Завершить можно только в текущий день' : ''}
+                style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
             )}
           </div>
 
           {/* Правило «нельзя закрыть с незакрытыми — перенести»: подсказка держится на виду, не тултипом */}
-          {interactive && started && !finished && openTasksCount > 0 && (
+          {interactive && started && !finished && openTasksCount > 0 && blocked && (
             <div style={{ marginTop: 10, fontSize: 12, color: '#F59E0B' }}>
               Нельзя закрыть день: {openTasksCount} {taskWord(openTasksCount)}. Заверните их или перенесите на другой день (перетащите в календаре справа).
             </div>
