@@ -1,7 +1,22 @@
 import { useRef, useEffect, useState } from 'react'
+import { GitBranch } from 'lucide-react'
 import type { CalEvent } from './types'
 import { WEEKDAYS_S, WEEKDAYS_F, MONTHS_RU_GEN, LOCATIONS } from './constants'
 import { toYMD, getWeekStart, layoutEvents, timeToMin, minToTime, snapTo15 } from './utils'
+
+// Метка «трековой» встречи — ненавязчивый бейдж-ветка в цвет события.
+// inline — перед названием (пилюли месяца / all-day строки); corner — угловая иконка в
+// хронокарточке дня/недели (видна даже когда текст скрыт при плотной раскладке).
+function TrackBadge({ color, corner }: { color: string; corner?: boolean }) {
+  const style: React.CSSProperties = corner
+    ? { position: 'absolute', top: 2, right: 3, zIndex: 3, display: 'flex', pointerEvents: 'none', opacity: 0.85 }
+    : { display: 'inline-flex', verticalAlign: 'middle', marginRight: 3, flexShrink: 0, opacity: 0.9 }
+  return (
+    <span title="Событие по треку" style={style}>
+      <GitBranch size={11} strokeWidth={2.5} color={color} />
+    </span>
+  )
+}
 
 // Раскладка параллельных (§5): события лежат равными колонками, а справа колонки
 // всегда остаётся свободный ЗАЗОР — там можно зажать-протянуть, чтобы создать
@@ -55,7 +70,7 @@ export function MonthView({ cursor, today, selected, eventsFor, allDayFor, onDay
               {shown.map(evt => (
                 <div key={evt.id} onClick={e => { e.stopPropagation(); onEventClick(evt) }}
                   style={{ padding:'1px 6px', borderRadius:3, fontSize:12, fontWeight:500, marginBottom:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', background:evt.color+'22', color:evt.color, borderLeft:`2px solid ${evt.color}`, cursor:'pointer' }}>
-                  {evt.isAllDay ? '⬤ ' : ''}{evt.title}
+                  {evt.isAllDay ? '⬤ ' : ''}{evt.trackId && <TrackBadge color={evt.color} />}{evt.title}
                 </div>
               ))}
               {extra > 0 && <div style={{ fontSize:12, color:'var(--text-muted)', padding:'1px 4px' }}>+{extra} ещё</div>}
@@ -152,7 +167,7 @@ export function WeekView({ cursor, today, eventsFor, allDayFor, onEventClick, on
                 {entries.map(e => (
                   <div key={e.id} onClick={() => onEventClick(e)}
                     style={{ padding:'1px 6px', borderRadius:3, fontSize:12, fontWeight:500, marginBottom:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', background:e.color+'22', color:e.color, cursor:'pointer' }}>
-                    {e.title}
+                    {e.trackId && <TrackBadge color={e.color} />}{e.title}
                   </div>
                 ))}
               </div>
@@ -316,6 +331,7 @@ export function DayColumn({ ymd, isToday, events, layout, bodyRef, onEventClick,
             onMouseDown={onEventDown ? e => onEventDown(evt, e) : undefined}
             onClick={onEventDown ? undefined : () => onEventClick(evt)}
             style={{ position:'absolute', top:sMin, height, left, width, background:evt.color+'22', borderLeft:`3px solid ${evt.color}`, borderRadius:6, padding: veryDense ? '2px 3px' : dense ? '3px 5px' : '4px 7px', fontSize:12, fontWeight:600, color:evt.color, overflow:'hidden', cursor:'pointer', zIndex:2 }}>
+            {evt.trackId && <TrackBadge color={evt.color} corner />}
             {!veryDense && (
               <div style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{evt.title}</div>
             )}
@@ -416,7 +432,7 @@ export function DayView({ cursor, today, eventsFor, allDayFor, onEventClick, onD
             {allDay.map(e => (
               <div key={e.id} onClick={() => onEventClick(e)}
                 style={{ padding:'2px 10px', borderRadius:4, fontSize:12, fontWeight:500, background:e.color+'22', color:e.color, cursor:'pointer' }}>
-                {e.title}
+                {e.trackId && <TrackBadge color={e.color} />}{e.title}
               </div>
             ))}
           </div>

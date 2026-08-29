@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Users, Calendar, List as ListIcon } from 'lucide-react'
 import { api } from '../lib/api'
+import { toast } from '../lib/toast'
+import { useConfirm } from '../components/ConfirmModal'
 import { FormatsTab } from './SettingsPage'
 
 // «Списки» — единые справочники для всех. Админ настраивает значения, формы сотрудников читают.
@@ -60,7 +62,7 @@ function RefListTab({ listKey, label }: { listKey: string; label: string }) {
   const list = lists.find(l => l.key === listKey)
   const [value, setValue] = useState('')
 
-  const onErr = (err: unknown) => alert((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка')
+  const onErr = (err: unknown) => toast((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка', 'info')
   const add = useMutation({
     mutationFn: () => api.post(`/refs/${listKey}/items`, { value: value.trim() }),
     onSuccess: () => { setValue(''); qc.invalidateQueries({ queryKey: ['refs'] }) },
@@ -114,7 +116,8 @@ function ClientsTab() {
   const { data: clients = [] } = useQuery<Client[]>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data) })
   const [name, setName] = useState('')
 
-  const onErr = (err: unknown) => alert((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка')
+  const onErr = (err: unknown) => toast((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка', 'info')
+  const { confirm, confirmUI } = useConfirm()
   const add = useMutation({
     mutationFn: () => api.post('/clients', { name: name.trim() }),
     onSuccess: () => { setName(''); qc.invalidateQueries({ queryKey: ['clients'] }) },
@@ -151,12 +154,13 @@ function ClientsTab() {
         ) : clients.map(c => (
           <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 14px', borderBottom: '1px solid var(--border)' }}>
             <span style={{ fontSize: 14, color: 'var(--text-1)' }}>{c.name}</span>
-            <button onClick={() => { if (window.confirm(`Удалить клиента «${c.name}»?`)) del.mutate(c.id) }} disabled={del.isPending} title="Удалить" style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--danger, #e8194b)', cursor: 'pointer', display: 'inline-flex' }}>
+            <button onClick={() => confirm({ message: `Удалить клиента «${c.name}»?`, confirmLabel: 'Удалить', danger: true }).then(ok => ok && del.mutate(c.id))} disabled={del.isPending} title="Удалить" style={{ padding: '4px 7px', borderRadius: 6, border: '1px solid var(--border)', background: 'none', color: 'var(--danger, #e8194b)', cursor: 'pointer', display: 'inline-flex' }}>
               <Trash2 size={14} />
             </button>
           </div>
         ))}
       </div>
+      {confirmUI}
     </div>
   )
 }

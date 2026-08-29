@@ -250,8 +250,21 @@ export function AppShell() {
   // 'svod' — merged-алиас: Свод слит в Аналитику (внутренняя вкладка), отдельной страницы нет;
   // модули с page:'svod' (напр. adm.svod-company) НЕ показываем отдельной вкладкой в меню.
   const navPageIds = new Set([...USER_NAV.map((n) => n.id as string), 'svod'])
+  // Standalone-страницы ВНЕ основного меню, которые департаментский модуль вправе открыть
+  // отдельным пунктом (пока только Оргструктура/Персонал по hr.orgstructure).
+  // Внутренние вкладки ('tasks'→кабинет, 'svod'→аналитика) и безстраничные модули
+  // (adm.news = «Публикация в Пульс» — функционал НА Пульсе) отдельным пунктом НЕ становятся.
+  const extraPageIds = new Set<string>(['personnel'])
+  // Внешние/внутренние сервисы (ext.*/int.*, напр. Инвентаризация) получают пункт всегда —
+  // даже без page: навигация идёт спец-обработчиком в handleNavigate.
+  const isServiceModule = (m: { key: string }) => m.key.startsWith('ext.') || m.key.startsWith('int.')
+  // Модуль становится пунктом меню ТОЛЬКО если это сервис ИЛИ у него есть валидная page,
+  // которой нет в основном меню, но которая при этом — реальная standalone-страница.
+  // Так отсекаются фантомы adm.news (нет page) и prod.board (page:'tasks' — вкладка кабинета, не страница).
   const extraModules = !isAdmin
-    ? (user?.access?.modules ?? []).filter((m) => !m.page || !navPageIds.has(m.page))
+    ? (user?.access?.modules ?? []).filter(
+        (m) => isServiceModule(m) || (!!m.page && !navPageIds.has(m.page) && extraPageIds.has(m.page)),
+      )
     : []
   // Три блока под основными вкладками (решение Влада, порядок):
   //   «Платформа»          — функциональные вкладки Nexus для отделов/департаментов/людей (модули без спец-префикса);

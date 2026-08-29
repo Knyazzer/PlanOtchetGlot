@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
+import { toast } from '../lib/toast'
+import { useConfirm } from '../components/ConfirmModal'
 import { TaskModal } from './TasksPage'
 import { Hint } from '../components/Hint'
 import { ROLE, filled, tonal, outline } from '../lib/roleColors'
@@ -131,6 +133,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
   track: TrackDetail; isInvolved: boolean; canDeleteStage: boolean; onOpenTask: (id: string) => void; onOpenChatWith?: OpenChatFn
 }) {
   const qc = useQueryClient()
+  const { confirm, confirmUI } = useConfirm()
   const sorted = [...track.stages].sort((a, b) => a.order - b.order)
   const CRAD = CIRCLE_D / 2
 
@@ -152,7 +155,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
       qc.invalidateQueries({ queryKey: ['track', track.id] })
       setSelectedIdx(sorted.length)
     },
-    onError: (e: any) => alert(e?.response?.data?.error ?? 'Ошибка'),
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   const deleteStageMut = useMutation({
@@ -161,7 +164,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
       qc.invalidateQueries({ queryKey: ['track', track.id] })
       setSelectedIdx(prev => Math.max(0, prev - 1))
     },
-    onError: (e: any) => alert(e?.response?.data?.error ?? 'Ошибка'),
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   const unstageTasks = track.tasks.filter(t => !t.stageId)
@@ -214,7 +217,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
                 </svg>
                 {canDeleteStage && isSel && (
                   <button
-                    onClick={() => { if (confirm(`Удалить Этап ${i + 1}? Задачи открепятся.`)) deleteStageMut.mutate(stage.id) }}
+                    onClick={() => confirm({ message: `Удалить Этап ${i + 1}? Задачи открепятся.`, confirmLabel: 'Удалить', danger: true }).then(ok => ok && deleteStageMut.mutate(stage.id))}
                     title="Удалить этап"
                     style={{ position: 'absolute', top: -5, right: -5, width: 16, height: 16, borderRadius: '50%', border: 'none', background: 'rgba(232,25,75,0.85)', color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 1 }}
                   >×</button>
@@ -271,6 +274,7 @@ function StageTimeline({ track, isInvolved, canDeleteStage, onOpenTask, onOpenCh
           }}
         />
       )}
+      {confirmUI}
     </div>
   )
 }
@@ -415,7 +419,7 @@ export function TrackFormModal({
       return res.data
     },
     onSuccess: (data) => { qc.invalidateQueries({ queryKey: ['tracks'] }); onSaved(data.id); onClose() },
-    onError: (e: any) => alert(e?.response?.data?.error ?? 'Ошибка'),
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   const editMut = useMutation({
@@ -428,7 +432,7 @@ export function TrackFormModal({
       await api.put(`/tracks/${initial!.id}/members`, { memberIds })
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['tracks'] }); qc.invalidateQueries({ queryKey: ['track', initial!.id] }); onSaved(); onClose() },
-    onError: (e: any) => alert(e?.response?.data?.error ?? 'Ошибка'),
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   const pending = createMut.isPending || editMut.isPending
@@ -520,7 +524,7 @@ function CreateTrackEventModal({ track, onClose }: { track: TrackDetail; onClose
       trackId: track.id,   // §9: событие видно внутри трека
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['events'] }); qc.invalidateQueries({ queryKey: ['track', track.id] }); onClose() },
-    onError: (e: any) => alert(e?.response?.data?.error ?? 'Ошибка'),
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   return (
@@ -592,6 +596,7 @@ function OpenTask({ taskId, onClose, onDone, onOpenChatWith }: { taskId: string;
 function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { trackId: string; onClose: () => void; onOpenChatWith?: OpenChatFn; onOpenTrackChat?: (chatId: string) => void }) {
   const currentUser = useAuthStore(s => s.user)
   const qc = useQueryClient()
+  const { confirm, confirmUI } = useConfirm()
   const [editing,      setEditing]      = useState(false)
   const [creatingEvent, setCreatingEvent] = useState(false)
   const [openTaskId,   setOpenTaskId]   = useState<string | null>(null)
@@ -606,7 +611,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
   const deleteMut = useMutation({
     mutationFn: () => api.delete(`/tracks/${trackId}`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['tracks'] }); onClose() },
-    onError: (e: any) => alert(e?.response?.data?.error ?? 'Ошибка'),
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   const canEdit  = !!currentUser && (currentUser.isAdmin || track?.leaderId === currentUser.id)
@@ -657,7 +662,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
             {canEdit && (
               <>
                 <button onClick={() => setEditing(true)} style={{ ...outline(), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>Редактировать</button>
-                <button onClick={() => { if (confirm('Удалить трек?')) deleteMut.mutate() }} style={{ ...tonal('danger'), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>Удалить</button>
+                <button onClick={() => confirm({ message: 'Удалить трек?', confirmLabel: 'Удалить', danger: true }).then(ok => ok && deleteMut.mutate())} style={{ ...tonal('danger'), padding: '6px 14px', fontSize: 12, fontWeight: 600 }}>Удалить</button>
               </>
             )}
           </div>
@@ -691,6 +696,7 @@ function TrackDetail({ trackId, onClose, onOpenChatWith, onOpenTrackChat }: { tr
       {editing      && <TrackFormModal initial={track} onClose={() => setEditing(false)} onSaved={() => {}} />}
       {creatingEvent && <CreateTrackEventModal track={track} onClose={() => setCreatingEvent(false)} />}
       {openTaskId && <OpenTask taskId={openTaskId} onClose={() => setOpenTaskId(null)} onDone={() => { qc.invalidateQueries({ queryKey: ['track', trackId] }); qc.invalidateQueries({ queryKey: ['tasks'] }); setOpenTaskId(null) }} onOpenChatWith={onOpenChatWith} />}
+      {confirmUI}
     </div>
   )
 }

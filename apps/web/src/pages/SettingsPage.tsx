@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Shield, Database, Plus, Trash2, CalendarDays } from 'lucide-react'
 import { api } from '../lib/api'
+import { toast } from '../lib/toast'
+import { useConfirm } from '../components/ConfirmModal'
 import { useCurrentUser } from '../hooks/useAuth'
 
 // Настройки. Вкладки: «Форматы дня» (admin/HR), «Роли и доступы» + «Бэкапы» (admin).
@@ -97,7 +99,8 @@ export function FormatsTab() {
     qc.invalidateQueries({ queryKey: ['day-format-versions'] })
     qc.invalidateQueries({ queryKey: ['day-formats'] })
   }
-  const onErr = (err: unknown) => alert((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка')
+  const onErr = (err: unknown) => toast((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка', 'info')
+  const { confirm, confirmUI } = useConfirm()
 
   // ── правка существующего формата ──
   const [editing, setEditing] = useState<string | null>(null)
@@ -129,12 +132,12 @@ export function FormatsTab() {
     mutationFn: (key: string) => api.delete(`/day-entries/formats/${key}`),
     onSuccess: (res: { data: { retired?: boolean; usedBy?: number } }) => {
       invalidate()
-      if (res.data?.retired) alert(`Формат снят с использования (записей с ним: ${res.data.usedBy}). История сохранена.`)
+      if (res.data?.retired) toast(`Формат снят с использования (записей с ним: ${res.data.usedBy}). История сохранена.`, 'info')
     },
     onError: onErr,
   })
   const onDelete = (v: FormatVersion) => {
-    if (window.confirm(`Удалить формат «${v.label}»?\nЕсли он уже проставлен в чьих-то днях — будет снят с использования (история сохранится).`)) del.mutate(v.key)
+    confirm({ message: `Удалить формат «${v.label}»? Если он уже проставлен в чьих-то днях — будет снят с использования (история сохранится).`, confirmLabel: 'Удалить', danger: true }).then(ok => ok && del.mutate(v.key))
   }
 
   const th: React.CSSProperties = { padding: '8px 12px', fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', borderBottom: '1px solid var(--border)' }
@@ -222,6 +225,7 @@ export function FormatsTab() {
           </div>
         </div>
       )}
+      {confirmUI}
     </div>
   )
 }
@@ -246,7 +250,7 @@ export function RolesTab() {
   const setGrant = useMutation({
     mutationFn: (p: { deptId: string; moduleKey: string; editLevel: string | null }) => api.put('/access/grants', p),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['access-grants'] }),
-    onError: (err: unknown) => alert((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка'),
+    onError: (err: unknown) => toast((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   const groups = [...new Set(registry.map(m => m.group))]

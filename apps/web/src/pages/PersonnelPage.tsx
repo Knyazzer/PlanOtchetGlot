@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { toast } from '../lib/toast'
+import { useConfirm } from '../components/ConfirmModal'
 import { OrgChartTab } from '../components/OrgChart'
 import { WorkScheduleEditor } from '../components/WorkScheduleEditor'
 import { useCurrentUser } from '../hooks/useAuth'
@@ -173,7 +175,7 @@ function CreateModal({ type, onClose, onCreated }: CreateModalProps) {
       return api.post(url, data)
     },
     onSuccess: () => { onCreated(); onClose() },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Ошибка создания'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Ошибка создания', 'info'),
   })
 
   const isStaff = type === 'staff'
@@ -281,6 +283,7 @@ interface DrawerProps {
 function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: DrawerProps) {
   const mdRef = useRef(false)
   const qc = useQueryClient()
+  const { confirm, confirmUI } = useConfirm()
   const queryKey = person.userType === 'staff' ? ['staff'] : ['freelancers']
 
   const [name,  setFullName]  = useState(person.name)
@@ -298,7 +301,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
     onSuccess: () => qc.invalidateQueries({ queryKey, refetchType: 'all' }),
     onError: (err: any) => {
       setPlatformAccess(person.canAccessPlatform)  // откат оптимистичного переключения
-      alert(err?.response?.data?.error ?? 'Не удалось изменить доступ в платформу')
+      toast(err?.response?.data?.error ?? 'Не удалось изменить доступ в платформу', 'info')
     },
   })
 
@@ -315,13 +318,13 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Ошибка сохранения'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Ошибка сохранения', 'info'),
   })
 
   const deactivate = useMutation({
     mutationFn: () => api.post(`/users/${person.id}/deactivate`),
     onSuccess: () => { qc.invalidateQueries({ queryKey, refetchType: 'all' }); onClose() },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Ошибка увольнения'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Ошибка увольнения', 'info'),
   })
 
   const reactivate = useMutation({
@@ -330,7 +333,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
       qc.invalidateQueries({ queryKey, refetchType: 'all' })
       setSaved(true); setTimeout(() => setSaved(false), 2000)
     },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Ошибка восстановления'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Ошибка восстановления', 'info'),
   })
 
   const onboard = useMutation({
@@ -338,13 +341,13 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
     onSuccess: (res: any) => {
       if (res.data?.linkedExisting) {
         setTempPw(null)
-        alert('Доступ выдан. У сотрудника уже был аккаунт — он входит своим существующим паролем (как в другом приложении).')
+        toast('Доступ выдан. У сотрудника уже был аккаунт — он входит своим существующим паролем (как в другом приложении).', 'success')
       } else {
         setTempPw(res.data?.tempPassword ?? null)
       }
       qc.invalidateQueries({ queryKey, refetchType: 'all' })
     },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Не удалось выдать доступ'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Не удалось выдать доступ', 'info'),
   })
 
   const resetPw = useMutation({
@@ -353,14 +356,14 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
       setTempPw(res.data?.tempPassword ?? null)
       qc.invalidateQueries({ queryKey, refetchType: 'all' })
     },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Не удалось сбросить пароль'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Не удалось сбросить пароль', 'info'),
   })
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Тоггл «Работает сейчас» сменил занятость → увольнение/восстановление
     if (isWorking !== person.isActive) {
       if (!isWorking) {
-        if (!window.confirm('Уволить сотрудника? Доступ будет заблокирован во всех приложениях (обратимо).')) return
+        if (!(await confirm({ message: 'Уволить сотрудника? Доступ будет заблокирован во всех приложениях (обратимо).', confirmLabel: 'Уволить', danger: true }))) return
         deactivate.mutate()
       } else {
         reactivate.mutate()
@@ -567,6 +570,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
 
         </div>
       </div>
+      {confirmUI}
     </>
   )
 }
@@ -575,6 +579,7 @@ function PersonDrawer({ person, onClose, onImpersonate, impersonateCopied }: Dra
 
 function StaffTab() {
   const qc = useQueryClient()
+  const { confirm, confirmUI } = useConfirm()
   const [selected, setSelected] = useState<PersonUser | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [copied, setCopied] = useState<string | null>(null)
@@ -617,14 +622,14 @@ function StaffTab() {
       setCopied(id)
       setTimeout(() => setCopied(v => v === id ? null : v), 3000)
     },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Ошибка'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null)
   const bulkOnboard = useMutation({
     mutationFn: () => api.post('/users/bulk-onboard').then(r => r.data as BulkResult),
     onSuccess: (d) => { setBulkResult(d); qc.invalidateQueries({ queryKey: ['staff'], refetchType: 'all' }) },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Ошибка массового онбординга'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Ошибка массового онбординга', 'info'),
   })
 
   if (isLoading) return <div style={{ color: 'var(--text-muted)', fontSize: 14, padding: '48px 0', textAlign: 'center' }}>Загрузка...</div>
@@ -649,7 +654,7 @@ function StaffTab() {
           </label>
           <div style={{ flex: 1 }} />
           <button
-            onClick={() => { if (window.confirm('Завести логины всем сотрудникам с корп-почтой (без аккаунта)? Будут созданы аккаунты с временными паролями — список покажется один раз.')) bulkOnboard.mutate() }}
+            onClick={() => confirm({ message: 'Завести логины всем сотрудникам с корп-почтой (без аккаунта)? Будут созданы аккаунты с временными паролями — список покажется один раз.', confirmLabel: 'Завести' }).then(ok => ok && bulkOnboard.mutate())}
             disabled={bulkOnboard.isPending}
             style={{
               fontSize: 12, padding: '7px 14px', borderRadius: 8,
@@ -758,6 +763,7 @@ function StaffTab() {
       )}
 
       {bulkResult && <BulkOnboardResult result={bulkResult} onClose={() => setBulkResult(null)} />}
+      {confirmUI}
     </>
   )
 }
@@ -885,7 +891,7 @@ function FreelancersTab() {
       setCopied(id)
       setTimeout(() => setCopied(v => v === id ? null : v), 3000)
     },
-    onError: (err: any) => alert(err?.response?.data?.error ?? 'Ошибка'),
+    onError: (err: any) => toast(err?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
   if (isLoading) return <div style={{ color: 'var(--text-muted)', fontSize: 14, padding: '48px 0', textAlign: 'center' }}>Загрузка...</div>

@@ -436,7 +436,7 @@ function EditPersonalGoalsModal({ goals, onClose, onSaved }: { goals: PGoal[]; o
       return api.put('/personal-goals', { goals: list })
     },
     onSuccess: () => { onSaved(); onClose() },
-    onError: (e: unknown) => { const err = e as { response?: { data?: { error?: string } } }; alert(err?.response?.data?.error ?? 'Не удалось сохранить') },
+    onError: (e: unknown) => { const err = e as { response?: { data?: { error?: string } } }; toast(err?.response?.data?.error ?? 'Не удалось сохранить', 'info') },
   })
   return (
     <div onMouseDown={e => { down.current = e.target === e.currentTarget }} onMouseUp={e => { if (down.current && e.target === e.currentTarget) onClose(); down.current = false }}
@@ -517,7 +517,7 @@ function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, on
   const { data: clients = [] } = useQuery<Array<{ id: string; name: string }>>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data), staleTime: 300_000 })
   const { data: goals = [] } = useQuery<Array<{ id: string; title: string }>>({ queryKey: ['strategic-goals'], queryFn: () => api.get('/strategic-goals').then(r => r.data), staleTime: 120_000 })
   const { data: tracks = [] } = useQuery<Array<{ id: string; title: string }>>({ queryKey: ['tracks'], queryFn: () => api.get('/tracks').then(r => r.data), staleTime: 120_000 })
-  const patch = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => api.patch(`/tasks/${id}`, data), onSuccess: onChanged, onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось сохранить') })
+  const patch = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => api.patch(`/tasks/${id}`, data), onSuccess: onChanged, onError: (e: any) => toast(e?.response?.data?.error ?? 'Не удалось сохранить', 'info') })
   const [draft, setDraft] = useState<Draft | null>(null)
   const clientOpts = clients.map(c => ({ value: c.name, label: c.name }))
   const toMinutes = (hhmm: string) => { if (!hhmm) return null; const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
@@ -552,7 +552,7 @@ function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, on
         actualMinutes: toMinutes(d.time) })
     },
     onSuccess: () => { setDraft(null); onChanged(); toast('Задача добавлена') },
-    onError: (e: any) => alert(e?.response?.data?.error ?? 'Не удалось создать задачу'),
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Не удалось создать задачу', 'info'),
   })
 
   // Клик вне строки-черновика: заполнено название → создать; пусто → отменить (убрать строку).

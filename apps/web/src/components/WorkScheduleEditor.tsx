@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { toast } from '../lib/toast'
 import type { WorkSchedule } from '../lib/workSchedule'
 
 // HR-конфиг графика работы сотрудника (A 2/3): недельный паттерн типов дня + часы.
@@ -44,7 +45,7 @@ function Form({ userId, init, isNew, formats }: { userId: string; init: Draft; i
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { error?: string } } }
-      alert(e?.response?.data?.error ?? 'Не удалось сохранить график')
+      toast(e?.response?.data?.error ?? 'Не удалось сохранить график', 'info')
     },
   })
   // автосейв: любое изменение сразу пишется (без кнопки «Сохранить»)

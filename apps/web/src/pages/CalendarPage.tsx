@@ -68,6 +68,7 @@ export function CalendarPage() {
       start: e.startTime, end: e.endTime,
       color: TYPE_COLOR[e.type] ?? '#8B5CF6',
       type: e.type, isAllDay: false, source: 'event', location: e.location,
+      trackId: e.trackId ?? null,   // §9: метка события, привязанного к треку
     }))
     const entries: CalEvent[] = apiEntries.map(e => ({
       id: e.id, title: e.title + (e.targetUser ? ` (${e.targetUser.name})` : ''),

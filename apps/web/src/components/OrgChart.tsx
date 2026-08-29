@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { useConfirm } from './ConfirmModal'
 import { DEPT_COLORS } from './orgchart/constants'
 import { CtxMenu, DeptTree } from './orgchart/DeptTree'
 import {
@@ -27,10 +28,11 @@ export function OrgChartTab() {
   })
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['structure'] })
+  const { confirm, confirmUI } = useConfirm()
 
   const [migrating, setMigrating] = useState(false)
   const migrateFromSheets = async () => {
-    if (!confirm('Импортировать структуру из данных Sheets (dept/subDept)? Существующие записи не будут перезаписаны.')) return
+    if (!(await confirm({ message: 'Импортировать структуру из данных Sheets (dept/subDept)? Существующие записи не будут перезаписаны.', confirmLabel: 'Импортировать' }))) return
     setMigrating(true)
     try {
       await api.post('/structure/migrate-from-sheets')
@@ -200,10 +202,10 @@ export function OrgChartTab() {
             dept={dept}
             allUsers={allUsers}
             onEditDept={d => setModal({ type:'editDept', dept: d })}
-            onDeleteDept={id => { if (confirm('Удалить департамент?')) deleteDept.mutate(id) }}
+            onDeleteDept={id => confirm({ message: 'Удалить департамент?', confirmLabel: 'Удалить', danger: true }).then(ok => ok && deleteDept.mutate(id))}
             onAddDiv={deptId => setModal({ type:'addDiv', deptId })}
             onEditDiv={div => setModal({ type:'editDiv', div })}
-            onDeleteDiv={id => { if (confirm('Удалить отдел?')) deleteDiv.mutate(id) }}
+            onDeleteDiv={id => confirm({ message: 'Удалить отдел?', confirmLabel: 'Удалить', danger: true }).then(ok => ok && deleteDiv.mutate(id))}
             onAddMember={divId => setModal({ type:'addMember', divId })}
             onEditMember={m => setModal({ type:'editMember', membership: m })}
             onRemoveMember={(userId, divId) => deleteMember.mutate({ userId, divId })}
@@ -251,7 +253,7 @@ export function OrgChartTab() {
           dept={modal.dept}
           users={allUsers}
           onSave={data => { updateDept.mutate({ id: modal.dept.id, ...data }); closeModal() }}
-          onDelete={() => { if (confirm('Удалить департамент?')) { deleteDept.mutate(modal.dept.id); closeModal() } }}
+          onDelete={() => confirm({ message: 'Удалить департамент?', confirmLabel: 'Удалить', danger: true }).then(ok => { if (ok) { deleteDept.mutate(modal.dept.id); closeModal() } })}
           onAddDiv={() => { closeModal(); setModal({ type:'addDiv', deptId: modal.dept.id }) }}
           onClose={closeModal}
         />
@@ -276,7 +278,7 @@ export function OrgChartTab() {
           div={modal.div}
           users={allUsers}
           onSave={data => { updateDiv.mutate({ id: modal.div.id, ...data }); closeModal() }}
-          onDelete={() => { if (confirm('Удалить отдел?')) { deleteDiv.mutate(modal.div.id); closeModal() } }}
+          onDelete={() => confirm({ message: 'Удалить отдел?', confirmLabel: 'Удалить', danger: true }).then(ok => { if (ok) { deleteDiv.mutate(modal.div.id); closeModal() } })}
           onClose={closeModal}
         />
       )}
@@ -298,6 +300,7 @@ export function OrgChartTab() {
           onClose={closeModal}
         />
       )}
+      {confirmUI}
     </div>
   )
 }

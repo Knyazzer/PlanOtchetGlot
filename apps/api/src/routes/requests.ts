@@ -75,6 +75,38 @@ async function unreflectLeave(tx: TxClient, r: { userId: string; type: string; d
   }
 }
 
+// Статусы-отсутствия дня, которые обязаны быть подкреплены одобренной заявкой.
+export const LEAVE_FORMATS = new Set(['vacation', 'sick', 'dayoff'])
+
+// Идемпотентная чистка «отпуска-сироты» (docs/POSTMORTEM-2026-08-10): если статус дня —
+// отсутствие (vacation/sick/dayoff), но НЕТ активной одобренной заявки того же типа,
+// покрывающей дату, — статус сбрасывается к рабочему ('working'). Причина сирот —
+// не отработавший unreflectLeave (залипший API при отзыве заявки).
+// Безопасна к повторному вызову: рабочий день не трогается, легитимное отсутствие не трогается.
+// db — опциональный клиент транзакции (по умолчанию общий prisma). Возвращает true, если чинил.
+export async function reconcileLeaveDay(userId: string, date: string, db: TxClient = prisma): Promise<boolean> {
+  const dateObj = new Date(date)
+  const entry = await db.dayEntry.findUnique({
+    where: { userId_date: { userId, date: dateObj } },
+    select: { dayFormat: true },
+  })
+  if (!entry || !LEAVE_FORMATS.has(entry.dayFormat)) return false // не отсутствие — чинить нечего
+
+  // Заявки хранят даты строками YYYY-MM-DD → лексикографическое сравнение = хронологическое.
+  const covering = await db.request.findFirst({
+    where: { userId, type: entry.dayFormat, status: 'approved', dateFrom: { lte: date }, dateTo: { gte: date } },
+    select: { id: true },
+  })
+  if (covering) return false // заявка есть — статус легитимен
+
+  // Сирота: сброс к рабочему статусу + аудит (changedBy = 'system')
+  await db.dayEntry.update({ where: { userId_date: { userId, date: dateObj } }, data: { dayFormat: 'working' } })
+  await db.dayEntryLog.create({
+    data: { userId, date: dateObj, changedBy: 'system', oldFormat: entry.dayFormat, newFormat: 'working' },
+  })
+  return true
+}
+
 export async function requestsRoutes(app: FastifyInstance) {
   // GET /requests/types — реестр типов заявок
   app.get('/types', { preHandler: authenticate }, async () => REQUEST_TYPES)

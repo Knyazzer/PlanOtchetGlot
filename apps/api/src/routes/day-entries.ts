@@ -5,6 +5,7 @@ import { authenticate } from '../plugins/auth'
 import { getOrgScope } from '../services/orgScope'
 import { hasModule } from '../services/access'
 import { monthProduction, businessDays } from '../services/calendarRf'
+import { reconcileLeaveDay, LEAVE_FORMATS } from './requests'
 
 // Управление справочником форматов дня — admin ИЛИ HR (модуль hr.orgstructure/hr.absences).
 async function assertFormatManager(req: FastifyRequest, reply: FastifyReply): Promise<boolean> {
@@ -185,11 +186,24 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
       if (!scope.visibleUserIds.includes(targetId)) return reply.code(403).send({ error: 'Forbidden' })
     }
 
-    return prisma.dayEntry.findMany({
+    const query = {
       where: { userId: targetId, date: { gte: new Date(from), lte: new Date(to) } },
       select: DAY_SELECT,
-      orderBy: { date: 'asc' },
-    })
+      orderBy: { date: 'asc' as const },
+    }
+    const rows = await prisma.dayEntry.findMany(query)
+
+    // Самолечение «отпуска-сироты»: leave-дни без активной одобренной заявки сбрасываем
+    // к рабочему статусу (идемпотентно). Дёшево: реконсиляция только для дней-отсутствий.
+    const leaveDays = rows.filter(r => LEAVE_FORMATS.has(r.dayFormat))
+    if (leaveDays.length) {
+      let fixed = false
+      for (const r of leaveDays) {
+        if (await reconcileLeaveDay(targetId, r.date.toISOString().slice(0, 10))) fixed = true
+      }
+      if (fixed) return prisma.dayEntry.findMany(query)
+    }
+    return rows
   })
 
   // ── PUT /day-entries — upsert СВОЕГО дня ─────────────────────────────────────
@@ -209,14 +223,31 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: `Неизвестный статус дня: ${dayFormat}` })
 
     const divisionId = await resolveDivisionId(user.id) // снапшот отдела на момент записи
-    const entry = await prisma.dayEntry.upsert({
-      where: { userId_date: { userId: user.id, date: new Date(date) } },
-      update: { dayFormat, place: place ?? null, startTime: startTime ?? null, endTime: endTime ?? null, breakMin: breakMin ?? 0 },
-      create: {
-        userId: user.id, divisionId, date: new Date(date), dayFormat, place: place ?? null,
-        startTime: startTime ?? null, endTime: endTime ?? null, breakMin: breakMin ?? 0,
-      },
-      select: DAY_SELECT,
+    const dateObj = new Date(date)
+    // Upsert дня + аудит смены СТАТУСА — АТОМАРНО: читаем прежний dayFormat ДО upsert и,
+    // если статус реально изменился, пишем DayEntryLog в той же транзакции (либо всё, либо ничего).
+    const entry = await prisma.$transaction(async (tx) => {
+      const prev = await tx.dayEntry.findUnique({
+        where: { userId_date: { userId: user.id, date: dateObj } },
+        select: { dayFormat: true },
+      })
+      const saved = await tx.dayEntry.upsert({
+        where: { userId_date: { userId: user.id, date: dateObj } },
+        update: { dayFormat, place: place ?? null, startTime: startTime ?? null, endTime: endTime ?? null, breakMin: breakMin ?? 0 },
+        create: {
+          userId: user.id, divisionId, date: dateObj, dayFormat, place: place ?? null,
+          startTime: startTime ?? null, endTime: endTime ?? null, breakMin: breakMin ?? 0,
+        },
+        select: DAY_SELECT,
+      })
+      // фиксируем только реальную смену статуса (первое заполнение дня — тоже смена: null → newFormat)
+      const oldFormat = prev?.dayFormat ?? null
+      if (oldFormat !== dayFormat) {
+        await tx.dayEntryLog.create({
+          data: { userId: user.id, date: dateObj, changedBy: user.id, oldFormat, newFormat: dayFormat },
+        })
+      }
+      return saved
     })
     return entry
   })

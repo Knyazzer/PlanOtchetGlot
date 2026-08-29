@@ -8,6 +8,7 @@ export interface ApiEvent {
   date: string; startTime: string; endTime: string; location: string[]; status: string
   authorId: string; author: { id: string; name: string }
   participants: Array<{ userId: string; user: { id: string; name: string } }>
+  trackId?: string | null   // §9: событие привязано к треку
 }
 
 export interface ApiCalEntry {
@@ -26,6 +27,7 @@ export interface CalEvent {
   id: string; title: string; date: string; start: string; end: string
   color: string; type: string; isAllDay: boolean; source: 'event' | 'entry' | 'day'
   location?: string[]
+  trackId?: string | null   // §9: метка «трековой» встречи в рендере события
 }
 
 export interface CatDef { id: string; label: string; color: string }

@@ -782,6 +782,23 @@ model DayEntry {
   @@schema("nexus")
 }
 
+// Аудит-лог смены СТАТУСА дня (day_format). Неизменяемая лента в снапшот-стиле
+// (как StrategicGoalLog): связей на User нет — userId/changedBy хранятся строкой,
+// перевод/увольнение сотрудника не переписывает историю. oldFormat=null — дня ещё не было.
+model DayEntryLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")     // чей день сменили
+  date      DateTime @db.Date            // дата дня (календарный день)
+  changedBy String   @map("changed_by")  // кто сменил статус
+  oldFormat String?  @map("old_format")  // прежний статус (null — записи дня не было)
+  newFormat String   @map("new_format")  // новый статус
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, date])
+  @@map("day_entry_logs")
+  @@schema("nexus")
+}
+
 // График работы (HR): недельный паттерн типов дня + рабочие часы. Прогнозная
 // КОНФИГУРАЦИЯ (правится, не версионируется) — даёт «тип дня по умолчанию» как
 // подсказку; факты живут в DayEntry, Свод/аналитика считают только их.

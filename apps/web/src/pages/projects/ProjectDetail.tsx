@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../../lib/api'
+import { useConfirm } from '../../components/ConfirmModal'
 import { TrackFormModal } from '../TracksPage'
 import { formatName } from '../../lib/utils'
 import type { Project, ProjectStatus, WorkItem, WorkItemStatus, WorkItemDetail, ExpenseCategory, Department } from './types'
@@ -13,6 +14,7 @@ import { WorkItemFormModal } from './modals'
 
 export function ProjectDetail({ project, onBack }: { project: Project; onBack?: () => void }) {
   const qc = useQueryClient()
+  const { confirm, confirmUI } = useConfirm()
   const [showWIForm, setShowWIForm] = useState(false)
   const [selectedWI, setSelectedWI] = useState<string | null>(null)
 
@@ -57,7 +59,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack?: 
           )}
         </div>
         <button
-          onClick={() => { if (confirm(`Удалить проект «${project.title}»?`)) deleteProject.mutate() }}
+          onClick={() => confirm({ message: `Удалить проект «${project.title}»?`, confirmLabel: 'Удалить', danger: true }).then(ok => ok && deleteProject.mutate())}
           style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, padding: 4, flexShrink: 0 }}
           title="Удалить проект"
         >🗑</button>
@@ -115,6 +117,7 @@ export function ProjectDetail({ project, onBack }: { project: Project; onBack?: 
           onClose={() => setShowWIForm(false)}
         />
       )}
+      {confirmUI}
     </div>
   )
 }
@@ -125,6 +128,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
   item: WorkItem; active: boolean; onClick: () => void; projectId: string
 }) {
   const qc = useQueryClient()
+  const { confirm, confirmUI } = useConfirm()
   const [createTrack, setCreateTrack] = useState(false)
 
   const { data: detail } = useQuery<WorkItemDetail>({
@@ -205,7 +209,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
           </span>
         )}
         <button
-          onClick={e => { e.stopPropagation(); if (confirm(`Удалить «${wi.title}»?`)) deleteWI.mutate() }}
+          onClick={e => { e.stopPropagation(); confirm({ message: `Удалить «${wi.title}»?`, confirmLabel: 'Удалить', danger: true }).then(ok => ok && deleteWI.mutate()) }}
           style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14, padding: 2, flexShrink: 0 }}
         >✕</button>
       </div>
@@ -382,6 +386,7 @@ export function WorkItemCard({ item: wi, active, onClick, projectId }: {
           }}
         />
       )}
+      {confirmUI}
     </div>
   )
 }
