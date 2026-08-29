@@ -120,6 +120,12 @@
 Пометка: **v1** — выводимо из уже существующих механик Nexus (грант + гард + страница-носитель);
 **потом** — требует новой разработки (зависимость указана).
 
+> ⚠️ **Актуализация 2026-08-28 (RBAC-REDESIGN §4).** Из фактического `MODULE_REGISTRY` удалены 4 рудимента
+> (грант = 0 эффекта, в коде не потреблялись): `prod.board`, `com.clients`, `com.workitems`, `adm.svod-company`.
+> Строки ниже, где они упоминаются, оставлены как исторический дизайн-контекст, но в коде и сиде их больше нет.
+> Оставшиеся 11 модулей перегруппированы по **областям** (не по департаментским `group`): Проекты / HR /
+> Календарь / Аналитика / Пульс / Внешние — актуальный реестр см. §4.2.
+
 ### Сквозные шаблонные модули (выдаются нескольким департаментам)
 
 | Ключ | Механика | Готовность |
@@ -203,34 +209,41 @@ user-role-таблиц — **нет**: иерархия уже хранится 
 
 ### 4.2 Реестр модулей — в коде, не в БД
 
-`apps/api/src/lib/modules.ts` (+ зеркальный тип в web):
+Фактический реестр живёт в `apps/api/src/services/access.ts` (`MODULE_REGISTRY`). Текущее
+состояние после чистки и перегруппировки по областям (2026-08-28, спека
+[RBAC-REDESIGN-2026-08-28.md](RBAC-REDESIGN-2026-08-28.md) §4) — 11 модулей, `group` = область матрицы:
 
 ```ts
-export const MODULES = {
-  'hr.absences':        { name: 'Отсутствия',        group: 'HR',          readonly: false },
-  'hr.orgstructure':    { name: 'Оргструктура',      group: 'HR',          readonly: false },
-  'fin.expenses':       { name: 'Расходы',           group: 'Финансы',     readonly: false },
-  'fin.budgets':        { name: 'Бюджеты',           group: 'Финансы',     readonly: false },
-  'fin.company-finance':{ name: 'Финансы проектов',  group: 'Финансы',     readonly: true  },
-  'com.clients':        { name: 'Клиенты',           group: 'Коммерция',   readonly: false },
-  'com.projects':       { name: 'Проекты',           group: 'Коммерция',   readonly: false },
-  'com.workitems':      { name: 'Workflow заявок',   group: 'Коммерция',   readonly: false },
-  'prod.board':         { name: 'Доска производства',group: 'Производство',readonly: false },
-  'prod.workitems':     { name: 'Заявки отдела',     group: 'Производство',readonly: false },
-  'tv.studio-calendar': { name: 'Студии (знаменки)', group: 'Производство',readonly: false },
-  'design.queue':       { name: 'Очередь дизайна',   group: 'Производство',readonly: false },
-  'adm.svod-company':   { name: 'Свод · компания',   group: 'Администрация',readonly: true },
-  'adm.analytics-company':{ name:'Аналитика · компания', group:'Администрация', readonly: true },
-  'adm.calendar-global':{ name: 'Общий календарь',   group: 'Администрация',readonly: false },
-  'tech.platform':      { name: 'Админка платформы', group: 'Платформа',   readonly: false },
-  'tech.sheets':        { name: 'Google Sheets',     group: 'Платформа',   readonly: false },
-  'tech.support':       { name: 'Техподдержка',      group: 'Платформа',   readonly: false },
+export const MODULE_REGISTRY = {
+  // Область «Проекты» (всё гейтит routes/projects.ts, write на странице «Проекты»)
+  'com.projects':          { name: 'Реестр проектов',       group: 'Проекты',   page: 'projects' },
+  'prod.workitems':        { name: 'Заявки (Work Items)',   group: 'Проекты',   page: 'projects' },
+  'fin.budgets':           { name: 'Бюджеты work-items',    group: 'Проекты',   page: 'projects' },
+  'fin.expenses':          { name: 'Расходы work-items',    group: 'Проекты',   page: 'projects' },
+  'fin.company-finance':   { name: 'Финансы проектов',      group: 'Проекты',   readonly: true, page: 'projects' },
+  // Область «HR»
+  'hr.orgstructure':       { name: 'Оргструктура',          group: 'HR',        page: 'personnel' },
+  'hr.absences':           { name: 'Отсутствия сотрудников',group: 'HR',        page: 'calendar' },
+  // Область «Календарь»
+  'adm.calendar-global':   { name: 'Общий календарь',       group: 'Календарь', page: 'calendar' },
+  // Область «Аналитика»
+  'adm.analytics-company': { name: 'Аналитика · компания',  group: 'Аналитика', readonly: true, page: 'analytics' },
+  // Область «Пульс»
+  'adm.news':              { name: 'Публикация в Пульс',    group: 'Пульс' },
+  // Область «Внешние»
+  'ext.inventory':         { name: 'Инвентаризация',        group: 'Внешние',   readonly: true },
 } as const
-export type ModuleKey = keyof typeof MODULES
+export type ModuleKey = keyof typeof MODULE_REGISTRY
 ```
 
-Zod-валидация грантов — `z.enum(Object.keys(MODULES))`. Добавление модуля = строка в реестре + гард
-на роутах + пункт сайдбара; БД-миграций не требует.
+**Удалены 2026-08-28** (рудименты, грант = 0 эффекта, в коде не потреблялись — RBAC-REDESIGN §4):
+`prod.board` (Доска производства), `com.clients` (Клиенты), `com.workitems` (Workflow заявок),
+`adm.svod-company` (Свод · компания). Ранее (2026-07-11) так же удалены `tech.platform`/`tech.sheets`/`tech.support`.
+Орфан-гранты с удалёнными ключами в БД игнорируются (`getUserAccess`: `if (!meta) continue`).
+Модули `tv.studio-calendar` / `design.queue` из старого черновика реестра в код так и не вошли.
+
+Добавление модуля = строка в реестре + гард на роутах + отражение права внутри существующей вкладки
+(идеология «доступ→UI», RBAC-REDESIGN §2.1); БД-миграций не требует.
 
 ### 4.3 Auth-плагин: расчёт access и новые гарды
 

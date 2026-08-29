@@ -7,33 +7,31 @@ import { getOrgScope, OrgLevel } from './orgScope'
 
 export type ModuleMode = 'view' | 'edit'
 
+// Перегруппировка по областям — спека docs/RBAC-REDESIGN-2026-08-28.md §4 (2026-08-28).
+// group = область матрицы «Роли и доступы», а не бывшая департаментская группа.
 export const MODULE_REGISTRY: Record<string, { name: string; group: string; readonly?: boolean; page?: string }> = {
-  // сквозные шаблонные (производственные департаменты)
-  'prod.board':            { name: 'Доска производства', group: 'Производство', page: 'tasks' },
-  'prod.workitems':        { name: 'Заявки (Work Items)', group: 'Производство', page: 'projects' },
-  // HR
-  'hr.absences':           { name: 'Отсутствия сотрудников', group: 'HR', page: 'calendar' },
+  // Область «Проекты» — всё гейтит routes/projects.ts, write-операции на странице «Проекты»
+  'com.projects':          { name: 'Реестр проектов', group: 'Проекты', page: 'projects' },
+  'prod.workitems':        { name: 'Заявки (Work Items)', group: 'Проекты', page: 'projects' },
+  'fin.budgets':           { name: 'Бюджеты work-items', group: 'Проекты', page: 'projects' },
+  'fin.expenses':          { name: 'Расходы work-items', group: 'Проекты', page: 'projects' },
+  'fin.company-finance':   { name: 'Финансы проектов', group: 'Проекты', readonly: true, page: 'projects' },
+  // Область «HR»
   'hr.orgstructure':       { name: 'Оргструктура', group: 'HR', page: 'personnel' },
-  // Финансовый
-  'fin.expenses':          { name: 'Расходы work-items', group: 'Финансы', page: 'projects' },
-  'fin.budgets':           { name: 'Бюджеты work-items', group: 'Финансы', page: 'projects' },
-  'fin.company-finance':   { name: 'Финансы проектов', group: 'Финансы', readonly: true, page: 'projects' },
-  // Коммерческий
-  'com.clients':           { name: 'Клиенты', group: 'Коммерция', page: 'projects' },
-  'com.projects':          { name: 'Реестр проектов', group: 'Коммерция', page: 'projects' },
-  'com.workitems':         { name: 'Workflow заявок', group: 'Коммерция', page: 'projects' },
-  // (2026-07-11) Убраны мёртвые/дублирующие модули группы «Платформа»:
-  //   tech.sheets (Google Sheets вырезан, страницы database нет),
-  //   tech.support (нет страницы),
-  //   tech.platform (дублировал hr.orgstructure → personnel; опасные операции и так только у isAdmin).
-  //   Орфан-гранты с этими ключами в БД игнорируются (см. getUserAccess: `if (!meta) continue`).
-  // Администрация
-  'adm.svod-company':      { name: 'Свод · компания', group: 'Администрация', readonly: true, page: 'svod' },
-  'adm.analytics-company': { name: 'Аналитика · компания', group: 'Администрация', readonly: true, page: 'analytics' },
-  'adm.calendar-global':   { name: 'Общий календарь', group: 'Администрация', page: 'calendar' },
-  'adm.news':              { name: 'Публикация в Пульс', group: 'Администрация' },
-  // Внешние сервисы
-  'ext.inventory':         { name: 'Инвентаризация', group: 'Внешние сервисы', readonly: true },
+  'hr.absences':           { name: 'Отсутствия сотрудников', group: 'HR', page: 'calendar' },
+  // Область «Календарь»
+  'adm.calendar-global':   { name: 'Общий календарь', group: 'Календарь', page: 'calendar' },
+  // Область «Аналитика»
+  'adm.analytics-company': { name: 'Аналитика · компания', group: 'Аналитика', readonly: true, page: 'analytics' },
+  // Область «Пульс»
+  'adm.news':              { name: 'Публикация в Пульс', group: 'Пульс' },
+  // Область «Внешние»
+  'ext.inventory':         { name: 'Инвентаризация', group: 'Внешние', readonly: true },
+  // (2026-08-28) Удалены 4 рудиментных модуля (грант = 0 эффекта, в коде не потреблялись,
+  //   спека RBAC-REDESIGN-2026-08-28 §4): prod.board (Доска производства), com.clients (Клиенты),
+  //   com.workitems (Workflow заявок), adm.svod-company (Свод · компания).
+  // (2026-07-11) Ранее так же убраны мёртвые модули группы «Платформа»: tech.sheets, tech.support,
+  //   tech.platform. Орфан-гранты с удалёнными ключами в БД игнорируются (getUserAccess: `if (!meta) continue`).
 }
 
 const LEVEL_ORDER: Record<OrgLevel, number> = { member: 0, head: 1, director: 2 }

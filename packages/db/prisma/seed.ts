@@ -120,23 +120,16 @@ async function main() {
     { dept: 'Финансовый департамент',   moduleKey: 'fin.expenses',          editLevel: 'member' },
     { dept: 'Финансовый департамент',   moduleKey: 'fin.budgets',           editLevel: 'head' },
     { dept: 'Финансовый департамент',   moduleKey: 'fin.company-finance',   editLevel: 'member' },
-    { dept: 'Коммерческий департамент', moduleKey: 'com.clients',           editLevel: 'member' },
     { dept: 'Коммерческий департамент', moduleKey: 'com.projects',          editLevel: 'member' },
-    { dept: 'Коммерческий департамент', moduleKey: 'com.workitems',         editLevel: 'head' },
-    { dept: 'Администрация',            moduleKey: 'adm.svod-company',      editLevel: 'member' },
     { dept: 'Администрация',            moduleKey: 'adm.analytics-company', editLevel: 'member' },
     { dept: 'Администрация',            moduleKey: 'adm.calendar-global',   editLevel: 'member' },
     { dept: 'Администрация',            moduleKey: 'adm.news',              editLevel: 'member' },
-    // производственные департаменты — шаблонные модули
-    { dept: 'ТВ департамент',           moduleKey: 'prod.board',            editLevel: 'member' },
+    // производственные департаменты — шаблонный модуль
+    // (2026-08-28) prod.board удалён из реестра (RBAC-REDESIGN §4) — гранты убраны.
     { dept: 'ТВ департамент',           moduleKey: 'prod.workitems',        editLevel: 'member' },
-    { dept: 'Радио департамент',        moduleKey: 'prod.board',            editLevel: 'member' },
     { dept: 'Радио департамент',        moduleKey: 'prod.workitems',        editLevel: 'member' },
-    { dept: 'Бренд медиа департамент',  moduleKey: 'prod.board',            editLevel: 'member' },
     { dept: 'Бренд медиа департамент',  moduleKey: 'prod.workitems',        editLevel: 'member' },
-    { dept: 'Корп медиа департамент',   moduleKey: 'prod.board',            editLevel: 'member' },
     { dept: 'Корп медиа департамент',   moduleKey: 'prod.workitems',        editLevel: 'member' },
-    { dept: 'Дизайн департамент',       moduleKey: 'prod.board',            editLevel: 'member' },
     { dept: 'Дизайн департамент',       moduleKey: 'prod.workitems',        editLevel: 'member' },
   ]
   let granted = 0
