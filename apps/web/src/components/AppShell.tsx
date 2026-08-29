@@ -92,6 +92,9 @@ export function AppShell() {
 
   const isAdmin = !!user?.isAdmin
   const isSystem = !!user?.isSystemAccount  // мастер-аккаунт: только админка, без рабочего пространства
+  // HR-модуль оргструктуры даёт не-админу доступ к вкладке «Персонал» (внутри — редактор оргструктуры),
+  // но НЕ отдельной вкладкой «Оргструктура» (решение Влада: функция живёт во вкладке «Персонал»).
+  const hasHrOrg = !isAdmin && !!user?.access?.modules?.some((m) => m.key === 'hr.orgstructure')
 
   const SYSTEM_PAGES: Page[] = ['personnel', 'lists', 'set-roles', 'set-backups']
   const defaultPage: Page = isSystem ? 'personnel' : 'home'
@@ -101,7 +104,7 @@ export function AppShell() {
   const stored = (storedRaw === 'svod' ? 'analytics' : storedRaw === 'tasks' ? 'dashboard' : storedRaw) as Page | null
   const initialPage: Page = isSystem
     ? (stored && SYSTEM_PAGES.includes(stored) ? stored : 'personnel')
-    : (stored && (!ADMIN_PAGES.includes(stored) || isAdmin) ? stored : defaultPage)
+    : (stored && (!ADMIN_PAGES.includes(stored) || isAdmin || (stored === 'personnel' && hasHrOrg)) ? stored : defaultPage)
   const [page, setPage] = useState<Page>(initialPage)
   // Вкладка «Мой кабинет» (Обзор/Задачи/Треки) — теперь под-пункты меню, не переключатель в шапке
   const [cabinetTab, setCabinetTab] = useState<'overview' | 'tasks' | 'tracks' | 'requests'>(() => {
@@ -250,11 +253,11 @@ export function AppShell() {
   // 'svod' — merged-алиас: Свод слит в Аналитику (внутренняя вкладка), отдельной страницы нет;
   // модули с page:'svod' (напр. adm.svod-company) НЕ показываем отдельной вкладкой в меню.
   const navPageIds = new Set([...USER_NAV.map((n) => n.id as string), 'svod'])
-  // Standalone-страницы ВНЕ основного меню, которые департаментский модуль вправе открыть
-  // отдельным пунктом (пока только Оргструктура/Персонал по hr.orgstructure).
-  // Внутренние вкладки ('tasks'→кабинет, 'svod'→аналитика) и безстраничные модули
-  // (adm.news = «Публикация в Пульс» — функционал НА Пульсе) отдельным пунктом НЕ становятся.
-  const extraPageIds = new Set<string>(['personnel'])
+  // Идеология «доступ→UI» (RBAC-REDESIGN §2.1): модуль НЕ создаёт отдельную вкладку —
+  // право расширяет существующую вкладку. Отдельный пункт меню получают ТОЛЬКО сервис-модули
+  // (ext.*/int.* — внешние/внутренние продукты). hr.orgstructure → доступ к «Персонал» (см. hasHrOrg),
+  // а не вкладка «Оргструктура»; adm.news/prod.board/adm.svod-company тоже не становятся вкладками.
+  const extraPageIds = new Set<string>()
   // Внешние/внутренние сервисы (ext.*/int.*, напр. Инвентаризация) получают пункт всегда —
   // даже без page: навигация идёт спец-обработчиком в handleNavigate.
   const isServiceModule = (m: { key: string }) => m.key.startsWith('ext.') || m.key.startsWith('int.')
@@ -295,6 +298,8 @@ export function AppShell() {
         ],
       } : {}),
     })) : []),
+    // «Персонал» — не-админу с hr.orgstructure (оргструктура редактируется внутри, не отдельной вкладкой)
+    ...(hasHrOrg ? [{ key: 'personnel', label: 'Персонал', icon: Users }] : []),
     // Блоки продуктов/департаментов — по группам (section = m.group)
     ...sortedExtra.map((m) => ({
       key: m.page ?? m.key,
