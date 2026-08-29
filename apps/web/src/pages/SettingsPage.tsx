@@ -235,6 +235,24 @@ export function FormatsTab() {
 type RegistryModule = { key: string; name: string; group: string; readonly: boolean }
 type DeptGrants = { id: string; name: string; employeeCount: number; grants: Array<{ moduleKey: string; editLevel: string }> }
 
+// Короткое описание модуля — что даёт и где проявляется (спека RBAC-REDESIGN §3).
+const MODULE_DESC: Record<string, string> = {
+  'com.projects':          'Правка проектов в реестре (страница «Проекты»).',
+  'prod.workitems':        'Создание и правка Work Items (заявок) внутри проектов.',
+  'fin.budgets':           'Правка бюджета Work Item.',
+  'fin.expenses':          'Правка расходов Work Item.',
+  'fin.company-finance':   'Просмотр агрегированных финансов проектов.',
+  'hr.orgstructure':       'Правка оргструктуры и графиков работы; доступ к данным персонала.',
+  'hr.absences':           'Занесение HR-статусов (отпуск/больничный/отгул) и форматов дня.',
+  'adm.calendar-global':   'Запись событий в общий/публичный календарь (Знаменка и пр.).',
+  'adm.analytics-company': 'Аналитика в разрезе всей компании (а не только своего отдела).',
+  'adm.news':              'Публикация новостей в ленту Пульса.',
+  'ext.inventory':         'Переход во внешний сервис «Инвентаризация».',
+}
+
+// Порядок областей (групп) в матрице
+const GROUP_ORDER = ['Проекты', 'HR', 'Календарь', 'Аналитика', 'Пульс', 'Внешние']
+
 export function RolesTab() {
   const qc = useQueryClient()
   const { data: registry = [] } = useQuery<RegistryModule[]>({
@@ -253,7 +271,14 @@ export function RolesTab() {
     onError: (err: unknown) => toast((err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Ошибка', 'info'),
   })
 
-  const groups = [...new Set(registry.map(m => m.group))]
+  const [selId, setSelId] = useState<string | null>(null)
+  const selected = depts.find(d => d.id === selId) ?? depts[0] ?? null
+
+  // Области в порядке GROUP_ORDER; неизвестные группы — в конце
+  const groups = [...new Set(registry.map(m => m.group))].sort((a, b) => {
+    const ia = GROUP_ORDER.indexOf(a), ib = GROUP_ORDER.indexOf(b)
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+  })
 
   return (
     <div>
@@ -263,44 +288,66 @@ export function RolesTab() {
         (ниже — только просмотр). Уровень человека выводится из оргструктуры: сотрудник → руководитель отдела → директор департамента.
       </p>
       {isLoading ? <div style={{ color: 'var(--text-muted)' }}>Загрузка…</div> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {depts.map(d => (
-            <div key={d.id} style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--surface-2)', padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>{d.name}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{d.employeeCount} чел · {d.grants.length} модулей</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
-                {groups.map(g => registry.filter(m => m.group === g).map(m => {
-                  const grant = d.grants.find(x => x.moduleKey === m.key)
-                  return (
-                    <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, background: grant ? 'var(--surface-3)' : 'transparent', border: `1px solid ${grant ? 'var(--border)' : 'transparent'}` }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 7, flex: 1, cursor: 'pointer', fontSize: 12, color: grant ? 'var(--text-1)' : 'var(--text-muted)' }}>
-                        <input
-                          type="checkbox"
-                          checked={!!grant}
-                          onChange={e => setGrant.mutate({ deptId: d.id, moduleKey: m.key, editLevel: e.target.checked ? 'member' : null })}
-                        />
-                        <span title={`${m.group} · ${m.key}`}>{m.name}</span>
-                      </label>
-                      {grant && !m.readonly && (
-                        <select
-                          value={grant.editLevel}
-                          onChange={e => setGrant.mutate({ deptId: d.id, moduleKey: m.key, editLevel: e.target.value })}
-                          style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 6px', color: 'var(--text-2)', fontFamily: 'inherit', fontSize: 12 }}
-                        >
-                          <option value="member">сотрудник+</option>
-                          <option value="head">руковод.+</option>
-                          <option value="director">директор</option>
-                        </select>
-                      )}
-                      {grant && m.readonly && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>просмотр</span>}
-                    </div>
-                  )
-                }))}
-              </div>
-            </div>
-          ))}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+          {/* Слева — департаменты (переключатель) */}
+          <div style={{ width: 236, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {depts.map(d => {
+              const sel = selected?.id === d.id
+              return (
+                <button key={d.id} onClick={() => setSelId(d.id)}
+                  style={{ textAlign: 'left', padding: '10px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
+                    background: sel ? 'var(--surface-3)' : 'transparent',
+                    border: `1px solid ${sel ? 'var(--border)' : 'transparent'}`,
+                    display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: sel ? 700 : 500, color: sel ? 'var(--text-1)' : 'var(--text-2)' }}>{d.name}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{d.employeeCount} чел · {d.grants.length} модулей</span>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Справа — матрица выбранного департамента, секции по областям */}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {!selected ? <div style={{ color: 'var(--text-muted)' }}>Нет департаментов</div> : groups.map(g => {
+              const mods = registry.filter(m => m.group === g)
+              if (!mods.length) return null
+              return (
+                <div key={g}>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', color: 'var(--text-muted)', marginBottom: 8 }}>{g}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 8 }}>
+                    {mods.map(m => {
+                      const grant = selected.grants.find(x => x.moduleKey === m.key)
+                      return (
+                        <div key={m.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px', borderRadius: 10,
+                          background: grant ? 'var(--surface-3)' : 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, flex: 1, minWidth: 0, cursor: 'pointer' }}>
+                            <input type="checkbox" checked={!!grant} style={{ marginTop: 2, cursor: 'pointer', flexShrink: 0 }}
+                              onChange={e => setGrant.mutate({ deptId: selected.id, moduleKey: m.key, editLevel: e.target.checked ? 'member' : null })} />
+                            <span style={{ minWidth: 0 }}>
+                              <span style={{ display: 'block', fontSize: 13, fontWeight: grant ? 600 : 500, color: grant ? 'var(--text-1)' : 'var(--text-2)' }}>{m.name}</span>
+                              {MODULE_DESC[m.key] && <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>{MODULE_DESC[m.key]}</span>}
+                            </span>
+                          </label>
+                          <div style={{ flexShrink: 0, marginTop: 1 }}>
+                            {grant && !m.readonly && (
+                              <select value={grant.editLevel}
+                                onChange={e => setGrant.mutate({ deptId: selected.id, moduleKey: m.key, editLevel: e.target.value })}
+                                style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 6, padding: '3px 6px', color: 'var(--text-2)', fontFamily: 'inherit', fontSize: 12 }}>
+                                <option value="member">сотрудник+</option>
+                                <option value="head">руковод.+</option>
+                                <option value="director">директор</option>
+                              </select>
+                            )}
+                            {grant && m.readonly && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>просмотр</span>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
