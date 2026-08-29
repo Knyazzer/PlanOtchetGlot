@@ -209,6 +209,13 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
   })
   const reorderMut = useMutation({ mutationFn: (ids: string[]) => api.patch('/tasks/reorder', { day: selDate, ids }) })
 
+  // Признак «сегодня рабочий день завершён» (endTime) — guard: в закрытый день незакрытую задачу не переносим.
+  const { data: todayEntries = [] } = useQuery<Array<{ date: string; endTime: string | null }>>({
+    queryKey: ['day-entries', todayStr, todayStr],
+    queryFn: () => api.get(`/day-entries?from=${todayStr}&to=${todayStr}`).then(r => r.data),
+  })
+  const todayFinished = !!todayEntries[0]?.endTime
+
   // Only regular (non-calendar) tasks
   const regularTasks = allTasks.filter(t => !t.calendarEventId)
 
@@ -245,6 +252,10 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
     if (!t) return
     if (t.status === 'done') { toast('Закрытую задачу нельзя перенести', 'info'); return }
     if (toDay(t.startDate) === targetDay) return // тот же день — ничего
+    // Guard симметрии «закрытого дня»: незакрытую задачу нельзя перенести в прошедший или уже
+    // завершённый день — иначе в закрытом дне повиснет inprogress-задача (баг последовательности).
+    if (targetDay < todayStr) { toast('Незакрытую задачу нельзя перенести в прошедший день', 'info'); return }
+    if (targetDay === todayStr && todayFinished) { toast('Рабочий день уже завершён — перенесите задачу на другой день', 'info'); return }
     // Без дедлайна (дефолтное окно в 1 день) → перенос = просто смена дня: задача уходит с текущего.
     if (!t.deadline) {
       moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast('Задача перенесена') })
