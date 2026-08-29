@@ -224,6 +224,30 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
 
     const divisionId = await resolveDivisionId(user.id) // снапшот отдела на момент записи
     const dateObj = new Date(date)
+
+    // ── Server-side guard (не доверяем клиенту): нельзя ЗАКРЫТЬ рабочий день (проставить endTime),
+    //    пока в окне дня есть незакрытые (inprogress) задачи. Тот же чек был на фронте — теперь на сервере.
+    if (endTime) {
+      const prevDay = await prisma.dayEntry.findUnique({
+        where: { userId_date: { userId: user.id, date: dateObj } },
+        select: { endTime: true },
+      })
+      if (!prevDay?.endTime) { // переход «не закрыт → закрыт»
+        const dEnd = new Date(dateObj.getTime() + 86_400_000)
+        const openCount = await prisma.task.count({
+          where: {
+            assigneeId: user.id, status: 'inprogress', calendarEventId: null,
+            OR: [
+              { deadline: null, startDate: { gte: dateObj, lt: dEnd } }, // без дедлайна — только день startDate
+              { deadline: { gte: dateObj }, startDate: { lt: dEnd } },   // с дедлайном — день внутри окна
+            ],
+          },
+        })
+        if (openCount > 0) {
+          return reply.code(400).send({ error: `Нельзя закрыть день: ${openCount} незакрытых задач — заверните их или перенесите на другой день` })
+        }
+      }
+    }
     // Upsert дня + аудит смены СТАТУСА — АТОМАРНО: читаем прежний dayFormat ДО upsert и,
     // если статус реально изменился, пишем DayEntryLog в той же транзакции (либо всё, либо ничего).
     const entry = await prisma.$transaction(async (tx) => {

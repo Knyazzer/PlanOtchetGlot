@@ -384,6 +384,29 @@ export async function tasksRoutes(app: FastifyInstance) {
     }
 
     const d = body.data
+
+    // ── Server-side guard (не доверяем клиенту): незакрытую (inprogress) задачу нельзя перенести
+    //    startDate в прошедший или уже завершённый (endTime) день — иначе в закрытом дне повиснет
+    //    открытая задача. Будущий Period-Lock обобщит это до полной фиксации периодов.
+    if (d.startDate !== undefined && (d.status ?? task.status) === 'inprogress') {
+      const targetDay = d.startDate // 'YYYY-MM-DD'
+      const now = new Date()
+      const p2 = (n: number) => String(n).padStart(2, '0')
+      const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+      if (targetDay < todayStr) {
+        return reply.code(400).send({ error: 'Незакрытую задачу нельзя перенести в прошедший день' })
+      }
+      if (targetDay === todayStr) {
+        const de = await prisma.dayEntry.findUnique({
+          where: { userId_date: { userId: task.assigneeId, date: new Date(targetDay) } },
+          select: { endTime: true },
+        })
+        if (de?.endTime) {
+          return reply.code(400).send({ error: 'Рабочий день уже завершён — перенесите задачу на другой день' })
+        }
+      }
+    }
+
     // автокопия «план → факт» при завершении (паттерн донора: один ввод закрывает оба в 80% случаев)
     const becomesDone = d.status === 'done' && task.status !== 'done'
     const leavesDone = d.status !== undefined && d.status !== 'done' && task.status === 'done'
