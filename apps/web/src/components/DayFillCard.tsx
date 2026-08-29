@@ -174,8 +174,8 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
             ) : !started ? (
-              <button disabled={!interactive || !place} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
-                title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !place ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !interactive || !place)}>Начать рабочий день</button>
+              <button disabled={!interactive || (!place && dayType !== 'weekend')} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !interactive || (!place && dayType !== 'weekend'))}>Начать рабочий день</button>
             ) : (
               <button disabled={!interactive} onClick={() => { if (openTasksCount > 0) { toast(`Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните или перенесите`, 'info'); return } save.mutate({ endTime: nowHHMM() }) }}
                 title={!canEdit ? 'Завершить можно только в текущий день' : ''}
