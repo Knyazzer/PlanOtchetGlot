@@ -318,17 +318,18 @@ export function RolesTab() {
                     {mods.map(m => {
                       const grant = selected.grants.find(x => x.moduleKey === m.key)
                       return (
-                        <div key={m.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px', borderRadius: 10,
+                        <div key={m.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 12px', borderRadius: 10, minHeight: 64, boxSizing: 'border-box',
                           background: grant ? 'var(--surface-3)' : 'var(--surface-2)', border: '1px solid var(--border)' }}>
                           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 9, flex: 1, minWidth: 0, cursor: 'pointer' }}>
                             <input type="checkbox" checked={!!grant} style={{ marginTop: 2, cursor: 'pointer', flexShrink: 0 }}
                               onChange={e => setGrant.mutate({ deptId: selected.id, moduleKey: m.key, editLevel: e.target.checked ? 'member' : null })} />
                             <span style={{ minWidth: 0 }}>
-                              <span style={{ display: 'block', fontSize: 13, fontWeight: grant ? 600 : 500, color: grant ? 'var(--text-1)' : 'var(--text-2)' }}>{m.name}</span>
+                              <span style={{ display: 'block', fontSize: 13, fontWeight: 600, color: grant ? 'var(--text-1)' : 'var(--text-2)' }}>{m.name}</span>
                               {MODULE_DESC[m.key] && <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>{MODULE_DESC[m.key]}</span>}
                             </span>
                           </label>
-                          <div style={{ flexShrink: 0, marginTop: 1 }}>
+                          {/* Слот управления зарезервирован ВСЕГДА (фикс. ширина/высота) — карточки не скачут при toggle */}
+                          <div style={{ flexShrink: 0, width: 104, minHeight: 26, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 1 }}>
                             {grant && !m.readonly && (
                               <select value={grant.editLevel}
                                 onChange={e => setGrant.mutate({ deptId: selected.id, moduleKey: m.key, editLevel: e.target.value })}
