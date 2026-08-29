@@ -56,8 +56,9 @@ interface NavItem {
   icon: LucideIcon
 }
 
+// «Персонал» — НЕ отдельная вкладка: функционал управления людьми живёт во вкладке «Команда»
+// (показывается админу/HR по доступу). Идеология «доступ→UI»: одна вкладка, разный функционал.
 const ADMIN_NAV: NavItem[] = [
-  { id: 'personnel', label: 'Персонал',  icon: Users },
   { id: 'lists',     label: 'Списки',    icon: List },
   { id: 'settings',  label: 'Настройки', icon: SettingsIcon },
 ]
@@ -101,7 +102,7 @@ export function AppShell() {
   const ADMIN_PAGES: Page[] = ['personnel', 'lists']
   const storedRaw = localStorage.getItem('nexus:page')
   // Миграция старого persist: «Свод»→«Аналитика», «Задачи»→«Мой кабинет» (обе стали внутр. вкладками)
-  const stored = (storedRaw === 'svod' ? 'analytics' : storedRaw === 'tasks' ? 'dashboard' : storedRaw) as Page | null
+  const stored = (storedRaw === 'svod' ? 'analytics' : storedRaw === 'tasks' ? 'dashboard' : (storedRaw === 'personnel' && !isSystem) ? 'team' : storedRaw) as Page | null
   const initialPage: Page = isSystem
     ? (stored && SYSTEM_PAGES.includes(stored) ? stored : 'personnel')
     : (stored && (!ADMIN_PAGES.includes(stored) || isAdmin || (stored === 'personnel' && hasHrOrg)) ? stored : defaultPage)
@@ -298,8 +299,6 @@ export function AppShell() {
         ],
       } : {}),
     })) : []),
-    // «Персонал» — не-админу с hr.orgstructure (оргструктура редактируется внутри, не отдельной вкладкой)
-    ...(hasHrOrg ? [{ key: 'personnel', label: 'Персонал', icon: Users }] : []),
     // Блоки продуктов/департаментов — по группам (section = m.group)
     ...sortedExtra.map((m) => ({
       key: m.page ?? m.key,
@@ -358,7 +357,8 @@ export function AppShell() {
             />
           )}
           {page === 'analytics' && <AnalyticsPage />}
-          {page === 'team'      && <TeamPage onOpenChat={openDirectChat} />}
+          {/* «Команда» = единая вкладка людей: управление (PersonnelPage) для админа/HR, оргдерево (TeamPage) для остальных */}
+          {page === 'team'      && ((isAdmin || hasHrOrg) ? <PersonnelPage /> : <TeamPage onOpenChat={openDirectChat} />)}
           {page === 'strategy'  && <StrategyPage />}
           {page === 'settings'  && isAdmin && <SettingsPage />}
           {page === 'set-roles'   && isAdmin && <div style={{ padding: '24px 28px' }}><RolesTab /></div>}
