@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Check } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useDroppable } from '@dnd-kit/core'
 import { api } from '../lib/api'
@@ -135,6 +136,10 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
             : effWorking && !started ? 'рабочий день не начат'
             : effWorking && !ended ? 'рабочий день не завершён' : 'день не закрыт'
 
+          // Инверсия акцента: ПРОШЛЫЕ дни приглушены (сделаны, справка), БУДУЩИЕ/сегодня — насыщенные
+          // (предстоят, важнее). Выбранный день не тускнеет (его смотрят/правят).
+          const dim = ds < today && !isToday && !isSel
+
           return (
             <DroppableDayButton
               key={ds}
@@ -145,6 +150,7 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                 flex: '1 1 0', minHeight: 22, padding: '0 10px', borderRadius: 8,
                 border: `1px solid ${isSel ? 'var(--accent-s)' : 'transparent'}`,
                 background: isSel ? 'rgba(123,97,255,0.12)' : 'none',
+                opacity: dim ? 0.5 : 1,
                 cursor: 'pointer', fontFamily: 'Inter,sans-serif',
               }}
             >
@@ -165,13 +171,14 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                   <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{view!.label}</span>
                 </>
               ) : (() => {
-                // пустой день: ожидаемое из графика (полый кубик, бледно) либо «выходной/не заполнен»
+                // пустой день: ожидаемое из графика. Будущее — насыщенно (сплошная точка + обычный текст,
+                // как заполненный день); прошлое тускнеет само (opacity строки). Иначе «выходной/не заполнен».
                 if (exp && exp.format !== 'weekend') {
                   const v = dayView(isPlace(exp.format) ? 'working' : exp.format, isPlace(exp.format) ? exp.format : null)
                   return (
                     <>
-                      <span style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px solid ${v.color}`, opacity: 0.6, flexShrink: 0 }} />
-                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Ожидается по графику">{v.label}</span>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: v.color, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Ожидается по графику">{v.label}</span>
                     </>
                   )
                 }
@@ -189,7 +196,7 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
               {/* Столбец статуса — фиксированная ширина по центру: ✓ (закрыт) / • (не закрыт) / пусто (выходной) */}
               <div style={{ width: 14, flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 {past && workClosed
-                  ? <span title="День закрыт" style={{ fontSize: 11, lineHeight: 1, color: '#22C55E' }}>✓</span>
+                  ? <span title="День закрыт" style={{ display: 'flex' }}><Check size={13} strokeWidth={2.5} style={{ color: '#22C55E' }} /></span>
                   : needsAction
                     ? <span title={`День не закрыт: ${notClosedReason}`} style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} />
                     : null}
