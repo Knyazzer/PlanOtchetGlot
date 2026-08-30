@@ -92,7 +92,7 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { error?: string } } }
-      alert(e?.response?.data?.error ?? 'Ошибка сохранения')
+      toast(e?.response?.data?.error ?? 'Ошибка сохранения', 'info')
     },
   })
   // Сброс к расписанию: удалить override-запись дня (вернуться к плану из графика)
