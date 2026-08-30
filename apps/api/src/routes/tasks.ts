@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@nexus/db'
 import { authenticate } from '../plugins/auth'
 import { getOrgScope } from '../services/orgScope'
+import { isLocked } from '../services/periodLock'
 import { randomUUID } from 'crypto'
 
 const TASK_SELECT = {
@@ -404,6 +405,20 @@ export async function tasksRoutes(app: FastifyInstance) {
         if (de?.endTime) {
           return reply.code(400).send({ error: 'Рабочий день уже завершён — перенесите задачу на другой день' })
         }
+      }
+    }
+
+    // ── Period-Lock (server-side, override только у мастер-админа). Спека — docs/PERIOD-LOCK-2026-08-29.md
+    //    Задачи НЕ «замораживаются»: перенести startDate ВПЕРЁД (в open/grace) можно всегда, но:
+    if (!user.isAdmin) {
+      // 1) нельзя ставить дату начала В зафиксированный день (переносить задачу в прошлое-под-замком);
+      if (d.startDate !== undefined && isLocked(d.startDate)) {
+        return reply.code(400).send({ error: 'Период зафиксирован — задачу нельзя перенести в закрытую неделю/месяц' })
+      }
+      // 2) нельзя менять СТАТУС задачи, которая остаётся в зафиксированной неделе (правка истории).
+      //    effectiveStart уже учитывает перенос вперёд: если задачу выводят из-под замка — статус менять можно.
+      if (d.status !== undefined && isLocked(effectiveStart)) {
+        return reply.code(400).send({ error: 'Период зафиксирован — статус задачи в закрытой неделе изменить нельзя (перенесите её на актуальную дату)' })
       }
     }
 

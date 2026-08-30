@@ -6,6 +6,7 @@ import { getOrgScope } from '../services/orgScope'
 import { hasModule } from '../services/access'
 import { monthProduction, businessDays } from '../services/calendarRf'
 import { reconcileLeaveDay, LEAVE_FORMATS } from './requests'
+import { isLocked } from '../services/periodLock'
 
 // Управление справочником форматов дня — admin ИЛИ HR (модуль hr.orgstructure/hr.absences).
 async function assertFormatManager(req: FastifyRequest, reply: FastifyReply): Promise<boolean> {
@@ -225,6 +226,12 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     const divisionId = await resolveDivisionId(user.id) // снапшот отдела на момент записи
     const dateObj = new Date(date)
 
+    // ── Period-Lock: не-админ не может писать день в зафиксированном периоде (прошлые недели / прошлый месяц).
+    //    Мастер-админ (override) обходит лок — правило согласовано (2026-08-29). Спека — docs/PERIOD-LOCK-2026-08-29.md
+    if (!(req as any).user?.isAdmin && isLocked(date)) {
+      return reply.code(403).send({ error: 'Период зафиксирован — этот день уже нельзя изменить задним числом' })
+    }
+
     // ── Server-side guard (не доверяем клиенту): нельзя ЗАКРЫТЬ рабочий день (проставить endTime),
     //    пока в окне дня есть незакрытые (inprogress) задачи. Тот же чек был на фронте — теперь на сервере.
     if (endTime) {
@@ -289,6 +296,11 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     const days = Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1
     if (days > 370) return reply.code(400).send({ error: 'Период больше 370 дней' }) // guard донора
 
+    // Period-Lock: диапазон монотонен (ранний день — самый «залоченный»); достаточно проверить `from`.
+    if (!(req as any).user?.isAdmin && isLocked(from)) {
+      return reply.code(403).send({ error: 'Период зафиксирован — эти дни уже нельзя изменить задним числом' })
+    }
+
     const formats = await dayFormatsAt(start)
     const fmt = formats.get(dayFormat)
     if (!fmt || !fmt.active) return reply.code(400).send({ error: `Неизвестный формат дня: ${dayFormat}` })
@@ -317,6 +329,9 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
   app.delete<{ Params: { date: string } }>('/:date', { preHandler: authenticate }, async (req, reply) => {
     const user = (req as any).user as { id: string }
     if (!DATE_RE.test(req.params.date)) return reply.code(400).send({ error: 'bad date' })
+    if (!(req as any).user?.isAdmin && isLocked(req.params.date)) {
+      return reply.code(403).send({ error: 'Период зафиксирован — этот день уже нельзя очистить задним числом' })
+    }
     await prisma.dayEntry.deleteMany({ where: { userId: user.id, date: new Date(req.params.date) } })
     return reply.code(204).send()
   })
