@@ -64,6 +64,11 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
 }) {
   const qc = useQueryClient()
   const isToday = date === todayStr()
+  // Серверный вердикт: день ещё редактируем (не залочен / админ). Под дневную модель незалоченный
+  // прошлый день (напр. брошенный активный) обязан закрываться/правиться — не только сегодняшний.
+  const { data: policy } = useQuery<{ canEditDay: boolean }>({
+    queryKey: ['day-policy', date], queryFn: () => api.get('/day-entries/policy', { params: { date } }).then(r => r.data), staleTime: 20_000,
+  })
   const expected = expectedForDate(date, schedule)
   const expectedFormat = expected?.format ?? 'office'                        // план: место (office/remote) или 'weekend'
   const expectedStatus = PLACE_KEYS.includes(expectedFormat) ? 'working' : expectedFormat
@@ -112,20 +117,23 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
 
   const started = !!start
   const finished = !!start && !!end
-  const canEdit = isToday                        // править факт можно только в текущий день
+  // Дневная модель: править день (место/время/закрыть) можно на любом НЕзалоченном дне (сервер canEditDay),
+  // не только сегодня — иначе не закрыть брошенный прошлый день. Живой старт/финиш КНОПКАМИ — только сегодня;
+  // прошлый день закрывается вводом времени начала+конца прямо в поля.
+  const notLocked = policy?.canEditDay ?? isToday
   // Календарный выходной (weekend) — рабочий (можно начать). Отпуск/больничный/отгул — статус-метка.
   // TODO: «работать во время отпуска/больничного» без потери статуса требует отдельного поля места (схема).
   const isAbsence = ['vacation', 'sick', 'dayoff'].includes(dayType)
-  // Контролы дня отображаются ВСЕГДА (вёрстка не скачет), но на отпуске/больничном/отгуле неактивны.
-  // (Работа во время отпуска/больничного — отдельная фича, TODO ниже.)
-  const interactive = canEdit && !isAbsence
+  // Контролы дня отображаются ВСЕГДА (вёрстка не скачет), но на отпуске/больничном/отгуле и в залоченном — неактивны.
+  const interactive = notLocked && !isAbsence
   // План (расписание) vs факт (override). Статус/место можно вернуть к расписанию.
   const placeOverridden = dayType !== expectedStatus || place !== expectedPlace
   const resetToSchedule = () => { if (started) save.mutate({ dayFormat: expectedStatus, place: expectedPlace }); else deleteDay.mutate() }
-  // Начинаем/заканчиваем только кнопками: до старта Начало недоступно, Конец — до нажатия «Закончить».
-  const startHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Начните рабочий день кнопкой' : ''
-  const endHint = !canEdit ? 'Отметить время можно только в текущий день' : !finished ? 'Завершите рабочий день кнопкой' : ''
-  const breakHint = !canEdit ? 'Отметить время можно только в текущий день' : !started ? 'Сначала начните рабочий день' : ''
+  // Подсказки: залочено → «зафиксировано»; иначе по стадии (прошлый день — время правится прямо в полях).
+  const lockHint = 'Период зафиксирован — редактирование закрыто'
+  const startHint = !notLocked ? lockHint : !started ? (isToday ? 'Начните рабочий день кнопкой' : 'Укажите начало') : ''
+  const endHint = !notLocked ? lockHint : isToday ? (!finished ? 'Завершите рабочий день кнопкой' : '') : (!started ? 'Сначала укажите начало' : '')
+  const breakHint = !notLocked ? lockHint : !started ? 'Сначала начните рабочий день' : ''
 
   const wrap: React.CSSProperties = { background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 18px', width: '100%', boxSizing: 'border-box' }
 
@@ -143,7 +151,7 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
               // Выбор места = где работает. В календарный выходной выбор места делает день рабочим (статус working).
               return (
                 <button key={p.key} disabled={!interactive} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
-                  title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !canEdit ? 'Сменить место можно только в текущий день' : ''}
+                  title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !notLocked ? lockHint : ''}
                   style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: interactive ? 'pointer' : 'not-allowed', opacity: interactive ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
               )
             })}
@@ -157,30 +165,38 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginTop: 14, flexWrap: 'wrap' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '96px 96px 118px 96px', gap: 18, alignItems: 'end' }}>
               <Field label="Начало" hint={startHint}>
-                <TimePicker className="w-full" value={start ?? ''} disabled={!interactive || !started} onChange={v => save.mutate({ startTime: v || null })} />
+                {/* прошлый незалоченный день — начало правится напрямую; сегодня — после кнопки «Начать» */}
+                <TimePicker className="w-full" value={start ?? ''} disabled={!interactive || (isToday && !started)} onChange={v => save.mutate({ startTime: v || null })} />
               </Field>
               <Field label="Конец" hint={endHint}>
-                <TimePicker className="w-full" value={end ?? ''} disabled={!interactive || !finished} onChange={v => save.mutate({ endTime: v || null })} />
+                {/* сегодня — конец после «Завершить»; прошлый день — сразу после указания начала (ввод конца закрывает день) */}
+                <TimePicker className="w-full" value={end ?? ''} disabled={!interactive || (isToday ? !finished : !started)} onChange={v => save.mutate({ endTime: v || null })} />
               </Field>
               <Field label="Перерыв, мин" hint={breakHint}>
-                <BreakStepper value={breakMin} disabled={!interactive || !started} onChange={v => save.mutate({ breakMin: v })} />
+                <BreakStepper value={breakMin} disabled={!interactive || (isToday && !started)} onChange={v => save.mutate({ breakMin: v })} />
               </Field>
               <Field label="Отработано">
                 <div style={{ fontSize: 20, fontWeight: 800, color: worked > 0 ? 'var(--text-1)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', lineHeight: '38px' }}>{worked > 0 ? fmtHM(worked) : '—'}</div>
               </Field>
             </div>
 
-            {/* Кнопка действия — одинаковый размер во всех стадиях */}
+            {/* Кнопка действия — одинаковый размер во всех стадиях. Живой старт/финиш кнопками — только СЕГОДНЯ;
+                прошлый незалоченный день закрывается вводом времени начала+конца прямо в поля (подсказка). */}
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
-            ) : !started ? (
-              <button disabled={!interactive || (!place && dayType !== 'weekend')} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
-                title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : !canEdit ? 'Начать можно только в текущий день' : ''} style={bigBtn(ROLE.success, !interactive || (!place && dayType !== 'weekend'))}>Начать рабочий день</button>
-            ) : (
-              <button disabled={!interactive} onClick={() => { if (openTasksCount > 0) { toast(`Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните или перенесите`, 'info'); return } save.mutate({ endTime: nowHHMM() }) }}
-                title={!canEdit ? 'Завершить можно только в текущий день' : ''}
-                style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
-            )}
+            ) : isToday ? (
+              !started ? (
+                <button disabled={!interactive || (!place && dayType !== 'weekend')} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                  title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : ''} style={bigBtn(ROLE.success, !interactive || (!place && dayType !== 'weekend'))}>Начать рабочий день</button>
+              ) : (
+                <button disabled={!interactive} onClick={() => { if (openTasksCount > 0) { toast(`Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните или перенесите`, 'info'); return } save.mutate({ endTime: nowHHMM() }) }}
+                  style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
+              )
+            ) : interactive ? (
+              <span style={{ fontSize: 12.5, color: 'var(--text-muted)', fontStyle: 'italic', alignSelf: 'center', maxWidth: 210, textAlign: 'right' }}>
+                {!started ? 'Укажите начало и конец, чтобы закрыть день' : 'Укажите конец, чтобы закрыть день'}
+              </span>
+            ) : null}
           </div>
 
       </>
