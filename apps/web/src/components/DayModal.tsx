@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { fmtMinutes } from '../lib/taskMeta'
+import { workedMinutes } from '../lib/workMinutes'
 import { Hint } from './Hint'
 
 // Карточка дня из Свода: свой день — редактирование (формат+время), чужой — просмотр.
@@ -19,11 +20,6 @@ type DayTask = {
 }
 type DayEvent = { id: string; title: string; type: string; startTime: string; endTime: string }
 
-function parseMin(t?: string | null): number | null {
-  if (!t || !/^\d{2}:\d{2}$/.test(t)) return null
-  const [h, m] = t.split(':').map(Number)
-  return h * 60 + m
-}
 
 export function DayModal({ userId, userName, date, isOwn, onClose }: {
   userId: string
@@ -157,9 +153,7 @@ function DayEntryBlock({ entry, formats, date, isOwn, qcInvalidate }: {
 
   const fmt = formats.find(f => f.key === dayFormat)
   const isWork = fmt?.isWork ?? false
-  const s = parseMin(startTime)
-  const e = parseMin(endTime)
-  const total = s != null && e != null ? Math.max(0, e - s - (Number(breakMin) || 0)) : 0
+  const total = workedMinutes(startTime, endTime, Number(breakMin) || 0) // ночная смена — через общую утилиту
 
   const inp: React.CSSProperties = {
     background: 'var(--surface-3)', border: '1px solid var(--border)', borderRadius: 8,
@@ -179,7 +173,7 @@ function DayEntryBlock({ entry, formats, date, isOwn, qcInvalidate }: {
             <b>{label}</b>
             {entry.startTime && entry.endTime && (
               <span style={{ color: 'var(--text-2)' }}> · {entry.startTime}–{entry.endTime}
-                {entry.breakMin ? ` (перерыв ${entry.breakMin}м)` : ''} · итого {fmtMinutes(Math.max(0, (parseMin(entry.endTime) ?? 0) - (parseMin(entry.startTime) ?? 0) - entry.breakMin))}
+                {entry.breakMin ? ` (перерыв ${entry.breakMin}м)` : ''} · итого {fmtMinutes(workedMinutes(entry.startTime, entry.endTime, entry.breakMin))}
               </span>
             )}
           </>

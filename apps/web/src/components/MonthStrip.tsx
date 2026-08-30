@@ -5,6 +5,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { api } from '../lib/api'
 import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
 import { dayTaskStats, type DayScopedTask } from '../lib/taskWindow'
+import { workedMinutes } from '../lib/workMinutes'
 
 // Вертикальная месячная сводка справа в «Мой кабинет»: строка на день, кубик = тип дня.
 // Клик по дню делает кабинет дате-зависимым (задачи/план/события на выбранную дату,
@@ -99,7 +100,7 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
     const ds = `${y}-${pad(m + 1)}-${pad(dn)}`
     const dow = new Date(y, m, dn).getDay()
     const e = byDate.get(ds)
-    if (e && e.startTime && e.endTime) { const s = parseMin(e.startTime), en = parseMin(e.endTime); if (s != null && en != null) workedMin += Math.max(0, en - s - (e.breakMin || 0)) }
+    if (e && e.startTime && e.endTime) workedMin += workedMinutes(e.startTime, e.endTime, e.breakMin || 0) // ночная смена — через общую утилиту
     const exp = expectedForDate(ds, schedule)
     if (ds <= today && exp && isWorkKey(exp.format)) normMin += schedNorm // норма только за прошедшие рабочие дни
     if (exp ? exp.format === 'weekend' : (dow === 0 || dow === 6)) weekendCount++
