@@ -251,6 +251,36 @@ export async function tasksRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Для повтора нужна дата окончания серии (repeatUntil)' })
     }
 
+    // ── Server-side guard (не доверяем клиенту): нельзя СОЗДАТЬ задачу в прошедшем/завершённом/
+    //    зафиксированном дне. Зеркалит правило переноса (PATCH) — иначе дыра: перенести в закрытый
+    //    день нельзя, а создать прямо в нём можно. Проверка по дню ИСПОЛНИТЕЛЯ (туда падает задача).
+    //    Спека — docs/PERIOD-LOCK-2026-08-29.md, override — только мастер-админ.
+    if (startDate) {
+      const isAdmin = !!(request as any).user?.isAdmin
+      const p2 = (n: number) => String(n).padStart(2, '0')
+      const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+
+      // Period-Lock: в зафиксированный период (прошлая неделя+ / прошлый месяц) не-админ не создаёт задачу.
+      if (!isAdmin && isLocked(startDate)) {
+        return reply.code(400).send({ error: 'Период зафиксирован — задачу нельзя создать в закрытой неделе/месяце' })
+      }
+      // Незакрытую (inprogress) задачу нельзя завести в прошедшем или уже завершённом (endTime) дне.
+      if (status === 'inprogress') {
+        if (startDate < todayStr) {
+          return reply.code(400).send({ error: 'Незакрытую задачу нельзя создать в прошедшем дне' })
+        }
+        if (startDate === todayStr) {
+          const de = await prisma.dayEntry.findUnique({
+            where: { userId_date: { userId: assigneeId, date: new Date(startDate) } },
+            select: { endTime: true },
+          })
+          if (de?.endTime) {
+            return reply.code(400).send({ error: 'Рабочий день уже завершён — создайте задачу на другой день' })
+          }
+        }
+      }
+    }
+
     const divisionId = await resolveDivisionId(assigneeId)
     const commonData = {
       title,
