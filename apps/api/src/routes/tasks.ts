@@ -7,17 +7,17 @@ import { isLocked } from '../services/periodLock'
 import { randomUUID } from 'crypto'
 
 // Инвариант «активный день»: брать задачу в работу (inprogress), выполнять (done) и создавать СВОЮ
-// задачу можно только когда СЕГОДНЯ начато (startTime) и не завершено (endTime). Работа делается «сейчас».
-async function isTodayActive(userId: string): Promise<boolean> {
-  const now = new Date()
-  const p2 = (n: number) => String(n).padStart(2, '0')
-  const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+// задачу можно только когда АКТИВЕН тот день, к которому задача относится (startTime есть, endTime нет).
+// «Активным» может быть и прошлый день, который сотрудник дозаполняет задним числом (ретроактив):
+// открыл забытый день → начал → проставил задачи → закрыл. Порядок дней держит дневная цепочка.
+async function isDayActive(userId: string, dayStr: string): Promise<boolean> {
   const de = await prisma.dayEntry.findUnique({
-    where: { userId_date: { userId, date: new Date(todayStr) } },
+    where: { userId_date: { userId, date: new Date(dayStr) } },
     select: { startTime: true, endTime: true },
   })
   return !!de?.startTime && !de?.endTime
 }
+const isoDay = (d: Date) => d.toISOString().slice(0, 10)
 
 const TASK_SELECT = {
   id: true,
@@ -287,17 +287,14 @@ export async function tasksRoutes(app: FastifyInstance) {
     }
 
     // ── Гейт «активный день» (не доверяем клиенту): создать СВОЮ задачу сразу «в работе»/«выполненной»
-    //    можно только на СЕГОДНЯ и при начатом (не завершённом) дне. Назначение другому и планирование
-    //    в backlog — без ограничения. Override — мастер-админ.
+    //    можно только в АКТИВНЫЙ день задачи (её startDate начат и не завершён) — сегодня ИЛИ прошлый день,
+    //    который дозаполняешь. Назначение другому и планирование в backlog — без ограничения. Override — админ.
     if (assigneeId === user.id && (status === 'inprogress' || status === 'done')) {
       const creatorIsAdmin = !!(request as any).user?.isAdmin
       if (!creatorIsAdmin) {
         const p2 = (n: number) => String(n).padStart(2, '0')
         const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
-        if (startDate && startDate !== todayStr) {
-          return reply.code(400).send({ error: 'Задачу в работу можно создавать только на сегодня' })
-        }
-        if (!(await isTodayActive(user.id))) {
+        if (!(await isDayActive(user.id, startDate ?? todayStr))) {
           return reply.code(400).send({ error: 'Начните рабочий день, чтобы брать и выполнять задачи' })
         }
       }
@@ -467,10 +464,16 @@ export async function tasksRoutes(app: FastifyInstance) {
     }
 
     // ── Гейт «активный день» (не доверяем клиенту): взять в работу (inprogress) или выполнить (done)
-    //    СВОЮ задачу можно только при начатом (не завершённом) сегодня. Возврат в backlog и правка
-    //    прочих полей — без ограничения. Override — мастер-админ.
+    //    СВОЮ задачу можно только когда АКТИВЕН день, куда она ложится (сегодня при живом взятии, либо
+    //    прошлый день, который дозаполняешь). Возврат в backlog / правка прочих полей — без ограничения.
     if (!user.isAdmin && isAssignee && (d.status === 'inprogress' || d.status === 'done')) {
-      if (!(await isTodayActive(user.id))) {
+      const p2 = (n: number) => String(n).padStart(2, '0')
+      const now2 = new Date()
+      const todayStr = `${now2.getFullYear()}-${p2(now2.getMonth() + 1)}-${p2(now2.getDate())}`
+      // взятие backlog→inprogress без явной даты уводит задачу на СЕГОДНЯ (autoStartToday); иначе — её день
+      const takingToToday = d.status === 'inprogress' && task.status !== 'inprogress' && d.startDate === undefined
+      const gateDay = d.startDate ?? (takingToToday ? todayStr : isoDay(task.startDate))
+      if (!(await isDayActive(user.id, gateDay))) {
         return reply.code(400).send({ error: 'Начните рабочий день, чтобы брать и выполнять задачи' })
       }
     }

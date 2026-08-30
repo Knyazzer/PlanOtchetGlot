@@ -269,13 +269,14 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
     const isToday = date === todayStr
 
-    // Модель «активного дня»: взять/создать задачу «в работу» можно только в СЕГОДНЯШНИЙ активный день
-    // (начат startTime, не завершён endTime). Зеркалит серверный POST/PATCH-гейт tasks. Мастер-админ обходит.
+    // Модель «активного дня»: добавить задачу «в работу» можно в любой АКТИВНЫЙ день (начат startTime,
+    // не завершён endTime, не залочен) — сегодня ИЛИ прошлый день, который дозаполняешь. Зеркалит
+    // серверный POST/PATCH-гейт tasks. Мастер-админ обходит.
+    void isToday // (день определяется активностью, не «сегодняшностью»)
     let canAddTask = true
     let reason: string | null = null
     if (user.isAdmin) { /* override */ }
     else if (state === 'locked') { canAddTask = false; reason = 'Неделя зафиксирована — изменения закрыты' }
-    else if (!isToday) { canAddTask = false; reason = 'Задачи в работу добавляются только в текущий день' }
     else if (!dayStarted) { canAddTask = false; reason = 'Начните рабочий день, чтобы добавлять задачи' }
     else if (dayFinished) { canAddTask = false; reason = 'Рабочий день завершён' }
 
