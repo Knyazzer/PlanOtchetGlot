@@ -136,9 +136,10 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
             : effWorking && !started ? 'рабочий день не начат'
             : effWorking && !ended ? 'рабочий день не завершён' : 'день не закрыт'
 
-          // Инверсия акцента: ПРОШЛЫЕ дни приглушены (сделаны, справка), БУДУЩИЕ/сегодня — насыщенные
-          // (предстоят, важнее). Выбранный день не тускнеет (его смотрят/правят).
-          const dim = ds < today && !isToday && !isSel
+          // Приглушаем «улаженные» дни («всё хорошо»): закрытый рабочий день ИЛИ нерабочий (выходной/
+          // отсутствие) без висящих задач. Насыщенные — те, что требуют внимания: незакрытый рабочий день,
+          // будущие рабочие дни (предстоят), сегодня, день с открытыми задачами. Выбранный — не тускнеет.
+          const dim = !isToday && !isSel && (workClosed || (!effWorking && stats.open === 0))
 
           return (
             <DroppableDayButton
@@ -188,7 +189,8 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
               <div style={{ width: 38, flexShrink: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                 {stats.total > 0 && (
                   <span title={`Задачи дня: поставлено ${stats.total}, выполнено ${stats.done}`}
-                    style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: stats.open === 0 ? 'var(--text-muted)' : 'var(--text-2)', background: 'var(--surface-3)', borderRadius: 8, padding: '1px 6px' }}>
+                    // фон-чип рисуем ТОЛЬКО если есть незакрытые задачи (привлечь внимание); всё закрыто → просто текст
+                    style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: stats.open === 0 ? 'var(--text-muted)' : 'var(--text-2)', background: stats.open > 0 ? 'var(--surface-3)' : 'transparent', borderRadius: 8, padding: '1px 6px' }}>
                     {stats.done}/{stats.total}
                   </span>
                 )}
