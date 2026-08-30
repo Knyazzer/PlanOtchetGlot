@@ -94,6 +94,8 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['day-entries'] })
       qc.invalidateQueries({ queryKey: ['svod'] })
+      // старт/финиш дня меняет canAddTask — обновляем вердикт немедленно (иначе кнопка +/🔒 «залипала»)
+      qc.invalidateQueries({ queryKey: ['day-policy'] })
     },
     onError: (err: unknown) => {
       const e = err as { response?: { data?: { error?: string } } }
@@ -103,7 +105,7 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
   // Сброс к расписанию: удалить override-запись дня (вернуться к плану из графика)
   const deleteDay = useMutation({
     mutationFn: () => api.delete(`/day-entries/${date}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['day-entries'] }); qc.invalidateQueries({ queryKey: ['svod'] }) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['day-entries'] }); qc.invalidateQueries({ queryKey: ['svod'] }); qc.invalidateQueries({ queryKey: ['day-policy'] }) },
   })
 
   // отработано (мин): закрытый день — end−start−break; идёт — сейчас−start−break
