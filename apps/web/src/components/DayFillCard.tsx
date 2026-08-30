@@ -147,7 +147,6 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
       <>
           {/* Место работы — где сотрудник работает (базово из графика; можно сменить). Детализация офисов — позже. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 2 }}>Место:</span>
             {PLACES.map(p => {
               const sel = place === p.key
               // Выбор места = где работает. В выходной выбор места = «я работал» → день становится рабочим
@@ -159,10 +158,12 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
                   style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: interactive ? 'pointer' : 'not-allowed', opacity: interactive ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
               )
             })}
-            {interactive && placeOverridden
-              ? <button onClick={resetToSchedule} title="Вернуть к расписанию (план)"
-                  style={{ marginLeft: 4, padding: '4px 10px', borderRadius: 20, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>↺ По расписанию</button>
-              : !placeOverridden && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>по расписанию</span>}
+            {/* Кнопка-сброс появляется только когда место изменено вручную. Текст-подпись «по расписанию»
+                для совпадающего с графиком места убрана (лишний шум — и так понятно). */}
+            {interactive && placeOverridden && (
+              <button onClick={resetToSchedule} title="Вернуть к расписанию (план)"
+                style={{ marginLeft: 4, padding: '4px 10px', borderRadius: 20, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: 12, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>↺ По расписанию</button>
+            )}
           </div>
 
           {/* Фиксированная сетка — поля всегда на своих местах; активность по стадии/дате (подсказка при наведении). */}
