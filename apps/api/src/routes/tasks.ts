@@ -463,8 +463,10 @@ export async function tasksRoutes(app: FastifyInstance) {
       const p2 = (n: number) => String(n).padStart(2, '0')
       const now2 = new Date()
       const todayStr = `${now2.getFullYear()}-${p2(now2.getMonth() + 1)}-${p2(now2.getDate())}`
-      // взятие backlog→inprogress без явной даты уводит задачу на СЕГОДНЯ (autoStartToday); иначе — её день
-      const takingToToday = d.status === 'inprogress' && task.status !== 'inprogress' && d.startDate === undefined
+      // ТОЛЬКО взятие из пула (backlog→inprogress) без явной даты уводит задачу на СЕГОДНЯ (autoStartToday) —
+      // и гейт проверяет сегодня. Снятие галочки (done→inprogress) НЕ переносит: задача остаётся на своём
+      // дне → гейт проверяет ЕЁ день (иначе на активном прошлом дне снять галочку не давало).
+      const takingToToday = d.status === 'inprogress' && task.status === 'backlog' && d.startDate === undefined
       const gateDay = d.startDate ?? (takingToToday ? todayStr : isoDay(task.startDate))
       if (!(await isDayActive(user.id, gateDay))) {
         return reply.code(400).send({ error: 'Начните рабочий день, чтобы брать и выполнять задачи' })
@@ -477,7 +479,9 @@ export async function tasksRoutes(app: FastifyInstance) {
     // «взял задачу в работу» → она падает в сегодняшний рабочий набор (если день не задан явно).
     // Централизует связь Обзор⇄канбан⇄Свод: единый источник дня — startDate.
     const becomesInProgress = d.status === 'inprogress' && task.status !== 'inprogress'
-    const autoStartToday = becomesInProgress && d.startDate === undefined
+    // На СЕГОДНЯ уводим только при ВЗЯТИИ из пула (backlog→inprogress). Снятие галочки (done→inprogress)
+    // оставляет задачу на её дне — иначе снятие галочки перекидывало бы задачу на сегодня.
+    const autoStartToday = becomesInProgress && task.status === 'backlog' && d.startDate === undefined
     // Переназначил задачу на ДРУГОГО человека → она уходит в его Бэклог (пул), а не в «В работе».
     // Модель: назначенное падает в пул, человек берёт его в работу сам.
     const reassignedToOther = d.assigneeId !== undefined && d.assigneeId !== task.assigneeId
