@@ -6,13 +6,14 @@ import { TaskModal, CalendarEventModal } from './TasksPage'
 import type { Task } from './TasksPage'
 import { DayFillCard } from '../components/DayFillCard'
 import { MonthStrip } from '../components/MonthStrip'
+import { TaskTemplatesPanel } from '../components/TaskTemplatesPanel'
 import { ROLE, chip } from '../lib/roleColors'
 import { Combobox } from '../ui-kit/components/Combobox'
 import { TimePicker } from '../ui-kit/components/TimePicker'
 import { DataTable, EditableCell } from '../ui-kit/components/DataTable'
 import { Tooltip } from '../components/Tooltip'
 import { cn } from '../ui-kit/lib/cn'
-import { Maximize2, GripVertical, Lock } from 'lucide-react'
+import { Maximize2, GripVertical, Lock, LayoutTemplate } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -172,6 +173,8 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
   const [showCreateEvent, setShowCreateEvent] = useState(false)
   const [editTask,        setEditTask]        = useState<Task | null>(null)
   const [viewEventId,     setViewEventId]     = useState<string | null>(null)
+  const [templatesOpen,   setTemplatesOpen]   = useState(false)
+  useEffect(() => { setTemplatesOpen(false) }, [selDate]) // смена дня — закрыть панель шаблонов
 
   const isToday   = selDate === todayStr
   const dayShort  = new Date(selDate + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
@@ -304,6 +307,7 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
             onToggle={t => doneMut.mutate(t)}
             onChanged={() => qc.invalidateQueries({ queryKey: ['tasks'] })}
             onAdd={() => setShowCreateTask(true)}
+            onOpenTemplates={() => setTemplatesOpen(true)}
           />
         </div>
         <div style={{ flex: 1, minWidth: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -356,6 +360,15 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
           onConfirm={() => moveMut.mutate({ id: confirmMove.task.id, data: { deadline: confirmMove.day } }, { onSuccess: () => setConfirmMove(null) })}
         />
       )}
+      <TaskTemplatesPanel
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        day={selDate}
+        today={todayStr}
+        isToday={isToday}
+        meId={currentUser?.id}
+        onInstantiated={() => { qc.invalidateQueries({ queryKey: ['tasks'] }); qc.invalidateQueries({ queryKey: ['tasks', 'day-order', selDate] }) }}
+      />
     </div>
       <MonthStrip selected={selDate} today={todayStr} onSelect={setSelDate} tasks={regularTasks} meId={currentUser?.id} />
     </div>
@@ -522,9 +535,9 @@ const COMPANY_NAME = 'Мегаполис Медиа'
 // при ОТКРЫТИИ (data-state=open у Radix-триггера) — устойчивая скруглённая обводка + ring, как у «Время».
 const chipWhite = 'w-full !bg-[var(--surface)] !border-transparent data-[state=open]:!border-[var(--accent)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--accent-soft)]'
 
-function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, onChanged, onAdd: _onAdd }: {
+function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, onChanged, onAdd: _onAdd, onOpenTemplates }: {
   title: string; tasks: Task[]; meId?: string; day: string; dragId: string | null
-  onOpen: (t: Task) => void; onToggle: (t: Task) => void; onChanged: () => void; onAdd: () => void
+  onOpen: (t: Task) => void; onToggle: (t: Task) => void; onChanged: () => void; onAdd: () => void; onOpenTemplates: () => void
 }) {
   const { data: projects = [] } = useQuery<Array<{ id: string; title: string; client?: { id: string; name: string } | null }>>({ queryKey: ['projects'], queryFn: () => api.get('/projects').then(r => r.data), staleTime: 300_000 })
   const { data: clients = [] } = useQuery<Array<{ id: string; name: string }>>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data), staleTime: 300_000 })
@@ -676,11 +689,19 @@ function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, on
           {draftRow && <div style={{ ...subRow, borderTop: '1px solid var(--border)' }}>{taskCells(draftRow)}</div>}
           {/* добавить задачу — кнопка всегда на месте; если сервер запретил (canAddTask=false), вместо «+»
               замочек, а причину показываем ТОСТОМ только по клику (не подписью заранее) */}
-          <button onClick={() => canAdd ? setDraft(draft ?? { client: '', link: 'none', title: '', time: '' }) : toast(dayPolicy?.reason ?? 'Добавление в этот день недоступно', 'info')}
-            style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', background: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
-            {canAdd ? <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> : <Lock size={13} style={{ opacity: 0.75 }} />} Добавить задачу
-          </button>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'stretch', borderTop: '1px solid var(--border)' }}>
+            <button onClick={() => canAdd ? setDraft(draft ?? { client: '', link: 'none', title: '', time: '' }) : toast(dayPolicy?.reason ?? 'Добавление в этот день недоступно', 'info')}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', background: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+              {canAdd ? <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> : <Lock size={13} style={{ opacity: 0.75 }} />} Добавить задачу
+            </button>
+            {/* Шаблонная задача — открывает правую панель пресетов (создание идёт тем же путём, что и обычная задача) */}
+            <button onClick={onOpenTemplates} title="Шаблонные задачи (пресеты)"
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderLeft: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', background: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+              <LayoutTemplate size={14} /> Шаблонная задача
+            </button>
+          </div>
         </div>
       </div>
     </div>
