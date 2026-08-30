@@ -255,11 +255,8 @@ export async function tasksRoutes(app: FastifyInstance) {
 
     const now = new Date()
     const effectiveStart = startDate ? new Date(startDate) : now
-    if (deadline) {
-      const dl = new Date(deadline)
-      dl.setHours(23, 59, 59, 999)
-      if (dl < effectiveStart) return reply.code(400).send({ error: 'Дедлайн не может быть раньше даты начала' })
-    }
+    // Валидация «дедлайн ≥ начала» УБРАНА: под моделью задача может быть просрочена — её переносят
+    // на день ПОЗЖЕ дедлайна (deadline < startDate = «просрочено», это валидное состояние).
     if (repeatRule && !repeatUntil) {
       return reply.code(400).send({ error: 'Для повтора нужна дата окончания серии (repeatUntil)' })
     }
@@ -425,13 +422,9 @@ export async function tasksRoutes(app: FastifyInstance) {
     }
 
     const effectiveStart = body.data.startDate ? new Date(body.data.startDate) : task.startDate
-    const effectiveDeadline = body.data.deadline !== undefined
-      ? (body.data.deadline ? new Date(body.data.deadline) : null)
-      : task.deadline
-
-    if (effectiveDeadline && effectiveStart > effectiveDeadline) {
-      return reply.code(400).send({ error: 'Дата начала не может быть позже дедлайна' })
-    }
+    // Валидация «начало ≤ дедлайна» УБРАНА: просроченную задачу переносят на день ПОЗЖЕ дедлайна
+    // (startDate > deadline = «просрочено» — валидное состояние). Раньше это блокировало любую правку
+    // просроченной задачи (даже смену названия) с ошибкой «дата начала не может быть позже дедлайна».
 
     const d = body.data
 

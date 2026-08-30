@@ -188,7 +188,9 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
             ) : !started ? (
-              (isToday || dayType === 'working') ? (
+              // «Начать» — на будни/сегодня И на выходной (в т.ч. прошлый): начал выходной → он становится
+              // рабочим днём и попадает в цепочку (надо закрыть перед следующим). Не тронул выходной — пропущен.
+              (isToday || dayType === 'working' || dayType === 'weekend') ? (
                 <button disabled={!interactive || (!place && dayType !== 'weekend')}
                   onClick={() => save.mutate({ startTime: isToday ? nowHHMM() : (schedule?.workStart ?? '10:00'), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
                   title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : ''}

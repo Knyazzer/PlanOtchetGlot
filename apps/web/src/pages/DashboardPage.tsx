@@ -192,6 +192,8 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
   const doneMut = useMutation({
     mutationFn: (t: Task) => api.patch(`/tasks/${t.id}`, { status: t.status === 'done' ? 'inprogress' : 'done' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tasks'] }),
+    // раньше молча падало (день не активен → 400 без отклика). Теперь тост «Начните рабочий день…».
+    onError: (e: any) => toast(e?.response?.data?.error ?? 'Не удалось изменить статус задачи', 'info'),
   })
 
   // Задача переезжает на другой день / у неё двигается дедлайн (drag на MonthStrip) — единая мутация.
