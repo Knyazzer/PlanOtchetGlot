@@ -259,6 +259,21 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
       return reply.code(403).send({ error: 'Период зафиксирован — этот день уже нельзя изменить задним числом' })
     }
 
+    // ── Инвариант «один активный день» (не доверяем клиенту): «начат, но не завершён» — это АКТИВНЫЙ
+    //    день, он может быть только ОДИН. При старте дня (startTime без endTime) отклоняем, если у
+    //    пользователя уже есть другой незавершённый начатый день — сначала его надо закрыть.
+    if (startTime && !endTime) {
+      const otherActive = await prisma.dayEntry.findFirst({
+        where: { userId: user.id, startTime: { not: null }, endTime: null, date: { not: dateObj } },
+        select: { date: true },
+      })
+      if (otherActive) {
+        const d = otherActive.date
+        const ds = `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+        return reply.code(400).send({ error: `Сначала завершите начатый день ${ds} — одновременно можно вести только один рабочий день` })
+      }
+    }
+
     // ── Server-side guard (не доверяем клиенту): нельзя ЗАКРЫТЬ рабочий день (проставить endTime),
     //    пока в окне дня есть незакрытые (inprogress) задачи. Тот же чек был на фронте — теперь на сервере.
     if (endTime) {
