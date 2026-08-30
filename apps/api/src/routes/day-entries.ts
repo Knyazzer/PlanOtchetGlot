@@ -25,6 +25,40 @@ async function assertFormatManager(req: FastifyRequest, reply: FastifyReply): Pr
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 
+// Дневная цепочка: getUTCDay() (0=Вс..6=Сб) → поле недельного графика WorkSchedule.
+const SCHED_KEY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+
+// Самый ранний НЕзакрытый рабочий день строго ДО beforeDateStr, в пределах НЕзалоченного окна
+// (глубже 16 дней не смотрим — старое залочено, его всё равно не закрыть → не блокирует). null — дырок нет.
+// «Закрыт/учтён»: рабочий день с началом+концом; отсутствие/выходной (не 'working'); по графику не рабочий.
+async function firstUnclosedWorkday(userId: string, beforeDateStr: string): Promise<string | null> {
+  const before = new Date(beforeDateStr + 'T00:00:00Z')
+  const start = new Date(before); start.setUTCDate(start.getUTCDate() - 16)
+  const schedule = await prisma.workSchedule.findUnique({
+    where: { userId },
+    select: { mon: true, tue: true, wed: true, thu: true, fri: true, sat: true, sun: true },
+  })
+  const entries = await prisma.dayEntry.findMany({
+    where: { userId, date: { gte: start, lt: before } },
+    select: { date: true, dayFormat: true, startTime: true, endTime: true },
+  })
+  const byDate = new Map(entries.map(e => [e.date.toISOString().slice(0, 10), e]))
+  for (let d = new Date(start); d < before; d.setUTCDate(d.getUTCDate() + 1)) {
+    const ds = d.toISOString().slice(0, 10)
+    if (isLocked(ds)) continue                        // залоченный день не закрыть — не блокирует
+    const e = byDate.get(ds)
+    if (e) {
+      if (e.dayFormat !== 'working') continue          // отсутствие/выходной — учтено
+      if (e.startTime && e.endTime) continue           // закрыт
+      return ds                                        // рабочий, не закрыт → дырка
+    }
+    const key = schedule ? (schedule as Record<string, string>)[SCHED_KEY[d.getUTCDay()]]
+                         : (d.getUTCDay() === 0 || d.getUTCDay() === 6 ? 'weekend' : 'office')
+    if (key !== 'weekend' && key !== 'dayoff') return ds // по графику рабочий, записи нет → пропущен
+  }
+  return null
+}
+
 const upsertSchema = z.object({
   date: z.string().regex(DATE_RE),
   dayFormat: z.string().min(1),                                  // СТАТУС дня: working|weekend|vacation|sick|dayoff
@@ -278,6 +312,16 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
         const d = otherActive.date
         const ds = `${String(d.getUTCDate()).padStart(2, '0')}.${String(d.getUTCMonth() + 1).padStart(2, '0')}`
         return reply.code(400).send({ error: `Сначала завершите начатый день ${ds} — одновременно можно вести только один рабочий день` })
+      }
+
+      // ── Дневная цепочка (не доверяем клиенту): нельзя НАЧАТЬ день, пока есть более ранний
+      //    НЕзакрытый рабочий день в незалоченном окне — сначала закрой его. Override — мастер-админ.
+      if (!(req as any).user?.isAdmin) {
+        const hole = await firstUnclosedWorkday(user.id, date)
+        if (hole) {
+          const [, mm, dd] = hole.split('-')
+          return reply.code(400).send({ error: `Сначала закройте пропущенный рабочий день ${dd}.${mm}, потом начинайте новый` })
+        }
       }
     }
 
