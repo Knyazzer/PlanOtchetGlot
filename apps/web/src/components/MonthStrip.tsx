@@ -165,7 +165,7 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                 border: `1px solid ${isToday && !isSel ? 'var(--accent-s)' : 'transparent'}`,
                 background: isToday && !isSel ? 'rgba(123,97,255,0.12)' : 'transparent',
                 fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-                color: isSel ? 'var(--text-1)' : isToday ? 'var(--accent-s)' : weekend ? 'var(--text-muted)' : 'var(--text-2)',
+                color: isSel ? 'var(--text-1)' : isToday ? 'var(--accent-s)' : 'var(--text-2)',
               }}>{dn}</span>
               <span style={{ width: 22, flexShrink: 0, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: isToday ? 'var(--accent-s)' : 'var(--text-muted)' }}>{WD[dow]}</span>
               {e ? (
@@ -185,7 +185,16 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                     </>
                   )
                 }
-                return <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend || exp?.format === 'weekend' ? 'выходной' : 'не заполнен'}</span>
+                // Выходной — как обычный день: свой квадратик + подпись «выходной» обычной яркости (не выцветаем).
+                if (weekend || exp?.format === 'weekend') {
+                  return (
+                    <>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, background: FMT_COLOR.weekend, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>выходной</span>
+                    </>
+                  )
+                }
+                return <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>не заполнен</span>
               })()}
               {/* Столбец чипа задач — фиксированная ширина, правое выравнивание: чипы всех дней друг под другом */}
               <div style={{ width: 38, flexShrink: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
