@@ -12,7 +12,7 @@ import { TimePicker } from '../ui-kit/components/TimePicker'
 import { DataTable, EditableCell } from '../ui-kit/components/DataTable'
 import { Tooltip } from '../components/Tooltip'
 import { cn } from '../ui-kit/lib/cn'
-import { Maximize2, GripVertical } from 'lucide-react'
+import { Maximize2, GripVertical, Lock } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -528,8 +528,15 @@ function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, on
   const { data: clients = [] } = useQuery<Array<{ id: string; name: string }>>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data), staleTime: 300_000 })
   const { data: goals = [] } = useQuery<Array<{ id: string; title: string }>>({ queryKey: ['strategic-goals'], queryFn: () => api.get('/strategic-goals').then(r => r.data), staleTime: 120_000 })
   const { data: tracks = [] } = useQuery<Array<{ id: string; title: string }>>({ queryKey: ['tracks'], queryFn: () => api.get('/tracks').then(r => r.data), staleTime: 120_000 })
+  // Серверный вердикт «можно ли добавлять задачу в этот день» — кнопку «Добавить задачу» показываем
+  // только когда сервер разрешил (аффорданс = серверная правда, а не клиентская копия правила замка).
+  const { data: dayPolicy } = useQuery<{ canAddTask: boolean; reason: string | null }>({
+    queryKey: ['day-policy', day], queryFn: () => api.get('/day-entries/policy', { params: { date: day } }).then(r => r.data), staleTime: 20_000,
+  })
+  const canAdd = dayPolicy?.canAddTask ?? true // до ответа не блокируем — сервер всё равно жёсткий бэкстоп
   const patch = useMutation({ mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => api.patch(`/tasks/${id}`, data), onSuccess: onChanged, onError: (e: any) => toast(e?.response?.data?.error ?? 'Не удалось сохранить', 'info') })
   const [draft, setDraft] = useState<Draft | null>(null)
+  useEffect(() => { setDraft(null) }, [day]) // смена дня — сбросить черновик (не тащить его в другой/закрытый день)
   const clientOpts = clients.map(c => ({ value: c.name, label: c.name }))
   const toMinutes = (hhmm: string) => { if (!hhmm) return null; const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
   const toHHMM = (min?: number | null) => min ? `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` : ''
@@ -665,12 +672,18 @@ function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, on
           </DragOverlay>
           {/* черновик (не sortable) */}
           {draftRow && <div style={{ ...subRow, borderTop: '1px solid var(--border)' }}>{taskCells(draftRow)}</div>}
-          {/* добавить задачу */}
-          <button onClick={() => setDraft(draft ?? { client: '', link: 'none', title: '', time: '' })}
-            style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', background: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
-            <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Добавить задачу
-          </button>
+          {/* добавить задачу — кнопка только если сервер разрешил (canAddTask); иначе тихая подпись-причина */}
+          {canAdd ? (
+            <button onClick={() => setDraft(draft ?? { client: '', link: 'none', title: '', time: '' })}
+              style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', background: 'none' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+              <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Добавить задачу
+            </button>
+          ) : (
+            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              <Lock size={13} style={{ opacity: 0.7 }} /> {dayPolicy?.reason ?? 'Добавление в этот день недоступно'}
+            </div>
+          )}
         </div>
       </div>
     </div>

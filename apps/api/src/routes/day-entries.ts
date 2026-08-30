@@ -6,7 +6,7 @@ import { getOrgScope } from '../services/orgScope'
 import { hasModule } from '../services/access'
 import { monthProduction, businessDays } from '../services/calendarRf'
 import { reconcileLeaveDay, LEAVE_FORMATS } from './requests'
-import { isLocked } from '../services/periodLock'
+import { isLocked, lockState } from '../services/periodLock'
 
 // Управление справочником форматов дня — admin ИЛИ HR (модуль hr.orgstructure/hr.absences).
 async function assertFormatManager(req: FastifyRequest, reply: FastifyReply): Promise<boolean> {
@@ -205,6 +205,34 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
       if (fixed) return prisma.dayEntry.findMany(query)
     }
     return rows
+  })
+
+  // ── GET /day-entries/policy?date=YYYY-MM-DD — серверный вердикт по дню ────────
+  //    Клиент прячет кнопку «Добавить задачу» / гасит правку дня по этому ответу.
+  //    Единый источник правды: не дублируем правило замка на фронте, спрашиваем сервер.
+  //    canAddTask зеркалит POST /tasks-гейт для inprogress: прошлое / завершённый день / замок.
+  app.get('/policy', { preHandler: authenticate }, async (req, reply) => {
+    const user = (req as any).user as { id: string; isAdmin: boolean }
+    const date = (req.query as any)?.date as string | undefined
+    if (!date || !DATE_RE.test(date)) return reply.code(400).send({ error: 'bad date' })
+
+    const p2 = (n: number) => String(n).padStart(2, '0')
+    const now = new Date()
+    const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+    const state = lockState(date)
+    const de = await prisma.dayEntry.findUnique({
+      where: { userId_date: { userId: user.id, date: new Date(date) } }, select: { endTime: true },
+    })
+    const dayFinished = !!de?.endTime
+
+    let canAddTask = true
+    let reason: string | null = null
+    if (date < todayStr) { canAddTask = false; reason = 'Прошедший день — новые задачи сюда не добавляются' }
+    else if (date === todayStr && dayFinished) { canAddTask = false; reason = 'Рабочий день завершён' }
+    else if (!user.isAdmin && state === 'locked') { canAddTask = false; reason = 'Период зафиксирован' }
+
+    const canEditDay = user.isAdmin || state !== 'locked'
+    return { date, lockState: state, dayFinished, canAddTask, canEditDay, reason }
   })
 
   // ── PUT /day-entries — upsert СВОЕГО дня ─────────────────────────────────────
