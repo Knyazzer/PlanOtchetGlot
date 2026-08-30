@@ -148,7 +148,16 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                 cursor: 'pointer', fontFamily: 'Inter,sans-serif',
               }}
             >
-              <span style={{ width: 22, flexShrink: 0, textAlign: 'right', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: isSel ? 'var(--text-1)' : weekend ? 'var(--text-muted)' : 'var(--text-2)' }}>{dn}</span>
+              {/* «Сегодня» = кружок вокруг числа (тот же стиль, что выделение выбранного дня, только круг);
+                  при выборе сегодняшнего дня кружок исчезает — выделение берёт на себя строка (переходящий). */}
+              <span style={{
+                width: 22, height: 22, boxSizing: 'border-box', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%',
+                border: `1px solid ${isToday && !isSel ? 'var(--accent-s)' : 'transparent'}`,
+                background: isToday && !isSel ? 'rgba(123,97,255,0.12)' : 'transparent',
+                fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                color: isSel ? 'var(--text-1)' : isToday ? 'var(--accent-s)' : weekend ? 'var(--text-muted)' : 'var(--text-2)',
+              }}>{dn}</span>
               <span style={{ width: 22, flexShrink: 0, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', color: isToday ? 'var(--accent-s)' : 'var(--text-muted)' }}>{WD[dow]}</span>
               {e ? (
                 <>
@@ -179,7 +188,6 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                 : needsAction
                   ? <span title={`День не закрыт: ${notClosedReason}`} style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} />
                   : null}
-              {isToday && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-s)', flexShrink: 0 }} title="Сегодня" />}
             </DroppableDayButton>
           )
         })}
