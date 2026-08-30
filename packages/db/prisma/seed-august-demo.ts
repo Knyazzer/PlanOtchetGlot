@@ -55,11 +55,13 @@ async function main() {
 
     const isGrace = mondayOfUTC(dateObj).getTime() === prevMon.getTime() // предыдущая неделя — оставить открытой
     if (isGrace) {
-      // Инвариант: «начат-не-завершён» — это активный день, он МОЖЕТ БЫТЬ ТОЛЬКО ОДИН. Поэтому прошлая
-      // неделя «не закрыта» НЕ как пачка начатых дней (так нельзя), а как дни, которые НЕ НАЧАТЫ
-      // (startTime=null) и с невыполненной задачей → «неделю надо закрыть: начать/завершить дни + задачи».
+      // Прошлая неделя «не закрыта» = рабочие дни НЕ НАЧАТЫ (нет startTime). Инварианты жизненного цикла:
+      //  • «начат-не-завершён» (активный день) может быть только ОДИН — пачки активных дней быть не может;
+      //  • назначенная задача падает в БЭКЛОГ (status=backlog); inprogress становится, только когда сотрудник
+      //    сам её берёт, а взять можно лишь при активном дне. Значит на не начатом дне НЕ может быть
+      //    взятой (inprogress) задачи — только назначенная в пуле (backlog).
       await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: null, endTime: null, breakMin: 0 } })
-      await prisma.task.create({ data: { title: `[demo] ${TASK_POOL[dn % TASK_POOL.length]}`, assignedById: admin.id, assigneeId: uid, divisionId, startDate: dateObj, status: 'inprogress', type: 'task', plannedMinutes: 60 } })
+      await prisma.task.create({ data: { title: `[demo] ${TASK_POOL[dn % TASK_POOL.length]}`, assignedById: admin.id, assigneeId: uid, divisionId, startDate: dateObj, status: 'backlog', type: 'task', plannedMinutes: 60 } })
       openDays++; openTasks++
     } else {
       // рабочий день ПРАВИЛЬНО закрыт: начат+завершён, 1–2 закрытые задачи
