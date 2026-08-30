@@ -192,7 +192,9 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
                 <button disabled={!interactive} onClick={() => { if (openTasksCount > 0) { toast(`Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните или перенесите`, 'info'); return } save.mutate({ endTime: nowHHMM() }) }}
                   style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
               )
-            ) : interactive ? (
+            ) : interactive && dayType === 'working' ? (
+              // Подсказка «закрыть день» — ТОЛЬКО для рабочего незакрытого дня (то, что ловит баннер).
+              // На выходном закрывать нечего: подписи нет; захотел записать работу — выбери место (станет рабочим).
               <span style={{ fontSize: 12.5, color: 'var(--text-muted)', fontStyle: 'italic', alignSelf: 'center', maxWidth: 210, textAlign: 'right' }}>
                 {!started ? 'Укажите начало и конец, чтобы закрыть день' : 'Укажите конец, чтобы закрыть день'}
               </span>
