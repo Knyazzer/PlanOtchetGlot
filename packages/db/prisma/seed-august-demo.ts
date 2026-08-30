@@ -34,14 +34,19 @@ async function main() {
   const divisionId = ud?.divId ?? null
 
   const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate()
-  const curMon = mondayOfUTC(todayUTC)
-  const prevMon = new Date(curMon); prevMon.setUTCDate(prevMon.getUTCDate() - 7)
+  // ДОСТИЖИМОЕ состояние под дневной цепочкой: нельзя закрыть поздний день, не закрыв ранние.
+  // Значит «пачки дырок» быть не может — максимум ОДИН незакрытый день. Оставляем незакрытым
+  // последний рабочий день (Пн–Пт) строго до сегодня — как БРОШЕННЫЙ активный (начат, не завершён):
+  // это и есть «требуется действие», закрывается обычным «Завершить». Всё раньше — закрыто.
+  const pending = new Date(todayUTC)
+  do { pending.setUTCDate(pending.getUTCDate() - 1) } while (pending.getUTCDay() === 0 || pending.getUTCDay() === 6)
+  const pendingStr = iso(pending)
 
   // Идемпотентность: снести прежние дни месяца и demo-задачи теста за этот месяц
   await prisma.dayEntry.deleteMany({ where: { userId: uid, date: { gte: ymd(y, m, 1), lte: ymd(y, m, lastDay) } } })
   await prisma.task.deleteMany({ where: { assigneeId: uid, startDate: { gte: ymd(y, m, 1), lt: ymd(y, m, lastDay + 1) }, title: { startsWith: '[demo]' } } })
 
-  let closedDays = 0, openDays = 0, weekendDays = 0, doneTasks = 0, openTasks = 0
+  let closedDays = 0, weekendDays = 0, doneTasks = 0
 
   for (let dn = 1; dn <= lastDay; dn++) {
     const dateObj = ymd(y, m, dn)
@@ -53,32 +58,25 @@ async function main() {
       weekendDays++; continue
     }
 
-    const isGrace = mondayOfUTC(dateObj).getTime() === prevMon.getTime() // предыдущая неделя — оставить открытой
-    if (isGrace) {
-      // Прошлая неделя «не закрыта» = рабочие дни НЕ НАЧАТЫ (нет startTime). Инварианты жизненного цикла:
-      //  • «начат-не-завершён» (активный день) может быть только ОДИН — пачки активных дней быть не может;
-      //  • назначенная задача падает в БЭКЛОГ (status=backlog); inprogress становится, только когда сотрудник
-      //    сам её берёт, а взять можно лишь при активном дне. Значит на не начатом дне НЕ может быть
-      //    взятой (inprogress) задачи — только назначенная в пуле (backlog).
-      await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: null, endTime: null, breakMin: 0 } })
-      await prisma.task.create({ data: { title: `[demo] ${TASK_POOL[dn % TASK_POOL.length]}`, assignedById: admin.id, assigneeId: uid, divisionId, startDate: dateObj, status: 'backlog', type: 'task', plannedMinutes: 60 } })
-      openDays++; openTasks++
-    } else {
-      // рабочий день ПРАВИЛЬНО закрыт: начат+завершён, 1–2 закрытые задачи
-      await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: '10:00', endTime: '19:00', breakMin: 60 } })
-      const n = 1 + (dn % 2)
-      for (let i = 0; i < n; i++) {
-        await prisma.task.create({ data: { title: `[demo] ${TASK_POOL[(dn + i) % TASK_POOL.length]}`, assignedById: admin.id, assigneeId: uid, divisionId, startDate: dateObj, status: 'done', doneAt: new Date(Date.UTC(y, m, dn, 15, 0, 0)), type: 'task', plannedMinutes: 60, actualMinutes: 60 } })
-        doneTasks++
-      }
-      closedDays++
+    if (iso(dateObj) === pendingStr) {
+      // БРОШЕННЫЙ активный день: начат 10:00, НЕ завершён, без взятых задач → «требуется действие»
+      await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: '10:00', endTime: null, breakMin: 0 } })
+      continue
     }
+
+    // рабочий день ПРАВИЛЬНО закрыт: начат+завершён, 1–2 закрытые задачи
+    await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: '10:00', endTime: '19:00', breakMin: 60 } })
+    const n = 1 + (dn % 2)
+    for (let i = 0; i < n; i++) {
+      await prisma.task.create({ data: { title: `[demo] ${TASK_POOL[(dn + i) % TASK_POOL.length]}`, assignedById: admin.id, assigneeId: uid, divisionId, startDate: dateObj, status: 'done', doneAt: new Date(Date.UTC(y, m, dn, 15, 0, 0)), type: 'task', plannedMinutes: 60, actualMinutes: 60 } })
+      doneTasks++
+    }
+    closedDays++
   }
 
   console.log(`Готово для ${testUser.email}:`)
-  console.log(`  закрытых раб. дней: ${closedDays}, незакрытых (grace-неделя): ${openDays}, выходных: ${weekendDays}`)
-  console.log(`  задач: done ${doneTasks}, open ${openTasks}`)
-  console.log(`  текущая неделя с ${iso(curMon)}; НЕзакрытая grace-неделя с ${iso(prevMon)}`)
+  console.log(`  закрытых раб. дней: ${closedDays}, выходных: ${weekendDays}, задач done: ${doneTasks}`)
+  console.log(`  НЕзакрытый (брошенный активный) день: ${pendingStr} — «требуется действие»`)
 }
 
 main().catch(e => { console.error(e); process.exit(1) }).finally(() => prisma.$disconnect())

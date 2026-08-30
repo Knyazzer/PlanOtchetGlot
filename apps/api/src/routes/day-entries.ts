@@ -28,10 +28,11 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 // Дневная цепочка: getUTCDay() (0=Вс..6=Сб) → поле недельного графика WorkSchedule.
 const SCHED_KEY = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
 
-// Самый ранний НЕзакрытый рабочий день строго ДО beforeDateStr, в пределах НЕзалоченного окна
-// (глубже 16 дней не смотрим — старое залочено, его всё равно не закрыть → не блокирует). null — дырок нет.
+// Все НЕзакрытые рабочие дни строго ДО beforeDateStr, в пределах НЕзалоченного окна (глубже 16 дней
+// не смотрим — старое залочено, его всё равно не закрыть → не блокирует). Ранее-первым порядком.
 // «Закрыт/учтён»: рабочий день с началом+концом; отсутствие/выходной (не 'working'); по графику не рабочий.
-async function firstUnclosedWorkday(userId: string, beforeDateStr: string): Promise<string | null> {
+// active=true — день начат, но не завершён (брошенный активный, закрывается «Завершить»); иначе пропущен.
+async function unclosedWorkdays(userId: string, beforeDateStr: string): Promise<Array<{ date: string; active: boolean }>> {
   const before = new Date(beforeDateStr + 'T00:00:00Z')
   const start = new Date(before); start.setUTCDate(start.getUTCDate() - 16)
   const schedule = await prisma.workSchedule.findUnique({
@@ -43,6 +44,7 @@ async function firstUnclosedWorkday(userId: string, beforeDateStr: string): Prom
     select: { date: true, dayFormat: true, startTime: true, endTime: true },
   })
   const byDate = new Map(entries.map(e => [e.date.toISOString().slice(0, 10), e]))
+  const out: Array<{ date: string; active: boolean }> = []
   for (let d = new Date(start); d < before; d.setUTCDate(d.getUTCDate() + 1)) {
     const ds = d.toISOString().slice(0, 10)
     if (isLocked(ds)) continue                        // залоченный день не закрыть — не блокирует
@@ -50,13 +52,19 @@ async function firstUnclosedWorkday(userId: string, beforeDateStr: string): Prom
     if (e) {
       if (e.dayFormat !== 'working') continue          // отсутствие/выходной — учтено
       if (e.startTime && e.endTime) continue           // закрыт
-      return ds                                        // рабочий, не закрыт → дырка
+      out.push({ date: ds, active: !!e.startTime })     // рабочий, не закрыт → дырка
+      continue
     }
     const key = schedule ? (schedule as Record<string, string>)[SCHED_KEY[d.getUTCDay()]]
                          : (d.getUTCDay() === 0 || d.getUTCDay() === 6 ? 'weekend' : 'office')
-    if (key !== 'weekend' && key !== 'dayoff') return ds // по графику рабочий, записи нет → пропущен
+    if (key !== 'weekend' && key !== 'dayoff') out.push({ date: ds, active: false }) // по графику рабочий, записи нет → пропущен
   }
-  return null
+  return out
+}
+
+// Самый ранний НЕзакрытый рабочий день (для гейта дневной цепочки). null — дырок нет.
+async function firstUnclosedWorkday(userId: string, beforeDateStr: string): Promise<string | null> {
+  return (await unclosedWorkdays(userId, beforeDateStr))[0]?.date ?? null
 }
 
 const upsertSchema = z.object({
@@ -273,6 +281,17 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
 
     const canEditDay = user.isAdmin || state !== 'locked'
     return { date, lockState: state, dayStarted, dayFinished, canAddTask, canEditDay, reason }
+  })
+
+  // ── GET /day-entries/action-required — «требуется действие»: НЕзакрытые прошлые рабочие дни ──
+  //    Дневная цепочка: их надо закрыть, иначе новый день не начать. Клиент показывает баннер.
+  app.get('/action-required', { preHandler: authenticate }, async (req) => {
+    const user = (req as any).user as { id: string }
+    const now = new Date()
+    const p2 = (n: number) => String(n).padStart(2, '0')
+    const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+    const days = await unclosedWorkdays(user.id, todayStr)
+    return { days, count: days.length, earliest: days[0]?.date ?? null }
   })
 
   // ── PUT /day-entries — upsert СВОЕГО дня ─────────────────────────────────────

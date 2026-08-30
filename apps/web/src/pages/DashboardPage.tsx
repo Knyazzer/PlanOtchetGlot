@@ -12,7 +12,7 @@ import { TimePicker } from '../ui-kit/components/TimePicker'
 import { DataTable, EditableCell } from '../ui-kit/components/DataTable'
 import { Tooltip } from '../components/Tooltip'
 import { cn } from '../ui-kit/lib/cn'
-import { Maximize2, GripVertical, Lock } from 'lucide-react'
+import { Maximize2, GripVertical, Lock, AlertTriangle } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
@@ -216,6 +216,15 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
   })
   const todayFinished = !!todayEntries[0]?.endTime
 
+  // «Требуется действие»: незакрытые прошлые рабочие дни (дневная цепочка) — их надо закрыть, иначе
+  // новый день не начать. Серверный вердикт; баннер сверху Обзора со ссылкой на самый ранний.
+  const { data: actionReq } = useQuery<{ days: Array<{ date: string; active: boolean }>; count: number; earliest: string | null }>({
+    queryKey: ['day-entries', 'action-required'],
+    queryFn: () => api.get('/day-entries/action-required').then(r => r.data),
+    refetchInterval: 60_000, refetchIntervalInBackground: false,
+  })
+  const ddmm = (s: string) => { const [, mm, dd] = s.split('-'); return `${dd}.${mm}` }
+
   // Only regular (non-calendar) tasks
   const regularTasks = allTasks.filter(t => !t.calendarEventId)
 
@@ -287,6 +296,25 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
       onDragEnd={handleDragEnd}>
     <div style={{ display: 'flex', height: '100%', boxSizing: 'border-box' }}>
     <div style={{ flex: 1, minWidth: 0, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', boxSizing: 'border-box' }}>
+      {/* «Требуется действие»: незакрытые прошлые рабочие дни — блок сверху, клик ведёт к самому раннему */}
+      {!!actionReq?.count && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(245,158,11,0.45)', background: 'rgba(245,158,11,0.09)' }}>
+          <AlertTriangle size={18} style={{ color: '#F59E0B', flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>Требуется действие</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-2)', marginTop: 1 }}>
+              {actionReq.count === 1 ? 'Незакрытый рабочий день' : `Незакрытых рабочих дней: ${actionReq.count}`}
+              {' — '}{actionReq.days.map(d => ddmm(d.date)).join(', ')}. Закройте, чтобы начать новый день.
+            </div>
+          </div>
+          {actionReq.earliest && (
+            <button onClick={() => setSelDate(actionReq.earliest!)}
+              style={{ flexShrink: 0, padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(245,158,11,0.5)', background: 'rgba(245,158,11,0.14)', color: 'var(--text-1)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+              Закрыть {ddmm(actionReq.earliest)}
+            </button>
+          )}
+        </div>
+      )}
       {/* Две колонки: слева «Мой рабочий день» + «Задачи на сегодня» (одна ширина);
           справа «Стратегические цели отдела» + «События» таблицей (одна ширина). */}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
