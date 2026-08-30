@@ -55,8 +55,10 @@ async function main() {
 
     const isGrace = mondayOfUTC(dateObj).getTime() === prevMon.getTime() // предыдущая неделя — оставить открытой
     if (isGrace) {
-      // рабочий день НАЧАТ, но НЕ завершён (endTime null) + одна открытая задача → день «не закрыт»
-      await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: '10:00', endTime: null, breakMin: 60 } })
+      // Инвариант: «начат-не-завершён» — это активный день, он МОЖЕТ БЫТЬ ТОЛЬКО ОДИН. Поэтому прошлая
+      // неделя «не закрыта» НЕ как пачка начатых дней (так нельзя), а как дни, которые НЕ НАЧАТЫ
+      // (startTime=null) и с невыполненной задачей → «неделю надо закрыть: начать/завершить дни + задачи».
+      await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: null, endTime: null, breakMin: 0 } })
       await prisma.task.create({ data: { title: `[demo] ${TASK_POOL[dn % TASK_POOL.length]}`, assignedById: admin.id, assigneeId: uid, divisionId, startDate: dateObj, status: 'inprogress', type: 'task', plannedMinutes: 60 } })
       openDays++; openTasks++
     } else {
