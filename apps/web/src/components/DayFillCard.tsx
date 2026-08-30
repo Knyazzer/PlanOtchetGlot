@@ -192,9 +192,10 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
             ) : !started ? (
-              // «Начать» — только на будни/сегодня. На ЧИСТОМ выходном кнопки нет (день отдыха): запись
-              // работы в выходной начинается выбором места (см. выше) — оно и стартует рабочий день.
-              (isToday || dayType === 'working') ? (
+              // «Начать» — только на РАБОЧЕМ дне (в т.ч. сегодня-рабочий). На выходном кнопки нет, даже если
+              // это сегодня (день отдыха): запись работы в выходной начинается выбором места (см. выше) — оно
+              // и переводит день в рабочий + стартует. Так «Начать» не появляется в воскресенье-выходной.
+              (dayType === 'working') ? (
                 <button disabled={!interactive || (!place && dayType !== 'weekend')}
                   onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
                   title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : ''}
