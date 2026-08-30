@@ -9,11 +9,11 @@ import { dayTaskStats, type DayScopedTask } from '../lib/taskWindow'
 // Клик по дню делает кабинет дате-зависимым (задачи/план/события на выбранную дату,
 // в т.ч. планирование на будущее). Навигация по месяцам — независимая от выбора.
 //
-// Критерий «закрытого дня» (день ≤ сегодня): нет незакрытых (inprogress) задач в окне дня И,
-// если день рабочий (dayFormat === 'working'), рабочий день завершён (проставлен endTime кнопкой
-// «Закончить рабочий день» — см. DayFillCard, который блокирует эту кнопку при незакрытых задачах,
-// правило «нельзя закрыть с незакрытыми — перенести»). Нерабочие дни (выходной/отпуск/больничный/
-// отгул) закрываются сами — закрывать в них нечего, если на них не висят незакрытые задачи.
+// Критерий «закрытого дня» (день ≤ сегодня): РАБОЧИЙ день считается закрытым, только если он НАЧАТ
+// (startTime) И ЗАВЕРШЁН (endTime) И в его окне нет незакрытых (inprogress) задач. НЕрабочий день
+// (выходной/отпуск/больничный/отгул) не «закрывают» — начала/конца у него нет, поэтому зелёную
+// галочку ему НЕ ставим (даже если на нём есть закрытая задача). Оранжевую точку «требуется действие»
+// показываем: у рабочего дня — если он не закрыт как надо; у нерабочего — только если висят открытые задачи.
 
 type DayFormat = { key: string; label: string; isWork: boolean; score: number | null }
 type DayEntry = { id: string; date: string; dayFormat: string; place: string | null; startTime: string | null; endTime: string | null; breakMin: number }
@@ -124,8 +124,16 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
           // Поставлено/выполнено на день + критерий «закрытого дня» (см. комментарий над компонентом)
           const stats = dayTaskStats(tasks, meId, ds)
           const effWorking = e ? e.dayFormat === 'working' : !!exp && isPlace(exp.format)
-          const closed = stats.open === 0 && (!effWorking || !!e?.endTime)
-          const showDayStatus = ds <= today && (effWorking || stats.total > 0)
+          const started = !!e?.startTime, ended = !!e?.endTime
+          const past = ds <= today
+          // Рабочий день закрыт = начат И завершён И все задачи закрыты. Нерабочий не «закрывают» —
+          // зелёной галочки ему нет; оранжевая точка — только если висят открытые задачи.
+          const workClosed = effWorking && started && ended && stats.open === 0
+          const needsAction = past && (effWorking ? !workClosed : stats.open > 0)
+          const notClosedReason = stats.open > 0
+            ? `${stats.open} незакрытых задач — заверните их или перенесите на другой день`
+            : effWorking && !started ? 'рабочий день не начат'
+            : effWorking && !ended ? 'рабочий день не завершён' : 'день не закрыт'
 
           return (
             <DroppableDayButton
@@ -166,14 +174,11 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                   {stats.done}/{stats.total}
                 </span>
               )}
-              {showDayStatus && (
-                closed
-                  ? <span title="День закрыт" style={{ flexShrink: 0, fontSize: 11, lineHeight: 1, color: '#22C55E' }}>✓</span>
-                  : <span
-                      title={`День не закрыт${stats.open > 0 ? `: ${stats.open} незакрытых задач — заверните их или перенесите на другой день` : effWorking && !e?.endTime ? ': рабочий день не завершён' : ''}`}
-                      style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }}
-                    />
-              )}
+              {past && workClosed
+                ? <span title="День закрыт" style={{ flexShrink: 0, fontSize: 11, lineHeight: 1, color: '#22C55E' }}>✓</span>
+                : needsAction
+                  ? <span title={`День не закрыт: ${notClosedReason}`} style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} />
+                  : null}
               {isToday && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-s)', flexShrink: 0 }} title="Сегодня" />}
             </DroppableDayButton>
           )
