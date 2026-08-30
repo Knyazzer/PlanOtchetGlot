@@ -34,19 +34,17 @@ async function main() {
   const divisionId = ud?.divId ?? null
 
   const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate()
-  // ДОСТИЖИМОЕ состояние под дневной цепочкой: нельзя закрыть поздний день, не закрыв ранние.
-  // Значит «пачки дырок» быть не может — максимум ОДИН незакрытый день. Оставляем незакрытым
-  // последний рабочий день (Пн–Пт) строго до сегодня — как БРОШЕННЫЙ активный (начат, не завершён):
-  // это и есть «требуется действие», закрывается обычным «Завершить». Всё раньше — закрыто.
-  const pending = new Date(todayUTC)
-  do { pending.setUTCDate(pending.getUTCDate() - 1) } while (pending.getUTCDay() === 0 || pending.getUTCDay() === 6)
-  const pendingStr = iso(pending)
+  // Сценарий «не закрывали текущую неделю»: всё ДО понедельника этой недели закрыто правильно,
+  // а рабочие дни ТЕКУЩЕЙ недели (с понедельника по сегодня) оставлены НЕзакрытыми дырками (не начаты,
+  // без задач). Достижимо под дневной цепочкой: пропустил логирование этой недели. Пройти закрытие
+  // ретроактивно: открыть Пн → «Начать» → добавить/выполнить задачи → «Завершить» → далее по порядку.
+  const curMon = mondayOfUTC(todayUTC) // понедельник текущей недели
 
   // Идемпотентность: снести прежние дни месяца и demo-задачи теста за этот месяц
   await prisma.dayEntry.deleteMany({ where: { userId: uid, date: { gte: ymd(y, m, 1), lte: ymd(y, m, lastDay) } } })
   await prisma.task.deleteMany({ where: { assigneeId: uid, startDate: { gte: ymd(y, m, 1), lt: ymd(y, m, lastDay + 1) }, title: { startsWith: '[demo]' } } })
 
-  let closedDays = 0, weekendDays = 0, doneTasks = 0
+  let closedDays = 0, holeDays = 0, weekendDays = 0, doneTasks = 0
 
   for (let dn = 1; dn <= lastDay; dn++) {
     const dateObj = ymd(y, m, dn)
@@ -58,13 +56,13 @@ async function main() {
       weekendDays++; continue
     }
 
-    if (iso(dateObj) === pendingStr) {
-      // БРОШЕННЫЙ активный день: начат 10:00, НЕ завершён, без взятых задач → «требуется действие»
-      await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: '10:00', endTime: null, breakMin: 0 } })
-      continue
+    if (dateObj.getTime() >= curMon.getTime()) {
+      // рабочий день ТЕКУЩЕЙ недели — НЕзакрытая дырка: не начат (нет времени), без задач
+      await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: null, endTime: null, breakMin: 0 } })
+      holeDays++; continue
     }
 
-    // рабочий день ПРАВИЛЬНО закрыт: начат+завершён, 1–2 закрытые задачи
+    // рабочий день ДО текущей недели — правильно закрыт: начат+завершён, 1–2 закрытые задачи
     await prisma.dayEntry.create({ data: { userId: uid, divisionId, date: dateObj, dayFormat: 'working', place: 'office', startTime: '10:00', endTime: '19:00', breakMin: 60 } })
     const n = 1 + (dn % 2)
     for (let i = 0; i < n; i++) {
@@ -76,7 +74,7 @@ async function main() {
 
   console.log(`Готово для ${testUser.email}:`)
   console.log(`  закрытых раб. дней: ${closedDays}, выходных: ${weekendDays}, задач done: ${doneTasks}`)
-  console.log(`  НЕзакрытый (брошенный активный) день: ${pendingStr} — «требуется действие»`)
+  console.log(`  НЕзакрытая текущая неделя (дырки) с ${iso(curMon)}: ${holeDays} рабочих дн. — «требуется действие»`)
 }
 
 main().catch(e => { console.error(e); process.exit(1) }).finally(() => prisma.$disconnect())
