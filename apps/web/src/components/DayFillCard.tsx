@@ -180,25 +180,25 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
               </Field>
             </div>
 
-            {/* Кнопка действия — одинаковый размер во всех стадиях. Живой старт/финиш кнопками — только СЕГОДНЯ;
-                прошлый незалоченный день закрывается вводом времени начала+конца прямо в поля (подсказка). */}
+            {/* Кнопки «Начать/Завершить» — ПЕРЕХОДЯЩИЕ: работают и на прошлом незакрытом РАБОЧЕМ дне
+                (ретроактивное дозаполнение), не только сегодня. Порядок дней держит сервер (дневная цепочка):
+                начать более поздний день, пока не закрыт ранний, он не даст. Сегодня: время = сейчас;
+                прошлый день: время по графику (дальше правится в полях). Выходной задним числом — сначала
+                выбери место (станет рабочим), затем «Начать». */}
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
-            ) : isToday ? (
-              !started ? (
-                <button disabled={!interactive || (!place && dayType !== 'weekend')} onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
-                  title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : ''} style={bigBtn(ROLE.success, !interactive || (!place && dayType !== 'weekend'))}>Начать рабочий день</button>
-              ) : (
-                <button disabled={!interactive} onClick={() => { if (openTasksCount > 0) { toast(`Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните или перенесите`, 'info'); return } save.mutate({ endTime: nowHHMM() }) }}
-                  style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
-              )
-            ) : interactive && dayType === 'working' ? (
-              // Подсказка «закрыть день» — ТОЛЬКО для рабочего незакрытого дня (то, что ловит баннер).
-              // На выходном закрывать нечего: подписи нет; захотел записать работу — выбери место (станет рабочим).
-              <span style={{ fontSize: 12.5, color: 'var(--text-muted)', fontStyle: 'italic', alignSelf: 'center', maxWidth: 210, textAlign: 'right' }}>
-                {!started ? 'Укажите начало и конец, чтобы закрыть день' : 'Укажите конец, чтобы закрыть день'}
-              </span>
-            ) : null}
+            ) : !started ? (
+              (isToday || dayType === 'working') ? (
+                <button disabled={!interactive || (!place && dayType !== 'weekend')}
+                  onClick={() => save.mutate({ startTime: isToday ? nowHHMM() : (schedule?.workStart ?? '10:00'), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                  title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : ''}
+                  style={bigBtn(ROLE.success, !interactive || (!place && dayType !== 'weekend'))}>Начать рабочий день</button>
+              ) : null
+            ) : (
+              <button disabled={!interactive}
+                onClick={() => { if (openTasksCount > 0) { toast(`Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните или перенесите`, 'info'); return } save.mutate({ endTime: isToday ? nowHHMM() : (schedule?.workEnd ?? '18:30') }) }}
+                style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
+            )}
           </div>
 
       </>

@@ -319,7 +319,7 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
           справа «Стратегические цели отдела» + «События» таблицей (одна ширина). */}
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
         <div style={{ flex: 2, minWidth: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <DayFillCard date={selDate} openTasksCount={isToday ? dayTasks.filter(t => t.status === 'inprogress').length : 0} />
+          <DayFillCard date={selDate} openTasksCount={dayTasks.filter(t => t.status === 'inprogress').length} />
           <TodayTasksTable
             title={`Задачи на ${isToday ? 'сегодня' : dayShort}`}
             tasks={dayTasks}
