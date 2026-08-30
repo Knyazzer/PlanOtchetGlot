@@ -251,32 +251,24 @@ export async function tasksRoutes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'Для повтора нужна дата окончания серии (repeatUntil)' })
     }
 
-    // ── Server-side guard (не доверяем клиенту): нельзя СОЗДАТЬ задачу в прошедшем/завершённом/
-    //    зафиксированном дне. Зеркалит правило переноса (PATCH) — иначе дыра: перенести в закрытый
-    //    день нельзя, а создать прямо в нём можно. Проверка по дню ИСПОЛНИТЕЛЯ (туда падает задача).
-    //    Спека — docs/PERIOD-LOCK-2026-08-29.md, override — только мастер-админ.
+    // ── Server-side guard (не доверяем клиенту): модель НЕДЕЛЬНАЯ. Задачу нельзя создать в
+    //    зафиксированной неделе (не-админ) или в уже ЗАВЕРШЁННОМ дне (endTime). Подневного запрета
+    //    «прошлый день» НЕТ — ранние дни открытой недели заполняемы. Проверка по дню ИСПОЛНИТЕЛЯ.
+    //    Спека — docs/PERIOD-LOCK-2026-08-29.md, override зафиксации — только мастер-админ.
     if (startDate) {
       const isAdmin = !!(request as any).user?.isAdmin
-      const p2 = (n: number) => String(n).padStart(2, '0')
-      const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
-
-      // Period-Lock: в зафиксированный период (прошлая неделя+ / прошлый месяц) не-админ не создаёт задачу.
+      // Period-Lock: зафиксированная неделя (2 недели назад+ / прошлый месяц) — не-админ не создаёт задачу.
       if (!isAdmin && isLocked(startDate)) {
-        return reply.code(400).send({ error: 'Период зафиксирован — задачу нельзя создать в закрытой неделе/месяце' })
+        return reply.code(400).send({ error: 'Неделя зафиксирована — задачу нельзя создать в закрытой неделе/месяце' })
       }
-      // Незакрытую (inprogress) задачу нельзя завести в прошедшем или уже завершённом (endTime) дне.
+      // Открытую (inprogress) задачу нельзя завести в уже завершённом (endTime) дне — вне зависимости от недели.
       if (status === 'inprogress') {
-        if (startDate < todayStr) {
-          return reply.code(400).send({ error: 'Незакрытую задачу нельзя создать в прошедшем дне' })
-        }
-        if (startDate === todayStr) {
-          const de = await prisma.dayEntry.findUnique({
-            where: { userId_date: { userId: assigneeId, date: new Date(startDate) } },
-            select: { endTime: true },
-          })
-          if (de?.endTime) {
-            return reply.code(400).send({ error: 'Рабочий день уже завершён — создайте задачу на другой день' })
-          }
+        const de = await prisma.dayEntry.findUnique({
+          where: { userId_date: { userId: assigneeId, date: new Date(startDate) } },
+          select: { endTime: true },
+        })
+        if (de?.endTime) {
+          return reply.code(400).send({ error: 'Рабочий день завершён — создайте задачу на другой день' })
         }
       }
     }
@@ -416,25 +408,17 @@ export async function tasksRoutes(app: FastifyInstance) {
 
     const d = body.data
 
-    // ── Server-side guard (не доверяем клиенту): незакрытую (inprogress) задачу нельзя перенести
-    //    startDate в прошедший или уже завершённый (endTime) день — иначе в закрытом дне повиснет
-    //    открытая задача. Будущий Period-Lock обобщит это до полной фиксации периодов.
+    // ── Server-side guard (не доверяем клиенту): открытую (inprogress) задачу нельзя перенести
+    //    startDate в уже ЗАВЕРШЁННЫЙ (endTime) день — иначе в закрытом дне повиснет открытая задача.
+    //    Подневного «прошлый день» нет: перенос внутри открытой недели допустим. Зафиксированную
+    //    неделю режет отдельный Period-Lock-гейт ниже (isLocked).
     if (d.startDate !== undefined && (d.status ?? task.status) === 'inprogress') {
-      const targetDay = d.startDate // 'YYYY-MM-DD'
-      const now = new Date()
-      const p2 = (n: number) => String(n).padStart(2, '0')
-      const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
-      if (targetDay < todayStr) {
-        return reply.code(400).send({ error: 'Незакрытую задачу нельзя перенести в прошедший день' })
-      }
-      if (targetDay === todayStr) {
-        const de = await prisma.dayEntry.findUnique({
-          where: { userId_date: { userId: task.assigneeId, date: new Date(targetDay) } },
-          select: { endTime: true },
-        })
-        if (de?.endTime) {
-          return reply.code(400).send({ error: 'Рабочий день уже завершён — перенесите задачу на другой день' })
-        }
+      const de = await prisma.dayEntry.findUnique({
+        where: { userId_date: { userId: task.assigneeId, date: new Date(d.startDate) } },
+        select: { endTime: true },
+      })
+      if (de?.endTime) {
+        return reply.code(400).send({ error: 'Рабочий день завершён — перенесите задачу на другой день' })
       }
     }
 

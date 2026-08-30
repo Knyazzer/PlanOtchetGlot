@@ -672,18 +672,13 @@ function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, on
           </DragOverlay>
           {/* черновик (не sortable) */}
           {draftRow && <div style={{ ...subRow, borderTop: '1px solid var(--border)' }}>{taskCells(draftRow)}</div>}
-          {/* добавить задачу — кнопка только если сервер разрешил (canAddTask); иначе тихая подпись-причина */}
-          {canAdd ? (
-            <button onClick={() => setDraft(draft ?? { client: '', link: 'none', title: '', time: '' })}
-              style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', background: 'none' }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
-              <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Добавить задачу
-            </button>
-          ) : (
-            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              <Lock size={13} style={{ opacity: 0.7 }} /> {dayPolicy?.reason ?? 'Добавление в этот день недоступно'}
-            </div>
-          )}
+          {/* добавить задачу — кнопка всегда на месте; если сервер запретил (canAddTask=false), вместо «+»
+              замочек, а причину показываем ТОСТОМ только по клику (не подписью заранее) */}
+          <button onClick={() => canAdd ? setDraft(draft ?? { client: '', link: 'none', title: '', time: '' }) : toast(dayPolicy?.reason ?? 'Добавление в этот день недоступно', 'info')}
+            style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', borderTop: '1px solid var(--border)', fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', background: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+            {canAdd ? <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> : <Lock size={13} style={{ opacity: 0.75 }} />} Добавить задачу
+          </button>
         </div>
       </div>
     </div>

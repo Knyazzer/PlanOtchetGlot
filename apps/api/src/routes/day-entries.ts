@@ -216,20 +216,19 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
     const date = (req.query as any)?.date as string | undefined
     if (!date || !DATE_RE.test(date)) return reply.code(400).send({ error: 'bad date' })
 
-    const p2 = (n: number) => String(n).padStart(2, '0')
-    const now = new Date()
-    const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
     const state = lockState(date)
     const de = await prisma.dayEntry.findUnique({
       where: { userId_date: { userId: user.id, date: new Date(date) } }, select: { endTime: true },
     })
     const dayFinished = !!de?.endTime
 
+    // Модель НЕДЕЛЬНАЯ (не подневная): в open/grace добавлять можно (в т.ч. ранние дни текущей недели
+    // и всю прошлую неделю); locked-неделя (не-админ) — нельзя. Отдельно: завершённый день (endTime)
+    // не принимает новую открытую задачу — это про целостность дня, а не про «прошлый день».
     let canAddTask = true
     let reason: string | null = null
-    if (date < todayStr) { canAddTask = false; reason = 'Прошедший день — новые задачи сюда не добавляются' }
-    else if (date === todayStr && dayFinished) { canAddTask = false; reason = 'Рабочий день завершён' }
-    else if (!user.isAdmin && state === 'locked') { canAddTask = false; reason = 'Период зафиксирован' }
+    if (!user.isAdmin && state === 'locked') { canAddTask = false; reason = 'Неделя зафиксирована — изменения закрыты' }
+    else if (dayFinished) { canAddTask = false; reason = 'Рабочий день завершён' }
 
     const canEditDay = user.isAdmin || state !== 'locked'
     return { date, lockState: state, dayFinished, canAddTask, canEditDay, reason }
