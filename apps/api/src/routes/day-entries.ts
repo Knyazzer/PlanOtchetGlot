@@ -218,20 +218,27 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
 
     const state = lockState(date)
     const de = await prisma.dayEntry.findUnique({
-      where: { userId_date: { userId: user.id, date: new Date(date) } }, select: { endTime: true },
+      where: { userId_date: { userId: user.id, date: new Date(date) } }, select: { startTime: true, endTime: true },
     })
+    const dayStarted = !!de?.startTime
     const dayFinished = !!de?.endTime
+    const p2 = (n: number) => String(n).padStart(2, '0')
+    const now = new Date()
+    const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+    const isToday = date === todayStr
 
-    // Модель НЕДЕЛЬНАЯ (не подневная): в open/grace добавлять можно (в т.ч. ранние дни текущей недели
-    // и всю прошлую неделю); locked-неделя (не-админ) — нельзя. Отдельно: завершённый день (endTime)
-    // не принимает новую открытую задачу — это про целостность дня, а не про «прошлый день».
+    // Модель «активного дня»: взять/создать задачу «в работу» можно только в СЕГОДНЯШНИЙ активный день
+    // (начат startTime, не завершён endTime). Зеркалит серверный POST/PATCH-гейт tasks. Мастер-админ обходит.
     let canAddTask = true
     let reason: string | null = null
-    if (!user.isAdmin && state === 'locked') { canAddTask = false; reason = 'Неделя зафиксирована — изменения закрыты' }
+    if (user.isAdmin) { /* override */ }
+    else if (state === 'locked') { canAddTask = false; reason = 'Неделя зафиксирована — изменения закрыты' }
+    else if (!isToday) { canAddTask = false; reason = 'Задачи в работу добавляются только в текущий день' }
+    else if (!dayStarted) { canAddTask = false; reason = 'Начните рабочий день, чтобы добавлять задачи' }
     else if (dayFinished) { canAddTask = false; reason = 'Рабочий день завершён' }
 
     const canEditDay = user.isAdmin || state !== 'locked'
-    return { date, lockState: state, dayFinished, canAddTask, canEditDay, reason }
+    return { date, lockState: state, dayStarted, dayFinished, canAddTask, canEditDay, reason }
   })
 
   // ── PUT /day-entries — upsert СВОЕГО дня ─────────────────────────────────────

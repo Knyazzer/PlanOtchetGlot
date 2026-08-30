@@ -6,6 +6,19 @@ import { getOrgScope } from '../services/orgScope'
 import { isLocked } from '../services/periodLock'
 import { randomUUID } from 'crypto'
 
+// Инвариант «активный день»: брать задачу в работу (inprogress), выполнять (done) и создавать СВОЮ
+// задачу можно только когда СЕГОДНЯ начато (startTime) и не завершено (endTime). Работа делается «сейчас».
+async function isTodayActive(userId: string): Promise<boolean> {
+  const now = new Date()
+  const p2 = (n: number) => String(n).padStart(2, '0')
+  const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+  const de = await prisma.dayEntry.findUnique({
+    where: { userId_date: { userId, date: new Date(todayStr) } },
+    select: { startTime: true, endTime: true },
+  })
+  return !!de?.startTime && !de?.endTime
+}
+
 const TASK_SELECT = {
   id: true,
   title: true,
@@ -273,6 +286,23 @@ export async function tasksRoutes(app: FastifyInstance) {
       }
     }
 
+    // ── Гейт «активный день» (не доверяем клиенту): создать СВОЮ задачу сразу «в работе»/«выполненной»
+    //    можно только на СЕГОДНЯ и при начатом (не завершённом) дне. Назначение другому и планирование
+    //    в backlog — без ограничения. Override — мастер-админ.
+    if (assigneeId === user.id && (status === 'inprogress' || status === 'done')) {
+      const creatorIsAdmin = !!(request as any).user?.isAdmin
+      if (!creatorIsAdmin) {
+        const p2 = (n: number) => String(n).padStart(2, '0')
+        const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
+        if (startDate && startDate !== todayStr) {
+          return reply.code(400).send({ error: 'Задачу в работу можно создавать только на сегодня' })
+        }
+        if (!(await isTodayActive(user.id))) {
+          return reply.code(400).send({ error: 'Начните рабочий день, чтобы брать и выполнять задачи' })
+        }
+      }
+    }
+
     const divisionId = await resolveDivisionId(assigneeId)
     const commonData = {
       title,
@@ -433,6 +463,15 @@ export async function tasksRoutes(app: FastifyInstance) {
       //    effectiveStart уже учитывает перенос вперёд: если задачу выводят из-под замка — статус менять можно.
       if (d.status !== undefined && isLocked(effectiveStart)) {
         return reply.code(400).send({ error: 'Период зафиксирован — статус задачи в закрытой неделе изменить нельзя (перенесите её на актуальную дату)' })
+      }
+    }
+
+    // ── Гейт «активный день» (не доверяем клиенту): взять в работу (inprogress) или выполнить (done)
+    //    СВОЮ задачу можно только при начатом (не завершённом) сегодня. Возврат в backlog и правка
+    //    прочих полей — без ограничения. Override — мастер-админ.
+    if (!user.isAdmin && isAssignee && (d.status === 'inprogress' || d.status === 'done')) {
+      if (!(await isTodayActive(user.id))) {
+        return reply.code(400).send({ error: 'Начните рабочий день, чтобы брать и выполнять задачи' })
       }
     }
 
