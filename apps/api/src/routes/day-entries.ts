@@ -354,13 +354,12 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
       })
       if (!prevDay?.endTime) { // переход «не закрыт → закрыт»
         const dEnd = new Date(dateObj.getTime() + 86_400_000)
+        // Окно задачи = один день (её startDate). Дедлайн не растягивает задачу на дни, поэтому
+        // день блокируют только незакрытые (inprogress) задачи ЭТОГО дня. Не успел — перенеси на другой день.
         const openCount = await prisma.task.count({
           where: {
             assigneeId: user.id, status: 'inprogress', calendarEventId: null,
-            OR: [
-              { deadline: null, startDate: { gte: dateObj, lt: dEnd } }, // без дедлайна — только день startDate
-              { deadline: { gte: dateObj }, startDate: { lt: dEnd } },   // с дедлайном — день внутри окна
-            ],
+            startDate: { gte: dateObj, lt: dEnd },
           },
         })
         if (openCount > 0) {

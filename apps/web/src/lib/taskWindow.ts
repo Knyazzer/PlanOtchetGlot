@@ -1,9 +1,8 @@
-// Модель «окно» (дневная цепочка, 2026-08-30): задача живёт на СВОЁМ дне (startDate).
-// БЕЗ дедлайна — ровно один день, независимо от статуса и времени фактической отметки: doneAt НЕ
-// растягивает окно (иначе задача, закрытая задним числом, размазывается на дни между startDate и днём
-// отметки — конфликт с ретроактивным дозаполнением). С дедлайном — плановый диапазон [start, deadline];
-// закрытая раньше дедлайна — видна до дня закрытия (doneAt). Окно не тянется само за дедлайн — тянет
-// пользователь через drag/смену дедлайна.
+// Модель дневной цепочки (2026-08-30): задача = ОБЫЧНАЯ задача одного дня (startDate). Показывается
+// ТОЛЬКО в свой день, независимо от статуса, doneAt и дедлайна. Дедлайн — это «до какого числа надо
+// успеть» (метаданные для карточки «Дедлайны» + флаг «просрочено»), а НЕ диапазон показа: задача НЕ
+// размазывается по дням до дедлайна. Не успел — перекидываешь на другой день (drag/смена startDate);
+// дедлайн прошёл, а задача не done → «просрочена» (deadline < today, детект в DeadlinesInfoCard).
 export interface WindowTask {
   status: 'backlog' | 'inprogress' | 'done'
   startDate: string
@@ -15,8 +14,7 @@ const toDay = (d: string) => d.slice(0, 10)
 
 export function taskWindow(t: WindowTask): { start: string; end: string } {
   const start = toDay(t.startDate)
-  if (!t.deadline) return { start, end: start }                       // без дедлайна — ровно свой день
-  return { start, end: t.status === 'done' && t.doneAt ? toDay(t.doneAt) : toDay(t.deadline) }
+  return { start, end: start } // всегда один день — свой (дедлайн не растягивает)
 }
 
 export function inTaskWindow(t: WindowTask, day: string) {
