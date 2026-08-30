@@ -75,6 +75,7 @@ model User {
   requestsAuthored         Request[]       @relation("RequestAuthor")
   requestsToApprove        Request[]       @relation("RequestApprover")
   personalGoals            PersonalGoal[]  @relation("PersonalGoals")
+  taskTemplates            TaskTemplate[]  @relation("UserTaskTemplates")
 
   @@map("users")
   @@schema("nexus")
@@ -382,6 +383,27 @@ model Task {
   @@index([projectId])
   @@index([recurringParentId])
   @@map("tasks")
+  @@schema("nexus")
+}
+
+// Шаблон задачи (пресет) — НЕ задача, а «штамп» для быстрого создания обычной Task.
+// Клик по шаблону в кабинете создаёт реальную Task через тот же POST /tasks (те же гейты) с
+// предзаполнением из шаблона. Пресеты — только свои (owner). Дедлайна на MVP нет (задаётся уже
+// в созданной задаче). См. docs/AUDIT-CABINET-TASKS-2026-08-30.md и модель дня/задачи.
+model TaskTemplate {
+  id             String   @id @default(uuid())
+  ownerId        String   @map("owner_id")
+  owner          User     @relation("UserTaskTemplates", fields: [ownerId], references: [id], onDelete: Cascade)
+  title          String
+  client         String?                              // строкой, как у Task.client
+  plannedMinutes Int?     @map("planned_minutes")     // оценка времени на выполнение
+  description    String   @default("")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([ownerId, sortOrder])
+  @@map("task_templates")
   @@schema("nexus")
 }
 

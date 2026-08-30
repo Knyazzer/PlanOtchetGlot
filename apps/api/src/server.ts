@@ -34,6 +34,7 @@ import { postsRoutes } from './routes/posts'
 import { requestsRoutes } from './routes/requests'
 import { companyGoalsRoutes } from './routes/company-goals'
 import { personalGoalsRoutes } from './routes/personal-goals'
+import { taskTemplatesRoutes } from './routes/task-templates'
 import { strategicGoalsRoutes } from './routes/strategic-goals'
 import { meetingNotesRoutes } from './routes/meeting-notes'
 
@@ -127,6 +128,7 @@ async function main() {
   await app.register(requestsRoutes,        { prefix: '/requests' })
   await app.register(companyGoalsRoutes,    { prefix: '/company-goals' })
   await app.register(personalGoalsRoutes,   { prefix: '/personal-goals' })
+  await app.register(taskTemplatesRoutes,   { prefix: '/task-templates' })
   await app.register(strategicGoalsRoutes,  { prefix: '/strategic-goals' })
   await app.register(meetingNotesRoutes,    { prefix: '/meeting-notes' })
 
