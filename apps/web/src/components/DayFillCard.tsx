@@ -154,7 +154,7 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
               // и СРАЗУ стартует (входит в цепочку, закрываешь «Завершить»). Так на выходном нет отдельной
               // зелёной «Начать»: сам выбор места — и есть запись работы. Уже начатому дню место не сбрасывает старт.
               return (
-                <button key={p.key} disabled={!interactive} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working', ...(start ? {} : { startTime: isToday ? nowHHMM() : (schedule?.workStart ?? '10:00') }) } : {}) })}
+                <button key={p.key} disabled={!interactive} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working', ...(start ? {} : { startTime: nowHHMM() }) } : {}) })}
                   title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !notLocked ? lockHint : ''}
                   style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: interactive ? 'pointer' : 'not-allowed', opacity: interactive ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
               )
@@ -186,9 +186,9 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
 
             {/* Кнопки «Начать/Завершить» — ПЕРЕХОДЯЩИЕ: работают и на прошлом незакрытом РАБОЧЕМ дне
                 (ретроактивное дозаполнение), не только сегодня. Порядок дней держит сервер (дневная цепочка):
-                начать более поздний день, пока не закрыт ранний, он не даст. Сегодня: время = сейчас;
-                прошлый день: время по графику (дальше правится в полях). Выходной задним числом — сначала
-                выбери место (станет рабочим), затем «Начать». */}
+                начать более поздний день, пока не закрыт ранний, он не даст. Смысл кнопки — ШТАМП «сейчас»:
+                ставит ТЕКУЩЕЕ время всегда (и для прошлого дня тоже), дальше правится вручную в полях.
+                Выходной задним числом — сначала выбери место (станет рабочим), затем «Начать». */}
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
             ) : !started ? (
@@ -196,13 +196,13 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
               // работы в выходной начинается выбором места (см. выше) — оно и стартует рабочий день.
               (isToday || dayType === 'working') ? (
                 <button disabled={!interactive || (!place && dayType !== 'weekend')}
-                  onClick={() => save.mutate({ startTime: isToday ? nowHHMM() : (schedule?.workStart ?? '10:00'), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                  onClick={() => save.mutate({ startTime: nowHHMM(), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
                   title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : ''}
                   style={bigBtn(ROLE.success, !interactive || (!place && dayType !== 'weekend'))}>Начать рабочий день</button>
               ) : null
             ) : (
               <button disabled={!interactive}
-                onClick={() => { if (openTasksCount > 0) { toast(`Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните или перенесите`, 'info'); return } save.mutate({ endTime: isToday ? nowHHMM() : (schedule?.workEnd ?? '18:30') }) }}
+                onClick={() => { if (openTasksCount > 0) { toast(`Нельзя закрыть день: ${openTasksCount} ${taskWord(openTasksCount)} — заверните или перенесите`, 'info'); return } save.mutate({ endTime: nowHHMM() }) }}
                 style={bigBtn(ROLE.primary, !interactive)}>Закончить рабочий день</button>
             )}
           </div>
