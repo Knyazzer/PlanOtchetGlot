@@ -177,17 +177,23 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                 }
                 return <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', opacity: weekend ? 0.45 : 0.75, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{weekend || exp?.format === 'weekend' ? 'выходной' : 'не заполнен'}</span>
               })()}
-              {stats.total > 0 && (
-                <span title={`Задачи дня: поставлено ${stats.total}, выполнено ${stats.done}`}
-                  style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: stats.open === 0 ? 'var(--text-muted)' : 'var(--text-2)', background: 'var(--surface-3)', borderRadius: 8, padding: '1px 6px' }}>
-                  {stats.done}/{stats.total}
-                </span>
-              )}
-              {past && workClosed
-                ? <span title="День закрыт" style={{ flexShrink: 0, fontSize: 11, lineHeight: 1, color: '#22C55E' }}>✓</span>
-                : needsAction
-                  ? <span title={`День не закрыт: ${notClosedReason}`} style={{ flexShrink: 0, width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} />
-                  : null}
+              {/* Столбец чипа задач — фиксированная ширина, правое выравнивание: чипы всех дней друг под другом */}
+              <div style={{ width: 38, flexShrink: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                {stats.total > 0 && (
+                  <span title={`Задачи дня: поставлено ${stats.total}, выполнено ${stats.done}`}
+                    style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: stats.open === 0 ? 'var(--text-muted)' : 'var(--text-2)', background: 'var(--surface-3)', borderRadius: 8, padding: '1px 6px' }}>
+                    {stats.done}/{stats.total}
+                  </span>
+                )}
+              </div>
+              {/* Столбец статуса — фиксированная ширина по центру: ✓ (закрыт) / • (не закрыт) / пусто (выходной) */}
+              <div style={{ width: 14, flexShrink: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {past && workClosed
+                  ? <span title="День закрыт" style={{ fontSize: 11, lineHeight: 1, color: '#22C55E' }}>✓</span>
+                  : needsAction
+                    ? <span title={`День не закрыт: ${notClosedReason}`} style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} />
+                    : null}
+              </div>
             </DroppableDayButton>
           )
         })}
