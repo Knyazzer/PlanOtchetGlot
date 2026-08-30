@@ -91,6 +91,10 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
   const isWorkKey = (k?: string) => isPlace(k) || k === 'working' || (formats.find(x => x.key === k)?.isWork ?? false)
   const schedNorm = schedule ? (() => { const s = parseMin(schedule.workStart), e = parseMin(schedule.workEnd); return s != null && e != null ? Math.max(0, e - s - schedule.breakMin) : 0 })() : 0
   let workedMin = 0, normMin = 0, weekendCount = 0
+  // Порог приглушения: самое РАННЕЕ незакрытое прошлое число. До порога всё серое (закрыто/уложено,
+  // включая выходные внутри), с порога и дальше — ярко. Незакрытый = рабочий день не закрыт как надо
+  // ИЛИ любой день с висящими (inprogress) задачами. Если незакрытых прошлых дней нет — порог = сегодня.
+  let firstUnclosed: string | null = null
   for (const dn of days) {
     const ds = `${y}-${pad(m + 1)}-${pad(dn)}`
     const dow = new Date(y, m, dn).getDay()
@@ -99,8 +103,15 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
     const exp = expectedForDate(ds, schedule)
     if (ds <= today && exp && isWorkKey(exp.format)) normMin += schedNorm // норма только за прошедшие рабочие дни
     if (exp ? exp.format === 'weekend' : (dow === 0 || dow === 6)) weekendCount++
+    if (firstUnclosed === null && ds < today) {
+      const effWorking = e ? e.dayFormat === 'working' : !!exp && isPlace(exp.format)
+      const st = dayTaskStats(tasks, meId, ds)
+      const closed = effWorking ? (!!e?.startTime && !!e?.endTime && st.open === 0) : st.open === 0
+      if (!closed) firstUnclosed = ds
+    }
   }
   const balance = workedMin - normMin
+  const dimBefore = firstUnclosed ?? today   // всё СТРОГО раньше этого числа — серое; оно и дальше — ярко
 
   return (
     <div style={{ width: 300, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--surface-1)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
@@ -136,12 +147,9 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
             : effWorking && !started ? 'рабочий день не начат'
             : effWorking && !ended ? 'рабочий день не завершён' : 'день не закрыт'
 
-          // Приглушаем ТОЛЬКО по-настоящему улаженные дни: закрытый рабочий день ИЛИ отсутствие
-          // (отпуск/больничный/отгул) — там действий не требуется и не совершить. ВЫХОДНОЙ серым НЕ метим:
-          // в нём можно записать работу (день остаётся действием), а серый читается как «закрыто» → путает.
-          // Выходной и так тише за счёт muted-надписи «Выходной». Сегодня и выбранный — не тускнеют.
-          const isAbsenceDay = !!e && ['vacation', 'sick', 'dayoff'].includes(e.dayFormat)
-          const dim = !isToday && !isSel && (workClosed || isAbsenceDay)
+          // Приглушение по ПОРОГУ: всё строго раньше самого раннего незакрытого числа — серое (уложено,
+          // включая выходные внутри диапазона); порог и дальше — ярко. Выбранный день не тускнеет.
+          const dim = ds < dimBefore && !isSel
 
           return (
             <DroppableDayButton
