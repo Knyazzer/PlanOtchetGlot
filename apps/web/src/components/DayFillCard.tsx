@@ -150,9 +150,11 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
             <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 2 }}>Место:</span>
             {PLACES.map(p => {
               const sel = place === p.key
-              // Выбор места = где работает. В календарный выходной выбор места делает день рабочим (статус working).
+              // Выбор места = где работает. В выходной выбор места = «я работал» → день становится рабочим
+              // и СРАЗУ стартует (входит в цепочку, закрываешь «Завершить»). Так на выходном нет отдельной
+              // зелёной «Начать»: сам выбор места — и есть запись работы. Уже начатому дню место не сбрасывает старт.
               return (
-                <button key={p.key} disabled={!interactive} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
+                <button key={p.key} disabled={!interactive} onClick={() => save.mutate({ place: p.key, ...(dayType === 'weekend' ? { dayFormat: 'working', ...(start ? {} : { startTime: isToday ? nowHHMM() : (schedule?.workStart ?? '10:00') }) } : {}) })}
                   title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : !notLocked ? lockHint : ''}
                   style={{ padding: '4px 12px', borderRadius: 20, border: `1px solid ${sel ? ROLE.primary : 'var(--border)'}`, background: sel ? ROLE.primary + '1f' : 'none', color: sel ? ROLE.primary : 'var(--text-2)', fontSize: 12, fontWeight: sel ? 700 : 500, cursor: interactive ? 'pointer' : 'not-allowed', opacity: interactive ? 1 : 0.55, fontFamily: 'Inter,sans-serif' }}>{p.label}</button>
               )
@@ -190,9 +192,9 @@ function WorkDayCard({ date, entry, formats, schedule, openTasksCount }: {
             {finished ? (
               <button disabled style={bigBtn('#8a8f98', true)}>Рабочий день завершён</button>
             ) : !started ? (
-              // «Начать» — на будни/сегодня И на выходной (в т.ч. прошлый): начал выходной → он становится
-              // рабочим днём и попадает в цепочку (надо закрыть перед следующим). Не тронул выходной — пропущен.
-              (isToday || dayType === 'working' || dayType === 'weekend') ? (
+              // «Начать» — только на будни/сегодня. На ЧИСТОМ выходном кнопки нет (день отдыха): запись
+              // работы в выходной начинается выбором места (см. выше) — оно и стартует рабочий день.
+              (isToday || dayType === 'working') ? (
                 <button disabled={!interactive || (!place && dayType !== 'weekend')}
                   onClick={() => save.mutate({ startTime: isToday ? nowHHMM() : (schedule?.workStart ?? '10:00'), endTime: null, ...(dayType === 'weekend' ? { dayFormat: 'working' } : {}) })}
                   title={isAbsence ? `${fmt?.label ?? dayType} — рабочий день не отмечается` : (!place && dayType !== 'weekend') ? 'Укажите место работы, чтобы начать' : ''}
