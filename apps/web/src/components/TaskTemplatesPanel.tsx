@@ -16,24 +16,25 @@ type Template = { id: string; title: string; client: string | null; plannedMinut
 const toHHMM = (min?: number | null) => (min ? `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}` : '')
 const toMinutes = (hhmm: string) => { if (!hhmm) return null; const [h, m] = hhmm.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
 
-export function TaskTemplatesPanel({ open, onClose, day, today, isToday, meId, onInstantiated }: {
+export function TaskTemplatesPanel({ open, onClose, day, isToday, meId, onInstantiated }: {
   open: boolean; onClose: () => void
-  day: string; today: string; isToday: boolean; meId?: string
+  day: string; isToday: boolean; meId?: string
   onInstantiated: () => void
 }) {
   const qc = useQueryClient()
   const panelRef = useRef<HTMLDivElement>(null)
   const downOutside = useRef(false)
-  const isPast = day < today
 
   const { data: templates = [] } = useQuery<Template[]>({
     queryKey: ['task-templates'], queryFn: () => api.get('/task-templates').then(r => r.data), enabled: open, staleTime: 60_000,
   })
-  // Серверный вердикт по дню: активен ли сегодня рабочий день (тогда пресет уходит сразу «в работу»).
-  const { data: dayPolicy } = useQuery<{ canAddTask: boolean }>({
+  // Шаблонная задача = ОБЫЧНАЯ задача, добавляется по ТЕМ ЖЕ условиям, что и ручное «Добавить задачу»:
+  // серверный вердикт canAddTask (день активен сегодня, не завершён, не залочен) — и СРАЗУ в работу
+  // (inprogress) на выбранный день. День не активен → добавить нельзя (тост с причиной, как у ручного).
+  const { data: dayPolicy } = useQuery<{ canAddTask: boolean; reason: string | null }>({
     queryKey: ['day-policy', day], queryFn: () => api.get('/day-entries/policy', { params: { date: day } }).then(r => r.data), enabled: open, staleTime: 20_000,
   })
-  const dayActive = dayPolicy?.canAddTask ?? false
+  const canAdd = dayPolicy?.canAddTask ?? false
   const { data: clients = [] } = useQuery<Array<{ id: string; name: string }>>({
     queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data), staleTime: 300_000,
   })
@@ -75,15 +76,14 @@ export function TaskTemplatesPanel({ open, onClose, day, today, isToday, meId, o
   const instantiate = useMutation({
     mutationFn: (t: Template) => api.post('/tasks', {
       title: t.title, assigneeId: meId, startDate: day, client: t.client || null,
-      status: isToday && dayActive ? 'inprogress' : 'backlog',
-      actualMinutes: t.plannedMinutes ?? null,
+      status: 'inprogress', actualMinutes: t.plannedMinutes ?? null,
     }),
     onSuccess: (_r, t) => { onInstantiated(); toast(`Добавлено: ${t.title}`) },
     onError: (e: any) => toast(e?.response?.data?.error ?? 'Не удалось добавить задачу', 'info'),
   })
   const onRowClick = (t: Template) => {
     if (!meId) return
-    if (isPast) { toast('В прошлый день добавить нельзя', 'info'); return }
+    if (!canAdd) { toast(dayPolicy?.reason ?? 'Добавление в этот день недоступно', 'info'); return }
     instantiate.mutate(t)
   }
 
@@ -102,7 +102,7 @@ export function TaskTemplatesPanel({ open, onClose, day, today, isToday, meId, o
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-1)' }}>Шаблонные задачи</div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>клик добавляет на {isToday ? 'сегодня' : dayLabel}{isPast ? ' — недоступно (прошлый день)' : (isToday && dayActive ? ' · в работу' : ' · в план')}</div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>клик добавляет в работу на {isToday ? 'сегодня' : dayLabel}{canAdd ? '' : ' · недоступно (день не активен)'}</div>
         </div>
         <button onClick={onClose} title="Закрыть" style={iconBtn}><X size={18} /></button>
       </div>
@@ -114,9 +114,9 @@ export function TaskTemplatesPanel({ open, onClose, day, today, isToday, meId, o
         )}
         {templates.map(t => (
           <div key={t.id} onClick={() => onRowClick(t)}
-            title={isPast ? 'В прошлый день добавить нельзя' : 'Добавить эту задачу на выбранный день'}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', marginBottom: 6, cursor: isPast ? 'not-allowed' : 'pointer', opacity: isPast ? 0.55 : 1 }}
-            onMouseEnter={e => { if (!isPast) e.currentTarget.style.borderColor = 'var(--accent)' }}
+            title={canAdd ? 'Добавить эту задачу в работу на выбранный день' : 'День не активен — задачу добавить нельзя'}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 10px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--surface)', marginBottom: 6, cursor: canAdd ? 'pointer' : 'not-allowed', opacity: canAdd ? 1 : 0.55 }}
+            onMouseEnter={e => { if (canAdd) e.currentTarget.style.borderColor = 'var(--accent)' }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>

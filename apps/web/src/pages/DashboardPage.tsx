@@ -364,7 +364,6 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
         open={templatesOpen}
         onClose={() => setTemplatesOpen(false)}
         day={selDate}
-        today={todayStr}
         isToday={isToday}
         meId={currentUser?.id}
         onInstantiated={() => { qc.invalidateQueries({ queryKey: ['tasks'] }); qc.invalidateQueries({ queryKey: ['tasks', 'day-order', selDate] }) }}
