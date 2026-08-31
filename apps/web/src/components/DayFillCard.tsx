@@ -5,6 +5,7 @@ import { useMyWorkSchedule, expectedForDate } from '../lib/workSchedule'
 import { ROLE } from '../lib/roleColors'
 import { TimePicker } from '../ui-kit/components/TimePicker'
 import { Tooltip } from './Tooltip'
+import { todayISO as todayStr } from '../lib/today' // ЛОКАЛЬНАЯ дата «сегодня» (не UTC — иначе на UTC+N день отстаёт)
 
 // «Мой рабочий день»: одна кнопка Начать/Закончить (без живого таймера). Поля появляются по стадии —
 // начали → «Начало» + «Перерыв»; закончили → добавляется «Конец» + итог «Отработано». Время правится
@@ -20,7 +21,6 @@ const PLACE_KEYS = ['office', 'remote', 'project', 'trip']
 // Русские метки статусов дня — фолбэк, если статуса нет в настраиваемых форматах (напр. новый 'working')
 const STATUS_LABEL: Record<string, string> = { working: 'Рабочий', weekend: 'Выходной', vacation: 'Отпуск', sick: 'Больничный', dayoff: 'Отгул' }
 
-function todayStr() { return new Date().toISOString().slice(0, 10) }
 function pad(n: number) { return String(n).padStart(2, '0') }
 function nowHHMM() { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}` }
 function parseMin(t?: string | null): number | null {

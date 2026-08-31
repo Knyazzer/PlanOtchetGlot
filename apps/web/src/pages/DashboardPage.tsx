@@ -21,6 +21,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { toast } from '../lib/toast'
 import { LINK_META, linkIcon } from '../lib/linkMeta'
 import { inTaskWindow, isOverdue } from '../lib/taskWindow'
+import { todayISO } from '../lib/today'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -173,7 +174,7 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
   const currentUser = useAuthStore(s => s.user)
   const qc          = useQueryClient()
   const now         = new Date()
-  const todayStr    = toDay(now)
+  const todayStr    = todayISO() // ЛОКАЛЬНАЯ дата (не toDay(now) — тот UTC, отставал на день в UTC+N)
 
   const [selDate,         setSelDate]         = useState(todayStr)
   const [showCreateTask,  setShowCreateTask]  = useState(false)

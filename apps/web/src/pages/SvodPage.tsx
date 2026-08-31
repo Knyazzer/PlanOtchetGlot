@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { useCurrentUser } from '../hooks/useAuth'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { formatName } from '../lib/utils'
+import { todayISO } from '../lib/today'
 import { DayModal } from '../components/DayModal'
 
 // Свод (План/Отчёт): месячная сетка день × сотрудник подразделения. ТОЛЬКО ДАННЫЕ (read-only,
@@ -87,7 +88,7 @@ export function SvodPage({ month: monthProp, onMonthChange, embedded = false }: 
     retry: false,
   })
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO() // ЛОКАЛЬНАЯ дата (не UTC — иначе на UTC+N день отстаёт)
   const days = useMemo(() => {
     if (!svod) return []
     return Array.from({ length: svod.daysInMonth }, (_, i) => {
