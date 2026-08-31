@@ -278,6 +278,8 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
   const onDropOnDay = (taskId: string, targetDay: string) => {
     const t = dayTasks.find(x => x.id === taskId)
     if (!t) return
+    const fmtD = (ds: string) => new Date(ds + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+    const moveMsg = `Задача перенесена: ${fmtD(toDay(t.startDate))} → ${fmtD(targetDay)}` // с какого → на какое (5 сек)
     if (t.status === 'done') { toast('Закрытую задачу нельзя перенести', 'info'); return }
     if (toDay(t.startDate) === targetDay) return // тот же день — ничего
     // Guard симметрии «закрытого дня»: незакрытую задачу нельзя перенести в прошедший или уже
@@ -286,7 +288,7 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
     if (targetDay === todayStr && todayFinished) { toast('Рабочий день уже завершён — перенесите задачу на другой день', 'info'); return }
     // Без дедлайна (дефолтное окно в 1 день) → перенос = просто смена дня: задача уходит с текущего.
     if (!t.deadline) {
-      moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast('Задача перенесена') })
+      moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast(moveMsg, 'success', 5000) })
       return
     }
     const { start, end } = taskWindow(t)
@@ -296,7 +298,7 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
       setConfirmMove({ task: t, day: targetDay })
       return
     }
-    moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast('Дата начала перенесена — окно расширено') }) // раньше начала
+    moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast(moveMsg, 'success', 5000) }) // раньше начала
   }
 
   const handleDragEnd = (e: DragEndEvent) => {

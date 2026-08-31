@@ -7,7 +7,7 @@ export interface ToastItem { id: number; message: string; tone: ToastTone }
 
 interface ToastState {
   toasts: ToastItem[]
-  push: (message: string, tone?: ToastTone) => void
+  push: (message: string, tone?: ToastTone, ttl?: number) => void
   remove: (id: number) => void
 }
 
@@ -16,13 +16,13 @@ const TTL = 2600
 
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
-  push: (message, tone = 'success') => {
+  push: (message, tone = 'success', ttl = TTL) => {
     const id = ++seq
     set(s => ({ toasts: [...s.toasts, { id, message, tone }] }))
-    setTimeout(() => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), TTL)
+    setTimeout(() => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })), ttl)
   },
   remove: (id) => set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })),
 }))
 
-/** Показать тост из любого места (без React-хука). */
-export const toast = (message: string, tone?: ToastTone) => useToastStore.getState().push(message, tone)
+/** Показать тост из любого места (без React-хука). ttl — время жизни в мс (по умолчанию 2600). */
+export const toast = (message: string, tone?: ToastTone, ttl?: number) => useToastStore.getState().push(message, tone, ttl)
