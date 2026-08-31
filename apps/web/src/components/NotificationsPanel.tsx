@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, ClipboardList, MessageSquare, Calendar as CalendarIcon, CheckCheck, Inbox, GitBranch } from 'lucide-react'
 import { api } from '../lib/api'
-import { NOTIF_SEEN_LS_KEY } from '../hooks/useNotificationsBadge'
+import { NOTIF_SEEN_LS_KEY, getReadNotifIds, markNotifRead } from '../hooks/useNotificationsBadge'
 
 // Панель уведомлений (эталон v2 Notifications.tsx): derived-агрегатор.
 // «Прочитанность» ленты — клиентская метка в localStorage (mark-all-read сдвигает её).
@@ -37,6 +37,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
     refetchOnMount: 'always',
   })
   const [seenAt, setSeenAt] = useState(() => localStorage.getItem(NOTIF_SEEN_LS_KEY) ?? '')
+  const [readIds, setReadIds] = useState(() => getReadNotifIds()) // прочитанные по одному (клик = прочитано)
 
   // esc — закрыть
   useEffect(() => {
@@ -111,11 +112,12 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {g.items.map(item => {
-                    // «Свежесть»: назначения — по серверному seenAt (unseen), остальное — по клиентской метке.
-                    const fresh = item.unseen || ((g.key === 'task' || g.key === 'request' || g.key === 'track') ? item.at > seenAt : false)
+                    // «Свежесть»: не прочитано по одному (readIds) И (назначение по seenAt ИЛИ новее метки).
+                    const fresh = !readIds.has(item.id) && (item.unseen || ((g.key === 'task' || g.key === 'request' || g.key === 'track') ? item.at > seenAt : false))
                     return (
                       <button key={item.id}
                         onClick={() => {
+                          markNotifRead(item.id); setReadIds(getReadNotifIds()) // клик по уведомлению = прочитано (в т.ч. логовые)
                           if (item.kind === 'task' && item.taskId) { onOpenTaskCard(item.taskId); return } // открыть карточку + обводка на доске
                           onClose()
                           if (item.kind === 'request') onOpenRequests(); else if (item.kind === 'track') onOpenTracks(); else onOpenPage('calendar')
