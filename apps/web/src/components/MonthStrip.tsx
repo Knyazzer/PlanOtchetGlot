@@ -77,6 +77,18 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
   })
   const { data: schedule } = useMyWorkSchedule()
   const byDate = new Map(entries.map(e => [e.date.slice(0, 10), e]))
+  // Заявки отпуск/отгул на согласовании (pending) — своего DayEntry ещё нет (отражение только при approve).
+  // Рисуем предварительно ПУНКТИРОМ. Больничный — без заявки, здесь не участвует.
+  const { data: myRequests = [] } = useQuery<Array<{ type: string; status: string; dateFrom: string; dateTo: string }>>({
+    queryKey: ['requests', 'mine'], queryFn: () => api.get('/requests?scope=mine').then(r => r.data), staleTime: 60_000,
+  })
+  const pendingByDate = new Map<string, string>()
+  for (const r of myRequests) {
+    if (r.status !== 'pending' || (r.type !== 'vacation' && r.type !== 'dayoff')) continue
+    const d = new Date(r.dateFrom.slice(0, 10) + 'T00:00:00'), end = new Date(r.dateTo.slice(0, 10) + 'T00:00:00')
+    let guard = 0
+    while (d <= end && guard++ < 400) { pendingByDate.set(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`, r.type); d.setDate(d.getDate() + 1) }
+  }
   const labelOf = (k: string) => formats.find(f => f.key === k)?.label ?? k
   // Отображение дня: рабочий день → метка МЕСТА; иначе → метка статуса.
   const dayView = (status: string, place: string | null): { label: string; color: string } => {
@@ -133,6 +145,7 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
           const isToday = ds === today
           const view = e ? dayView(e.dayFormat, e.place) : null
           const exp = expectedForDate(ds, schedule)
+          const pending = pendingByDate.get(ds) // тип заявки отпуск/отгул на согласовании (пунктиром), если нет записи дня
 
           // Поставлено/выполнено на день + критерий «закрытого дня» (см. комментарий над компонентом)
           const stats = dayTaskStats(tasks, meId, ds)
@@ -160,7 +173,8 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
               style={{
                 display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
                 flex: '1 1 0', minHeight: 22, padding: '0 10px', borderRadius: 8,
-                border: `1px solid ${isSel ? 'var(--accent-s)' : 'transparent'}`,
+                // Выбранный — сплошная рамка-акцент; день pending-заявки (без записи) — ПУНКТИР в цвет типа.
+                border: isSel ? '1px solid var(--accent-s)' : (pending && !e ? `1px dashed ${FMT_COLOR[pending] ?? 'var(--text-muted)'}` : '1px solid transparent'),
                 background: isSel ? 'rgba(123,97,255,0.12)' : 'none',
                 opacity: dim ? 0.5 : 1,
                 cursor: 'pointer', fontFamily: 'Inter,sans-serif',
@@ -183,6 +197,17 @@ export function MonthStrip({ selected, today, onSelect, tasks, meId }: {
                   <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{view!.label}</span>
                 </>
               ) : (() => {
+                // Заявка отпуск/отгул НА СОГЛАСОВАНИИ (своей записи дня ещё нет) — предварительно ПУНКТИРОМ.
+                // Одобрят → появится DayEntry и день нарисуется сплошным типом (ветка выше).
+                if (pending) {
+                  const pv = dayView(pending, null)
+                  return (
+                    <>
+                      <span style={{ width: 8, height: 8, borderRadius: 2, border: `1.5px dashed ${pv.color}`, flexShrink: 0 }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title="Заявка на согласовании">{pv.label} · заявка</span>
+                    </>
+                  )
+                }
                 // пустой день: ожидаемое из графика. Будущее — насыщенно (сплошная точка + обычный текст,
                 // как заполненный день); прошлое тускнеет само (opacity строки). Иначе «выходной/не заполнен».
                 if (exp && exp.format !== 'weekend') {
