@@ -203,6 +203,14 @@ export async function tasksRoutes(app: FastifyInstance) {
     return reply.code(204).send()
   })
 
+  // POST /tasks/seen-all — пометить ВСЕ назначенные мне непросмотренные задачи прочитанными.
+  // Используется колокольчиком «Прочитать всё» (уведомления о назначении = задачи с seenAt=null).
+  app.post('/seen-all', { preHandler: authenticate }, async (request, reply) => {
+    const user = (request as any).user as { id: string }
+    await prisma.task.updateMany({ where: { assigneeId: user.id, seenAt: null }, data: { seenAt: new Date() } })
+    return reply.code(204).send()
+  })
+
   // GET /tasks/:id — single task (accessible to any authenticated user for task cards in chats)
   app.get('/:id', { preHandler: authenticate }, async (request, reply) => {
     const { id } = request.params as { id: string }

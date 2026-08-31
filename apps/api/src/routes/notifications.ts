@@ -24,12 +24,14 @@ export async function notificationsRoutes(app: FastifyInstance) {
     const user = (req as any).user as { id: string }
     const since = new Date(Date.now() - 7 * 86_400_000) // лента за 7 дней
 
-    const [logs, events, reqInbox, reqAnswers, trackAdds] = await Promise.all([
-      // действия других людей над задачами, где я исполнитель или автор
+    const [logs, assignedUnseen, events, reqInbox, reqAnswers, trackAdds] = await Promise.all([
+      // действия других людей над задачами, где я исполнитель или автор. `created` (назначение) — НЕ здесь,
+      // оно берётся из непросмотренных задач (Task.seenAt) ниже, чтобы уведомление жило, пока не открыл.
       prisma.taskLog.findMany({
         where: {
           createdAt: { gte: since },
           userId: { not: user.id },
+          action: { not: 'created' },
           task: { OR: [{ assigneeId: user.id }, { assignedById: user.id }] },
         },
         orderBy: { createdAt: 'desc' },
@@ -39,6 +41,14 @@ export async function notificationsRoutes(app: FastifyInstance) {
           user: { select: { id: true, name: true } },
           task: { select: { id: true, title: true } },
         },
+      }),
+      // назначенные МНЕ (другим человеком) и ещё НЕ просмотренные задачи — уведомление «вам назначили»,
+      // держится пока не откроешь карточку (openEdit → POST /tasks/:id/seen). Не зависит от TaskLog → ловит
+      // и сид, и любой способ назначения. seenAt=null = «не прочитано».
+      prisma.task.findMany({
+        where: { assigneeId: user.id, assignedById: { not: user.id }, seenAt: null, archived: false },
+        orderBy: { createdAt: 'desc' }, take: 30,
+        select: { id: true, title: true, createdAt: true, assignedBy: { select: { name: true } } },
       }),
       // мои события: сегодня и завтра
       prisma.event.findMany({
@@ -70,7 +80,7 @@ export async function notificationsRoutes(app: FastifyInstance) {
       }),
     ])
 
-    const taskItems = logs.map(l => {
+    const logItems = logs.map(l => {
       const fmt = ACTION_TEXT[l.action]
       const meta = (l.meta ?? {}) as Record<string, unknown>
       return {
@@ -79,8 +89,19 @@ export async function notificationsRoutes(app: FastifyInstance) {
         text: `${l.user.name} ${fmt ? fmt(meta, l.task.title) : `обновил(а) «${l.task.title}»`}`,
         at: l.createdAt,
         taskId: l.task.id,
+        unseen: false, // прочитанность лог-действий — по клиентской метке (mark-all)
       }
     })
+    // Назначения — «непрочитано», пока задача не просмотрена (seenAt). Держатся до открытия карточки.
+    const assignedItems = assignedUnseen.map(t => ({
+      id: `assigned:${t.id}`,
+      kind: 'task' as const,
+      text: `${t.assignedBy.name} назначил(а) вам задачу «${t.title}»`,
+      at: t.createdAt,
+      taskId: t.id,
+      unseen: true,
+    }))
+    const taskItems = [...assignedItems, ...logItems].sort((a, b) => (a.at < b.at ? 1 : -1))
 
     const today = startOfDay(new Date()).getTime()
     const eventItems = events.map(e => ({

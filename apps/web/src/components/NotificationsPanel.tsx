@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, ClipboardList, MessageSquare, Calendar as CalendarIcon, CheckCheck, Inbox, GitBranch } from 'lucide-react'
 import { api } from '../lib/api'
 import { NOTIF_SEEN_LS_KEY } from '../hooks/useNotificationsBadge'
@@ -7,7 +7,7 @@ import { NOTIF_SEEN_LS_KEY } from '../hooks/useNotificationsBadge'
 // Панель уведомлений (эталон v2 Notifications.tsx): derived-агрегатор.
 // «Прочитанность» ленты — клиентская метка в localStorage (mark-all-read сдвигает её).
 
-type NotifItem = { id: string; kind: 'task' | 'calendar' | 'request' | 'track'; text: string; at: string; taskId?: string; eventId?: string; requestId?: string; trackId?: string }
+type NotifItem = { id: string; kind: 'task' | 'calendar' | 'request' | 'track'; text: string; at: string; taskId?: string; eventId?: string; requestId?: string; trackId?: string; unseen?: boolean }
 type NotifData = { tasks: NotifItem[]; events: NotifItem[]; requests?: NotifItem[]; tracks?: NotifItem[] }
 
 function relTime(iso: string): string {
@@ -30,6 +30,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
   onOpenRequests: () => void
   onOpenTracks: () => void
 }) {
+  const qc = useQueryClient()
   const { data, isLoading } = useQuery<NotifData>({
     queryKey: ['notifications'],
     queryFn: () => api.get('/notifications').then(r => r.data),
@@ -48,6 +49,12 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
     const now = new Date().toISOString()
     localStorage.setItem(NOTIF_SEEN_LS_KEY, now)
     setSeenAt(now)
+    // Уведомления о назначении держатся на Task.seenAt — помечаем все назначенные мне задачи прочитанными.
+    api.post('/tasks/seen-all').then(() => {
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+      qc.invalidateQueries({ queryKey: ['tasks'] })
+      qc.invalidateQueries({ queryKey: ['tasks:unseen'] })
+    }).catch(() => {})
   }
 
   const groups = useMemo(() => ([
@@ -100,7 +107,8 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {g.items.map(item => {
-                    const fresh = (g.key === 'task' || g.key === 'request' || g.key === 'track') ? item.at > seenAt : false
+                    // «Свежесть»: назначения — по серверному seenAt (unseen), остальное — по клиентской метке.
+                    const fresh = item.unseen || ((g.key === 'task' || g.key === 'request' || g.key === 'track') ? item.at > seenAt : false)
                     return (
                       <button key={item.id}
                         onClick={() => {
