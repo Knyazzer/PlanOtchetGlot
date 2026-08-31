@@ -260,23 +260,27 @@ export async function dayEntriesRoutes(app: FastifyInstance) {
 
     const state = lockState(date)
     const de = await prisma.dayEntry.findUnique({
-      where: { userId_date: { userId: user.id, date: new Date(date) } }, select: { startTime: true, endTime: true },
+      where: { userId_date: { userId: user.id, date: new Date(date) } }, select: { startTime: true, endTime: true, dayFormat: true },
     })
     const dayStarted = !!de?.startTime
     const dayFinished = !!de?.endTime
+    const isAbsenceDay = !!de && LEAVE_FORMATS.has(de.dayFormat) // отпуск/больничный/отгул
     const p2 = (n: number) => String(n).padStart(2, '0')
     const now = new Date()
     const todayStr = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}`
-    const isToday = date === todayStr
 
     // Модель «активного дня»: добавить задачу «в работу» можно в любой АКТИВНЫЙ день (начат startTime,
-    // не завершён endTime, не залочен) — сегодня ИЛИ прошлый день, который дозаполняешь. Зеркалит
-    // серверный POST/PATCH-гейт tasks. Мастер-админ обходит.
-    void isToday // (день определяется активностью, не «сегодняшностью»)
+    // не завершён endTime, не залочен) — сегодня ИЛИ прошлый день, который дозаполняешь. День ОТСУТСТВИЯ
+    // (отпуск/больничный/отгул, дата ≤ сегодня) — тоже «рабочий по задачам» БЕЗ ритуала «начать день»
+    // (время там не логируется). Будущее — нельзя. Зеркалит серверный POST/PATCH-гейт tasks. Админ обходит.
     let canAddTask = true
     let reason: string | null = null
     if (user.isAdmin) { /* override */ }
     else if (state === 'locked') { canAddTask = false; reason = 'Неделя зафиксирована — изменения закрыты' }
+    else if (isAbsenceDay) {
+      if (date > todayStr) { canAddTask = false; reason = 'День ещё не наступил' }
+      // иначе canAddTask остаётся true — в отпуск/отгул/больничный задачи можно вести без «начала дня»
+    }
     else if (!dayStarted) { canAddTask = false; reason = 'Начните рабочий день, чтобы добавлять задачи' }
     else if (dayFinished) { canAddTask = false; reason = 'Рабочий день завершён' }
 

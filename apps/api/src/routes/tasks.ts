@@ -4,20 +4,28 @@ import { prisma } from '@nexus/db'
 import { authenticate } from '../plugins/auth'
 import { getOrgScope } from '../services/orgScope'
 import { isLocked } from '../services/periodLock'
+import { LEAVE_FORMATS } from './requests'
 import { randomUUID } from 'crypto'
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10)
+const localToday = (): string => { const n = new Date(); const p = (x: number) => String(x).padStart(2, '0'); return `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}` }
 
 // Инвариант «активный день»: брать задачу в работу (inprogress), выполнять (done) и создавать СВОЮ
 // задачу можно только когда АКТИВЕН тот день, к которому задача относится (startTime есть, endTime нет).
 // «Активным» может быть и прошлый день, который сотрудник дозаполняет задним числом (ретроактив):
 // открыл забытый день → начал → проставил задачи → закрыл. Порядок дней держит дневная цепочка.
+// ДЕНЬ ОТСУТСТВИЯ (отпуск/больничный/отгул, дата ≤ сегодня) — тоже «рабочий по задачам» БЕЗ «начала дня»
+// (время не логируется): в такие дни можно вести/переносить задачи. Будущее — нельзя.
 async function isDayActive(userId: string, dayStr: string): Promise<boolean> {
   const de = await prisma.dayEntry.findUnique({
     where: { userId_date: { userId, date: new Date(dayStr) } },
-    select: { startTime: true, endTime: true },
+    select: { startTime: true, endTime: true, dayFormat: true },
   })
-  return !!de?.startTime && !de?.endTime
+  if (!de) return false
+  if (de.startTime && !de.endTime) return true                        // активный рабочий день
+  if (LEAVE_FORMATS.has(de.dayFormat)) return dayStr.slice(0, 10) <= localToday() // отсутствие (не будущее)
+  return false
 }
-const isoDay = (d: Date) => d.toISOString().slice(0, 10)
 
 const TASK_SELECT = {
   id: true,
