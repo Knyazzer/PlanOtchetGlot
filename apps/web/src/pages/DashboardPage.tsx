@@ -20,7 +20,7 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from '../lib/toast'
 import { LINK_META, linkIcon } from '../lib/linkMeta'
-import { taskWindow, inTaskWindow } from '../lib/taskWindow'
+import { taskWindow, inTaskWindow, isOverdue } from '../lib/taskWindow'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -139,17 +139,24 @@ function DeadlineBadge({ days }: { days: number }) {
 // просрочки в приложении (TaskTable/Gantt), НЕ роль Danger (та — только для деструктива, DESIGN.md).
 const OVERDUE_COLOR = '#F43F5E'
 function DeadlinesInfoCard({ tasks, meId, onOpenGantt }: { tasks: Task[]; meId?: string; onOpenGantt?: (taskId?: string) => void }) {
-  const withDeadline = tasks.filter(t => t.assignee.id === meId && t.status !== 'done' && !!t.deadline)
-  const overdue = [...withDeadline].filter(t => daysDiff(t.deadline!) < 0).sort((a, b) => a.deadline!.localeCompare(b.deadline!))
+  const p2 = (x: number) => String(x).padStart(2, '0')
+  const n = new Date(); const today = `${n.getFullYear()}-${p2(n.getMonth() + 1)}-${p2(n.getDate())}`
+  const mine = tasks.filter(t => t.assignee.id === meId && t.status !== 'done')
+  const withDeadline = mine.filter(t => !!t.deadline)
+  // Просрочено = дедлайн прошёл ЛИБО задача взята в работу, а её день прошёл (хвост с дней отсутствия).
+  const overdueKey = (t: Task) => (t.deadline ? t.deadline.slice(0, 10) : t.startDate.slice(0, 10))
+  const overdue = mine.filter(t => isOverdue(t, today)).sort((a, b) => overdueKey(a).localeCompare(overdueKey(b)))
   const card: React.CSSProperties = { background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14, padding: '18px 22px' }
-  if (withDeadline.length === 0) return null
+  if (withDeadline.length === 0 && overdue.length === 0) return null
   return (
     <div style={card}>
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 12 }}>Дедлайны</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <button onClick={() => onOpenGantt?.()} title="Открыть в Ганте" style={{ ...chip('warning'), border: 'none', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
-          {withDeadline.length} с дедлайнами
-        </button>
+        {withDeadline.length > 0 && (
+          <button onClick={() => onOpenGantt?.()} title="Открыть в Ганте" style={{ ...chip('warning'), border: 'none', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+            {withDeadline.length} с дедлайнами
+          </button>
+        )}
         {overdue.length > 0 && (
           <button onClick={() => onOpenGantt?.(overdue[0].id)} title="Открыть самую просроченную задачу в Ганте"
             style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: OVERDUE_COLOR + '22', color: OVERDUE_COLOR, border: 'none', cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>

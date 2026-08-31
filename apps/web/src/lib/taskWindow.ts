@@ -17,6 +17,20 @@ export function taskWindow(t: WindowTask): { start: string; end: string } {
   return { start, end: start } // всегда один день — свой (дедлайн не растягивает)
 }
 
+/**
+ * Просрочена ли задача на дату `today` (YYYY-MM-DD). Незакрытая (≠done) задача просрочена, если:
+ *  - прошёл её дедлайн (`deadline < today`), ЛИБО
+ *  - она ВЗЯТА в работу (`inprogress`), но её день уже прошёл (`startDate < today`) — задача одного дня,
+ *    не закрытая в свой день (типичный хвост с дней отсутствия, где нет гейта «закрыть день»).
+ * Рабочие дни такого не допускают — дневная цепочка не даёт уйти с незакрытой задачей.
+ */
+export function isOverdue(t: WindowTask, today: string): boolean {
+  if (t.status === 'done') return false
+  if (t.deadline && toDay(t.deadline) < today) return true
+  if (t.status === 'inprogress' && toDay(t.startDate) < today) return true
+  return false
+}
+
 export function inTaskWindow(t: WindowTask, day: string) {
   const { start, end } = taskWindow(t)
   return day >= start && day <= end
