@@ -239,21 +239,27 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
 
   // ── DnD: общий контекст на список задач дня (реордер внутри дня) + MonthStrip (перенос на другой день) ──
   const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
-  // Над каким типом цели сейчас курсор: день (MonthStrip) или строка таблицы (реордер). Ref, а не state —
-  // читается в момент drop-анимации, ре-рендер не нужен.
+  // Над днём ли бросили (MonthStrip) — и на сколько сдвинуть overlay, чтобы он ушёл в ЦЕНТР ячейки дня,
+  // а не в центр самой строки. Refs, а не state — читаются в момент drop-анимации, ре-рендер не нужен.
   const overDayRef = useRef(false)
+  const flyDeltaRef = useRef({ x: 0, y: 0 }) // экранная дельта (центр дня − центр строки) на момент отпускания
   // Drop-анимация overlay: при переносе НА ДЕНЬ строка не «улетает» обратно к таблице (дефолт dnd-kit
-  // возвращает overlay к исходной позиции) — вместо этого уменьшается и гаснет на месте броска, как будто
-  // уходит внутрь дня. Реордер ВНУТРИ таблицы — стандартно (overlay доезжает в новый слот), не трогаем.
+  // возвращает overlay к исходной позиции). Вместо этого overlay ЛЕТИТ к центру ячейки дня (сдвиг flyDelta)
+  // и там уменьшается+гаснет — задача «попадает» именно в день. Реордер ВНУТРИ таблицы — стандартно.
   const dropAnimation: DropAnimation = {
-    duration: 240,
+    duration: 260,
     easing: 'cubic-bezier(0.2, 0, 0, 1)',
     sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
     keyframes({ transform }) {
-      const from = CSS.Transform.toString(transform.initial)
-      return overDayRef.current
-        ? [{ opacity: 1, transform: from }, { opacity: 0, transform: `${from} scale(0.2)` }]
-        : [{ transform: from }, { transform: CSS.Transform.toString(transform.final) }]
+      const ix = transform.initial.x, iy = transform.initial.y
+      if (overDayRef.current) {
+        const d = flyDeltaRef.current
+        return [
+          { opacity: 1, transform: `translate3d(${ix}px, ${iy}px, 0) scale(1)` },
+          { opacity: 0, transform: `translate3d(${ix + d.x}px, ${iy + d.y}px, 0) scale(0.12)` },
+        ]
+      }
+      return [{ transform: CSS.Transform.toString(transform.initial) }, { transform: CSS.Transform.toString(transform.final) }]
     },
   }
 
@@ -294,11 +300,25 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
   }
 
   const handleDragEnd = (e: DragEndEvent) => {
+    const overId = e.over ? String(e.over.id) : ''
+    const isDay = overId.startsWith('day:')
+    // Дельта до центра дня для drop-анимации — считаем ДО setDragId(null) (иначе overlay уже анимируется).
+    overDayRef.current = isDay
+    const ar = e.active.rect.current.translated
+    if (isDay && e.over?.rect && ar) {
+      const or = e.over.rect
+      flyDeltaRef.current = {
+        x: (or.left + or.width / 2) - (ar.left + ar.width / 2),
+        y: (or.top + or.height / 2) - (ar.top + ar.height / 2),
+      }
+    } else {
+      flyDeltaRef.current = { x: 0, y: 0 }
+    }
     setDragId(null)
     if (!e.over) return
-    const activeId = String(e.active.id), overId = String(e.over.id)
+    const activeId = String(e.active.id)
     if (activeId === DRAFT_ID) return
-    if (overId.startsWith('day:')) onDropOnDay(activeId, overId.slice(4))
+    if (isDay) onDropOnDay(activeId, overId.slice(4))
     else if (activeId !== overId) onRowReorder(activeId, overId)
   }
 
