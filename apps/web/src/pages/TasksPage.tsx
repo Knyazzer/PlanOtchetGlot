@@ -65,6 +65,7 @@ export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab, deepLi
     if (task.assignee.id === currentUser?.id && !task.seenAt) {
       api.post(`/tasks/${task.id}/seen`).then(() => {
         qc.invalidateQueries({ queryKey: ['tasks:unseen'] })
+        qc.invalidateQueries({ queryKey: ['notifications'] }) // прочитал задачу → уведомление о ней сразу уходит
         qc.setQueryData<Task[]>(['tasks'], old =>
           old?.map(t => t.id === task.id ? { ...t, seenAt: new Date().toISOString() } : t) ?? []
         )

@@ -68,9 +68,13 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
     <div onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
       style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(0,0,0,0.25)' }}>
       <div style={{
-        position: 'absolute', top: 0, bottom: 0, left: fullWidth ? 0 : 220, width: fullWidth ? '100%' : 380, maxWidth: fullWidth ? '100%' : '90vw',
-        background: 'var(--surface-1)', borderRight: '1px solid var(--border)',
-        boxShadow: '8px 0 28px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column',
+        position: 'absolute', top: 0, bottom: 0,
+        // Докаем СПРАВА (колокольчик справа-сверху) — так панель не перекрывает левое меню (сайдбар w-60=240px).
+        // На мобиле — полноэкранно слева.
+        ...(fullWidth
+          ? { left: 0, width: '100%', borderRight: '1px solid var(--border)', boxShadow: '8px 0 28px rgba(0,0,0,0.25)' }
+          : { right: 0, width: 380, maxWidth: '90vw', borderLeft: '1px solid var(--border)', boxShadow: '-8px 0 28px rgba(0,0,0,0.25)' }),
+        background: 'var(--surface-1)', display: 'flex', flexDirection: 'column',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Уведомления</span>
