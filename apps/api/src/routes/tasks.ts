@@ -133,6 +133,10 @@ export async function tasksRoutes(app: FastifyInstance) {
       return tasks.map(applyAutoStatus)
     }
 
+    // Рядовой пользователь: ВСЕ свои задачи (назначенные мне ИЛИ мной), БЕЗ фильтра по дню — так и надо.
+    // Клиент (кабинет) фильтрует по дню сам (inTaskWindow), а «Дедлайны»/MonthStrip/просрочка требуют все
+    // задачи разом. Параметры `date`/`userId` применяются ТОЛЬКО в team/admin-ветке (карточки Свода);
+    // здесь они намеренно игнорируются — не полагаться на серверную фильтрацию по дню для этой роли.
     const tasks = await prisma.task.findMany({
       where: { OR: [{ assigneeId: user.id }, { assignedById: user.id }] },
       select: TASK_SELECT,

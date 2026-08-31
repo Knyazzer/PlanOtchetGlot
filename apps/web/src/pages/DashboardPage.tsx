@@ -20,7 +20,7 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from '../lib/toast'
 import { LINK_META, linkIcon } from '../lib/linkMeta'
-import { taskWindow, inTaskWindow, isOverdue } from '../lib/taskWindow'
+import { inTaskWindow, isOverdue } from '../lib/taskWindow'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface ApiEvent {
@@ -232,14 +232,12 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
   const regularTasks = allTasks.filter(t => !t.calendarEventId)
 
   const [dragId, setDragId] = useState<string | null>(null)
-  // Пока висит подтверждение переноса дедлайна — задача НЕ в списке дня, а «зависает» ярко под попапом.
-  const [confirmMove, setConfirmMove] = useState<{ task: Task; day: string } | null>(null)
 
   // Рабочий набор дня — модель «окно» [startDate, deadline]: задача видна КАЖДЫЙ день внутри окна;
   // закрытая — зачёркнута до дня закрытия (doneAt), дальше не показывается (просрочку без переноса
   // подсвечивает инфопанель дедлайнов, не список дня). Порядок — свой в каждом дне (dayOrder).
   const dayTasks = regularTasks
-    .filter(t => t.assignee.id === currentUser?.id && (t.status === 'inprogress' || t.status === 'done') && inTaskWindow(t, selDate) && t.id !== confirmMove?.task.id)
+    .filter(t => t.assignee.id === currentUser?.id && (t.status === 'inprogress' || t.status === 'done') && inTaskWindow(t, selDate))
     .sort((a, b) => (dayOrder[a.id] ?? 1e9) - (dayOrder[b.id] ?? 1e9) || String(a.createdAt).localeCompare(String(b.createdAt)))
 
   const sortedEvents = [...dayEvents].sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -280,8 +278,8 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
     reorderMut.mutate(next, { onError: () => qc.setQueryData(['tasks', 'day-order', selDate], prev) })
   }
 
-  // Правила drag-на-день (решения по «окну»): день внутри окна → нельзя (уже видна); за дедлайн вперёд →
-  // попап «передвинуть дедлайн?» (только автор задачи); на более раннее число → окно расширяется назад.
+  // Drag-на-день: перенос задачи на другой день (смена startDate). Guard'ы: закрытую нельзя; тот же день —
+  // ничего; в прошедший/уже завершённый сегодня — нельзя. Дедлайн отдельной меткой не мешает переносу.
   const onDropOnDay = (taskId: string, targetDay: string) => {
     const t = dayTasks.find(x => x.id === taskId)
     if (!t) return
@@ -293,19 +291,9 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
     // завершённый день — иначе в закрытом дне повиснет inprogress-задача (баг последовательности).
     if (targetDay < todayStr) { toast('Незакрытую задачу нельзя перенести в прошедший день', 'info'); return }
     if (targetDay === todayStr && todayFinished) { toast('Рабочий день уже завершён — перенесите задачу на другой день', 'info'); return }
-    // Без дедлайна (дефолтное окно в 1 день) → перенос = просто смена дня: задача уходит с текущего.
-    if (!t.deadline) {
-      moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast(moveMsg, 'success', 5000) })
-      return
-    }
-    const { start, end } = taskWindow(t)
-    if (targetDay >= start && targetDay <= end) { toast('Нельзя, уже в пределах дедлайна', 'info'); return }
-    if (targetDay > end) { // за дедлайн вперёд → подтвердить продление (только автор)
-      if (t.assignedBy.id !== currentUser?.id) { toast('Дедлайн меняет только создатель', 'info'); return }
-      setConfirmMove({ task: t, day: targetDay })
-      return
-    }
-    moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast(moveMsg, 'success', 5000) }) // раньше начала
+    // Модель «окно = 1 день»: перенос = смена дня задачи (startDate). Дедлайн — отдельная метка «успеть до»;
+    // ушли за него → задача просто становится просроченной (isOverdue), без модала «продлить дедлайн».
+    moveMut.mutate({ id: taskId, data: { startDate: targetDay } }, { onSuccess: () => toast(moveMsg, 'success', 5000) })
   }
 
   const handleDragEnd = (e: DragEndEvent) => {
@@ -399,15 +387,6 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
           onSaved={() => { qc.invalidateQueries({ queryKey: ['dashboard:events'] }) }}
         />
       )}
-      {confirmMove && (
-        <MoveDeadlineConfirm
-          task={confirmMove.task}
-          day={confirmMove.day}
-          pending={moveMut.isPending}
-          onCancel={() => setConfirmMove(null)}
-          onConfirm={() => moveMut.mutate({ id: confirmMove.task.id, data: { deadline: confirmMove.day } }, { onSuccess: () => setConfirmMove(null) })}
-        />
-      )}
       <TaskTemplatesPanel
         open={templatesOpen}
         onClose={() => setTemplatesOpen(false)}
@@ -426,45 +405,6 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
 // ── Попап подтверждения переноса дедлайна (drag задачи за окно вперёд) — канон mousedown/mouseup + Esc + ✕.
 // Пока попап открыт, переносимая задача НЕ в списке дня, а «зависает» ЯРКОЙ карточкой прямо под попапом,
 // чтобы видеть одновременно и задачу, и вопрос. ──
-function MoveDeadlineConfirm({ task, day, onCancel, onConfirm, pending }: {
-  task: Task; day: string; onCancel: () => void; onConfirm: () => void; pending: boolean
-}) {
-  const mdRef = useRef(false)
-  const fmtDay = new Date(day + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
-  const curDeadline = task.deadline ? new Date(toDay(task.deadline) + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '—'
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onCancel])
-  return (
-    <div
-      onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
-      onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onCancel() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24 }}
-    >
-      <div onMouseDown={e => e.stopPropagation()} style={{ position: 'relative', background: 'var(--surface-2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 24, width: 380, maxWidth: '100%', fontFamily: 'Inter,sans-serif', boxShadow: '0 24px 64px rgba(0,0,0,0.5)' }}>
-        <button onClick={onCancel} title="Закрыть (Esc)" style={{ position: 'absolute', top: 12, right: 12, width: 26, height: 26, borderRadius: 6, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'var(--text-3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', marginBottom: 10 }}>Передвинуть дедлайн?</div>
-        <div style={{ fontSize: 13, color: 'var(--text-2)', marginBottom: 20, lineHeight: 1.5 }}>
-          Перенести дедлайн на <b style={{ color: 'var(--text-1)' }}>{fmtDay}</b>?
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={onCancel} style={{ flex: 1, fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 600, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'var(--text-3)', borderRadius: 8, padding: '9px 0', cursor: 'pointer' }}>Отмена</button>
-          <button onClick={onConfirm} disabled={pending} style={{ flex: 1, fontFamily: 'Inter,sans-serif', fontSize: 14, fontWeight: 700, background: '#7B61FF', border: 'none', color: '#fff', borderRadius: 8, padding: '9px 0', cursor: 'pointer', opacity: pending ? 0.6 : 1 }}>
-            {pending ? '...' : 'Передвинуть'}
-          </button>
-        </div>
-      </div>
-      {/* Яркая карточка переносимой задачи — прямо под попапом (её нет в списке дня, пока идёт подтверждение) */}
-      <div onMouseDown={e => e.stopPropagation()} style={{ background: 'var(--surface-1)', border: '2px solid var(--accent)', borderRadius: 12, padding: '14px 18px', width: 380, maxWidth: '100%', boxShadow: '0 16px 44px -8px rgba(0,0,0,0.45)' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title || 'Без названия'}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Дедлайн {curDeadline} → <b style={{ color: 'var(--accent)' }}>{fmtDay}</b></div>
-      </div>
-    </div>
-  )
-}
-
 // ── Мои цели — личные стратегические цели сотрудника (к ним подвяжутся задачи, отдельным заходом) ──
 interface PGoal { id: string; text: string; done: boolean }
 function PersonalGoalsCard() {
