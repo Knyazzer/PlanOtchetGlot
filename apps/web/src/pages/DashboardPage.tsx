@@ -15,7 +15,7 @@ import { Tooltip } from '../components/Tooltip'
 import { cn } from '../ui-kit/lib/cn'
 import { Maximize2, GripVertical, Lock, LayoutTemplate } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
+import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, defaultDropAnimationSideEffects, type DragEndEvent, type DragStartEvent, type DragOverEvent, type DropAnimation } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { toast } from '../lib/toast'
@@ -239,6 +239,23 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
 
   // ── DnD: общий контекст на список задач дня (реордер внутри дня) + MonthStrip (перенос на другой день) ──
   const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
+  // Над каким типом цели сейчас курсор: день (MonthStrip) или строка таблицы (реордер). Ref, а не state —
+  // читается в момент drop-анимации, ре-рендер не нужен.
+  const overDayRef = useRef(false)
+  // Drop-анимация overlay: при переносе НА ДЕНЬ строка не «улетает» обратно к таблице (дефолт dnd-kit
+  // возвращает overlay к исходной позиции) — вместо этого уменьшается и гаснет на месте броска, как будто
+  // уходит внутрь дня. Реордер ВНУТРИ таблицы — стандартно (overlay доезжает в новый слот), не трогаем.
+  const dropAnimation: DropAnimation = {
+    duration: 240,
+    easing: 'cubic-bezier(0.2, 0, 0, 1)',
+    sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
+    keyframes({ transform }) {
+      const from = CSS.Transform.toString(transform.initial)
+      return overDayRef.current
+        ? [{ opacity: 1, transform: from }, { opacity: 0, transform: `${from} scale(0.2)` }]
+        : [{ transform: from }, { transform: CSS.Transform.toString(transform.final) }]
+    },
+  }
 
   const onRowReorder = (fromId: string, toId: string) => {
     const ids = dayTasks.map(t => t.id)
@@ -287,8 +304,9 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
 
   return (
     <DndContext sensors={dndSensors} collisionDetection={closestCenter}
-      onDragStart={(e: DragStartEvent) => setDragId(String(e.active.id))}
-      onDragCancel={() => setDragId(null)}
+      onDragStart={(e: DragStartEvent) => { overDayRef.current = false; setDragId(String(e.active.id)) }}
+      onDragOver={(e: DragOverEvent) => { overDayRef.current = String(e.over?.id ?? '').startsWith('day:') }}
+      onDragCancel={() => { overDayRef.current = false; setDragId(null) }}
       onDragEnd={handleDragEnd}>
     <div style={{ display: 'flex', height: '100%', boxSizing: 'border-box' }}>
     <div style={{ flex: 1, minWidth: 0, padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: 20, overflowY: 'auto', boxSizing: 'border-box' }}>
@@ -308,6 +326,7 @@ export function DashboardPage({ onOpenGanttTask }: { onOpenGanttTask?: (taskId?:
             onChanged={() => qc.invalidateQueries({ queryKey: ['tasks'] })}
             onAdd={() => setShowCreateTask(true)}
             onOpenTemplates={() => setTemplatesOpen(true)}
+            dropAnimation={dropAnimation}
           />
         </div>
         <div style={{ flex: 1, minWidth: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -534,9 +553,10 @@ const COMPANY_NAME = 'Мегаполис Медиа'
 // при ОТКРЫТИИ (data-state=open у Radix-триггера) — устойчивая скруглённая обводка + ring, как у «Время».
 const chipWhite = 'w-full !bg-[var(--surface)] !border-transparent data-[state=open]:!border-[var(--accent)] data-[state=open]:ring-2 data-[state=open]:ring-[var(--accent-soft)]'
 
-function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, onChanged, onAdd: _onAdd, onOpenTemplates }: {
+function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, onChanged, onAdd: _onAdd, onOpenTemplates, dropAnimation }: {
   title: string; tasks: Task[]; meId?: string; day: string; dragId: string | null
   onOpen: (t: Task) => void; onToggle: (t: Task) => void; onChanged: () => void; onAdd: () => void; onOpenTemplates: () => void
+  dropAnimation: DropAnimation
 }) {
   const { data: projects = [] } = useQuery<Array<{ id: string; title: string; client?: { id: string; name: string } | null }>>({ queryKey: ['projects'], queryFn: () => api.get('/projects').then(r => r.data), staleTime: 300_000 })
   const { data: clients = [] } = useQuery<Array<{ id: string; name: string }>>({ queryKey: ['clients'], queryFn: () => api.get('/clients').then(r => r.data), staleTime: 300_000 })
@@ -677,7 +697,7 @@ function TodayTasksTable({ title, tasks, meId, day, dragId, onOpen, onToggle, on
           <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
             {tasks.map(t => <SortableTaskRow key={t.id} id={t.id}>{(h) => taskCells(t, h)}</SortableTaskRow>)}
           </SortableContext>
-          <DragOverlay>
+          <DragOverlay dropAnimation={dropAnimation}>
             {activeTask && (
               <div style={{ display: 'grid', gridTemplateColumns: TASK_COLS, alignItems: 'center', width: gridRef.current?.offsetWidth, background: 'var(--surface)', borderRadius: 10, boxShadow: '0 16px 44px -8px rgba(0,0,0,0.55)' }}>
                 {taskCells(activeTask)}
