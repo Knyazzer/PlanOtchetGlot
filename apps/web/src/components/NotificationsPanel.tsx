@@ -20,11 +20,12 @@ function relTime(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenChats, onOpenRequests, onOpenTracks, fullWidth = false }: {
+export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTaskCard, onOpenChats, onOpenRequests, onOpenTracks, fullWidth = false }: {
   unreadChats: number
   fullWidth?: boolean
   onClose: () => void
   onOpenPage: (page: string) => void
+  onOpenTaskCard: (taskId: string) => void
   onOpenChats: () => void
   onOpenRequests: () => void
   onOpenTracks: () => void
@@ -66,9 +67,9 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Уведомления</span>
-          <button onClick={markAllRead} title="Отметить всё прочитанным"
+          <button onClick={markAllRead} title="Отметить все уведомления прочитанными"
             style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border)', background: 'none', color: 'var(--text-3)', fontFamily: 'inherit', fontSize: 12, cursor: 'pointer' }}>
-            <CheckCheck size={13} /> Прочитано
+            <CheckCheck size={13} /> Прочитать всё
           </button>
           <button onClick={onClose} style={{ border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
         </div>
@@ -102,7 +103,11 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenCha
                     const fresh = (g.key === 'task' || g.key === 'request' || g.key === 'track') ? item.at > seenAt : false
                     return (
                       <button key={item.id}
-                        onClick={() => { onClose(); if (item.kind === 'request') onOpenRequests(); else if (item.kind === 'track') onOpenTracks(); else onOpenPage(item.kind === 'task' ? 'tasks' : 'calendar') }}
+                        onClick={() => {
+                          if (item.kind === 'task' && item.taskId) { onOpenTaskCard(item.taskId); return } // открыть карточку + обводка на доске
+                          onClose()
+                          if (item.kind === 'request') onOpenRequests(); else if (item.kind === 'track') onOpenTracks(); else onOpenPage('calendar')
+                        }}
                         style={{
                           display: 'flex', alignItems: 'flex-start', gap: 8, padding: '9px 11px', borderRadius: 9,
                           border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',

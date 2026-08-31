@@ -6,7 +6,7 @@ import type { Task, TaskStatus, BoardGroupBy, BoardData } from './types'
 import { COLS, COLOR_PALETTE, taskColor, toDateStr } from './utils'
 
 // ── Kanban card ────────────────────────────────────────────────────────────────
-function KanbanCard({ task, color, isDone, deadlineStr, dragId, onEdit, currentUserId }: {
+function KanbanCard({ task, color, isDone, deadlineStr, dragId, onEdit, currentUserId, isHighlighted }: {
   task:          Task
   color:         string
   isDone:        boolean
@@ -14,6 +14,7 @@ function KanbanCard({ task, color, isDone, deadlineStr, dragId, onEdit, currentU
   dragId:        React.MutableRefObject<string | null>
   onEdit:        (task: Task) => void
   currentUserId: string
+  isHighlighted?: boolean
 }) {
   const isCalendar = !!task.calendarEventId
   const isOutgoing = !isCalendar && task.assignedBy.id === currentUserId && task.assignee.id !== currentUserId
@@ -28,7 +29,8 @@ function KanbanCard({ task, color, isDone, deadlineStr, dragId, onEdit, currentU
       className={isNew ? 'task-new' : undefined}
       style={{
         background: 'var(--surface-2)',
-        border: isNew ? '1px solid rgba(123,97,255,0.4)' : '1px solid var(--border)',
+        border: isHighlighted ? '1.5px solid var(--accent-s)' : isNew ? '1px solid rgba(123,97,255,0.4)' : '1px solid var(--border)',
+        boxShadow: isHighlighted ? '0 0 0 3px rgba(123,97,255,0.18)' : undefined, // обводка открытой карточки
         borderRadius: 12, padding: '14px 16px', cursor: isCalendar ? 'default' : 'grab',
         opacity: isDone ? 0.55 : 1, position: 'relative',
       }}
@@ -99,7 +101,7 @@ function KanbanCard({ task, color, isDone, deadlineStr, dragId, onEdit, currentU
 // ── Kanban board ───────────────────────────────────────────────────────────────
 // Обобщённая доска: группировка статус / клиент / мои колонки (инсайт донора:
 // люди группируют по клиентам и направлениям, не по статусному workflow).
-export function KanbanBoard({ tasks, groupBy, onUpdate, onOpenCreate, onEdit, currentUserId, onToast }: {
+export function KanbanBoard({ tasks, groupBy, onUpdate, onOpenCreate, onEdit, currentUserId, onToast, highlightTaskId }: {
   tasks: Task[]
   groupBy: BoardGroupBy
   onUpdate: (id: string, patch: Record<string, unknown>) => void
@@ -107,6 +109,7 @@ export function KanbanBoard({ tasks, groupBy, onUpdate, onOpenCreate, onEdit, cu
   onEdit: (task: Task) => void
   currentUserId: string
   onToast: (msg: string) => void
+  highlightTaskId?: string // карточка, открытая на просмотр/правку — обводим акцентом
 }) {
   const dragId = useRef<string | null>(null)
   const qc = useQueryClient()
@@ -244,6 +247,7 @@ export function KanbanBoard({ tasks, groupBy, onUpdate, onOpenCreate, onEdit, cu
                     dragId={dragId}
                     onEdit={onEdit}
                     currentUserId={currentUserId}
+                    isHighlighted={task.id === highlightTaskId}
                   />
                 )
               })}

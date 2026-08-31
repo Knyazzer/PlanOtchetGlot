@@ -130,9 +130,14 @@ export function AppShell() {
   }
 
   // Инфопанель дедлайнов (Обзор) → вкладка «Задачи» кабинета в режиме Гант, опц. с открытой карточкой.
-  const [tasksDeepLink, setTasksDeepLink] = useState<{ taskId?: string } | null>(null)
+  const [tasksDeepLink, setTasksDeepLink] = useState<{ taskId?: string; view?: 'kanban' | 'gantt' } | null>(null)
   function openGanttTask(taskId?: string) {
-    setTasksDeepLink({ taskId })
+    setTasksDeepLink({ taskId, view: 'gantt' })
+    pickCabinet('tasks')
+  }
+  // Клик по задаче-уведомлению → доска (kanban) кабинета + открытая карточка задачи (openEdit пометит seen).
+  function openTaskCard(taskId?: string) {
+    setTasksDeepLink({ taskId, view: 'kanban' })
     pickCabinet('tasks')
   }
 
@@ -376,6 +381,7 @@ export function AppShell() {
           unreadChats={totalUnread}
           onClose={() => setNotifOpen(false)}
           onOpenPage={(p) => navigateTo(p as Page)}
+          onOpenTaskCard={(id) => { setNotifOpen(false); openTaskCard(id) }}
           onOpenChats={() => setChatOpen(true)}
           onOpenRequests={() => { pickCabinet('requests'); navigateTo('dashboard') }}
           onOpenTracks={() => { pickCabinet('tracks'); navigateTo('dashboard') }}

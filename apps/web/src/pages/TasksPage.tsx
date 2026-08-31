@@ -24,8 +24,9 @@ interface TasksPageProps {
   /** внешнее управление вкладкой (из контейнера «Мой кабинет»): при заданном значении
    *  свой переключатель Задачи/Треки не рисуется — вкладками рулит кабинет. */
   externalTab?: 'tasks' | 'tracks'
-  /** deep-link из «Обзора» (инфопанель дедлайнов): переключить на Гант, опц. открыть карточку задачи. */
-  deepLink?: { taskId?: string } | null
+  /** deep-link: открыть карточку задачи. `view` — на каком представлении (kanban для колокольчика,
+   *  gantt для инфопанели дедлайнов «Обзора»; по умолчанию gantt для обратной совместимости). */
+  deepLink?: { taskId?: string; view?: 'kanban' | 'gantt' } | null
   onDeepLinkConsumed?: () => void
 }
 
@@ -87,7 +88,7 @@ export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab, deepLi
   // иначе эффект не должен снова срабатывать (deepLink обнуляется владельцем состояния — AppShell).
   useEffect(() => {
     if (!deepLink) return
-    setView('gantt')
+    setView(deepLink.view ?? 'gantt')
     if (!deepLink.taskId) { onDeepLinkConsumed?.(); return }
     const t = tasks.find(x => x.id === deepLink.taskId)
     if (t) { openEdit(t); onDeepLinkConsumed?.() }
@@ -157,7 +158,7 @@ export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab, deepLi
         </button>
       </div>
 
-      {view === 'kanban' && <KanbanBoard tasks={filteredTasks.filter(t => !t.calendarEventId)} groupBy={groupBy} onUpdate={updateTask} onOpenCreate={openCreate} onEdit={openEdit} currentUserId={currentUser?.id ?? ''} onToast={setToast} />}
+      {view === 'kanban' && <KanbanBoard tasks={filteredTasks.filter(t => !t.calendarEventId)} groupBy={groupBy} onUpdate={updateTask} onOpenCreate={openCreate} onEdit={openEdit} currentUserId={currentUser?.id ?? ''} onToast={setToast} highlightTaskId={editTask?.id} />}
       {view === 'table'  && <TaskTable tasks={filteredTasks.filter(t => !t.calendarEventId)} onEdit={openEdit} />}
       {view === 'gantt'  && <GanttChart  tasks={filteredTasks.filter(t => !t.calendarEventId)} onUpdate={updateTask} onOpenCreate={openCreate} onEdit={openEdit} currentUserId={currentUser?.id ?? ''} onToast={setToast} />}
 
