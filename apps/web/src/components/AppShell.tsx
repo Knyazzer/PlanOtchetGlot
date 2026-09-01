@@ -181,6 +181,7 @@ export function AppShell() {
   const [chatOpen,    setChatOpen]    = useState(false)
   const [theme,       setTheme]       = useState<'dark' | 'light'>(user?.theme ?? 'dark')
   const [notifOpen,   setNotifOpen]   = useState(false)
+  const [notifAnchor, setNotifAnchor] = useState<{ top: number; right: number } | null>(null) // позиция попапа под колокольчиком
   const isMobile = useIsMobile()
 
   useEffect(() => {
@@ -336,7 +337,7 @@ export function AppShell() {
         onLogout={() => logout.mutate()}
         profileExtra={<NexusProfileExtra />}
         toolbar={<HeaderSlotTarget />}
-        headerActions={<NotifBellHeader badge={notifBadge} onClick={() => setNotifOpen((v) => !v)} />}
+        headerActions={<NotifBellHeader badge={notifBadge} onClick={(a) => { setNotifAnchor(a); setNotifOpen((v) => !v) }} />}
         rightPanel={
           <ChatRightPanel
             chatOpen={chatOpen}
@@ -379,6 +380,7 @@ export function AppShell() {
         <NotificationsPanel
           fullWidth={isMobile}
           unreadChats={totalUnread}
+          anchor={notifAnchor}
           onClose={() => setNotifOpen(false)}
           onOpenPage={(p) => navigateTo(p as Page)}
           onOpenTaskCard={(id) => { setNotifOpen(false); openTaskCard(id) }}
@@ -452,10 +454,10 @@ function ChatRightPanel({ chatOpen, onToggle, chatsProps, chatKey, totalUnread }
 
 // ── Колокол уведомлений (headerActions кита — правый край шапки) ───────────────────────────────
 // Компактная иконка-кнопка с бейджем-счётчиком; открывает ту же NotificationsPanel.
-function NotifBellHeader({ badge, onClick }: { badge: number; onClick: () => void }) {
+function NotifBellHeader({ badge, onClick }: { badge: number; onClick: (anchor: { top: number; right: number }) => void }) {
   return (
     <button
-      onClick={onClick}
+      onClick={e => { const r = e.currentTarget.getBoundingClientRect(); onClick({ top: r.bottom + 8, right: Math.max(8, window.innerWidth - r.right) }) }}
       title="Уведомления"
       aria-label="Уведомления"
       className="relative grid h-9 w-9 place-items-center rounded-[var(--radius-sm)] text-[var(--muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"

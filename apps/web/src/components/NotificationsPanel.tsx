@@ -20,9 +20,10 @@ function relTime(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 
-export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTaskCard, onOpenChats, onOpenRequests, onOpenTracks, fullWidth = false }: {
+export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTaskCard, onOpenChats, onOpenRequests, onOpenTracks, anchor = null, fullWidth = false }: {
   unreadChats: number
   fullWidth?: boolean
+  anchor?: { top: number; right: number } | null // позиция под колокольчиком (десктоп); привязка к иконке
   onClose: () => void
   onOpenPage: (page: string) => void
   onOpenTaskCard: (taskId: string) => void
@@ -85,7 +86,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
         position: 'absolute',
         ...(fullWidth
           ? { top: 56, left: 8, right: 8, maxHeight: 'calc(100vh - 72px)' }
-          : { top: 58, right: 14, width: 380, maxWidth: '92vw', maxHeight: 'min(72vh, calc(100vh - 76px))' }),
+          : { top: anchor?.top ?? 58, right: anchor?.right ?? 14, width: 380, maxWidth: '92vw', maxHeight: `min(72vh, calc(100vh - ${(anchor?.top ?? 58) + 16}px))` }),
         background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14,
         boxShadow: '0 18px 50px -12px rgba(0,0,0,0.45)', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
