@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../lib/api'
+import { markNotifRead } from '../hooks/useNotificationsBadge'
 import { TracksPage, TrackFormModal } from './TracksPage'
 import type { Task, View, TaskView, BoardGroupBy } from './tasks/types'
 import { SegmentedControl, Toast } from './tasks/ui'
@@ -62,6 +63,12 @@ export function TasksPage({ onOpenChatWith, onOpenTrackChat, externalTab, deepLi
   }
 
   function openEdit(task: Task) {
+    // Прочитал задачу (любым способом) → гасим ВСЕ уведомления по ней (назначение + логовые действия,
+    // напр. «переименовал»). Берём их id из кэша колокольчика и метим прочитанными (тот же механизм, что
+    // и клик по уведомлению). Так «прочитал через доску» = «прочитал через колокольчик».
+    const notif = qc.getQueryData<{ tasks?: Array<{ id: string; taskId?: string }> }>(['notifications'])
+    const ids = notif?.tasks?.filter(n => n.taskId === task.id).map(n => n.id) ?? []
+    if (ids.length) { ids.forEach(markNotifRead); qc.invalidateQueries({ queryKey: ['notifications'] }) }
     if (task.assignee.id === currentUser?.id && !task.seenAt) {
       api.post(`/tasks/${task.id}/seen`).then(() => {
         qc.invalidateQueries({ queryKey: ['tasks:unseen'] })

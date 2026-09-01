@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { X, ClipboardList, MessageSquare, Calendar as CalendarIcon, CheckCheck, Inbox, GitBranch } from 'lucide-react'
 import { api } from '../lib/api'
@@ -38,6 +38,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
   })
   const [seenAt, setSeenAt] = useState(() => localStorage.getItem(NOTIF_SEEN_LS_KEY) ?? '')
   const [readIds, setReadIds] = useState(() => getReadNotifIds()) // прочитанные по одному (клик = прочитано)
+  const mdRef = useRef(false) // клик-вне закрывает только если mousedown И mouseup на подложке (правило попапов)
 
   // esc — закрыть
   useEffect(() => {
@@ -66,16 +67,22 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
   ]), [data])
 
   return (
-    <div onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}
-      style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'rgba(0,0,0,0.25)' }}>
+    <div
+      onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
+      onMouseUp={e => { if (mdRef.current && e.target === e.currentTarget) onClose(); mdRef.current = false }}
+      style={{ position: 'fixed', inset: 0, zIndex: 250, background: 'transparent' }}>
+      {/* Плавающая карточка у колокольчика (справа-сверху): не во весь экран, без затемнения фона,
+          с зум-анимацией из угла. Клик по свободному месту закрывает (mousedown+mouseup на подложке). */}
+      <style>{`@keyframes notifPop{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}`}</style>
       <div style={{
-        position: 'absolute', top: 0, bottom: 0,
-        // Докаем СПРАВА (колокольчик справа-сверху) — так панель не перекрывает левое меню (сайдбар w-60=240px).
-        // На мобиле — полноэкранно слева.
+        position: 'absolute',
         ...(fullWidth
-          ? { left: 0, width: '100%', borderRight: '1px solid var(--border)', boxShadow: '8px 0 28px rgba(0,0,0,0.25)' }
-          : { right: 0, width: 380, maxWidth: '90vw', borderLeft: '1px solid var(--border)', boxShadow: '-8px 0 28px rgba(0,0,0,0.25)' }),
-        background: 'var(--surface-1)', display: 'flex', flexDirection: 'column',
+          ? { top: 56, left: 8, right: 8, maxHeight: 'calc(100vh - 72px)' }
+          : { top: 58, right: 14, width: 380, maxWidth: '92vw', maxHeight: 'min(72vh, calc(100vh - 76px))' }),
+        background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 14,
+        boxShadow: '0 18px 50px -12px rgba(0,0,0,0.45)', overflow: 'hidden',
+        display: 'flex', flexDirection: 'column',
+        transformOrigin: 'top right', animation: 'notifPop 0.14s ease-out',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
           <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-1)', flex: 1 }}>Уведомления</span>
