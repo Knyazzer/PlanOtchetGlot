@@ -66,6 +66,13 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
     { key: 'calendar', label: 'Календарь', icon: CalendarIcon, items: data?.events ?? [] },
   ]), [data])
 
+  // В пуле показываем ТОЛЬКО непрочитанные (прочитанные — по readIds/seenAt/метке — исчезают).
+  // Календарь-события «прочтения» не имеют — показываем всегда.
+  const isReadable = (k: string) => k === 'task' || k === 'request' || k === 'track'
+  const visibleOf = (g: { key: string; items: NotifItem[] }) =>
+    g.items.filter(item => !isReadable(g.key) || (!readIds.has(item.id) && (item.unseen || item.at > seenAt)))
+  const anyUnread = groups.some(g => visibleOf(g).length > 0)
+
   return (
     <div
       onMouseDown={e => { mdRef.current = e.target === e.currentTarget }}
@@ -110,7 +117,8 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
 
           {groups.map(g => {
             const Icon = g.icon
-            if (!g.items.length) return null
+            const visible = visibleOf(g)
+            if (!visible.length) return null
             return (
               <div key={g.key}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, padding: '0 2px' }}>
@@ -118,9 +126,8 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{g.label}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {g.items.map(item => {
-                    // «Свежесть»: не прочитано по одному (readIds) И (назначение по seenAt ИЛИ новее метки).
-                    const fresh = !readIds.has(item.id) && (item.unseen || ((g.key === 'task' || g.key === 'request' || g.key === 'track') ? item.at > seenAt : false))
+                  {visible.map(item => {
+                    const fresh = isReadable(g.key) // все видимые readable — непрочитанные (точка); календарь — без точки
                     return (
                       <button key={item.id}
                         onClick={() => {
@@ -147,7 +154,7 @@ export function NotificationsPanel({ unreadChats, onClose, onOpenPage, onOpenTas
             )
           })}
 
-          {!isLoading && unreadChats === 0 && groups.every(g => g.items.length === 0) && (
+          {!isLoading && unreadChats === 0 && !anyUnread && (
             <div style={{ color: 'var(--text-muted)', fontSize: 14, textAlign: 'center', padding: 30 }}>Тишина — уведомлений нет</div>
           )}
         </div>
